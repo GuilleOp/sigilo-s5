@@ -3,17 +3,21 @@
 Capa de anonimato verificable para el Sistema de denuncias públicas de faltas administrativas y
 hechos de corrupción (S5) de la Plataforma Digital Nacional.
 
-Proyecto presentado al Datatón Anticorrupción 2026. Estado: en desarrollo.
+Proyecto presentado al Datatón Anticorrupción 2026. Estado: prototipo funcional de referencia, con
+pruebas unitarias y de extremo a extremo; no apto para recibir denuncias reales sin una evaluación
+de seguridad independiente (ver [SECURITY.md](SECURITY.md)).
 
 ## Qué resuelve
 
 Protege la identidad de la persona denunciante en las tres etapas del proceso:
 
-| Etapa       | Mecanismo                                                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Recepción   | Huella Cero: limpieza de pruebas en el navegador, detección de marcas invisibles, revisión del texto y vista previa de lo que verá la autoridad. |
-| Trámite     | Identidad sellada: los datos personales se cifran en el navegador hacia la autoridad competente; cada apertura queda registrada.                 |
-| Seguimiento | Recibo de ocho palabras, buzón cifrado bidireccional y bitácora verificable.                                                                     |
+| Etapa       | Mecanismo                                                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recepción   | Huella Cero: limpieza de pruebas en el navegador, eliminación de marcas invisibles, revisión del texto, semáforo de riesgo y vista previa de lo que verá la autoridad.                  |
+| Trámite     | Identidad sellada: los datos personales se cifran en el navegador hacia la autoridad competente, vinculados a su denuncia; cada apertura queda registrada y es visible para la persona. |
+| Seguimiento | Recibo de ocho palabras, buzón cifrado bidireccional sin datos de contacto y bitácora publicada por día, anclable y verificable.                                                        |
+
+Lo que no resuelve y los riesgos residuales están en el [modelo de amenazas](docs/modelo-de-amenazas.md).
 
 ## Inicio rápido
 
@@ -21,42 +25,67 @@ Requisitos: Node.js 22.18 o superior (ver `.nvmrc`; desde 22.18 Node ejecuta Typ
 compilar).
 
 ```sh
-npm install
+npm ci
 npm run keys:generate   # llaves de demostración, llaves fijadas de la web y apps/server/.env
 npm run dev:server      # API en http://127.0.0.1:8787
 npm run dev:web         # en otra terminal: http://127.0.0.1:5173
 ```
 
-Abre `http://127.0.0.1:5173`. La web y la API comparten origen a través del proxy de Vite, así
-que CORS queda desactivado.
+Abre `http://127.0.0.1:5173`. La web y la API comparten origen a través del proxy de Vite, así que
+CORS queda desactivado.
 
-Panel de la autoridad (`http://127.0.0.1:5173/autoridad`):
+Panel de la autoridad (enlace «Panel de autoridad» del pie, o `http://127.0.0.1:5173/autoridad`):
 
-- Token: el valor de `SIGILO_AUTHORITY_TOKEN` en `apps/server/.env`, que `keys:generate` crea
-  con un valor aleatorio si no existe.
+- Token: el valor de `SIGILO_AUTHORITY_TOKEN` en `apps/server/.env`, que `keys:generate` crea con un
+  valor aleatorio si no existe.
 - Llave: importa el archivo `apps/server/data/authority-demo-key.json`.
 
 Otros comandos:
 
-| Comando                            | Uso                                                                                        |
-| ---------------------------------- | ------------------------------------------------------------------------------------------ |
-| `npm run demo:reset`               | Borra la base y las pruebas de la demostración y conserva las llaves.                      |
-| `npm run ledger:anchor`            | Escribe `anchors/AAAA-MM-DD.json` con la cabeza pública firmada (ver `SIGILO_ANCHOR_URL`). |
-| `npm run keys:generate -- --force` | Reemplaza las llaves; después reconstruye la web para fijar las nuevas.                    |
+| Comando                            | Uso                                                                                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run demo:reset`               | Borra la base y las pruebas de la demostración y conserva las llaves.                                                                                                                      |
+| `npm run ledger:anchor`            | Escribe `anchors/AAAA-MM-DD.json` con la cabeza pública firmada. Requiere que la base exista (el servidor debe haber arrancado al menos una vez) o `SIGILO_ANCHOR_URL` apuntando a la API. |
+| `npm run keys:generate -- --force` | Reemplaza las llaves; después reconstruye la web para fijar las nuevas.                                                                                                                    |
 
-Un solo origen sin Vite: `npm run build -w @sigilo/web` y después
-`SIGILO_WEB_DIST=../web/dist npm run start -w @sigilo/server`; la web queda en
-`http://127.0.0.1:8787` con su CSP como cabecera.
+Un solo origen sin Vite:
+
+```sh
+npm run build -w @sigilo/web
+SIGILO_WEB_DIST=../web/dist npm run start -w @sigilo/server
+```
+
+La web queda en `http://127.0.0.1:8787` con su CSP, `frame-ancestors 'none'` y `X-Frame-Options`
+como cabeceras.
+
+Las variables del servidor están documentadas en `apps/server/.env.example`.
+
+## Pruebas
+
+```sh
+npm run check                         # formato, lint, tipos y pruebas unitarias (Vitest)
+npx playwright install chromium       # una sola vez
+npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
+```
+
+Las pruebas E2E levantan su propio servidor en un directorio temporal y copian
+`apps/server/data/keys.json`, así que requieren haber ejecutado `npm run keys:generate`. Cubren cero
+peticiones a terceros, denuncia anónima y sellada, limpieza de metadatos, buzón, apertura de
+identidad, bitácora y anclas, datos abiertos, salida rápida, llaves sustituidas, trasplante de
+sobres, foco y accesibilidad WCAG 2.0 AA.
 
 ## Estructura
 
 ```
-packages/contracts  Esquemas y rutas de la API (fuente única de verdad)
-packages/core       Criptografía: HPKE, Ed25519, recibo, bitácora
-packages/huella     Limpieza de pruebas y revisión de riesgo
-apps/server         Servidor de referencia (Hono + SQLite)
+packages/contracts  Esquemas, catálogos y rutas de la API (fuente única de verdad)
+packages/core       Criptografía: HPKE, Ed25519, recibo, buzón, comprobante y bitácora
+packages/huella     Limpieza de pruebas, marcas invisibles y revisión de riesgo
+apps/server         Servidor de referencia (Hono + node:sqlite)
 apps/web            Aplicación de referencia (Vite + React)
-docs/               Arquitectura, decisiones, modelo de amenazas
+scripts/            Llaves, anclaje de la bitácora y reinicio de la demostración
+e2e/                Pruebas de extremo a extremo
+anchors/            Anclas publicadas de la bitácora (lo crea ledger:anchor)
+docs/               Arquitectura, decisiones, modelo de amenazas y guías
 ```
 
 ## Documentación
@@ -64,16 +93,20 @@ docs/               Arquitectura, decisiones, modelo de amenazas
 - [Arquitectura](docs/arquitectura.md)
 - [Modelo de amenazas](docs/modelo-de-amenazas.md)
 - [Criptografía: especificación del formato v1](docs/criptografia.md)
+- [Interfaces entre paquetes](docs/interfaces.md)
 - [Integración con el S5](docs/integracion-s5.md)
 - [Accesibilidad](docs/accesibilidad.md)
+- [Guion de la demostración](docs/demo.md)
 - [Datos sintéticos](docs/datos-sinteticos.md)
 - [Declaración de uso de IA](docs/uso-de-ia.md)
-- [Guion de la demostración](docs/demo.md)
 - [Convenciones](docs/convenciones.md)
 - [Glosario](docs/glosario.md)
 - [Plan de trabajo](docs/plan.md)
-- [Interfaces entre paquetes](docs/interfaces.md)
 - [Decisiones de arquitectura](docs/adr/)
+- [Notas de migración de la web (histórico)](docs/notas-migracion-web.md)
+- [Registro de cambios](CHANGELOG.md)
+- [Política de seguridad](SECURITY.md)
+- [Contribuir](CONTRIBUTING.md)
 
 ## Licencia
 

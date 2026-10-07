@@ -8,59 +8,80 @@ la integración reutiliza los paquetes, no las aplicaciones.
 
 | Paquete             | Dónde corre        | Dependencias de framework                        |
 | ------------------- | ------------------ | ------------------------------------------------ |
-| `@sigilo/contracts` | Cliente y servidor | Ninguna (zod)                                    |
+| `@sigilo/contracts` | Cliente y servidor | Ninguna (zod). Incluye los catálogos validados   |
 | `@sigilo/core`      | Cliente y servidor | Ninguna                                          |
 | `@sigilo/huella`    | Cliente            | Ninguna; usa APIs del navegador (canvas, pdf.js) |
 
-Los paquetes son ESM y TypeScript sin paso de build, así que el bundler del frontend los compila.
+Los paquetes son ESM y TypeScript sin paso de build: el bundler del frontend los compila y Node
+22.18 o superior los ejecuta directamente. La lista de exportaciones está en
+[interfaces.md](interfaces.md).
 
 ## Mapeo de campos
 
-| Segmento del formulario | SIGILO                          | Tratamiento                                                             |
-| ----------------------- | ------------------------------- | ----------------------------------------------------------------------- |
-| Persona denunciante     | `IdentityBlock`                 | Se cifra en el navegador con `sealIdentity`; el backend guarda el sobre |
-| Datos de contacto       | Buzón                           | Se sustituyen por el buzón; no se piden                                 |
-| Hechos                  | `ComplaintFacts`                | Se guardan en claro para el trámite, tras `stripInvisibleCharacters`    |
-| Persona denunciada      | `ComplaintFacts.accused`        | En claro                                                                |
-| Ubicación               | `stateCode`, `municipalityCode` | Precisión reducida; sin coordenadas                                     |
-| Testigos                | `IdentityBlock.witnesses`       | Dentro del sobre                                                        |
-| Pruebas                 | `EvidenceDescriptor`            | Limpias en el navegador; el digesto original va en el sobre             |
-| Folio de seguimiento    | `Folio` + recibo                | El backend genera el folio; el navegador genera el recibo               |
+| Segmento del formulario | SIGILO                          | Tratamiento                                                               |
+| ----------------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| Persona denunciante     | `IdentityBlock`                 | Se cifra en el navegador con `sealIdentity`; el backend guarda el sobre   |
+| Datos de contacto       | Buzón                           | Se sustituyen por el buzón; no se piden                                   |
+| Hechos                  | `ComplaintFacts`                | En claro para el trámite, siempre tras `stripInvisibleCharacters`         |
+| Ente y conducta         | `entityId`, `offenseCode`       | Claves de los catálogos de `@sigilo/contracts`; el servidor las valida    |
+| Persona denunciada      | `ComplaintFacts.accused`        | En claro                                                                  |
+| Ubicación               | `stateCode`, `municipalityCode` | Claves INEGI; el municipio debe pertenecer a la entidad; sin coordenadas  |
+| Testigos                | `IdentityBlock.witnesses`       | Dentro del sobre                                                          |
+| Pruebas                 | `EvidenceDescriptor`            | Limpias y verificadas en el navegador; el digesto original va en el sobre |
+| Folio de seguimiento    | `Folio` + recibo                | El backend genera el folio; el navegador genera el recibo                 |
 
 ## Pasos
 
-1. **Llaves.** Generar el par X25519 y Ed25519 de la autoridad competente fuera del servidor y
-   publicar las llaves públicas en la configuración del frontend (llaves fijadas).
+1. **Llaves.** Generar el par X25519 y Ed25519 de la autoridad competente fuera del servidor y fijar
+   las llaves públicas en la configuración del frontend (`buildPublicKeySet`). Antes de enviar,
+   compararlas con las que publica el backend.
 2. **Formulario.** Antes de enviar:
-   - pasar cada archivo por `classifyFile`, `sanitizeImage` o `rasterizePdf`;
+   - pasar cada archivo por `classifyFile`, `sanitizeImage` o `rasterizePdf`, y volver a inspeccionar
+     la copia con `inspectImageMetadata` (`includeColorProfile: false`); si conserva metadatos, no se
+     sube;
    - aplicar `stripInvisibleCharacters` y `reviewText` a los textos;
    - mostrar `assessRisk` y una vista previa de lo que verá la autoridad;
    - desactivar `spellcheck`, `translate` y `autocomplete` en los campos.
-3. **Envío.** Generar el recibo con `generateReceiptPhrase`, derivar llaves con
-   `deriveReceiptKeys`, cifrar la identidad con `sealIdentity` y enviar
-   `SubmitComplaintRequest`.
+3. **Envío.** Generar el recibo con `generateReceiptPhrase` y derivar llaves con
+   `deriveReceiptKeys`. Para el modo sellado, construir el contexto con `identityContextFor` (vincula
+   `authVerifier`, las llaves del denunciante y `contentDigest` de los hechos y las pruebas) y cifrar
+   con `sealIdentity`. Enviar `SubmitComplaintRequest` sin campos extra.
 4. **Backend.** Implementar las rutas de `ROUTES` o adaptarlas:
-   - guardar `authVerifier`, nunca el recibo;
+   - validar con los esquemas de contracts, incluidos los catálogos;
+   - guardar `authVerifier` con índice único, nunca el recibo;
    - excluir el sobre de identidad de listados y detalle;
    - entregar el sobre solo por la ruta de apertura, que registra el fundamento en la bitácora;
-   - firmar el comprobante y los eventos con `signReceipt` y `buildEvent`.
-5. **Seguimiento.** Autenticar con `SHA-256(authKey)`, responder igual ante folio o llave
-   inválidos y limitar intentos.
-6. **Panel de autoridad.** Descifrar en el navegador con la llave privada de la autoridad; nunca en
-   el servidor.
-7. **Despliegue.** CSP estricta, sin peticiones a terceros, sin IP en registros y publicación diaria
-   de la cabeza de la bitácora.
+   - exigir la siguiente `sequence` por remitente en el buzón y verificar las firmas con
+     `verifyMailboxSignature`;
+   - firmar el comprobante y los eventos con `signReceipt`, `buildEvent` y `signLedgerHead`;
+   - publicar la bitácora solo con eventos de días anteriores.
+5. **Seguimiento.** Autenticar comparando `computeAuthVerifier(authKey)` en tiempo constante,
+   responder igual ante folio o llave inválidos y contar solo los fallos. Entregar el evento de
+   recepción para que el navegador lo verifique con `verifyReceiptEvent`.
+6. **Panel de autoridad.** Recalcular el contexto con `identityContextFromDetail` y descifrar en el
+   navegador con la llave privada de la autoridad; nunca en el servidor.
+7. **Despliegue.** CSP estricta como cabecera, `frame-ancestors 'none'`, sin peticiones a terceros,
+   sin IP en registros, y anclaje periódico de la cabeza de la bitácora (`npm run ledger:anchor`) en
+   un repositorio público.
 
 ## Backend headless
 
 Con un CMS headless, la lógica de las rutas se implementa como extensiones de endpoints y ganchos:
 
-- colección de denuncias con hechos, sobre de identidad y `authVerifier`;
-- permisos que nunca exponen el sobre ni `authVerifier` en lectura;
+- colección de denuncias con hechos, sobre de identidad, llaves del denunciante y `authVerifier`;
+- permisos que nunca exponen el sobre en lectura y que solo muestran `authVerifier` y las llaves del
+  denunciante a la autoridad, que los necesita para recalcular el contexto;
 - gancho que agrega un evento a la bitácora en cada cambio de estatus, mensaje o apertura.
+
+## Pruebas
+
+`SIGILO_TEST_CLOCK_FILE` desplaza el reloj del servidor de referencia para probar la publicación
+diaria de la bitácora y los meses cerrados de los datos abiertos. Es solo para pruebas: el servidor
+se niega a arrancar con esa variable si `NODE_ENV=production`. Una integración propia debe ofrecer un
+reloj inyectable equivalente.
 
 ## Compatibilidad
 
 - Navegadores con WebCrypto, `createImageBitmap` y canvas: versiones actuales de Chrome, Edge,
-  Firefox y Safari.
-- Node.js 22.13 o superior en el servidor.
+  Firefox y Safari. Las pruebas automáticas solo cubren Chromium.
+- Node.js 22.18 o superior en el servidor.

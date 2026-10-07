@@ -61,17 +61,21 @@ Tipos públicos de `@sigilo/core`: `KeyPair`, `DeploymentPublicKeys`, `ReceiptKe
 Limpieza y revisión en el navegador. Las funciones puras se prueban en Node; las que usan canvas o
 pdf.js se prueban en el navegador (E2E).
 
-| Módulo                    | Exporta                                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `invisible-characters.ts` | `findInvisibleCharacters(text)`, `stripInvisibleCharacters(text)` (incluye normalización NFKC)              |
-| `text-review.ts`          | `reviewText(text)` devuelve hallazgos `{ kind, start, end, excerpt, severity, suggestion }`                 |
-| `file-policy.ts`          | `classifyFile({ name, type, size })` devuelve `image`, `pdf` o `rejected` con motivo y guía                 |
-| `image-metadata.ts`       | `inspectImageMetadata(blob)` devuelve GPS, dispositivo, fecha de captura, software y otros campos           |
-| `image-sanitize.ts`       | `sanitizeImage(blob, options)` recodifica en canvas y devuelve `SanitizedImage` (`{ blob, width, height }`) |
-| `pdf-rasterize.ts`        | `rasterizePdf(blob, options)` devuelve una imagen JPEG (`Blob`) por página                                  |
-| `digest.ts`               | `digestBlob(blob)` SHA-256 en hexadecimal                                                                   |
-| `risk.ts`                 | `assessRisk(signals)` devuelve `{ level, score, reasons }`                                                  |
-| `index.ts`                | Reexporta todo lo anterior                                                                                  |
+| Módulo                    | Exporta                                                                                                                                                                                                                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invisible-characters.ts` | `findInvisibleCharacters(text)` (categorías `zero_width`, `bidi_control`, `soft_hyphen`, `tag`, `variation_selector`, `other_format`, `filler`, `default_ignorable`, `nonstandard_space`, `combining_mark`, `mixed_script`), `stripInvisibleCharacters(text)` (incluye NFKC) |
+| `text-review.ts`          | `reviewText(text)` devuelve hallazgos `{ kind, start, end, excerpt, severity, suggestion }`                                                                                                                                                                                  |
+| `file-policy.ts`          | `classifyFile({ name, type, size }, { maxBytes? })` devuelve `image`, `pdf` o `rejected` con motivo y guía; `DEFAULT_MAX_FILE_BYTES`                                                                                                                                         |
+| `image-metadata.ts`       | `inspectImageMetadata(blob, { includeColorProfile? })` devuelve GPS, dispositivo, fecha de captura, software, autor y otros campos; `IMAGE_METADATA_LABELS` con el texto que se muestra de cada campo                                                                        |
+| `image-sanitize.ts`       | `sanitizeImage(blob, options)` recodifica en canvas y devuelve `SanitizedImage` (`{ blob, width, height }`); `DEFAULT_MAX_IMAGE_DIMENSION`, `DEFAULT_JPEG_QUALITY`                                                                                                           |
+| `pdf-rasterize.ts`        | `rasterizePdf(blob, options)` devuelve una imagen JPEG (`Blob`) por página; `DEFAULT_MAX_PDF_PAGES`, `DEFAULT_PDF_SCALE`, `DEFAULT_PDF_QUALITY`, `MAX_PAGE_DIMENSION`                                                                                                        |
+| `digest.ts`               | `digestBlob(blob)` SHA-256 en hexadecimal                                                                                                                                                                                                                                    |
+| `months.ts`               | `SPANISH_MONTHS`                                                                                                                                                                                                                                                             |
+| `risk.ts`                 | `assessRisk(signals)` devuelve `{ level, score, reasons }`; `isWorkHours(date)`; pesos, topes y umbrales (`WEIGHT_*`, `CAP_TEXT_*`, `THRESHOLD_MEDIUM`, `THRESHOLD_HIGH`)                                                                                                    |
+| `index.ts`                | Reexporta todo lo anterior y sus tipos                                                                                                                                                                                                                                       |
+
+La copia limpia se vuelve a inspeccionar con `includeColorProfile: false`: el codificador JPEG de
+Chromium agrega un perfil sRGB genérico que no identifica a nadie.
 
 ## `@sigilo/server`
 
@@ -118,6 +122,13 @@ Las pruebas pendientes (subidas sin denuncia) se purgan al arrancar y cada hora 
 El CSV solo incluye meses de recepción completos anteriores al mes actual. Los conteos se redondean
 al múltiplo de 5 más cercano y se suprimen las celdas con menos de 5 denuncias reales; la fila
 `suprimidas,,,,<n>` tiene las mismas columnas que el encabezado y también va redondeada.
+
+### Reloj de pruebas
+
+`SIGILO_TEST_CLOCK_FILE` apunta a un archivo con un desplazamiento en milisegundos que se suma al
+reloj real y se relee en cada consulta. Sirve para probar la publicación diaria y los meses cerrados
+(lo usa `e2e/support/clock.ts`). El servidor registra un aviso cuando está activo y se niega a
+arrancar con esa variable si `NODE_ENV=production`.
 
 ### Web en el mismo origen
 

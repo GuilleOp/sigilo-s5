@@ -1,15 +1,64 @@
 # Guion de la demostración
 
-Duración: unos 9 minutos. Todo corre en local con datos sintéticos; no depende de internet.
+Duración: unos 9 minutos. Todo corre en local con datos sintéticos y no depende de internet. Los
+comandos se ejecutan desde la raíz del repositorio con Node 22.18 o superior.
 
-## Preparación
+## Preparación (antes de la presentación)
 
-- Restablecer datos de demostración y generar llaves.
-- Ventanas abiertas: persona denunciante, panel de autoridad, terminal con la base de datos y
-  verificador de la bitácora.
-- Archivos listos: foto con GPS sintético, PDF de "memo interno" y texto con caracteres invisibles.
-- Caso ficticio: adjudicación directa irregular en la Secretaría de Obras de Villa Ejemplo.
-- Video de respaldo grabado de todo el flujo.
+1. Instalar y generar llaves (una sola vez):
+
+   ```sh
+   npm ci
+   npm run keys:generate
+   ```
+
+   `keys:generate` crea las llaves privadas en `apps/server/data/`, fija las públicas en
+   `apps/web/src/config/pinned-keys.json` y crea `apps/server/.env` con un
+   `SIGILO_AUTHORITY_TOKEN` aleatorio.
+
+2. Dejar la base vacía (conserva las llaves):
+
+   ```sh
+   npm run demo:reset
+   ```
+
+3. Levantar el servidor con un reloj de demostración y la web, en dos terminales:
+
+   ```sh
+   SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run dev:server
+   npm run dev:web
+   ```
+
+   La bitácora pública solo publica eventos de días anteriores. Para mostrarla el mismo día se usa
+   el reloj de pruebas: el servidor suma al reloj real los milisegundos escritos en ese archivo. Solo
+   funciona fuera de producción; con `NODE_ENV=production` el servidor se niega a arrancar.
+
+4. Ventanas abiertas en `http://127.0.0.1:5173`:
+   - Persona denunciante: «Denunciar» y «Dar seguimiento».
+   - Panel de autoridad: enlace «Panel de autoridad» del pie (o `http://127.0.0.1:5173/autoridad`).
+     El token es el valor de `SIGILO_AUTHORITY_TOKEN` en `apps/server/.env`; la llave se importa
+     desde `apps/server/data/authority-demo-key.json`.
+   - Verificación: enlace «Verificar bitácora» del pie.
+   - Una terminal libre.
+
+5. Archivos sintéticos (nunca datos reales):
+   - Foto con GPS ficticio, a partir de cualquier imagen propia sin personas ni lugares
+     identificables:
+
+     ```sh
+     exiftool -GPSLatitude=20.5 -GPSLatitudeRef=N -GPSLongitude=100.25 -GPSLongitudeRef=W \
+       -Make=Ejemplo -Model=Demo -Artist="Persona Ficticia" foto-demo.jpg
+     ```
+
+   - Un PDF de «memo interno» con texto ficticio (imprimir como PDF una página de prueba).
+   - Texto con caracteres invisibles, copiado al portapapeles:
+
+     ```sh
+     node -e "process.stdout.write('Memo interno​ de la Secretaría‌ de Obras de Villa Ejemplo')" | pbcopy
+     ```
+
+6. Caso ficticio: adjudicación directa irregular en la Secretaría de Obras de Villa Ejemplo.
+7. Video de respaldo grabado de todo el flujo.
 
 ## Acto 0. Planteamiento (30 s)
 
@@ -19,57 +68,104 @@ puertas.
 
 ## Acto 1. Recepción con Huella Cero (2 min 30 s)
 
-1. Elegir "Anónimo" o "Identidad sellada" y explicar la diferencia en una frase.
-2. Adjuntar la foto. El panel muestra GPS, dispositivo y fecha. Limpiar y mostrar el antes y el
-   después.
-3. En la terminal, comprobar con `exiftool` que la foto limpia no tiene metadatos.
-4. Adjuntar el PDF: se convierte a imagen y se explica por qué.
-5. Pegar el texto del memo: aparece la alerta de caracteres invisibles y se eliminan.
-6. Escribir "soy la única auxiliar contable del área": el revisor la subraya y sugiere otra
+1. Mostrar la barra mínima con «Salida rápida» y mencionar el atajo: Esc dos veces.
+2. Elegir «Anónima (recomendada)» o «Identidad sellada» y explicar la diferencia en una frase.
+3. En «Hechos», pegar el texto del portapapeles: aparece el aviso de marcas escondidas y se quitan.
+   Aunque no se quiten, se eliminan siempre al enviar.
+4. Escribir «soy la única auxiliar contable del área»: el revisor la subraya y sugiere otra
    redacción.
-7. Mostrar el semáforo de riesgo y la vista "Así te verá la autoridad".
-8. Enviar. Aparecen el folio y el recibo de 8 palabras; confirmar dos palabras.
+5. En «Pruebas», adjuntar la foto. El panel «Esta foto revela» muestra el lugar exacto, el
+   dispositivo y el autor. Limpiar y mostrar el antes y el después, con «Revisado: la copia limpia ya
+   no tiene datos escondidos».
+6. Adjuntar el PDF: cada hoja se convierte en una foto, y se explica por qué.
+7. En «Revisión», mostrar el semáforo de riesgo y la vista «Así te verá la autoridad».
+8. Enviar. Aparecen el folio y el recibo de 8 palabras; confirmar dos palabras (basta con las
+   primeras 4 letras).
 9. En las herramientas del navegador, mostrar que no hay peticiones a terceros y que la identidad
    viaja cifrada.
 
-## Acto 2. El administrador intenta saber quién fue (1 min)
+## Acto 2. Trámite (1 min)
 
-1. Consultar la tabla de denuncias: la identidad y los mensajes son texto cifrado.
-2. Modificar una fila de la bitácora.
-3. El verificador marca la cadena como alterada frente a la cabeza anclada.
+1. En el panel, abrir la denuncia: hechos, pruebas limpias e identidad «sellada».
+2. Cambiar el estatus a «En investigación».
+3. Enviar por el buzón: «¿Recuerda el número de contrato?».
 
-## Acto 3. Trámite (1 min)
+## Acto 3. Seguimiento (1 min 30 s)
 
-1. En el panel, abrir la denuncia: hechos, pruebas limpias e identidad "sellada".
-2. Cambiar el estatus a "En investigación".
-3. Enviar por el buzón: "¿Recuerda el número de contrato?".
-
-## Acto 4. Seguimiento (1 min 30 s)
-
-1. Entrar con folio y recibo.
-2. Ver la línea de tiempo, el comprobante verificado y la pregunta descifrada en el navegador.
+1. Entrar en «Dar seguimiento» con el folio y las 8 palabras.
+2. Ver la línea de tiempo, el comprobante verificado, la pregunta descifrada en el navegador y el
+   estado de publicación del evento de recepción («aparecerá mañana»).
 3. Responder; el revisor avisa si la respuesta revela algo.
-4. Ver "Historial de accesos a tu identidad: ninguno".
+4. Ver «Tu nombre sigue bajo llave. Nadie lo ha abierto».
 
-## Acto 5. Apertura con rendición de cuentas (1 min 30 s)
+## Acto 4. Apertura con rendición de cuentas (1 min 30 s)
 
-1. En el panel, solicitar la apertura de la identidad con fundamento legal escrito.
+1. En el panel, abrir la identidad con un fundamento legal escrito. El panel la muestra como
+   «Identidad declarada por la persona, no verificada».
 2. La identidad se descifra solo en el navegador de la autoridad.
 3. En el seguimiento aparece la apertura con fecha y fundamento.
 4. Cierre: revelar la identidad de un denunciante anónimo es obstrucción de la justicia según el
    artículo 64 de la LGRA; ahora queda evidencia de quién lo hizo.
 
+## Acto 5. Integridad: bitácora, ancla y trasplante (1 min 30 s)
+
+1. Avanzar el reloj de demostración un día y abrir «Verificar bitácora»: la cadena coincide con el
+   registro firmado.
+
+   ```sh
+   echo 86400000 > /tmp/sigilo-reloj
+   ```
+
+2. Anclar la cabeza pública en un directorio temporal y pegar el contenido del archivo en
+   «Verificar bitácora»: «La bitácora contiene el anclaje publicado».
+
+   ```sh
+   SIGILO_ANCHOR_URL=http://127.0.0.1:8787 SIGILO_ANCHORS_DIR=/tmp/sigilo-anclas npm run ledger:anchor
+   cat /tmp/sigilo-anclas/*.json
+   ```
+
+3. Manipulación por un administrador, en una copia de la base. Detener el servidor (Ctrl+C) y
+   ejecutar:
+
+   ```sh
+   rm -rf /tmp/sigilo-copia && cp -R apps/server/data /tmp/sigilo-copia
+   node -e "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync('/tmp/sigilo-copia/sigilo.db');db.exec('DROP TRIGGER ledger_events_no_update');db.prepare('UPDATE ledger_events SET payload_digest=? WHERE seq=0').run('0'.repeat(64))"
+   SIGILO_DATA_DIR=/tmp/sigilo-copia SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run dev:server
+   ```
+
+   Primero hay que quitar el trigger que impide modificar eventos. Al verificar de nuevo, la página
+   indica que la bitácora no coincide. Después, detener ese servidor y volver a levantar el original.
+
+4. Trasplante del sobre de identidad: ejecutar la prueba que reproduce el ataque y mostrar que se
+   rechaza.
+
+   ```sh
+   npm run test:e2e -- e2e/transplant.spec.ts
+   ```
+
+   Un `authVerifier` repetido se rechaza con 400, y un sobre copiado con otro recibo no abre.
+
 ## Acto 6. Adopción (1 min)
 
-1. Mostrar los paquetes `core` y `huella` y la guía de integración.
-2. Mostrar los datos abiertos con supresión de celdas pequeñas.
+1. Mostrar los paquetes `core` y `huella` y la [guía de integración](integracion-s5.md).
+2. Mostrar «Datos abiertos»: solo meses cerrados, conteos redondeados a múltiplos de 5 y las
+   denuncias que no se muestran para proteger a quienes denunciaron.
 3. Lámina final: recepción, trámite y seguimiento, con sus mecanismos.
+
+## Después de la presentación
+
+```sh
+npm run demo:reset
+rm -rf /tmp/sigilo-reloj /tmp/sigilo-anclas /tmp/sigilo-copia
+```
 
 ## Preguntas previstas
 
-| Pregunta                                    | Respuesta breve                                                                                         |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| ¿Y si el servidor entrega código malicioso? | Riesgo residual; hashes publicados por versión y verificador planeado.                                  |
-| ¿Y si la autoridad abre sin motivo?         | Queda registrado y visible para la persona; el umbral 2 de 3 es la siguiente etapa.                     |
-| ¿Y si pierdo el recibo?                     | No hay recuperación por diseño; se puede presentar otra denuncia citando el folio.                      |
-| ¿Es legal la apertura?                      | La LGRA obliga a la autoridad a mantener la confidencialidad (art. 91); el sistema la hace verificable. |
+| Pregunta                                    | Respuesta breve                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| ¿Y si el servidor entrega código malicioso? | Riesgo residual documentado; hashes publicados por versión y verificador son trabajo futuro.                 |
+| ¿Y si la autoridad abre sin motivo?         | Queda registrado y visible para la persona; el umbral 2 de 3 es la siguiente etapa.                          |
+| ¿Y si pierdo el recibo?                     | No hay recuperación por diseño; se puede presentar otra denuncia citando el folio.                           |
+| ¿Es legal la apertura?                      | La LGRA obliga a la autoridad a mantener la confidencialidad (art. 91); el sistema la hace verificable.      |
+| ¿Por qué la bitácora tarda un día?          | Publicar al instante revelaría la hora exacta de cada envío; los lotes diarios lo evitan.                    |
+| ¿Quién garantiza que no reescriben todo?    | Las anclas versionadas en un repositorio público; entre dos anclas sigue siendo posible, y así se documenta. |

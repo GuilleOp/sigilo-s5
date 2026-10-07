@@ -69,5 +69,5 @@ Una tarea está terminada cuando:
 1. Cumple su criterio de aceptación en el issue.
 2. Tiene pruebas y `npm run check` pasa.
 3. El código está documentado según estas convenciones.
-4. La documentación afectada esta actualizada.
+4. La documentación afectada está actualizada.
 5. No introduce peticiones a terceros ni datos reales.
