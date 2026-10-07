@@ -172,12 +172,14 @@ contra el registro público (ver «Comprobante firmado»).
 - El primer evento usa `prevHash = LEDGER_GENESIS_HASH` (64 ceros); cada evento siguiente usa el
   `hash` del anterior, `seq` consecutivo y una fecha `at` no decreciente.
 - **Cierre diario.** Un evento nuevo queda pendiente, sin `seq` ni `prevHash` (`pendingEventFor`) y
-  con un identificador aleatorio. Al terminar su día (UTC), los pendientes del día se barajan con
-  Fisher-Yates criptográfico (`shuffle`) y se encadenan en ese orden (`chainEvent`), en lotes de
-  5000 por transacción. Si el cierre se interrumpe, lo que queda del día se vuelve a barajar al
-  reanudar. El orden dentro del día no revela el de llegada.
-- Tope: un día admite a lo más 200 000 eventos pendientes; al alcanzarlo, las escrituras reciben
-  `503 ledger_day_full`.
+  con un identificador aleatorio. Su fecha es la mayor entre hoy, el día siguiente al último
+  evento encadenado y el último día con pendientes, para que las fechas no decrezcan aunque el reloj
+  retroceda. Una tarea programada (cada 10 minutos; las lecturas no publican) baraja los pendientes
+  de cada día cerrado (UTC) con Fisher-Yates criptográfico (`shuffle`) y los encadena en ese orden
+  (`chainEvent`), en lotes de 1000 por transacción. Si el cierre se interrumpe, lo que queda del día
+  se vuelve a barajar al reanudar. El orden dentro del día no revela el de llegada.
+- Tope: un día admite a lo más 200 000 eventos pendientes; al alcanzarlo, las escrituras de la
+  persona denunciante reciben `503 ledger_day_full`. Los eventos de la autoridad están exentos.
 - Después de cerrar, el servidor hace un checkpoint del WAL de SQLite, que conserva páginas con los
   pendientes en su orden de llegada.
 - Cabeza: `signature = Ed25519(llave del servidor, canonicalize({ seq, hash, at, serverKeyId }))`
@@ -206,28 +208,36 @@ contra el registro público (ver «Comprobante firmado»).
 
 ## Prueba de trabajo
 
-- Reto: `GET /api/v1/pow/challenge?purpose=complaint|evidence|message` devuelve `{ token, bits }`.
-  El servidor firma el token con HMAC-SHA256 (llave aleatoria por proceso); vence en 10 minutos,
-  sirve para un solo propósito y se gasta al usarse.
+- Reto: `GET /api/v1/pow/challenge?purpose=complaint|message` devuelve `{ token, bits }`. El
+  servidor firma el token con HMAC-SHA256 (llave aleatoria por proceso). Cualquier otro propósito
+  responde `400 bad_request`.
+- Usos: un reto `message` sirve para un mensaje; un reto `complaint` sirve para las hasta 10
+  subidas de pruebas de una denuncia y después para la denuncia, que lo cierra.
 - Solución: un contador decimal tal que `SHA-256(token + ":" + contador)` empieza con `bits` bits en
   cero (`isPowSolution`; en promedio 2^bits intentos). El navegador lo busca en un Web Worker
   (`solvePow`).
 - Cabecera: `X-Sigilo-Pow: <token>:<contador>` (`POW_HEADER`, `formatPowHeader`). La exigen
   `POST complaints`, `POST evidence` y `POST tracking/messages`.
-- El servidor responde `428 proof_required` si falta, no es válida, es de otro propósito, venció o
-  ya se usó.
+- El servidor responde `428 proof_required` si falta, no es válida, es de otro propósito, venció,
+  agotó sus usos o su dificultad es menor que `max(base, actual - 1)`.
 - **Dificultad adaptativa.** La base es `SIGILO_POW_BITS` (18; 0 desactiva la exigencia). Por cada
-  duplicación de las soluciones aceptadas en la última hora sobre el umbral de su propósito (60
-  denuncias, 300 pruebas, 300 mensajes), la dificultad de ese propósito sube un bit, hasta
-  `SIGILO_POW_MAX_BITS` (24). Cuando la carga sale de la ventana, vuelve a bajar.
+  duplicación de los retos usados en la última hora sobre el umbral de su propósito (60 denuncias,
+  300 mensajes; un reto `complaint` cuenta una vez aunque cubra pruebas), la dificultad de ese
+  propósito sube un bit, hasta `SIGILO_POW_MAX_BITS` (20 por omisión). Cuando la carga sale de la
+  ventana, vuelve a bajar.
+- **Vigencia.** `margen + 4 · p95`, donde `p95 = ln(20) · 2^bits / 50 000` segundos es el percentil
+  95 del tiempo de resolución en un celular básico (`powSolveSeconds`, con
+  `SLOW_DEVICE_HASHES_PER_SECOND` = 50 000). El margen es de 5 minutos. A 18 bits, `4 · p95` son unos 63 s y
+  la vigencia, unos 6 minutos; a 20 bits, unos 4.2 minutos y 9 minutos.
 - **Presión de la lista de gastados.** El servidor no guarda los retos emitidos (van firmados), solo
-  los gastados hasta que vencen, con un tope de 200 000. Al pasar del 50, 75 y 90 % de ese tope, los
-  retos nuevos suman un bit cada vez y su vigencia se acorta hacia 2 minutos. Si la lista se llena,
-  se olvidan primero los gastados más antiguos (los más próximos a vencer) en vez de rechazar.
-- **Freno extremo.** Por encima de la prueba de trabajo, un límite por hora responde 429 y solo
-  cuenta escrituras confirmadas: 3000 denuncias, 10 000 pruebas y 6000 mensajes.
-- Residual: quien acumule retos emitidos mientras hay poca carga puede usarlos, con su dificultad de
-  emisión, durante su vigencia.
+  los usados hasta que vencen, con un tope de 200 000. Al pasar del 50, 75 y 90 % de ese tope, los
+  retos nuevos suman un bit cada vez y el margen se acorta hacia 1 minuto. Si la lista se llena, se
+  olvidan primero los usados más antiguos (los más próximos a vencer) en vez de rechazar.
+- No hay frenos globales de escrituras: un tope global sin identidad lo podría agotar un atacante
+  para todas las personas.
+- Residuales: quien acumule retos emitidos mientras hay poca carga puede usarlos, con su dificultad
+  de emisión, durante su vigencia; y un atacante con GPU resuelve SHA-256 miles de veces más rápido
+  que un celular básico, así que la prueba de trabajo encarece el abuso pero no lo iguala.
 
 ## Llaves fijadas
 
@@ -271,6 +281,10 @@ con el AAD anterior ya no abren.
 - Ventana de anclaje: entre dos anclajes, quien tenga la llave de firma del servidor podría
   reescribir eventos todavía no anclados.
 - Retos acumulados: los retos emitidos con poca carga sirven, a su dificultad, durante su vigencia.
+- Asimetría de la prueba de trabajo: una GPU resuelve miles de veces más rápido que un celular
+  básico.
+- Fechas futuras: un reloj del servidor adelantado fija fechas futuras en los eventos, y la regla
+  de fechas monótonas obliga a los siguientes a no ser anteriores.
 
 ## Trabajo futuro
 

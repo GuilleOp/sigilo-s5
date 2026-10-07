@@ -77,8 +77,12 @@ Notas:
   chinanteco, wixárika). Las letras de otro alfabeto sin equivalente se señalan (`mixed_script`) pero
   no se borran. Costos conocidos: los textos rusos o griegos legítimos se transliteran en parte, la
   raya de diálogo pasa a `-`, «一» y «ー» pasan a `-` también en chino o japonés, y algunos emojis
-  compuestos pierden su forma. Residuales: el saltillo U+02BC se conserva y se ve igual que «’»; un
-  canario hecho con sinónimos o con el orden de las frases no se detecta (A03).
+  compuestos pierden su forma. También se detectan por contexto los dígitos de otros sistemas (pasan
+  a ASCII), «º» y «ª» entre letras, superíndices antes de un dígito, «ː» y las letras modificadoras
+  en palabras latinas; los homoglifos solo se convierten en contexto latino, sin transliterar
+  palabras completas en otro alfabeto ni letras griegas en fórmulas. Residuales: el saltillo U+02BC
+  se conserva y se ve igual que «’»; un canario hecho con sinónimos o con el orden de las frases no
+  se detecta (A03).
 - **A08.** El perfil ICC genérico se acepta por su descripción (`sRGB` de Chromium o
   `sRGB IEC61966-2.1` de WebKit), no por una huella binaria. Un perfil con esa descripción y datos
   distintos pasaría la verificación (R).
@@ -108,42 +112,52 @@ entrada; la salida rápida lo reemplaza al navegar a la página neutra.
 
 ## C. Servidor, operación y cadena de suministro
 
-| #   | Ataque                                                       | Categoría   | Mitigación                                                                                                                                                                                                                                                              | Estado    |
-| --- | ------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| C01 | Lectura de la base de datos o respaldos                      | STRIDE I    | Identidad y mensajes del buzón cifrados en el cliente; hechos y pruebas limpias en claro (ver F01)                                                                                                                                                                      | M parcial |
-| C02 | Registro de direcciones IP o de la actividad de las personas | LINDDUN L   | Registro agregado por hora por omisión, sin las rutas de la persona denunciante ni `GET keys` y la bitácora; nunca IP, agente de usuario, cuerpos ni folios                                                                                                             | M         |
-| C03 | Código JavaScript malicioso servido a víctimas específicas   | STRIDE T    | Ninguna en v1; hashes publicados por versión y verificador                                                                                                                                                                                                              | P; R      |
-| C04 | Sustitución de llaves públicas de la autoridad               | STRIDE S    | Llaves fijadas en el bundle y comparadas con `GET /keys` antes de subir nada                                                                                                                                                                                            | M         |
-| C05 | Reescritura de la bitácora                                   | STRIDE T, R | Cadena de hashes con fechas no decrecientes, triggers de solo agregar, cabeza firmada, anclaje con `npm run ledger:anchor` y verificación de pertenencia (`verifyEventInChain`)                                                                                         | M parcial |
-| C06 | Pérdida o borrado de denuncias                               | STRIDE D, R | Comprobante firmado y evento de recepción verificable en poder de la persona denunciante                                                                                                                                                                                | M         |
-| C07 | Mover un sobre de identidad a otra denuncia (trasplante)     | STRIDE T    | AAD vinculado a `authVerifier`, `reporterKeys` y `contentDigest`; índice único de `authVerifier`                                                                                                                                                                        | M         |
-| C08 | Enumeración de folios o recibos                              | LINDDUN D   | 60 bits de folio, 88 de recibo, respuesta idéntica, consulta ligera del verificador y límite de fallos por folio                                                                                                                                                        | M         |
-| C09 | Saturación con denuncias, pruebas o mensajes falsos          | STRIDE D    | Prueba de trabajo adaptativa (18 a 24 bits) para denuncias, pruebas y mensajes; frenos extremos sobre escrituras confirmadas; cuota de 5 GiB con reserva, tope por denuncia y desalojo de las sin atender más antiguas; retención de 30 días para denuncias sin atender | M parcial |
-| C10 | Archivo malicioso contra el visor de la autoridad            | STRIDE E    | Solo JPEG y PNG, bytes mágicos y tamaño en el servidor; descarga como adjunto con `nosniff`                                                                                                                                                                             | M parcial |
-| C11 | XSS en los hechos mostrados a la autoridad                   | STRIDE E    | React sin `dangerouslySetInnerHTML` y CSP estricta                                                                                                                                                                                                                      | M         |
-| C12 | Permisos de lectura públicos mal configurados                | STRIDE I    | Rutas de autoridad con token comparado en tiempo constante; pruebas de autorización                                                                                                                                                                                     | M         |
-| C13 | Dependencia comprometida                                     | STRIDE T    | Lockfile y dependencias mínimas                                                                                                                                                                                                                                         | M parcial |
-| C14 | Aleatoriedad débil                                           | STRIDE S    | Solo `crypto.getRandomValues`; lint prohíbe `Math.random`                                                                                                                                                                                                               | M         |
-| C15 | Longitud del texto cifrado revela datos                      | LINDDUN I   | Relleno fijo de la identidad y de los mensajes del buzón a 4096 bytes                                                                                                                                                                                                   | M         |
-| C16 | Repetir, reordenar u omitir mensajes del buzón               | STRIDE T    | `sequence` por remitente en el AAD y en la firma; el servidor exige la siguiente; el cliente avisa si falta una                                                                                                                                                         | M parcial |
-| C17 | El servidor sustituye las llaves de la persona denunciante   | STRIDE S    | En ambos modos, el panel recalcula el digesto del envío y lo compara con el evento `complaint.received` publicado; en modo `sealed`, además, van en el AAD                                                                                                              | M parcial |
-| C18 | Texto arbitrario en catálogos o datos abiertos               | STRIDE T    | Entidad, municipio, ente y conducta validados contra los catálogos de contracts; fórmulas neutralizadas en CSV                                                                                                                                                          | M         |
-| C19 | Bloquear el seguimiento de todas las personas                | STRIDE D    | Solo los fallos cuentan; el exceso global solo frena (10 ms por fallo, máximo 2 s)                                                                                                                                                                                      | M parcial |
-| C20 | Llenar el día de la bitácora para bloquear las escrituras    | STRIDE D    | Tope de 200 000 pendientes por día (`503 ledger_day_full`) detrás de la prueba de trabajo y los frenos; cierre por lotes de 5000                                                                                                                                        | M parcial |
-| C21 | Dos servidores sobre la misma base                           | STRIDE T    | `server.lock` atómico (`wx`), renovado cada 10 minutos; los scripts se niegan a correr con el servidor en marcha                                                                                                                                                        | M         |
+| #   | Ataque                                                       | Categoría   | Mitigación                                                                                                                                                                                                                                     | Estado    |
+| --- | ------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| C01 | Lectura de la base de datos o respaldos                      | STRIDE I    | Identidad y mensajes del buzón cifrados en el cliente; hechos y pruebas limpias en claro (ver F01)                                                                                                                                             | M parcial |
+| C02 | Registro de direcciones IP o de la actividad de las personas | LINDDUN L   | Registro agregado por hora por omisión, sin las rutas de la persona denunciante ni `GET keys` y la bitácora; nunca IP, agente de usuario, cuerpos ni folios                                                                                    | M         |
+| C03 | Código JavaScript malicioso servido a víctimas específicas   | STRIDE T    | Ninguna en v1; hashes publicados por versión y verificador                                                                                                                                                                                     | P; R      |
+| C04 | Sustitución de llaves públicas de la autoridad               | STRIDE S    | Llaves fijadas en el bundle y comparadas con `GET /keys` antes de subir nada                                                                                                                                                                   | M         |
+| C05 | Reescritura de la bitácora                                   | STRIDE T, R | Cadena de hashes con fechas no decrecientes, triggers de solo agregar, cabeza firmada, anclaje con `npm run ledger:anchor` y verificación de pertenencia (`verifyEventInChain`)                                                                | M parcial |
+| C06 | Pérdida o borrado de denuncias                               | STRIDE D, R | Comprobante firmado y evento de recepción verificable en poder de la persona denunciante                                                                                                                                                       | M         |
+| C07 | Mover un sobre de identidad a otra denuncia (trasplante)     | STRIDE T    | AAD vinculado a `authVerifier`, `reporterKeys` y `contentDigest`; índice único de `authVerifier`                                                                                                                                               | M         |
+| C08 | Enumeración de folios o recibos                              | LINDDUN D   | 60 bits de folio, 88 de recibo, respuesta idéntica, consulta ligera del verificador y límite de fallos por folio                                                                                                                               | M         |
+| C09 | Saturación con denuncias, pruebas o mensajes falsos          | STRIDE D    | Prueba de trabajo adaptativa (18 a 20 bits) con un reto por denuncia y sus pruebas y otro por mensaje; cuota de 5 GiB con tope por denuncia y `507 storage_full` sin borrar pruebas asociadas; retención de 30 días para denuncias sin atender | M parcial |
+| C10 | Archivo malicioso contra el visor de la autoridad            | STRIDE E    | Solo JPEG y PNG, bytes mágicos y tamaño en el servidor; descarga como adjunto con `nosniff`                                                                                                                                                    | M parcial |
+| C11 | XSS en los hechos mostrados a la autoridad                   | STRIDE E    | React sin `dangerouslySetInnerHTML` y CSP estricta                                                                                                                                                                                             | M         |
+| C12 | Permisos de lectura públicos mal configurados                | STRIDE I    | Rutas de autoridad con token comparado en tiempo constante; pruebas de autorización                                                                                                                                                            | M         |
+| C13 | Dependencia comprometida                                     | STRIDE T    | Lockfile y dependencias mínimas                                                                                                                                                                                                                | M parcial |
+| C14 | Aleatoriedad débil                                           | STRIDE S    | Solo `crypto.getRandomValues`; lint prohíbe `Math.random`                                                                                                                                                                                      | M         |
+| C15 | Longitud del texto cifrado revela datos                      | LINDDUN I   | Relleno fijo de la identidad y de los mensajes del buzón a 4096 bytes                                                                                                                                                                          | M         |
+| C16 | Repetir, reordenar u omitir mensajes del buzón               | STRIDE T    | `sequence` por remitente en el AAD y en la firma; el servidor exige la siguiente; el cliente avisa si falta una                                                                                                                                | M parcial |
+| C17 | El servidor sustituye las llaves de la persona denunciante   | STRIDE S    | En ambos modos, el panel recalcula el digesto del envío y lo compara con el evento `complaint.received` publicado; en modo `sealed`, además, van en el AAD                                                                                     | M parcial |
+| C18 | Texto arbitrario en catálogos o datos abiertos               | STRIDE T    | Entidad, municipio, ente y conducta validados contra los catálogos de contracts; fórmulas neutralizadas en CSV                                                                                                                                 | M         |
+| C19 | Bloquear el seguimiento de todas las personas                | STRIDE D    | Solo los fallos cuentan; el exceso global solo frena (10 ms por fallo, máximo 2 s)                                                                                                                                                             | M parcial |
+| C20 | Llenar el día de la bitácora para bloquear las escrituras    | STRIDE D    | Tope de 200 000 pendientes por día (`503 ledger_day_full`) detrás de la prueba de trabajo; los eventos de la autoridad están exentos; cierre asíncrono por lotes de 1000 en una tarea programada                                               | M parcial |
+| C21 | Dos servidores sobre la misma base                           | STRIDE T    | `server.lock` publicado con `linkSync` desde un temporal, gracia de 10 s para bloqueos recién creados y renovación cada 10 minutos; los scripts se niegan a correr con el servidor en marcha                                                   | M         |
 
 Notas:
 
-- **C05.** El anclaje requiere que la operación ejecute `ledger:anchor` y versione el archivo en
+- **C05.** Sin anclas, un servidor comprometido puede mostrar bitácoras distintas a distintas
+  personas (vista dividida) sin que nadie lo note (R). Por eso el seguimiento y el buzón de la
+  autoridad permiten pegar anclas publicadas para comparar. El anclaje requiere que la operación ejecute `ledger:anchor` y versione el archivo en
   `anchors/`. Las reescrituras entre dos anclas no se detectan: quien tiene la llave de firma del
   servidor puede rehacer la cadena posterior a la última ancla.
 - **C09.** La dificultad sube un bit por cada duplicación de la carga de la última hora sobre su
-  umbral, así que el costo de un ataque crece más rápido que su volumen. Aun así, un atacante con
-  cómputo suficiente puede pagarla, y quien acumule retos emitidos con poca carga puede usarlos a su
-  dificultad durante su vigencia (R). Los frenos extremos y la cuota son el último recurso: si se
-  agotan, afectan a todas las personas (R). La autoridad conserva las pruebas de una denuncia
-  atendiéndola (moviéndola de `received`); las de denuncias sin atender pueden desalojarse o
-  vencer.
+  umbral, así que el costo de un ataque crece más rápido que su volumen. Ya no hay frenos globales
+  de escrituras: un tope global sin identidad siempre funciona como palanca para dejar fuera a
+  todas las personas. Residuales:
+  - una GPU resuelve SHA-256 miles de veces más rápido que el celular básico para el que se calibra
+    la dificultad (asimetría de la prueba de trabajo) (R);
+  - quien acumule retos emitidos con poca carga puede usarlos a su dificultad durante su vigencia
+    (R);
+  - como las pruebas asociadas nunca se borran para hacer sitio, unas 100 denuncias con su tope por
+    denuncia (`cuota / 100`) pueden llenar la cuota hasta que venza su retención de 30 días; mientras
+    tanto, las subidas nuevas reciben `storage_full` (R).
+
+  La autoridad conserva las pruebas de una denuncia atendiéndola (moviéndola de `received`); el
+  panel muestra la fecha de borrado (`evidenceDeletionOn`).
+
 - **C10.** Una carga hecha a mano con prefijo JPEG válido llega al decodificador del navegador de la
   autoridad. Recodificar en el servidor es trabajo futuro (P).
 - **C16.** El servidor puede retener el último mensaje sin que se note; la bitácora registra cada
@@ -153,8 +167,10 @@ Notas:
   denunciante haya verificado su evento contra su comprobante.
 - **C19.** El freno global retrasa a todas las personas hasta 2 s y no limita el volumen de un
   atacante que envía en paralelo.
-- **C20.** Si se alcanza el tope del día, nadie puede escribir hasta que cierre (R). La prueba de
-  trabajo adaptativa hace muy costoso llegar a 200 000 eventos en un día.
+- **C20.** Si se alcanza el tope del día, las personas denunciantes no pueden escribir hasta que
+  cierre (R); la autoridad sí. La prueba de trabajo adaptativa hace muy costoso llegar a 200 000
+  eventos en un día. Las fechas de los eventos son monótonas: un reloj del servidor adelantado fija
+  fechas futuras y obliga a los eventos siguientes a no ser anteriores (R).
 
 ## D. Autoridad y custodia de llaves
 
@@ -209,10 +225,17 @@ Notas:
 5. Los respaldos contienen los hechos y las pruebas limpias en claro.
 6. Entre dos anclas, la operación con la llave del servidor puede rehacer la bitácora.
 7. El relleno de celdas puede hacer cruzar el umbral de publicación en los datos abiertos.
-8. Las cuotas globales son el último recurso contra el abuso y pueden agotarse para todos.
+8. La cuota de almacenamiento es global y puede agotarse para todos.
 9. El perfil sRGB genérico se acepta por su descripción, no por su contenido.
 10. Los retos de prueba de trabajo emitidos con poca carga sirven, a su dificultad, durante su
     vigencia.
+11. La prueba de trabajo es asimétrica: una GPU resuelve mucho más rápido que un celular básico.
+12. Unas 100 denuncias pueden llenar la cuota de pruebas durante 30 días (`storage_full`).
+13. Un tope global sin identidad siempre funciona como palanca para dejar fuera a todos.
+14. Un reloj del servidor adelantado fija fechas futuras en la bitácora.
+15. Sin anclas, el servidor puede mostrar bitácoras distintas a distintas personas.
+16. Las marcas legítimas sobre vocales (`LEGITIMATE_MARKS`) se conservan a propósito por las lenguas
+    indígenas, y pueden servir de canal de marca.
 
 ## Historial de seguridad
 
@@ -267,6 +290,20 @@ Tercera ronda:
 | El registro agregado contaba `GET keys` y la bitácora                                    | Se excluyen del registro (C02)                                                               |
 | El bloqueo del servidor podía tomarse dos veces o quedar huérfano                        | `server.lock` con `wx`, renovación y criterios de abandono (C21)                             |
 | NFKC completo cambiaba usos legítimos del español y de lenguas indígenas                 | NFC general, NFKC solo en formas que marcan y marcas legítimas protegidas (A04)              |
+
+Cuarta ronda:
+
+| #   | Hallazgo                                                                                   | Corrección                                                                                  |
+| --- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| N1  | Los frenos globales de escrituras servían de palanca para dejar fuera a todas las personas | Se retiraron; quedan la prueba de trabajo adaptativa, la cuota y el tope diario (C09)       |
+| N2  | Una denuncia con pruebas resolvía hasta 11 retos                                           | Un reto `complaint` cubre sus hasta 10 pruebas; `purpose=evidence` responde 400 (C09)       |
+| N3  | Un reto de baja dificultad seguía sirviendo después de subir la carga                      | `verify` exige `bits >= max(base, actual - 1)` (C09)                                        |
+| N4  | Con 24 bits y vigencia fija, un celular básico podía no terminar a tiempo                  | Máximo de 20 bits y vigencia `margen + 4 · p95` calibrada a 50 mil hashes por segundo (C09) |
+| N5  | El desalojo borraba pruebas de corrupción para hacer sitio                                 | Sin reserva ni desalojo: `507 storage_full`; fecha de borrado visible en el panel (C09)     |
+| N6  | Un atacante podía llenar el día y bloquear a la autoridad                                  | Eventos de la autoridad exentos de `ledger_day_full` (C20)                                  |
+| N7  | Las lecturas publicaban días cerrados y bloqueaban el servidor                             | Tarea programada asíncrona cada 10 minutos, lotes de 1000 con `setImmediate` (C20)          |
+| N8  | Un reloj que retrocedía podía romper el orden de fechas de la cadena                       | Fechas monótonas e índice `(at, seq)` (migración 5) (C05)                                   |
+| N9  | Dos servidores podían ver un bloqueo vacío o a medio escribir                              | `server.lock` con temporal y `linkSync`, gracia de 10 s (C21)                               |
 
 ## Observaciones sobre sistemas de terceros
 

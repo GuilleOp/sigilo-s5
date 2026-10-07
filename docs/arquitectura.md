@@ -163,8 +163,10 @@ autoridad y una copia de la base puede descifrar sin pasar por la ruta.
 
 - Cada evento (`complaint.received`, `complaint.status_changed`, `identity.opened`, `message.sent`)
   se encadena con el hash del anterior. Triggers de SQLite impiden modificar o borrar eventos.
-- **Cierre diario barajado.** Un evento nuevo queda pendiente, sin `seq`. Al cerrar su día (UTC), el
-  servidor baraja los pendientes de ese día con aleatoriedad criptográfica y los encadena. La cabeza
+- **Cierre diario barajado.** Un evento nuevo queda pendiente, sin `seq`, con una fecha que nunca
+  es anterior a la del último evento. Una tarea programada (cada 10 minutos; las lecturas no
+  publican) baraja los pendientes de cada día cerrado (UTC) con aleatoriedad criptográfica y los
+  encadena en lotes de 1000, sin bloquear el servidor. La cabeza
   pública es la del último evento encadenado; un día está publicado si y solo si `at <= head.at`.
   Así ni la hora ni el orden de llegada se pueden deducir de la bitácora.
 - **Etiqueta del recibo.** `identity.opened` lleva `receiptTag`, derivado del `authVerifier`, para que
@@ -188,11 +190,13 @@ Ver [criptografia.md](criptografia.md).
 - **Cabeceras de la API:** `Content-Security-Policy: default-src 'none'`, `no-store` y `nosniff`.
 - **Sin terceros.** La web no hace peticiones fuera de su origen; una prueba E2E lo comprueba.
 - **Historial.** La web usa un router en memoria: no deja rutas ni entradas nuevas en el historial.
-- **Abuso.** Prueba de trabajo adaptativa para denuncias, pruebas y mensajes (`SIGILO_POW_BITS`,
-  `SIGILO_POW_MAX_BITS`), frenos extremos sobre escrituras confirmadas, límites en memoria con tope
-  LRU, cuota total de pruebas con reserva y tope por denuncia (`SIGILO_EVIDENCE_QUOTA_BYTES`),
-  retención de pruebas de denuncias sin atender (`SIGILO_EVIDENCE_RETENTION_DAYS`) y tope de
-  pendientes por día en la bitácora.
+- **Abuso.** Prueba de trabajo adaptativa (`SIGILO_POW_BITS`, 18; `SIGILO_POW_MAX_BITS`, 20): un
+  reto por denuncia con sus pruebas y otro por mensaje. Límites en memoria con tope LRU (fallos de
+  autenticación y mensajes por folio), sin frenos globales de escrituras. Cuota total de pruebas con
+  tope por denuncia (`SIGILO_EVIDENCE_QUOTA_BYTES`; si no cabe, `507 storage_full`, sin borrar
+  pruebas asociadas), retención de pruebas de denuncias sin atender
+  (`SIGILO_EVIDENCE_RETENTION_DAYS`) y tope de pendientes por día en la bitácora, del que están
+  exentos los eventos de la autoridad.
 - **Almacenamiento.** Tablas privadas `WITHOUT ROWID`, `secure_delete` y checkpoint del WAL tras cada
   cierre diario, para que una copia de la base no conserve el orden de llegada.
 - **Registros.** Por omisión, contadores agregados por hora sin las rutas de la persona denunciante

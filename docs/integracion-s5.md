@@ -59,7 +59,8 @@ Los paquetes son ESM y TypeScript sin paso de build: el bundler del frontend los
    - firmar en el comprobante el `payloadDigest` de `complaint.received` (no su `seq`) y calcular
      `submissionDigest` con el sobre resumido (`computeSubmissionDigest`);
    - en `identity.opened`, incluir `receiptTag` (`identityOpenedPayload`);
-   - exigir la prueba de trabajo (`POW_HEADER`) en los envíos de denuncias y pruebas.
+   - exigir la prueba de trabajo (`POW_HEADER`) en los envíos de denuncias (con sus pruebas) y de
+     mensajes; ver «Despliegue: calibración de la prueba de trabajo».
 5. **Seguimiento.** Autenticar comparando `computeAuthVerifier(authKey)` en tiempo constante,
    responder igual ante folio o llave inválidos y contar solo los fallos. Entregar el evento de
    recepción para que el navegador lo verifique con `verifyReceiptEvent`, y concilie sus aperturas
@@ -80,6 +81,35 @@ Con un CMS headless, la lógica de las rutas se implementa como extensiones de e
 - permisos que nunca exponen el sobre en lectura y que solo muestran `authVerifier` y las llaves del
   denunciante a la autoridad, que los necesita para recalcular el contexto;
 - gancho que agrega un evento a la bitácora en cada cambio de estatus, mensaje o apertura.
+
+## Despliegue: calibración de la prueba de trabajo
+
+La dificultad y la vigencia de los retos se calibran para un celular básico que resuelve SHA-256 en
+JavaScript, en un solo núcleo, a **50 mil hashes por segundo** (`SLOW_DEVICE_HASHES_PER_SECOND` en
+`@sigilo/core`). De esa suposición salen:
+
+- la vigencia de cada reto: `margen + 4 · p95`, con `p95 = ln(20) · 2^bits / 50 000` segundos
+  (`powSolveSeconds`);
+- el estimado de espera que la web muestra a la persona (`describePowWait`).
+
+| Bits | Intentos promedio | p95 en el celular supuesto | Vigencia (margen de 5 min) |
+| ---- | ----------------- | -------------------------- | -------------------------- |
+| 18   | 262 144           | unos 16 s                  | unos 6 min                 |
+| 20   | 1 048 576         | unos 63 s                  | unos 9 min                 |
+
+Antes de un despliegue real:
+
+1. **Medir.** Ejecutar `solvePow` en los dispositivos más lentos que se quieran atender (por ejemplo,
+   el celular de gama baja más común en la región) y anotar los hashes por segundo.
+2. **Ajustar la dificultad.** Con `SIGILO_POW_BITS` (base, 18) y `SIGILO_POW_MAX_BITS` (máximo
+   adaptativo, 20). Cada bit duplica el tiempo esperado. Si los dispositivos medidos son más lentos
+   que 50 mil hashes por segundo, bajar los bits; `SIGILO_POW_BITS=0` desactiva la exigencia.
+3. **Ajustar la suposición.** Si la medición difiere mucho, cambiar `SLOW_DEVICE_HASHES_PER_SECOND`
+   en `packages/core/src/pow.ts` y volver a construir la web y el servidor: la constante alimenta
+   tanto la vigencia como el estimado que ve la persona. Hoy no es una variable de entorno.
+4. **Considerar la asimetría.** Una GPU resuelve miles de veces más rápido que un celular; la prueba
+   de trabajo encarece el abuso, pero no lo iguala. Conviene combinarla con límites en el proxy de
+   entrada del despliegue.
 
 ## Pruebas
 

@@ -53,6 +53,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   opción `shouldRemoveUncomposedMarks` para la limpieza manual.
 - Web: `sendReporterMessage(request, proof)`, `listComplaints(token, offset, limit)`,
   `getLedgerSince` y `loadTrackingLedger`.
+- `powSolveSeconds` y `SLOW_DEVICE_HASHES_PER_SECOND` (50 mil hashes por segundo) en core, y guía de
+  calibración de la prueba de trabajo en `docs/integracion-s5.md`.
+- `ComplaintDetail.evidenceDeletionOn`, visible en el panel de la autoridad.
+- Migración 5: índice `ledger_events (at, seq)`.
+- Comparación con anclas publicadas en el seguimiento y en el buzón de la autoridad.
+- Huella Cero: dígitos de cualquier sistema a ASCII, aviso de letras modificadoras en contexto
+  latino, «ꞓ», «ǃ» y «∙», «ː» según el contexto y heurística del saltillo
+  (`hasIndigenousFeatures`).
 
 ### Cambiado
 
@@ -102,6 +110,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   mapa de confusables (Lisu, silabario canadiense, copto, tifinagh y versalitas), cambia el criterio
   de `mixed_script` y conserva «º», «ª», superíndices, fracciones, el saltillo y las vocales con
   marcas legítimas de lenguas indígenas de México.
+- Prueba de trabajo con propósitos `complaint` y `message`: un reto por denuncia cubre sus hasta 10
+  pruebas y `purpose=evidence` responde 400. `verify` exige `bits >= max(base, actual - 1)`, el
+  máximo adaptativo baja a 20 bits y la vigencia es `margen + 4 · p95` (margen de 5 minutos que
+  baja hasta 1 minuto bajo presión).
+- Se retiran los frenos globales de denuncias, pruebas y mensajes; quedan los límites por folio de
+  mensajes y de fallos de autenticación.
+- Sin reserva ni desalojo de pruebas: si no caben, `507 storage_full`; se conserva la retención de
+  30 días.
+- Los eventos de la autoridad quedan exentos de `ledger_day_full`.
+- Las lecturas ya no publican la bitácora: una tarea programada cada 10 minutos (cada segundo con el
+  reloj de pruebas) cierra los días en lotes de 1000, cediendo el event loop entre lotes.
+- Fechas monótonas de los eventos: la mayor entre hoy, el día siguiente al último encadenado y el
+  último día con pendientes.
+- `server.lock` se publica con `linkSync` desde un temporal, con gracia de 10 s.
+- Huella Cero: «º» y «ª» entre letras, superíndices antes de un dígito, marcas legítimas apiladas,
+  colapso de tabuladores y saltos de línea, tonos «ˉ», «ˊ», «ˋ» conservados y conversión de
+  homoglifos solo en contexto latino. La web cuenta como quitable solo lo que desaparece y muestra
+  aparte lo que hay que revisar.
 
 ### Corregido
 
@@ -139,3 +165,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Prueba de trabajo adaptativa también en los mensajes, contra la saturación.
 - Redondeo aleatorio de los datos abiertos contra el relleno de celdas (garantía probabilística).
 - Cuota de almacenamiento con reserva y desalojo, y tope de pendientes por día.
+- Ningún tope global sin identidad puede usarse para dejar fuera a todas las personas.
+- Las pruebas asociadas a una denuncia nunca se borran para hacer sitio.
+- La autoridad puede escribir aunque el día de la bitácora esté lleno.
+- Un reto de baja dificultad ya no sirve después de que la carga sube dos bits o más.

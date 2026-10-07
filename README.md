@@ -60,7 +60,7 @@ como cabeceras.
 
 Las variables del servidor están documentadas en `apps/server/.env.example` y en
 [interfaces.md](docs/interfaces.md). Entre ellas: `SIGILO_POW_BITS` (prueba de trabajo, 18 bits por
-omisión, adaptativa hasta `SIGILO_POW_MAX_BITS`, 24), `SIGILO_EVIDENCE_QUOTA_BYTES` (5 GiB),
+omisión, adaptativa hasta `SIGILO_POW_MAX_BITS`, 20), `SIGILO_EVIDENCE_QUOTA_BYTES` (5 GiB),
 `SIGILO_EVIDENCE_RETENTION_DAYS` (30 días para denuncias sin atender) y `SIGILO_REQUEST_LOG`
 (`aggregate` por omisión). `SIGILO_UNTRACKED_RETENTION_DAYS` se retiró y el servidor se niega a
 arrancar si se define.
