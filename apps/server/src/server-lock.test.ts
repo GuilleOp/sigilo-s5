@@ -78,8 +78,10 @@ describe('acquireServerLock', () => {
     writeFileSync(path, `${process.ppid}\n`);
     const old = new Date(Date.now() - 2 * LOCK_STALE_MS);
     utimesSync(path, old, old);
-    expect(lockHolder(dataDir)).toBeNull();
-    acquireServerLock(dataDir, process.pid, { warn })();
+    // Arranque fijo en el pasado: el resultado no depende del tiempo encendido de la máquina.
+    const longAgoBoot = () => 0;
+    expect(lockHolder(dataDir, { bootTime: longAgoBoot })).toBeNull();
+    acquireServerLock(dataDir, process.pid, { warn, bootTime: longAgoBoot })();
     expect(warnings.at(-1)).toContain('no se renovó en más de una hora');
 
     writeFileSync(path, `${process.ppid}\n`);

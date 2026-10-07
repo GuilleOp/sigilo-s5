@@ -12,11 +12,15 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Versión mínima soportada (.nvmrc) y la más reciente: el SQLite integrado difiere entre ambas.
+    strategy:
+      matrix:
+        node-version: ['22.18', 'latest']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run format:check

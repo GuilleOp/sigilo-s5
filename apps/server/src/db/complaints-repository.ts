@@ -144,12 +144,13 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
      ORDER BY state_code, offense_code, month, status`,
   );
   // Recorrido por saltos sobre el índice del mes: una búsqueda por mes distinto.
+  // Parámetros posicionales simples: el SQLite de Node 22 no acepta reutilizar `?1`.
   const monthsStatement = db.prepare(
     `WITH RECURSIVE months(month) AS (
-       SELECT MIN(received_month) FROM complaints WHERE received_month < ?1
+       SELECT MIN(received_month) FROM complaints WHERE received_month < ?
        UNION ALL
        SELECT (SELECT MIN(received_month) FROM complaints
-               WHERE received_month > months.month AND received_month < ?1)
+               WHERE received_month > months.month AND received_month < ?)
        FROM months WHERE months.month IS NOT NULL
      )
      SELECT month FROM months WHERE month IS NOT NULL`,
@@ -190,6 +191,6 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
     },
     countCellsOfMonth: (month) => cellsStatement.all(month).map(toCell),
     listMonthsBefore: (beforeMonth) =>
-      monthsStatement.all(beforeMonth).map((row) => readText(row, 'month')),
+      monthsStatement.all(beforeMonth, beforeMonth).map((row) => readText(row, 'month')),
   };
 }

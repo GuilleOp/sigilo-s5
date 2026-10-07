@@ -5,6 +5,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [0.9.1] - 2026-10-07
+
+### Corregido
+
+- Datos abiertos fallaban en Node 22: el SQLite integrado no acepta reutilizar el parámetro `?1`.
+- Prueba del bloqueo del servidor independiente del tiempo encendido de la máquina.
+- CI con matriz de Node 22.18 y la versión más reciente.
+
 ## [0.9.0] - 2026-10-07
 
 Versión candidata a la entrega del Datatón Anticorrupción 2026.
