@@ -1,0 +1,7 @@
+dist
+node_modules
+coverage
+LICENSE
+package-lock.json
+apps/server/data
+anchors

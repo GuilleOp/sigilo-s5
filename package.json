@@ -1,0 +1,42 @@
+{
+  "name": "sigilo-s5",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capa de anonimato verificable para el Sistema de denuncias publicas (S5) de la Plataforma Digital Nacional.",
+  "license": "CC-BY-NC-4.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "workspaces": [
+    "packages/contracts",
+    "packages/core",
+    "packages/huella",
+    "apps/server",
+    "apps/web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
+    "dev:server": "npm run dev -w @sigilo/server",
+    "dev:web": "npm run dev -w @sigilo/web",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "keys:generate": "node scripts/generate-keys.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.4",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  }
+}

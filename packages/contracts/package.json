@@ -1,0 +1,16 @@
+{
+  "name": "@sigilo/contracts",
+  "version": "0.1.0",
+  "description": "Esquemas y tipos compartidos entre cliente y servidor (fuente unica de verdad de la API).",
+  "license": "CC-BY-NC-4.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

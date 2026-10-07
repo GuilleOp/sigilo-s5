@@ -1,0 +1,19 @@
+{
+  "name": "@sigilo/server",
+  "version": "0.1.0",
+  "description": "Servidor de referencia de SIGILO: almacena sobres cifrados, buzon y bitacora. No ve identidades.",
+  "license": "CC-BY-NC-4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/main.ts",
+    "start": "node src/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "hono": "^4.13.13",
+    "@sigilo/contracts": "0.1.0",
+    "@sigilo/core": "0.1.0"
+  }
+}
