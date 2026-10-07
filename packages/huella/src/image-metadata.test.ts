@@ -1,6 +1,6 @@
 // Pruebas de inspectImageMetadata con un JPEG sintético generado byte a byte (sin fotos reales).
 import { describe, expect, it } from 'vitest';
-import { inspectImageMetadata } from './image-metadata.ts';
+import { IMAGE_METADATA_LABELS, inspectImageMetadata } from './image-metadata.ts';
 import {
   buildBareJpeg,
   buildSyntheticExifJpeg,
@@ -46,5 +46,18 @@ describe('inspectImageMetadata', () => {
       hasAnyMetadata: false,
       otherFields: [],
     });
+  });
+});
+
+describe('IMAGE_METADATA_LABELS', () => {
+  it('da un texto principal en lectura fácil para cada dato del reporte', () => {
+    expect(IMAGE_METADATA_LABELS.gps).toBe('El lugar exacto donde tomaste la foto');
+    expect(IMAGE_METADATA_LABELS.software).toBe('La aplicación con que se hizo o editó');
+    expect(Object.keys(IMAGE_METADATA_LABELS).sort()).toEqual(
+      ['author', 'capturedAt', 'device', 'gps', 'software'].sort(),
+    );
+    for (const label of Object.values(IMAGE_METADATA_LABELS)) {
+      expect(label).not.toMatch(/GPS|EXIF|XMP|IPTC|ICC|metadatos/u);
+    }
   });
 });

@@ -14,7 +14,9 @@ export type { TextFinding, TextFindingKind, TextFindingSeverity } from './text-r
 export { classifyFile, DEFAULT_MAX_FILE_BYTES } from './file-policy.ts';
 export type { FileClassification, FileDescriptor, FilePolicyOptions } from './file-policy.ts';
 
-export { inspectImageMetadata } from './image-metadata.ts';
+export { IMAGE_METADATA_LABELS, inspectImageMetadata } from './image-metadata.ts';
+
+export { SPANISH_MONTHS } from './months.ts';
 export type { ImageMetadataReport, InspectImageMetadataOptions } from './image-metadata.ts';
 
 export {
@@ -37,6 +39,7 @@ export { digestBlob } from './digest.ts';
 
 export {
   assessRisk,
+  isWorkHours,
   CAP_TEXT_HIGH,
   CAP_TEXT_LOW,
   CAP_TEXT_MEDIUM,

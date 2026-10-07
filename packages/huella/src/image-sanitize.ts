@@ -75,7 +75,9 @@ function createCanvas(
  * Decodifica la imagen, la reduce si excede `maxDimension` y la vuelve a codificar.
  *
  * Seguridad: el lienzo solo contiene píxeles, así que la imagen resultante no conserva EXIF
- * (GPS, dispositivo, fecha), XMP, IPTC, perfil ICC ni miniaturas. La rotación EXIF se aplica
+ * (GPS, dispositivo, fecha), XMP, IPTC, el perfil ICC del original ni miniaturas. El codificador
+ * JPEG de Chromium sí agrega su propio perfil sRGB genérico, igual para cualquier imagen, que no
+ * identifica a nadie. La rotación EXIF se aplica
  * antes de descartarla (`imageOrientation: 'from-image'`) para que la foto no quede girada.
  * Lanza un error en español si el navegador no tiene las capacidades o la imagen no se lee.
  */

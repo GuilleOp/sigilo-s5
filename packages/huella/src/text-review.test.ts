@@ -128,6 +128,7 @@ describe('reviewText: unicidad y rol propio', () => {
       'mi turno',
     ]);
     expect(only(text, 'self_role')[1]?.suggestion).toMatch(/titular del área/u);
+    expect(only(text, 'self_role')[1]?.suggestion).toMatch(/^Cambia «mi jefe»/u);
   });
 
   it('no reporta frases parecidas sin carga identificante', () => {

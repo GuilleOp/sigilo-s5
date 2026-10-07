@@ -1,6 +1,8 @@
 // Revisor de reidentificación: señala datos del texto que podrían delatar a la persona denunciante.
 // Es una ayuda heurística, no una garantía; la persona decide qué cambiar.
 
+import { SPANISH_MONTHS } from './months.ts';
+
 /** Tipo de dato potencialmente identificante. */
 export type TextFindingKind =
   | 'email'
@@ -49,21 +51,7 @@ type Rule = {
 
 const SEVERITY_RANK: Readonly<Record<TextFindingSeverity, number>> = { low: 0, medium: 1, high: 2 };
 
-const MONTHS = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-];
-const MONTH_PATTERN = `(${MONTHS.join('|')}|setiembre)`;
+const MONTH_PATTERN = `(${SPANISH_MONTHS.join('|')}|setiembre)`;
 const WEEKDAY_PATTERN = '(lunes|martes|miercoles|jueves|viernes|sabado|domingo)';
 const HOUR_WORDS = [
   'una',
@@ -119,7 +107,7 @@ function hourFromWord(word: string | undefined): number | null {
 function monthName(value: string | undefined): string | null {
   if (value === undefined) return null;
   const month = Number.parseInt(value, 10);
-  return MONTHS[month - 1] ?? null;
+  return SPANISH_MONTHS[month - 1] ?? null;
 }
 
 function fullYear(value: string | undefined): string | null {
@@ -247,9 +235,9 @@ const RULES: readonly Rule[] = [
     suggest: (match) => {
       const word = match.groups[0] ?? '';
       if (/^(?:jef[ea]|supervisor[a]?|superior)$/u.test(word)) {
-        return 'Cambia «mi jefe» por una referencia neutra, por ejemplo: «la persona titular del área».';
+        return `Cambia «mi ${word}» por algo neutro, por ejemplo: «la persona titular del área».`;
       }
-      return 'Cambia la referencia a tu lugar de trabajo por una neutra, por ejemplo: «en la dependencia».';
+      return 'No digas dónde trabajas. Escribe algo neutro, por ejemplo: «en la dependencia».';
     },
   },
 ];
@@ -327,7 +315,7 @@ function findProperNames(text: string): TextFinding[] {
       excerpt: text.slice(head.start, tail.end),
       severity: 'low',
       suggestion:
-        'Si es el nombre de alguien cercano a ti (familiar, compañero o testigo), considera quitarlo; el de la persona denunciada puede quedarse.',
+        'Si es el nombre de alguien cercano a ti, como tu familia, colegas o testigos, mejor quítalo. El nombre de la persona denunciada puede quedarse.',
     });
   }
   return findings;

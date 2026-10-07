@@ -2,6 +2,7 @@
 // Sirve para mostrar a la persona qué datos la delatarían antes de limpiar la foto.
 
 import exifr from 'exifr';
+import { SPANISH_MONTHS } from './months.ts';
 
 /** Reporte de metadatos. Los textos están listos para mostrarse en español. */
 export interface ImageMetadataReport {
@@ -11,7 +12,10 @@ export interface ImageMetadataReport {
   capturedAt?: string;
   software?: string;
   author?: string;
-  /** Etiquetas en español de otros datos presentes (por ejemplo, «Miniatura incrustada»). */
+  /**
+   * Etiquetas en español de otros datos presentes (por ejemplo, «Una copia pequeña escondida de
+   * la foto»).
+   */
   otherFields: string[];
 }
 
@@ -27,47 +31,48 @@ export interface InspectImageMetadataOptions {
 
 type Block = Record<string, unknown>;
 
-const MONTHS = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-];
+/**
+ * Texto principal, en lectura fácil, para cada campo de `ImageMetadataReport`. La interfaz lo
+ * muestra junto al valor (las coordenadas GPS siguen llegando como números en `gps`).
+ */
+export const IMAGE_METADATA_LABELS = {
+  gps: 'El lugar exacto donde tomaste la foto',
+  device: 'La marca y el modelo de tu celular o cámara',
+  capturedAt: 'El día y la hora en que tomaste la foto',
+  software: 'La aplicación con que se hizo o editó',
+  author: 'El nombre de quien tomó o editó la foto',
+} as const;
 
 // Campos que, además de los principales, pueden identificar a la persona o a su equipo.
 const NOTABLE_FIELDS: readonly { block: string; keys: readonly string[]; label: string }[] = [
   {
     block: 'exif',
     keys: ['BodySerialNumber', 'SerialNumber'],
-    label: 'Número de serie de la cámara',
+    label: 'El número de serie de tu cámara',
   },
   { block: 'exif', keys: ['LensModel', 'LensMake', 'LensSerialNumber'], label: 'Datos del lente' },
-  { block: 'exif', keys: ['CameraOwnerName'], label: 'Nombre del propietario de la cámara' },
-  { block: 'exif', keys: ['ImageUniqueID'], label: 'Identificador único de la imagen' },
-  { block: 'exif', keys: ['UserComment'], label: 'Comentario del usuario' },
-  { block: 'exif', keys: ['MakerNote'], label: 'Datos privados del fabricante' },
+  { block: 'exif', keys: ['CameraOwnerName'], label: 'El nombre de la persona dueña de la cámara' },
+  { block: 'exif', keys: ['ImageUniqueID'], label: 'Un código único de la foto' },
+  { block: 'exif', keys: ['UserComment'], label: 'Un comentario escrito en la foto' },
+  {
+    block: 'exif',
+    keys: ['MakerNote'],
+    label: 'Datos escondidos de la marca de tu celular o cámara',
+  },
   { block: 'exif', keys: ['OffsetTimeOriginal', 'OffsetTime'], label: 'Zona horaria' },
   { block: 'ifd0', keys: ['Copyright'], label: 'Derechos de autor' },
   { block: 'ifd0', keys: ['ImageDescription'], label: 'Descripción de la imagen' },
-  { block: 'ifd0', keys: ['HostComputer'], label: 'Nombre del equipo' },
+  { block: 'ifd0', keys: ['HostComputer'], label: 'El nombre de tu computadora' },
   { block: 'gps', keys: ['GPSAltitude'], label: 'Altitud' },
   { block: 'gps', keys: ['GPSDateStamp', 'GPSTimeStamp'], label: 'Fecha y hora del GPS' },
   { block: 'gps', keys: ['GPSImgDirection'], label: 'Dirección de la cámara' },
 ];
 
 const SEGMENT_LABELS: readonly { block: string; label: string }[] = [
-  { block: 'ifd1', label: 'Miniatura incrustada' },
-  { block: 'xmp', label: 'Datos XMP (pueden incluir historial de edición)' },
-  { block: 'iptc', label: 'Datos IPTC (pueden incluir autor, lugar y palabras clave)' },
-  { block: 'icc', label: 'Perfil de color ICC' },
+  { block: 'ifd1', label: 'Una copia pequeña escondida de la foto' },
+  { block: 'xmp', label: 'Historial de cambios de la foto' },
+  { block: 'iptc', label: 'Autor, lugar o palabras clave' },
+  { block: 'icc', label: 'Datos técnicos de color' },
 ];
 
 function isBlock(value: unknown): value is Block {
@@ -109,7 +114,7 @@ function formatExifDate(raw: string): string {
   const match = /^(\d{4})[:-](\d{2})[:-](\d{2})(?:[ T](\d{2}):(\d{2}))?/u.exec(raw);
   if (match === null) return raw;
   const [, year, month, day, hour, minute] = match;
-  const monthName = MONTHS[Number(month) - 1];
+  const monthName = SPANISH_MONTHS[Number(month) - 1];
   if (monthName === undefined) return raw;
   const date = `${Number(day)} de ${monthName} de ${year ?? ''}`;
   return hour !== undefined && minute !== undefined ? `${date}, ${hour}:${minute}` : date;

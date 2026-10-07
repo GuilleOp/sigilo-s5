@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assessRisk,
+  isWorkHours,
   WEIGHT_INVISIBLE_CHARACTERS,
   WEIGHT_MUNICIPALITY,
   WEIGHT_TEXT_HIGH,
@@ -54,7 +55,7 @@ describe('assessRisk', () => {
     });
     expect(result.score).toBe(WEIGHT_UNSANITIZED_GPS);
     expect(result.level).toBe('medium');
-    expect(result.reasons[0]?.text).toMatch(/ubicación GPS/u);
+    expect(result.reasons[0]?.text).toMatch(/lugar exacto/u);
   });
 
   it('suma pruebas con dispositivo y llega a riesgo alto', () => {
@@ -103,7 +104,7 @@ describe('assessRisk', () => {
   it('avisa del horario laboral de lunes a viernes de 8 a 18 h', () => {
     const work = assessRisk({ ...base, localTime: TUESDAY_MORNING });
     expect(work.score).toBe(WEIGHT_WORK_HOURS);
-    expect(work.reasons[0]?.text).toMatch(/^Podrías estar en la red de tu trabajo/u);
+    expect(work.reasons[0]?.text).toMatch(/^Si usas la red de tu trabajo/u);
     expect(assessRisk({ ...base, localTime: SUNDAY }).reasons).toEqual([]);
     expect(assessRisk({ ...base, localTime: TUESDAY_NIGHT }).reasons).toEqual([]);
   });
@@ -127,5 +128,44 @@ describe('assessRisk', () => {
     expect(saturated.level).toBe('high');
     const weights = saturated.reasons.map((reason) => reason.weight);
     expect(weights).toEqual([...weights].sort((a, b) => b - a));
+  });
+});
+
+describe('isWorkHours', () => {
+  it('es verdadero de lunes a viernes de 8:00 a 17:59', () => {
+    expect(isWorkHours(TUESDAY_MORNING)).toBe(true);
+    expect(isWorkHours(new Date(2026, 9, 5, 8, 0))).toBe(true);
+    expect(isWorkHours(new Date(2026, 9, 9, 17, 59))).toBe(true);
+  });
+
+  it('es falso en fin de semana, antes de las 8 y desde las 18', () => {
+    expect(isWorkHours(SUNDAY)).toBe(false);
+    expect(isWorkHours(new Date(2026, 9, 10, 10, 0))).toBe(false);
+    expect(isWorkHours(new Date(2026, 9, 6, 7, 59))).toBe(false);
+    expect(isWorkHours(TUESDAY_NIGHT)).toBe(false);
+  });
+});
+
+describe('textos de las razones', () => {
+  it('son frases cortas, sin jerga ni masculino genérico', () => {
+    const result = assessRisk({
+      ...base,
+      evidence: [
+        { hadGps: true, hadDevice: false, sanitized: false },
+        { hadGps: false, hadDevice: true, sanitized: false },
+        { hadGps: false, hadDevice: false, sanitized: false },
+      ],
+      textFindings: [finding('high'), finding('medium'), finding('low')],
+      invisibleCharacters: 1,
+      locationPrecision: 'municipality',
+      localTime: TUESDAY_MORNING,
+    });
+    expect(result.reasons).toHaveLength(9);
+    for (const { text } of result.reasons) {
+      expect(text).not.toMatch(/GPS|metadatos|EXIF|Unicode|usuario/u);
+      for (const sentence of text.split(/(?<=\.)\s+/u)) {
+        expect(sentence.split(/\s+/u).length).toBeLessThanOrEqual(16);
+      }
+    }
   });
 });

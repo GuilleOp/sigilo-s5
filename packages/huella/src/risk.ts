@@ -65,7 +65,11 @@ function plural(count: number, singular: string, pluralForm: string): string {
   return count === 1 ? `1 ${singular}` : `${count} ${pluralForm}`;
 }
 
-function isWorkHours(date: Date): boolean {
+/**
+ * Indica si la fecha cae en horario laboral típico: de lunes a viernes, de 8:00 a 17:59, en la
+ * hora local del dispositivo. Es una aproximación; no conoce días festivos ni turnos.
+ */
+export function isWorkHours(date: Date): boolean {
   const day = date.getDay();
   const hour = date.getHours();
   return day >= 1 && day <= 5 && hour >= 8 && hour < 18;
@@ -87,15 +91,15 @@ export function assessRisk(signals: RiskSignals): RiskAssessment {
   const withDevice = unsanitized.filter((item) => !item.hadGps && item.hadDevice).length;
   const other = unsanitized.length - withGps - withDevice;
   add(
-    `${plural(withGps, 'prueba sin limpiar conserva', 'pruebas sin limpiar conservan')} la ubicación GPS de donde se tomó.`,
+    `${plural(withGps, 'prueba sin limpiar guarda', 'pruebas sin limpiar guardan')} el lugar exacto donde se tomó.`,
     withGps * WEIGHT_UNSANITIZED_GPS,
   );
   add(
-    `${plural(withDevice, 'prueba sin limpiar conserva', 'pruebas sin limpiar conservan')} la marca o el modelo de tu equipo.`,
+    `${plural(withDevice, 'prueba sin limpiar guarda', 'pruebas sin limpiar guardan')} la marca o el modelo de tu celular o cámara.`,
     withDevice * WEIGHT_UNSANITIZED_DEVICE,
   );
   add(
-    `${plural(other, 'prueba no se ha limpiado', 'pruebas no se han limpiado')} y podría conservar datos ocultos.`,
+    `${plural(other, 'prueba no está limpia', 'pruebas no están limpias')}. Puede haber datos escondidos.`,
     other * WEIGHT_UNSANITIZED_OTHER,
   );
 
@@ -105,33 +109,30 @@ export function assessRisk(signals: RiskSignals): RiskAssessment {
   const medium = bySeverity('medium');
   const low = bySeverity('low');
   add(
-    `Tu texto incluye ${plural(high, 'dato que podría identificarte', 'datos que podrían identificarte')} directamente.`,
+    `Tu texto tiene ${plural(high, 'dato que puede identificarte', 'datos que pueden identificarte')}.`,
     Math.min(CAP_TEXT_HIGH, high * WEIGHT_TEXT_HIGH),
   );
   add(
-    `Tu texto incluye ${plural(medium, 'fecha u hora exacta', 'fechas u horas exactas')}.`,
+    `Tu texto tiene ${plural(medium, 'fecha u hora exacta', 'fechas u horas exactas')}.`,
     Math.min(CAP_TEXT_MEDIUM, medium * WEIGHT_TEXT_MEDIUM),
   );
   add(
-    `Tu texto menciona ${plural(low, 'posible nombre de persona', 'posibles nombres de personas')}.`,
+    `Tu texto tiene ${plural(low, 'posible nombre de persona', 'posibles nombres de personas')}.`,
     Math.min(CAP_TEXT_LOW, low * WEIGHT_TEXT_LOW),
   );
 
   if (signals.invisibleCharacters > 0) {
     add(
-      'El texto tenía caracteres invisibles o letras de otro alfabeto; podría venir de un documento marcado para rastrear a quien lo filtra.',
+      'Tu texto tenía letras o espacios escondidos. Pueden venir de un documento marcado para saber quién lo filtró.',
       WEIGHT_INVISIBLE_CHARACTERS,
     );
   }
   if (signals.locationPrecision === 'municipality') {
-    add(
-      'Indicar el municipio reduce el número de personas que podrían haber denunciado.',
-      WEIGHT_MUNICIPALITY,
-    );
+    add('Si dices el municipio, es más fácil saber quién denunció.', WEIGHT_MUNICIPALITY);
   }
   if (signals.localTime !== undefined && isWorkHours(signals.localTime)) {
     add(
-      'Podrías estar en la red de tu trabajo. Si es así, envía la denuncia desde otra red y fuera del horario laboral.',
+      'Si usas la red de tu trabajo, ahí pueden ver que entraste. Mejor envía la denuncia desde otra red y fuera de tu horario.',
       WEIGHT_WORK_HOURS,
     );
   }
