@@ -40,6 +40,15 @@ export function fixturesDir(): string {
   return join(workspaceDir(), 'fixtures');
 }
 
+/**
+ * Archivo del reloj de pruebas del servidor (`SIGILO_TEST_CLOCK_FILE`): desplazamiento en
+ * milisegundos que el servidor suma a la hora real. Vive en el directorio de la corrida, así cada
+ * corrida empieza con el reloj real.
+ */
+export function clockFilePath(workspace: string = workspaceDir()): string {
+  return join(workspace, 'clock-offset');
+}
+
 /** Ruta de la base SQLite del servidor de prueba. */
 export function databasePath(): string {
   return join(dataDir(), 'sigilo.db');

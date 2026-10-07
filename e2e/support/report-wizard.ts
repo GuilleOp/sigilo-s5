@@ -92,10 +92,9 @@ export async function readReceipt(page: Page): Promise<Receipt> {
   await expect(card).toBeVisible();
   const folio = (await card.getByTestId('receipt-folio').innerText()).trim();
   await card.getByTestId('toggle-receipt').click();
-  const items = card.getByTestId('receipt-words').getByRole('listitem');
-  await expect(items).toHaveCount(8);
-  // Cada elemento es «N. palabra»: se quita la numeración.
-  const words = (await items.allInnerTexts()).map((text) => text.replace(/^\d+\.\s*/u, '').trim());
+  await expect(card.getByTestId('receipt-words').getByRole('listitem')).toHaveCount(8);
+  // Cada elemento lleva el número y un texto oculto «Palabra N:»; la palabra va en su propio nodo.
+  const words = (await card.getByTestId('receipt-word').allInnerTexts()).map((text) => text.trim());
   return { folio, words };
 }
 

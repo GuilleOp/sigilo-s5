@@ -1,5 +1,6 @@
 // Accesibilidad: axe (WCAG 2.0 A y AA) sin violaciones en cada pantalla, en cada paso y estado del
-// asistente, en el seguimiento y en el panel; y recorrido básico del asistente solo con teclado.
+// asistente, en el seguimiento y en el panel; recorrido básico del asistente solo con teclado;
+// obligatorios anunciados y atajo de teclado de la salida rápida.
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 import { seedAnonymousComplaint } from './support/api.ts';
@@ -143,7 +144,10 @@ test('el asistente se puede recorrer solo con teclado', async ({ page }) => {
   await page.goto('/denunciar');
   await expectStep(page, 'mode');
 
-  // Desde el inicio del documento, el primer Tab lleva al enlace para saltar al contenido.
+  // Desde el inicio del documento, el primer Tab lleva a la salida rápida y el segundo al enlace
+  // para saltar al contenido.
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('quick-exit')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Saltar al contenido' })).toBeFocused();
   await page.keyboard.press('Enter');
@@ -199,3 +203,42 @@ async function tabUntilFocused(page: Page, target: Locator): Promise<void> {
   }
   throw new Error('El elemento no recibió el foco con Tab.');
 }
+
+test('los datos obligatorios se anuncian y el periodo es un grupo con leyenda', async ({
+  page,
+}) => {
+  await startReport(page, 'sealed', 'Nombre Ficticio Accesible');
+  await expect(page.getByTestId('required-note')).toContainText('menos los que dicen «opcional»');
+  await expect(page.getByTestId('identity-name')).toHaveAttribute('aria-required', 'true');
+  await expect(page.getByTestId('mode-anonymous')).toHaveAttribute('required', '');
+  await continueTo(page, 'facts');
+  await expect(page.getByTestId('state-select')).toHaveAttribute('aria-required', 'true');
+  await expect(page.getByTestId('description-input')).toHaveAttribute('aria-required', 'true');
+  const period = page.getByRole('group', { name: '¿Cuándo pasó? (mes y año, aproximados)' });
+  await expect(period.getByLabel('Mes')).toBeVisible();
+  await expect(period.getByLabel('Año')).toBeVisible();
+  await page.getByTestId('step-next').click();
+  await expect(page.getByTestId('period-month')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByTestId('period-year')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByTestId('period-month')).toHaveAccessibleDescription(/Error:/u);
+  // El progreso es una lista: el número y «(listo)» están en el texto.
+  const progress = page.getByRole('list', { name: /Avance de tu denuncia/u });
+  await expect(progress.getByRole('listitem').first()).toHaveText('1. Modo (listo)');
+  await expect(progress.locator('[aria-current="step"]')).toHaveText('2. Hechos');
+});
+
+test.describe('atajo de la salida rápida', () => {
+  const exitHost = 'www.google.com.mx';
+  test.use({ allowedExternalHosts: [exitHost] });
+
+  test('pulsar Esc dos veces seguidas sale de la aplicación', async ({ page }) => {
+    await page.route(`https://${exitHost}/**`, (route) =>
+      route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<title>Clima</title>' }),
+    );
+    await page.goto('/denunciar');
+    await expectStep(page, 'mode');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.waitForURL(`https://${exitHost}/**`);
+  });
+});

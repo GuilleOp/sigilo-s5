@@ -126,14 +126,14 @@ export function adviseReporter(answers: AdvisorAnswers): AdvisorResult {
       id: 'network-work',
       priority: 'important',
       title: 'No uses la red del trabajo',
-      text: 'La red de tu dependencia puede registrar a qué sitios entras y a qué hora. Usa los datos de tu celular o una red fuera del trabajo, y fuera del horario laboral.',
+      text: 'La red de tu oficina puede guardar qué páginas visitas y a qué hora. Usa los datos de tu celular o una red fuera del trabajo, y fuera del horario laboral.',
     });
   } else if (answers.network === 'public') {
     add({
       id: 'network-public',
       priority: 'useful',
       title: 'En un wifi público, cuida tu pantalla',
-      text: 'La conexión va cifrada, pero alguien podría ver tu pantalla. Elige un lugar donde nadie te observe.',
+      text: 'Lo que envías va protegido, pero alguien podría ver tu pantalla. Elige un lugar donde nadie te observe.',
     });
   }
 
@@ -149,7 +149,7 @@ export function adviseReporter(answers: AdvisorAnswers): AdvisorResult {
       id: 'evidence-documents',
       priority: 'useful',
       title: 'Convierte los documentos a PDF',
-      text: 'Los archivos de Word o Excel guardan el nombre del autor y su historial. Imprímelos como PDF; SIGILO los convierte a imagen para borrar todo lo oculto. Si el documento te lo entregaron solo a ti, podría estar marcado: cuéntalo con tus palabras.',
+      text: 'Los archivos de Word o Excel guardan el nombre de quien los hizo y sus cambios. Guárdalos como PDF: SIGILO convierte cada hoja en una foto para borrar los datos escondidos. Si el documento te lo entregaron solo a ti, podría estar marcado: cuéntalo con tus palabras.',
     });
   } else if (answers.evidence === 'media') {
     add({
@@ -163,7 +163,7 @@ export function adviseReporter(answers: AdvisorAnswers): AdvisorResult {
       id: 'evidence-none',
       priority: 'useful',
       title: 'Puedes denunciar sin pruebas',
-      text: 'Describe con claridad qué pasó, quién participó y en qué mes. La autoridad puede pedirte más información por el buzón anónimo.',
+      text: 'Describe con claridad qué pasó, quién participó y en qué mes. La autoridad puede pedirte más información por mensajes, sin saber quién eres.',
     });
   }
 
@@ -173,7 +173,7 @@ export function adviseReporter(answers: AdvisorAnswers): AdvisorResult {
       id: 'protection',
       priority: 'important',
       title: 'Para pedir protección, la autoridad necesita saber quién eres',
-      text: 'Elige "Identidad sellada": tu nombre viaja cifrado y solo la autoridad competente puede abrirlo. Cada apertura queda registrada y tú la verás en tu seguimiento.',
+      text: 'Elige «Identidad sellada»: tu nombre va guardado bajo llave y solo la autoridad puede abrirlo. Cada vez que lo abra queda anotado y tú lo verás en tu seguimiento.',
     });
   } else if (answers.protection === 'unsure') {
     add({
@@ -189,13 +189,13 @@ export function adviseReporter(answers: AdvisorAnswers): AdvisorResult {
     ? {
         recommendedMode: 'sealed',
         modeReason:
-          'Te recomendamos la identidad sellada porque pediste medidas de protección y para darlas la autoridad necesita saber quién eres.',
+          'Te recomendamos dar tu nombre bajo llave. Para protegerte, la autoridad necesita saber quién eres.',
         tips,
       }
     : {
         recommendedMode: 'anonymous',
         modeReason:
-          'Te recomendamos la denuncia anónima: no das ningún dato de contacto y das seguimiento con tu recibo.',
+          'Te recomendamos la denuncia anónima: no das tu nombre ni datos de contacto y ves cómo va tu denuncia con tu folio y tus 8 palabras.',
         tips,
       };
 }

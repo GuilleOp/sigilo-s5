@@ -1,6 +1,8 @@
 // Validación por paso del borrador y conversión a los hechos del contrato.
 import { ComplaintFactsSchema, MAX_EVIDENCE_ITEMS } from '@sigilo/contracts';
 import type { ComplaintFacts } from '@sigilo/contracts';
+import { stripInvisibleCharacters } from '@sigilo/huella';
+import { identityFitsEnvelope } from '../crypto/submission.ts';
 import type { ReportDraft } from './report-draft.ts';
 
 /** Errores por campo: identificador del campo y mensaje en español. */
@@ -17,13 +19,29 @@ export function witnessLines(text: string): string[] {
     .filter(Boolean);
 }
 
-/** Paso "Modo": elegir modo y, si es sellado, el nombre. */
+/** Datos de identidad del borrador tal como se sellarán (testigos uno por línea). */
+export function identityInputOf(draft: ReportDraft): {
+  fullName: string;
+  contact: string;
+  witnesses: string[];
+} {
+  return {
+    fullName: draft.identity.fullName,
+    contact: draft.identity.contact,
+    witnesses: witnessLines(draft.identity.witnesses),
+  };
+}
+
+/**
+ * Paso "Modo": elegir modo y, si es sellado, el nombre. También comprueba que los datos quepan
+ * en el sobre de tamaño fijo, para avisar aquí y no al enviar (cuando ya se subieron pruebas).
+ */
 export function validateModeStep(draft: ReportDraft): FieldErrors {
   const errors: FieldErrors = {};
   if (draft.mode === null) errors['mode'] = 'Elige cómo quieres denunciar.';
   if (draft.mode === 'sealed') {
     const name = draft.identity.fullName.trim();
-    if (name === '') errors['fullName'] = 'Escribe tu nombre. Viajará cifrado.';
+    if (name === '') errors['fullName'] = 'Escribe tu nombre. Irá bajo llave.';
     else if (name.length > 200) errors['fullName'] = 'El nombre no puede pasar de 200 caracteres.';
     if (draft.identity.contact.length > 200) {
       errors['contact'] = 'El medio de contacto no puede pasar de 200 caracteres.';
@@ -34,6 +52,10 @@ export function validateModeStep(draft: ReportDraft): FieldErrors {
     } else if (witnesses.some((line) => line.length > 500)) {
       errors['witnesses'] = 'Cada testigo puede ocupar hasta 500 caracteres.';
     }
+    if (Object.keys(errors).length === 0 && !identityFitsEnvelope(identityInputOf(draft))) {
+      errors['witnesses'] =
+        'Los testigos ocupan demasiado espacio para guardarlos bajo llave. Escribe menos texto en cada uno.';
+    }
   }
   return errors;
 }
@@ -42,8 +64,8 @@ export function validateModeStep(draft: ReportDraft): FieldErrors {
 export function validateFactsStep(draft: ReportDraft, now: Date = new Date()): FieldErrors {
   const errors: FieldErrors = {};
   const { facts } = draft;
-  if (facts.stateCode === '') errors['stateCode'] = 'Elige la entidad federativa.';
-  if (facts.entityId === '') errors['entityId'] = 'Elige el ente público.';
+  if (facts.stateCode === '') errors['stateCode'] = 'Elige un estado.';
+  if (facts.entityId === '') errors['entityId'] = 'Elige la oficina o institución de gobierno.';
   if (facts.offenseCode === '') errors['offenseCode'] = 'Elige la conducta que más se parece.';
   if (facts.periodMonth === '' || facts.periodYear === '') {
     errors['period'] = 'Elige el mes y el año aproximados.';
@@ -83,7 +105,11 @@ export function validateEvidenceStep(draft: ReportDraft): FieldErrors {
   return errors;
 }
 
-/** Convierte los hechos al contrato; `null` si aún no son válidos. */
+/**
+ * Convierte los hechos al contrato; `null` si aún no son válidos.
+ * Seguridad: los textos libres pierden siempre sus caracteres invisibles, aunque la persona no
+ * haya pulsado «Eliminar»: pueden marcar el texto para reconocer a quien lo copió.
+ */
 export function toComplaintFacts(draft: ReportDraft): ComplaintFacts | null {
   const { facts } = draft;
   const candidate = {
@@ -92,8 +118,8 @@ export function toComplaintFacts(draft: ReportDraft): ComplaintFacts | null {
     entityId: facts.entityId,
     offenseCode: facts.offenseCode,
     occurredPeriod: `${facts.periodYear}-${facts.periodMonth}`,
-    accused: facts.accused.trim(),
-    description: facts.description.trim(),
+    accused: stripInvisibleCharacters(facts.accused).trim(),
+    description: stripInvisibleCharacters(facts.description).trim(),
   };
   const parsed = ComplaintFactsSchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;

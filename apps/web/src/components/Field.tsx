@@ -1,4 +1,5 @@
-// Campos de formulario con etiqueta, ayuda y error asociados mediante aria-describedby.
+// Campos de formulario con etiqueta, ayuda y error asociados mediante aria-describedby, y
+// obligatoriedad anunciada con aria-required (los opcionales lo dicen en su etiqueta).
 import type {
   InputHTMLAttributes,
   ReactNode,
@@ -47,7 +48,17 @@ export const PRIVATE_TEXT_ATTRIBUTES = {
   translate: 'no',
 } as const;
 
-type BaseProps = { id: string; label: string; hint?: ReactNode; error?: string | undefined };
+type BaseProps = {
+  id: string;
+  label: string;
+  hint?: ReactNode;
+  error?: string | undefined;
+  /**
+   * Campo obligatorio: se anuncia con `aria-required`. No se usa `required` nativo para que el
+   * navegador no muestre sus propios mensajes; la validación es la del asistente.
+   */
+  required?: boolean | undefined;
+};
 
 /** Campo de texto de una línea. */
 export function TextField({
@@ -55,6 +66,7 @@ export function TextField({
   label,
   hint,
   error,
+  required,
   ...input
 }: BaseProps & InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -67,6 +79,7 @@ export function TextField({
           {...input}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
+          aria-required={required ? true : undefined}
         />
       )}
     </FieldShell>
@@ -79,6 +92,7 @@ export function TextAreaField({
   label,
   hint,
   error,
+  required,
   ...textarea
 }: BaseProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
@@ -90,6 +104,7 @@ export function TextAreaField({
           {...textarea}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
+          aria-required={required ? true : undefined}
         />
       )}
     </FieldShell>
@@ -102,6 +117,7 @@ export function SelectField({
   label,
   hint,
   error,
+  required,
   children,
   ...select
 }: BaseProps & SelectHTMLAttributes<HTMLSelectElement>) {
@@ -113,6 +129,7 @@ export function SelectField({
           {...select}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
+          aria-required={required ? true : undefined}
         >
           {children}
         </select>

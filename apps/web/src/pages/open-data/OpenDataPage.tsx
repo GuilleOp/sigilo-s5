@@ -1,7 +1,13 @@
 // Pantalla /datos-abiertos: tabla del CSV agregado y descarga, con supresión de celdas pequeñas.
 import { useEffect, useState } from 'react';
-import { OPEN_DATA_MIN_CELL, ROUTES } from '@sigilo/contracts';
-import { findOffense, stateName } from '../../catalogs/catalog-search.ts';
+import {
+  ComplaintStatusSchema,
+  findOffense,
+  findState,
+  OPEN_DATA_MIN_CELL,
+  OPEN_DATA_ROUNDING,
+  ROUTES,
+} from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
 import { parseOpenDataCsv } from '../../lib/csv.ts';
 import type { OpenDataTable } from '../../lib/csv.ts';
@@ -9,10 +15,9 @@ import { formatMonthPeriod, STATUS_LABELS } from '../../lib/format.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
-import { ComplaintStatusSchema } from '@sigilo/contracts';
 
 const HEADER_LABELS: Readonly<Record<string, string>> = {
-  entidad: 'Entidad',
+  entidad: 'Estado',
   conducta: 'Conducta',
   mes_recepcion: 'Mes de recepción',
   estatus: 'Estatus',
@@ -20,8 +25,8 @@ const HEADER_LABELS: Readonly<Record<string, string>> = {
 };
 
 function displayCell(header: string, value: string): string {
-  if (header === 'entidad') return stateName(value);
-  if (header === 'conducta') return findOffense(value)?.name ?? value;
+  if (header === 'entidad') return findState(value)?.name ?? value;
+  if (header === 'conducta') return findOffense(value)?.label ?? value;
   if (header === 'mes_recepcion') return formatMonthPeriod(value);
   if (header === 'estatus') {
     const status = ComplaintStatusSchema.safeParse(value);
@@ -47,14 +52,22 @@ export function OpenDataPage() {
     <>
       <h1>Datos abiertos</h1>
       <p>
-        Número de denuncias por entidad, conducta, mes de recepción y estatus. No incluye folios,
+        Número de denuncias por estado, conducta, mes en que llegaron y estatus. No incluye folios,
         descripciones ni datos de personas.
       </p>
-      <Alert tone="info" title="Por qué faltan algunas filas">
+      <Alert tone="info" title="Cómo protegemos a quienes denuncian">
         <p>
-          Una combinación con menos de {OPEN_DATA_MIN_CELL} denuncias podría señalar a una persona
-          (por ejemplo, la única denuncia de un municipio en un mes). Por eso esas filas no se
-          publican; solo se informa cuántas denuncias quedaron fuera en total.
+          Una fila con menos de {OPEN_DATA_MIN_CELL} denuncias podría señalar a una persona (por
+          ejemplo, la única denuncia de un municipio en un mes). Por eso esas filas no se publican:
+          solo decimos cuántas denuncias quedaron fuera en total.
+        </p>
+        <p>
+          Los números están redondeados de {OPEN_DATA_ROUNDING} en {OPEN_DATA_ROUNDING}. Por
+          ejemplo, 7 denuncias aparecen como 5 y 8 aparecen como 10.
+        </p>
+        <p>
+          Solo publicamos meses completos. Las denuncias de este mes aparecerán cuando termine el
+          mes.
         </p>
       </Alert>
       <p>
@@ -64,7 +77,7 @@ export function OpenDataPage() {
           download="denuncias.csv"
           data-testid="download-csv"
         >
-          Descargar CSV
+          Descargar la tabla (archivo CSV, se abre con Excel)
         </a>
       </p>
       {error && (
@@ -72,18 +85,22 @@ export function OpenDataPage() {
           <p>{error}</p>
         </Alert>
       )}
-      {table === null && !error && <p role="status">Cargando datos.</p>}
+      {/* Región persistente: anuncia la carga y su fin. */}
+      <p role="status" aria-live="polite">
+        {table === null && !error ? 'Cargando datos.' : ''}
+        {table !== null ? 'Datos cargados.' : ''}
+      </p>
       {table !== null && (
         <>
-          <p role="status" data-testid="suppressed-count">
-            Denuncias omitidas por celdas pequeñas: {table.suppressed}.
+          <p data-testid="suppressed-count">
+            Denuncias que no mostramos para proteger a quienes denunciaron: {table.suppressed}.
           </p>
           {table.rows.length === 0 ? (
             <p>Aún no hay combinaciones con {OPEN_DATA_MIN_CELL} denuncias o más.</p>
           ) : (
             <div className="table-scroll">
               <table data-testid="open-data-table">
-                <caption>Denuncias agregadas</caption>
+                <caption>Número de denuncias</caption>
                 <thead>
                   <tr>
                     {table.headers.map((header) => (

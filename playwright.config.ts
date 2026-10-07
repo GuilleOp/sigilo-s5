@@ -5,6 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
 import {
   API_ORIGIN,
   AUTHORITY_TOKEN,
+  clockFilePath,
   ensureWorkspace,
   REPO_ROOT,
   WEB_ORIGIN,
@@ -44,6 +45,9 @@ export default defineConfig({
         SIGILO_AUTHORITY_TOKEN: AUTHORITY_TOKEN,
         // Vacío desactiva CORS: la web y la API comparten origen a través del proxy.
         SIGILO_ALLOWED_ORIGIN: '',
+        // Reloj de solo pruebas: la bitácora y los datos abiertos publican solo días y meses
+        // anteriores, así que las pruebas adelantan el reloj del servidor (ver e2e/support/clock.ts).
+        SIGILO_TEST_CLOCK_FILE: clockFilePath(workspace),
       },
     },
     {

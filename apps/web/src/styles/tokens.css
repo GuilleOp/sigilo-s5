@@ -11,7 +11,7 @@
   --color-surface-strong: #e6eaee;
   --color-text: #1a1f24;
   --color-text-muted: #4a545e;
-  --color-border: #8a949e;
+  --color-border: #7a848e;
   --color-primary: #0b5c4a;
   --color-primary-hover: #08473a;
   --color-on-primary: #ffffff;
@@ -38,6 +38,15 @@
   --content-width: 46rem;
   --line-height: 1.55;
   --transition: 150ms ease;
+  /* Altura de la barra fija (marca y salida rápida). Es 0 cuando la barra no es fija. */
+  --sticky-header-height: 0px;
+}
+
+/* La barra solo es fija si la pantalla tiene altura suficiente (ver layout.css). */
+@media (min-height: 30rem) {
+  :root {
+    --sticky-header-height: 3.75rem;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

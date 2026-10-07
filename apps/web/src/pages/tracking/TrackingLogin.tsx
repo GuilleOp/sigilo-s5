@@ -3,24 +3,47 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { RECEIPT_WORD_COUNT } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
+import { ErrorSummary } from '../../components/ErrorSummary.tsx';
 import { TextField } from '../../components/Field.tsx';
 import { isCompleteFolio, normalizeFolioInput } from '../../lib/folio-input.ts';
 import { distributePastedWords, resolvedWord } from '../../lib/receipt-words.ts';
-import { ReceiptWordInput } from './ReceiptWordInput.tsx';
+import type { FieldErrors } from '../../state/report-validation.ts';
+import { ReceiptWordInput, wordError, wordInputId } from './ReceiptWordInput.tsx';
 
 interface TrackingLoginProps {
   isBusy: boolean;
   error: string;
+  /** Palabra (desde 1) que el recibo rechazó, para marcar su casilla; `null` si no aplica. */
+  invalidWordPosition: number | null;
   onSubmit: (folio: string, words: string[]) => void;
 }
 
+/** Errores del formulario, en el orden en que aparecen los campos. */
+function loginErrors(folio: string, words: readonly string[]): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!isCompleteFolio(folio)) {
+    errors['folio'] = 'Escribe tu folio completo: tiene 12 letras y números.';
+  }
+  words.forEach((word, position) => {
+    const message = wordError(position, word);
+    if (message !== null) errors[wordInputId(position)] = message;
+  });
+  return errors;
+}
+
 /** Formulario de acceso. */
-export function TrackingLogin({ isBusy, error, onSubmit }: TrackingLoginProps) {
+export function TrackingLogin({
+  isBusy,
+  error,
+  invalidWordPosition,
+  onSubmit,
+}: TrackingLoginProps) {
   const [folio, setFolio] = useState('');
   const [words, setWords] = useState<string[]>(() =>
     Array.from({ length: RECEIPT_WORD_COUNT }, () => ''),
   );
-  const [showErrors, setShowErrors] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const showErrors = attempt > 0;
 
   function setWord(position: number, value: string): void {
     setWords((current) => current.map((word, index) => (index === position ? value : word)));
@@ -28,7 +51,8 @@ export function TrackingLogin({ isBusy, error, onSubmit }: TrackingLoginProps) {
 
   function submit(event: FormEvent): void {
     event.preventDefault();
-    setShowErrors(true);
+    if (isBusy) return;
+    setAttempt((value) => value + 1);
     const resolved = words.map(resolvedWord);
     if (!isCompleteFolio(folio) || resolved.some((word) => word === null)) return;
     onSubmit(
@@ -37,17 +61,16 @@ export function TrackingLogin({ isBusy, error, onSubmit }: TrackingLoginProps) {
     );
   }
 
-  const folioError =
-    showErrors && !isCompleteFolio(folio)
-      ? 'El folio tiene 12 letras y números, por ejemplo ABCD-EFGH-JKMN.'
-      : undefined;
+  const errors = showErrors ? loginErrors(folio, words) : {};
 
   return (
     <form onSubmit={submit} noValidate data-testid="tracking-login">
       <p>
         Escribe tu folio y las 8 palabras de tu recibo. Basta con las primeras 4 letras de cada
-        palabra. Tu recibo no se envía: tu navegador calcula con él una llave de acceso.
+        palabra. Tus palabras no salen de tu equipo. Solo sirven para abrir tu seguimiento.
       </p>
+      <p>Todos los datos son necesarios.</p>
+      <ErrorSummary errors={errors} attempt={attempt} />
       {error && (
         <Alert
           tone="danger"
@@ -61,9 +84,12 @@ export function TrackingLogin({ isBusy, error, onSubmit }: TrackingLoginProps) {
       <TextField
         id="folio"
         label="Folio"
+        hint="Tiene 12 letras y números. Ejemplo: ABCD-EFGH-JKMN. Puedes escribirlo sin guiones."
+        required
         value={folio}
-        error={folioError}
+        error={errors['folio']}
         inputMode="text"
+        className="mono"
         data-testid="tracking-folio"
         onChange={(event) => setFolio(normalizeFolioInput(event.target.value))}
       />
@@ -79,6 +105,7 @@ export function TrackingLogin({ isBusy, error, onSubmit }: TrackingLoginProps) {
               position={position}
               value={word}
               showErrors={showErrors}
+              isRejected={invalidWordPosition === position + 1}
               onChange={(value) => setWord(position, value)}
               onPaste={(event) => {
                 const next = distributePastedWords(
@@ -95,7 +122,13 @@ export function TrackingLogin({ isBusy, error, onSubmit }: TrackingLoginProps) {
           ))}
         </div>
       </fieldset>
-      <button type="submit" className="button" disabled={isBusy} data-testid="tracking-submit">
+      {/* aria-disabled: mientras abre, el botón conserva el foco. */}
+      <button
+        type="submit"
+        className="button"
+        aria-disabled={isBusy ? true : undefined}
+        data-testid="tracking-submit"
+      >
         {isBusy ? 'Abriendo...' : 'Ver mi seguimiento'}
       </button>
     </form>

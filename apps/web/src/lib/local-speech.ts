@@ -10,15 +10,40 @@ export function localSpanishVoices(
   return voices.filter((voice) => voice.localService && voice.lang.toLowerCase().startsWith('es'));
 }
 
-/** Lee las palabras una por una, con su número, usando la voz local dada. */
-export function speakWords(words: readonly string[], voice: SpeechSynthesisVoice): void {
+/** Separa una palabra o grupo en letras para deletrearla: «abeja» → «a, b, e, j, a». */
+export function spellOut(text: string): string {
+  return Array.from(text).join(', ');
+}
+
+/** Frases que se leen: primero el folio por grupos y después cada palabra, deletreada. */
+export function receiptSpeechParts(folio: string, words: readonly string[]): string[] {
+  const groups = folio.split('-').filter(Boolean);
+  return [
+    `Tu folio tiene ${groups.length} grupos.`,
+    ...groups.map((group, index) => `Grupo ${index + 1}: ${spellOut(group)}.`),
+    'Tus 8 palabras.',
+    ...words.map((word, index) => `Palabra ${index + 1}: ${word}. Se escribe: ${spellOut(word)}.`),
+  ];
+}
+
+/** Lee el folio y las palabras con la voz local dada. Cancela cualquier lectura anterior. */
+export function speakReceipt(
+  folio: string,
+  words: readonly string[],
+  voice: SpeechSynthesisVoice,
+): void {
   const synth = window.speechSynthesis;
   synth.cancel();
-  words.forEach((word, index) => {
-    const utterance = new SpeechSynthesisUtterance(`Palabra ${index + 1}: ${word}.`);
+  for (const text of receiptSpeechParts(folio, words)) {
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = voice;
     utterance.lang = voice.lang;
     utterance.rate = 0.8;
     synth.speak(utterance);
-  });
+  }
+}
+
+/** Detiene la lectura en voz alta, si hay una. */
+export function stopSpeaking(): void {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
 }

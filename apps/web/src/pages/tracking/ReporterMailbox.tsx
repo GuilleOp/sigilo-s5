@@ -1,9 +1,14 @@
-// Buzón anónimo de la persona denunciante: mensajes descifrados y respuesta revisada.
+// Mensajes de la persona denunciante con la autoridad: hilo y respuesta revisada. El botón de
+// enviar siempre está activo; si la respuesta está vacía o es muy larga, se dice en el campo.
+// Antes de sellarla se quitan siempre los caracteres invisibles.
 import { useState } from 'react';
+import { MAX_MAILBOX_TEXT_LENGTH } from '@sigilo/core';
 import { MessageThread } from '../../components/MessageThread.tsx';
 import { Alert } from '../../components/Alert.tsx';
 import { ReviewedTextArea } from '../../components/ReviewedTextArea.tsx';
 import type { DecodedMessage } from '../../crypto/tracking.ts';
+import { focusAfterRender } from '../../lib/focus.ts';
+import { prepareMailboxText } from '../../lib/mailbox-text.ts';
 import { detectPersonalDataRequest } from '../../lib/personal-data-request.ts';
 
 interface ReporterMailboxProps {
@@ -14,8 +19,6 @@ interface ReporterMailboxProps {
   onSend: (text: string) => Promise<boolean>;
 }
 
-const MAX_REPLY = 4000;
-
 /** Hilo del buzón y formulario de respuesta. */
 export function ReporterMailbox({
   messages,
@@ -25,6 +28,7 @@ export function ReporterMailbox({
   onSend,
 }: ReporterMailboxProps) {
   const [reply, setReply] = useState('');
+  const [replyError, setReplyError] = useState('');
   const requested = messages.flatMap((message) =>
     message.from === 'authority' && message.state === 'opened'
       ? detectPersonalDataRequest(message.text)
@@ -44,7 +48,7 @@ export function ReporterMailbox({
             id: message.messageId,
             author: 'La autoridad',
             sentOn: message.sentOn,
-            text: 'Este mensaje no tiene una firma válida de la autoridad y no se muestra.',
+            text: 'No mostramos este mensaje porque no pudimos comprobar que lo escribió la autoridad.',
             tone: 'warning' as const,
           };
     }
@@ -54,15 +58,15 @@ export function ReporterMailbox({
       sentOn: message.sentOn,
       text:
         sentTexts[message.messageId] ??
-        'Mensaje cifrado para la autoridad. Por seguridad, ni tú puedes volver a leerlo aquí.',
+        'Enviaste un mensaje. Por seguridad, ya no se puede ver aquí.',
       tone: 'own' as const,
     };
   });
 
   return (
     <section className="card" aria-labelledby="mailbox-title" data-testid="reporter-mailbox">
-      <h2 id="mailbox-title">Buzón anónimo</h2>
-      <p>Los mensajes se descifran en tu navegador. El servidor solo guarda texto cifrado.</p>
+      <h2 id="mailbox-title">Mensajes con la autoridad</h2>
+      <p>Solo tú y la autoridad pueden leer estos mensajes.</p>
       <MessageThread items={items} emptyText="Todavía no hay mensajes." />
       {requested.length > 0 && (
         <Alert
@@ -81,8 +85,15 @@ export function ReporterMailbox({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (reply.trim() === '') return;
-          void onSend(reply.trim()).then((ok) => {
+          if (isSending) return;
+          const prepared = prepareMailboxText(reply);
+          if (!prepared.ok) {
+            setReplyError(prepared.error);
+            focusAfterRender('reply');
+            return;
+          }
+          setReplyError('');
+          void onSend(prepared.text).then((ok) => {
             if (ok) setReply('');
           });
         }}
@@ -93,17 +104,23 @@ export function ReporterMailbox({
           label="Tu respuesta"
           hint="Revisa que no incluya datos que te identifiquen."
           rows={5}
-          maxLength={MAX_REPLY}
+          maxLength={MAX_MAILBOX_TEXT_LENGTH}
+          required
           value={reply}
-          onChange={setReply}
+          error={replyError || undefined}
+          onChange={(value) => {
+            setReply(value);
+            if (value.trim() !== '') setReplyError('');
+          }}
         />
+        {/* aria-disabled: mientras envía, el botón conserva el foco. */}
         <button
           type="submit"
           className="button"
-          disabled={isSending || reply.trim() === ''}
+          aria-disabled={isSending ? true : undefined}
           data-testid="send-reply"
         >
-          {isSending ? 'Enviando...' : 'Enviar respuesta cifrada'}
+          {isSending ? 'Enviando...' : 'Enviar respuesta'}
         </button>
         <p role="status" aria-live="polite">
           {status}

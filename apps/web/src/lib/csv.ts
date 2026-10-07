@@ -4,7 +4,7 @@
 export interface OpenDataTable {
   headers: string[];
   rows: string[][];
-  /** Denuncias omitidas por pertenecer a celdas pequeñas (fila final `suprimidas,<n>`). */
+  /** Denuncias omitidas por celdas pequeñas (fila final `suprimidas,,,,<n>`, ya redondeada). */
   suppressed: number;
 }
 
@@ -52,8 +52,9 @@ export function parseOpenDataCsv(text: string): OpenDataTable {
   let suppressed = 0;
   const rows: string[][] = [];
   for (const row of body) {
-    if (row[0] === 'suprimidas' && row.length === 2) {
-      suppressed = Number.parseInt(row[1] ?? '0', 10) || 0;
+    // La fila de supresión tiene las mismas columnas que el encabezado; el conteo va al final.
+    if (row[0] === 'suprimidas' && row.length === headers.length) {
+      suppressed = Number.parseInt(row.at(-1) ?? '0', 10) || 0;
     } else {
       // El servidor antepone un apóstrofo a valores que parecen fórmulas; aquí se muestra tal cual.
       rows.push(row);

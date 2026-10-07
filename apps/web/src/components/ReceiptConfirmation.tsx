@@ -1,7 +1,9 @@
-// Confirmación del recibo: la persona escribe dos palabras elegidas al azar.
+// Confirmación del recibo: la persona escribe dos palabras elegidas al azar. Basta con las
+// primeras 4 letras, igual que en el seguimiento.
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { matchesWord, pickConfirmationPositions } from '../lib/receipt-confirmation.ts';
+import { matchesReceiptWord, pickConfirmationPositions } from '../lib/receipt-confirmation.ts';
+import { focusAfterRender } from '../lib/focus.ts';
 import { TextField } from './Field.tsx';
 
 interface ReceiptConfirmationProps {
@@ -13,15 +15,18 @@ interface ReceiptConfirmationProps {
 export function ReceiptConfirmation({ words, onConfirmed }: ReceiptConfirmationProps) {
   const [positions] = useState(() => pickConfirmationPositions(words.length));
   const [typed, setTyped] = useState<[string, string]>(['', '']);
-  const [error, setError] = useState('');
+  const [hasTried, setTried] = useState(false);
+
+  const isCorrect = (index: number): boolean =>
+    matchesReceiptWord(typed[index] ?? '', words[positions[index] ?? -1] ?? '');
 
   function submit(event: FormEvent): void {
     event.preventDefault();
-    const ok = positions.every((position, index) =>
-      matchesWord(typed[index] ?? '', words[position] ?? ''),
-    );
-    if (ok) onConfirmed();
-    else setError('Alguna palabra no coincide. Revisa tu recibo e inténtalo de nuevo.');
+    setTried(true);
+    const firstWrong = positions.findIndex((_, index) => !isCorrect(index));
+    // Si todo coincide, el formulario desaparece y el paso de envío enfoca su encabezado.
+    if (firstWrong === -1) onConfirmed();
+    else focusAfterRender(`confirm-word-${firstWrong}`);
   }
 
   return (
@@ -31,16 +36,20 @@ export function ReceiptConfirmation({ words, onConfirmed }: ReceiptConfirmationP
       aria-labelledby="confirm-title"
       data-testid="receipt-confirmation"
     >
-      <h2 id="confirm-title">Confirma que anotaste tu recibo</h2>
-      <p>Escribe las palabras que se piden. No importan los acentos ni las mayúsculas.</p>
+      <h3 id="confirm-title">Confirma que anotaste tu recibo</h3>
+      <p>Escribe las palabras que se piden. Todos los datos son necesarios.</p>
       {positions.map((position, index) => (
         <TextField
           key={position}
           id={`confirm-word-${index}`}
           label={`Palabra número ${position + 1}`}
+          hint="Basta con las primeras 4 letras. No importan los acentos."
+          required
           value={typed[index]}
           error={
-            error && !matchesWord(typed[index] ?? '', words[position] ?? '') ? error : undefined
+            hasTried && !isCorrect(index)
+              ? `La palabra número ${position + 1} no coincide. Revisa tu recibo.`
+              : undefined
           }
           data-testid={`confirm-word-${position + 1}`}
           onChange={(event) => {

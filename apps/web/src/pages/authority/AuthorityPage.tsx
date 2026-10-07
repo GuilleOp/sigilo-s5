@@ -1,7 +1,8 @@
 // Pantalla /autoridad: panel de demostración para la autoridad competente.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComplaintSummary } from '@sigilo/contracts';
 import { wipeAuthorityKeys } from '../../crypto/authority.ts';
+import { focusAfterRender } from '../../lib/focus.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
@@ -10,6 +11,9 @@ import type { AuthoritySession } from './authority-session.ts';
 import { ComplaintDetailView } from './ComplaintDetailView.tsx';
 import { ComplaintList } from './ComplaintList.tsx';
 
+/** Encabezado del listado: destino del foco al entrar y al volver del detalle. */
+const LIST_TITLE_ID = 'complaint-list-title';
+
 /** Panel de autoridad. */
 export function AuthorityPage() {
   useDocumentTitle('Panel de autoridad');
@@ -17,13 +21,25 @@ export function AuthorityPage() {
   const [complaints, setComplaints] = useState<ComplaintSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState('');
+  /** Sesión vigente: una respuesta de otra sesión (o tras cerrar la sesión) se ignora. */
+  const activeSession = useRef<AuthoritySession | null>(null);
+
+  useEffect(() => {
+    activeSession.current = session;
+  }, [session]);
 
   const refresh = useCallback((current: AuthoritySession) => {
-    api
-      .listComplaints(current.token)
-      .then(setComplaints, (failure: unknown) =>
-        setError(describeError(failure, 'No se pudo cargar el listado.')),
-      );
+    api.listComplaints(current.token).then(
+      (list) => {
+        if (activeSession.current !== current) return;
+        setComplaints(list);
+        setError('');
+      },
+      (failure: unknown) => {
+        if (activeSession.current !== current) return;
+        setError(describeError(failure, 'No pudimos cargar el listado. Inténtalo de nuevo.'));
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -41,7 +57,12 @@ export function AuthorityPage() {
     <>
       <h1>Panel de autoridad</h1>
       {session === null ? (
-        <AuthorityLogin onReady={setSession} />
+        <AuthorityLogin
+          onReady={(ready) => {
+            setSession(ready);
+            focusAfterRender(LIST_TITLE_ID);
+          }}
+        />
       ) : (
         <>
           <div className="actions">
@@ -49,9 +70,12 @@ export function AuthorityPage() {
               type="button"
               className="button button--secondary"
               onClick={() => {
+                activeSession.current = null;
                 setSession(null);
                 setSelected(null);
                 setComplaints([]);
+                setError('');
+                focusAfterRender(() => document.querySelector<HTMLElement>('#contenido h1'));
               }}
               data-testid="authority-logout"
             >
@@ -65,14 +89,25 @@ export function AuthorityPage() {
           )}
           {selected === null ? (
             <>
-              <h2>Denuncias recibidas</h2>
-              <ComplaintList complaints={complaints} onOpen={setSelected} />
+              <h2 id={LIST_TITLE_ID} tabIndex={-1}>
+                Denuncias recibidas
+              </h2>
+              <ComplaintList
+                complaints={complaints}
+                onOpen={(folio) => {
+                  setSelected(folio);
+                  focusAfterRender('detail-title');
+                }}
+              />
             </>
           ) : (
             <ComplaintDetailView
               session={session}
               folio={selected}
-              onBack={() => setSelected(null)}
+              onBack={() => {
+                setSelected(null);
+                focusAfterRender(LIST_TITLE_ID);
+              }}
             />
           )}
         </>

@@ -1,4 +1,4 @@
-// "Estado de tu identidad": sellada sin aperturas o el detalle de cada apertura.
+// "Tu nombre": identidad sellada sin aperturas o el detalle de cada apertura.
 import type { TrackingView } from '@sigilo/contracts';
 import { formatDayDate } from '../../lib/format.ts';
 
@@ -10,29 +10,29 @@ interface IdentityStatusProps {
 export function IdentityStatus({ view }: IdentityStatusProps) {
   return (
     <section className="card" aria-labelledby="identity-status-title" data-testid="identity-status">
-      <h2 id="identity-status-title">Estado de tu identidad</h2>
+      <h2 id="identity-status-title">Tu nombre</h2>
       {view.mode === 'anonymous' ? (
         <p>
-          Tu denuncia es anónima: no enviaste ningún dato de identidad, así que no hay nada que
+          Tu denuncia es anónima: no diste tu nombre ni otros datos tuyos, así que no hay nada que
           abrir.
         </p>
       ) : view.identityAccess.length === 0 ? (
         <p data-testid="identity-sealed">
-          Sellada. Nadie la ha abierto: 0 aperturas. Si la autoridad la abre, aquí verás la fecha y
-          el fundamento legal.
+          Tu nombre sigue bajo llave. Nadie lo ha abierto. Si la autoridad lo abre, aquí verás la
+          fecha y la razón.
         </p>
       ) : (
         <>
           <p className="alert alert--warning" data-testid="identity-opened">
-            La autoridad abrió tu identidad{' '}
+            La autoridad abrió tu nombre{' '}
             {view.identityAccess.length === 1 ? '1 vez' : `${view.identityAccess.length} veces`}.
           </p>
           <ol>
             {view.identityAccess.map((access) => (
               <li key={access.ledgerSeq}>
                 <p>
-                  <strong>{formatDayDate(access.on)}</strong>, por la autoridad competente (registro{' '}
-                  {access.ledgerSeq} de la bitácora pública).
+                  <strong>{formatDayDate(access.on)}</strong>. Quedó anotado en el registro público
+                  con el número {access.ledgerSeq}.
                 </p>
                 <p>Fundamento: «{access.legalBasis}»</p>
               </li>

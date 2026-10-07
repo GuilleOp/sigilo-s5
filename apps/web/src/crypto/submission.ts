@@ -1,20 +1,30 @@
 // Armado y sellado de la denuncia en el navegador: recibo, llaves, identidad y comprobante.
-import { SubmitComplaintRequestSchema } from '@sigilo/contracts';
+import {
+  ComplaintFactsSchema,
+  EvidenceDescriptorSchema,
+  MAX_EVIDENCE_ITEMS,
+  SubmitComplaintRequestSchema,
+} from '@sigilo/contracts';
 import type {
   ComplaintFacts,
   ComplaintMode,
   EvidenceDescriptor,
   HpkeEnvelope,
   IdentityBlock,
+  ReporterKeys,
   SubmitComplaintRequest,
   SubmitComplaintResponse,
 } from '@sigilo/contracts';
 import {
+  canonicalize,
   computeSubmissionDigest,
   deriveReceiptKeys,
   generateReceiptPhrase,
+  IDENTITY_PADDED_SIZE,
+  identityContextFor,
   sealIdentity,
   toBase64Url,
+  utf8Encode,
   verifyReceipt,
 } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
@@ -32,6 +42,18 @@ export interface IdentityInput {
   contact: string;
   witnesses: string[];
 }
+
+/** Datos de la denuncia que no dependen del recibo. */
+export interface SubmissionInput {
+  mode: ComplaintMode;
+  facts: ComplaintFacts;
+  evidence: readonly EvidenceDescriptor[];
+  protectionRequested: boolean;
+}
+
+/** Bytes del prefijo de longitud que `padToBlock` antepone al bloque de identidad. */
+const LENGTH_PREFIX_BYTES = 4;
+const INVALID_REQUEST = 'La denuncia no tiene el formato esperado.';
 
 /**
  * Genera un recibo nuevo y deriva sus llaves.
@@ -59,27 +81,73 @@ export function buildIdentityBlock(
 }
 
 /**
- * Sella la identidad hacia la llave FIJADA de la autoridad, ligada al `authVerifier` del recibo.
- * Seguridad: nunca se usa una llave descargada del servidor.
+ * Bytes que ocupa el bloque dentro del sobre: forma canónica en UTF-8 más el prefijo de longitud.
+ * Debe ser a lo más `IDENTITY_PADDED_SIZE` para que `sealIdentity` lo acepte.
+ */
+export function identityBlockSize(block: IdentityBlock): number {
+  return utf8Encode(canonicalize(block)).length + LENGTH_PREFIX_BYTES;
+}
+
+/**
+ * Indica si la identidad cabe en el sobre de tamaño fijo, reservando lugar para el máximo de
+ * digestos de pruebas originales (en el paso del modo todavía no se conocen las pruebas).
+ */
+export function identityFitsEnvelope(identity: IdentityInput): boolean {
+  const reserved = Array.from({ length: MAX_EVIDENCE_ITEMS }, () => '0'.repeat(64));
+  return identityBlockSize(buildIdentityBlock(identity, reserved)) <= IDENTITY_PADDED_SIZE;
+}
+
+/**
+ * Deja la entrada exactamente como viajará: hechos y descriptores validados por sus esquemas
+ * (zod quita campos sobrantes) y, en modo anónimo, sin solicitud de protección.
+ * Seguridad: el digesto del contenido que liga la identidad se calcula sobre estos valores, así
+ * que deben ser idénticos a los de la solicitud final.
+ */
+export function normalizeSubmissionInput(input: SubmissionInput): SubmissionInput {
+  const facts = ComplaintFactsSchema.safeParse(input.facts);
+  const evidence = EvidenceDescriptorSchema.array()
+    .max(MAX_EVIDENCE_ITEMS)
+    .safeParse(input.evidence);
+  // Seguridad: no se muestran detalles de validación porque podrían citar datos de la denuncia.
+  if (!facts.success || !evidence.success) throw new Error(INVALID_REQUEST);
+  return {
+    mode: input.mode,
+    facts: facts.data,
+    evidence: evidence.data,
+    protectionRequested: input.mode === 'sealed' ? input.protectionRequested : false,
+  };
+}
+
+function reporterKeysOf(keys: ReceiptKeys): ReporterKeys {
+  return {
+    boxPublicKey: toBase64Url(keys.box.publicKey),
+    signingPublicKey: toBase64Url(keys.signing.publicKey),
+  };
+}
+
+/**
+ * Sella la identidad hacia la llave FIJADA de la autoridad, ligada por el AAD al recibo
+ * (`authVerifier`), a las llaves del buzón y al contenido exacto de la denuncia.
+ * Seguridad: nunca se usa una llave descargada del servidor. Lanza error si el bloque excede
+ * `IDENTITY_PADDED_SIZE`.
  */
 export function sealReporterIdentity(
   block: IdentityBlock,
+  input: SubmissionInput,
   keys: ReceiptKeys,
   pinned: PinnedKeys,
 ): Promise<HpkeEnvelope> {
+  const content = normalizeSubmissionInput(input);
   return sealIdentity(
     block,
     { keyId: pinned.set.authority.keyId, publicKey: pinned.authorityBoxPublicKey },
-    keys.authVerifier,
+    identityContextFor({
+      version: 1,
+      ...content,
+      authVerifier: keys.authVerifier,
+      reporterKeys: reporterKeysOf(keys),
+    }),
   );
-}
-
-/** Datos de la denuncia que no dependen del recibo. */
-export interface SubmissionInput {
-  mode: ComplaintMode;
-  facts: ComplaintFacts;
-  evidence: EvidenceDescriptor[];
-  protectionRequested: boolean;
 }
 
 /**
@@ -92,26 +160,23 @@ export function buildSubmitRequest(
   keys: ReceiptKeys,
   sealedIdentity: HpkeEnvelope | undefined,
 ): SubmitComplaintRequest {
-  const isSealed = input.mode === 'sealed';
+  const content = normalizeSubmissionInput(input);
+  const isSealed = content.mode === 'sealed';
   if (isSealed && sealedIdentity === undefined) {
     throw new Error('Falta la identidad sellada.');
   }
   const candidate = {
     version: 1 as const,
-    mode: input.mode,
-    facts: input.facts,
-    evidence: input.evidence,
+    mode: content.mode,
+    facts: content.facts,
+    evidence: content.evidence,
     ...(isSealed && sealedIdentity !== undefined ? { sealedIdentity } : {}),
-    protectionRequested: isSealed ? input.protectionRequested : false,
-    reporterKeys: {
-      boxPublicKey: toBase64Url(keys.box.publicKey),
-      signingPublicKey: toBase64Url(keys.signing.publicKey),
-    },
+    protectionRequested: content.protectionRequested,
+    reporterKeys: reporterKeysOf(keys),
     authVerifier: keys.authVerifier,
   };
   const parsed = SubmitComplaintRequestSchema.safeParse(candidate);
-  // Seguridad: no se muestran detalles de validación porque podrían citar datos de la denuncia.
-  if (!parsed.success) throw new Error('La denuncia no tiene el formato esperado.');
+  if (!parsed.success) throw new Error(INVALID_REQUEST);
   return parsed.data;
 }
 

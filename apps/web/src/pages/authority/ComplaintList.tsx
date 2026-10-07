@@ -1,6 +1,6 @@
 // Listado de denuncias (resúmenes sin identidad).
+import { findOffense, findState } from '@sigilo/contracts';
 import type { ComplaintSummary } from '@sigilo/contracts';
-import { findOffense, stateName } from '../../catalogs/catalog-search.ts';
 import { formatDayDate, STATUS_LABELS } from '../../lib/format.ts';
 
 interface ComplaintListProps {
@@ -19,7 +19,7 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
           <tr>
             <th scope="col">Folio</th>
             <th scope="col">Recibida</th>
-            <th scope="col">Entidad</th>
+            <th scope="col">Estado</th>
             <th scope="col">Conducta</th>
             <th scope="col">Modo</th>
             <th scope="col">Estatus</th>
@@ -31,7 +31,7 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
               <th scope="row">
                 <button
                   type="button"
-                  className="button button--secondary mono"
+                  className="button button--secondary mono folio"
                   onClick={() => onOpen(complaint.folio)}
                   data-testid="open-complaint"
                 >
@@ -39,8 +39,8 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
                 </button>
               </th>
               <td>{formatDayDate(complaint.receivedOn)}</td>
-              <td>{stateName(complaint.stateCode)}</td>
-              <td>{findOffense(complaint.offenseCode)?.name ?? complaint.offenseCode}</td>
+              <td>{findState(complaint.stateCode)?.name ?? complaint.stateCode}</td>
+              <td>{findOffense(complaint.offenseCode)?.label ?? complaint.offenseCode}</td>
               <td>
                 {complaint.mode === 'sealed' ? 'Identidad sellada' : 'Anónima'}
                 {complaint.protectionRequested ? ', pide protección' : ''}

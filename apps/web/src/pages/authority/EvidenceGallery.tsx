@@ -27,6 +27,8 @@ export function EvidenceGallery({ token, evidence }: EvidenceGalleryProps) {
           if ((await digestBlob(blob)) !== item.sha256) {
             return { id: item.evidenceId, error: 'El archivo no coincide con su digesto.' };
           }
+          // Si la galería ya se desmontó, no se crea la URL: nadie la revocaría después.
+          if (!isActive) return { id: item.evidenceId, error: 'Descarga cancelada.' };
           const url = URL.createObjectURL(blob);
           urls.push(url);
           return { id: item.evidenceId, url };

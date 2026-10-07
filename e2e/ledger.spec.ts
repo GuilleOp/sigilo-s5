@@ -1,22 +1,51 @@
-// Bitácora verificable: el verificador del navegador la marca íntegra, detecta una respuesta
-// manipulada y `verifyChain` detecta un evento alterado en una copia de la base.
+// Bitácora verificable: solo se publican los días ya cerrados; el verificador del navegador la
+// marca como coincidente con el registro firmado, detecta una respuesta manipulada y compara con
+// un anclaje; `verifyChain` detecta un evento alterado en una copia de la base.
+// El reloj del servidor de prueba se adelanta un día para publicar los eventos sembrados.
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { LedgerPageSchema, ROUTES } from '@sigilo/contracts';
-import { verifyChain } from '@sigilo/core';
+import { LedgerPageSchema, ROUTES, SignedLedgerHeadSchema } from '@sigilo/contracts';
+import { toDayDate, verifyChain } from '@sigilo/core';
 import { seedAnonymousComplaint } from './support/api.ts';
+import { advanceServerClockToNextDay, serverNow } from './support/clock.ts';
 import { readLedgerEvents, snapshotDatabase } from './support/database.ts';
+import { API_ORIGIN } from './support/environment.ts';
 import { expect, test } from './support/fixtures.ts';
 
 test.beforeAll(async ({ request }) => {
-  // Garantiza al menos un evento aunque este archivo se ejecute solo.
+  // Garantiza al menos un evento publicado aunque este archivo se ejecute solo.
   await seedAnonymousComplaint(request);
+  advanceServerClockToNextDay();
 });
 
-test('el verificador de /verificar marca la bitácora como íntegra', async ({ page }) => {
+test('los eventos del día se publican hasta el día siguiente', async ({ request }) => {
+  const { ledgerSeq } = await seedAnonymousComplaint(request);
+  const pageFor = async () =>
+    LedgerPageSchema.parse(
+      await (
+        await request.get(`${API_ORIGIN}${ROUTES.ledgerEvents}?from=${ledgerSeq}&limit=1`)
+      ).json(),
+    );
+
+  // El mismo día: página vacía y la cabeza pública todavía no llega a ese evento.
+  const sameDay = await pageFor();
+  expect(sameDay.events).toEqual([]);
+  expect(sameDay.head.seq).toBeLessThan(ledgerSeq);
+
+  advanceServerClockToNextDay();
+  const nextDay = await pageFor();
+  expect(nextDay.events.map((event) => event.seq)).toEqual([ledgerSeq]);
+  expect(nextDay.head.seq).toBeGreaterThanOrEqual(ledgerSeq);
+  expect(nextDay.head.at < toDayDate(serverNow())).toBe(true);
+});
+
+test('el verificador de /verificar dice que coincide con el registro firmado', async ({ page }) => {
   await page.goto('/verificar');
   await page.getByTestId('verify-ledger').click();
-  await expect(page.getByTestId('ledger-valid')).toContainText('La bitácora está íntegra');
+  const valid = page.getByTestId('ledger-valid');
+  await expect(valid).toContainText('La bitácora coincide con el registro firmado');
+  await expect(valid).not.toContainText(/nadie/iu);
+  await expect(page.getByText('lo de hoy se publica mañana')).toBeVisible();
 });
 
 test('el verificador detecta un evento modificado en tránsito', async ({ page }) => {
@@ -24,13 +53,35 @@ test('el verificador detecta un evento modificado en tránsito', async ({ page }
     const response = await route.fetch();
     const ledgerPage = LedgerPageSchema.parse(await response.json());
     const [first, ...rest] = ledgerPage.events;
-    if (first === undefined) throw new Error('La bitácora debería tener eventos.');
+    if (first === undefined) throw new Error('La bitácora debería tener eventos publicados.');
     const tampered = { ...first, payloadDigest: 'f'.repeat(64) };
     await route.fulfill({ response, json: { ...ledgerPage, events: [tampered, ...rest] } });
   });
   await page.goto('/verificar');
   await page.getByTestId('verify-ledger').click();
   await expect(page.getByTestId('ledger-invalid')).toContainText('La bitácora fue alterada');
+});
+
+test('compara la bitácora con un anclaje publicado', async ({ page, request }) => {
+  const head = SignedLedgerHeadSchema.parse(
+    await (await request.get(`${API_ORIGIN}${ROUTES.ledgerHead}`)).json(),
+  );
+  const anchor = { version: 1, anchoredOn: toDayDate(serverNow()), head };
+  await page.goto('/verificar');
+
+  await page.getByTestId('anchor-input').fill(JSON.stringify(anchor, null, 2));
+  await page.getByTestId('compare-anchor').click();
+  await expect(page.getByTestId('anchor-matches')).toContainText(`El registro ${head.seq}`);
+
+  // Un anclaje con otro hash (por ejemplo, de una bitácora reescrita) no coincide.
+  const rewritten = { ...anchor, head: { ...head, hash: 'a'.repeat(64) } };
+  await page.getByTestId('anchor-input').fill(JSON.stringify(rewritten));
+  await page.getByTestId('compare-anchor').click();
+  await expect(page.getByTestId('anchor-mismatch')).toBeVisible();
+
+  await page.getByTestId('anchor-input').fill('{"version": 1}');
+  await page.getByTestId('compare-anchor').click();
+  await expect(page.getByTestId('anchor-invalid')).toBeVisible();
 });
 
 test('verifyChain detecta un evento alterado en una copia de la base', () => {

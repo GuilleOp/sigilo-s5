@@ -1,8 +1,10 @@
 // Pantalla /denunciar: asistente por pasos con progreso, validación y foco gestionado.
+// Al cambiar de paso el foco va al encabezado, o al panel exacto si lo pide el semáforo.
 import { useState } from 'react';
 import { ErrorSummary } from '../../components/ErrorSummary.tsx';
 import { StepHeading } from '../../components/StepHeading.tsx';
 import { StepProgress } from '../../components/StepProgress.tsx';
+import { focusAfterRender } from '../../lib/focus.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 import { reportDraftStore } from '../../state/report-draft.ts';
 import type { ReportDraft } from '../../state/report-draft.ts';
@@ -29,6 +31,16 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]['id'];
 
+/** Pasos con datos que llenar: muestran la nota de obligatorios. */
+const STEPS_WITH_FIELDS: readonly StepId[] = ['mode', 'facts'];
+
+/** Campo del DOM para cada clave de error que no coincide con su identificador. */
+const FIELD_IDS = {
+  mode: 'mode-anonymous',
+  period: 'period-month',
+  evidence: 'evidence-input',
+} as const;
+
 function validateStep(step: StepId, draft: ReportDraft): FieldErrors {
   if (step === 'mode') return validateModeStep(draft);
   if (step === 'facts') return validateFactsStep(draft);
@@ -40,16 +52,19 @@ function validateStep(step: StepId, draft: ReportDraft): FieldErrors {
 export function ReportPage() {
   const draft = useMemoryStore(reportDraftStore);
   const [index, setIndex] = useState(0);
-  const [hasMoved, setMoved] = useState(false);
+  /** Tras moverse de paso, el encabezado nuevo recibe el foco (salvo que haya otro destino). */
+  const [shouldFocusHeading, setFocusHeading] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [isSending, setSending] = useState(false);
   const step = STEPS[index] ?? STEPS[0];
   useDocumentTitle(`Denunciar, paso ${index + 1} de ${STEPS.length}: ${step.title}`);
 
-  function goTo(next: number): void {
+  function goTo(next: number, target: string | null = null): void {
     setAttempt(0);
-    setMoved(true);
+    setFocusHeading(target === null);
     setIndex(next);
+    // El destino aparece al pintar el paso nuevo; se espera a que exista.
+    if (target !== null) focusAfterRender(target);
   }
 
   function next(): void {
@@ -67,22 +82,28 @@ export function ReportPage() {
       <StepProgress steps={STEPS.map((item) => item.title)} current={index} />
       <section aria-labelledby="step-title" data-testid={`step-${step.id}`}>
         <div id="step-title">
-          <StepHeading key={step.id} shouldFocus={hasMoved}>
+          <StepHeading key={step.id} shouldFocus={shouldFocusHeading}>
             Paso {index + 1} de {STEPS.length}: {step.heading}
           </StepHeading>
         </div>
-        <ErrorSummary
-          errors={visibleErrors}
-          attempt={attempt}
-          fieldIds={{ period: 'period', evidence: 'evidence-input' }}
-        />
+        {STEPS_WITH_FIELDS.includes(step.id) && (
+          <p data-testid="required-note">
+            Todos los datos son necesarios, menos los que dicen «opcional».
+          </p>
+        )}
+        <ErrorSummary errors={visibleErrors} attempt={attempt} fieldIds={FIELD_IDS} />
         {step.id === 'mode' && <ModeStep draft={draft} errors={visibleErrors} />}
         {step.id === 'facts' && <FactsStep draft={draft} errors={visibleErrors} />}
         {step.id === 'evidence' && <EvidenceStep draft={draft} errors={visibleErrors} />}
         {step.id === 'review' && (
           <ReviewStep
             draft={draft}
-            goToStep={(target) => goTo(STEPS.findIndex((item) => item.id === target))}
+            goToStep={(target, focusId) =>
+              goTo(
+                STEPS.findIndex((item) => item.id === target),
+                focusId,
+              )
+            }
           />
         )}
         {step.id === 'submit' && <SubmitStep draft={draft} onSendingChange={setSending} />}

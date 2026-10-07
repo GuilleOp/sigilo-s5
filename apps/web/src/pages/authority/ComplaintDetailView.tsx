@@ -1,13 +1,9 @@
 // Detalle de una denuncia en el panel: hechos, pruebas, identidad, estatus y buzón.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
 import type { ComplaintDetail } from '@sigilo/contracts';
-import {
-  findEntity,
-  findOffense,
-  municipalityName,
-  stateName,
-} from '../../catalogs/catalog-search.ts';
 import { Alert } from '../../components/Alert.tsx';
+import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate, formatMonthPeriod, STATUS_LABELS } from '../../lib/format.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
@@ -27,16 +23,40 @@ interface ComplaintDetailViewProps {
 export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailViewProps) {
   const [detail, setDetail] = useState<ComplaintDetail | null>(null);
   const [error, setError] = useState('');
+  /** Solo la última carga puede actualizar la vista; las respuestas tardías se ignoran. */
+  const loadId = useRef(0);
 
-  const reload = useCallback(() => {
-    api
-      .getComplaint(session.token, folio)
-      .then(setDetail, (failure: unknown) =>
-        setError(describeError(failure, 'No se pudo cargar la denuncia.')),
-      );
+  const reload = useCallback((): Promise<ComplaintDetail | null> => {
+    const id = ++loadId.current;
+    return api.getComplaint(session.token, folio).then(
+      (loaded) => {
+        if (id !== loadId.current) return null;
+        setDetail(loaded);
+        setError('');
+        return loaded;
+      },
+      (failure: unknown) => {
+        if (id === loadId.current) {
+          setError(describeError(failure, 'No pudimos cargar la denuncia. Inténtalo de nuevo.'));
+        }
+        return null;
+      },
+    );
   }, [session.token, folio]);
 
-  useEffect(reload, [reload]);
+  useEffect(() => {
+    void reload();
+    return () => {
+      // Al desmontar (volver o cerrar sesión), ninguna respuesta pendiente toca la vista.
+      loadId.current += 1;
+    };
+  }, [reload]);
+
+  // Al terminar la primera carga, el foco va al encabezado (el botón pulsado ya no existe).
+  const isLoaded = detail !== null;
+  useEffect(() => {
+    if (isLoaded) return focusAfterRender('detail-title');
+  }, [isLoaded]);
 
   if (error)
     return (
@@ -44,17 +64,20 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <p>{error}</p>
       </Alert>
     );
-  if (detail === null) return <p role="status">Cargando denuncia.</p>;
+  if (detail === null) return <p>Cargando denuncia.</p>;
   const { summary, facts } = detail;
-  const municipality = municipalityName(facts.stateCode, facts.municipalityCode);
+  const municipality =
+    facts.municipalityCode === undefined
+      ? undefined
+      : findMunicipality(facts.stateCode, facts.municipalityCode)?.name;
 
   return (
     <article aria-labelledby="detail-title" data-testid="complaint-detail">
       <button type="button" className="button button--secondary" onClick={onBack}>
         Volver al listado
       </button>
-      <h2 id="detail-title">
-        Denuncia <span className="mono">{summary.folio}</span>
+      <h2 id="detail-title" tabIndex={-1}>
+        Denuncia <span className="mono folio">{summary.folio}</span>
       </h2>
       <dl className="definition-list card">
         <dt>Recibida</dt>
@@ -71,13 +94,13 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <dd>{summary.protectionRequested ? 'Solicitadas' : 'No solicitadas'}</dd>
         <dt>Ubicación</dt>
         <dd>
-          {stateName(facts.stateCode)}
+          {findState(facts.stateCode)?.name ?? facts.stateCode}
           {municipality ? `, ${municipality}` : ' (sin municipio)'}
         </dd>
-        <dt>Ente público</dt>
+        <dt>Oficina o institución de gobierno</dt>
         <dd>{findEntity(facts.entityId)?.name ?? facts.entityId}</dd>
         <dt>Conducta</dt>
-        <dd>{findOffense(facts.offenseCode)?.name ?? facts.offenseCode}</dd>
+        <dd>{findOffense(facts.offenseCode)?.label ?? facts.offenseCode}</dd>
         <dt>Periodo</dt>
         <dd>{formatMonthPeriod(facts.occurredPeriod)}</dd>
         <dt>Persona o cargo denunciado</dt>
@@ -92,12 +115,12 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         token={session.token}
         folio={folio}
         current={summary.status}
-        onChanged={reload}
+        onChanged={() => void reload()}
       />
       {summary.mode === 'sealed' && (
-        <OpenIdentityPanel session={session} folio={folio} onOpened={reload} />
+        <OpenIdentityPanel session={session} detail={detail} onOpened={() => void reload()} />
       )}
-      <AuthorityMailbox session={session} detail={detail} onSent={reload} />
+      <AuthorityMailbox session={session} detail={detail} reload={reload} />
     </article>
   );
 }

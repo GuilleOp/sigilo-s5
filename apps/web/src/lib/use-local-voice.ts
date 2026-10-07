@@ -1,4 +1,4 @@
-// Hook que encuentra una voz local en español; `null` si no hay (y el botón se oculta).
+// Hook que encuentra una voz local en español; `null` si no hay (y se explica por qué no se ofrece).
 import { useEffect, useState } from 'react';
 import { localSpanishVoices } from './local-speech.ts';
 

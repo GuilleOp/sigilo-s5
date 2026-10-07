@@ -78,7 +78,7 @@ describe('riesgo', () => {
   it('sube con GPS sin limpiar y propone acciones', () => {
     const draft = filledDraft();
     draft.facts.municipalityCode = '014';
-    draft.facts.description += ' Soy la única auxiliar contable.​';
+    draft.facts.description += ' Soy la única auxiliar contable.\u200b';
     draft.evidence.push({
       id: '1',
       fileName: 'foto.jpg',

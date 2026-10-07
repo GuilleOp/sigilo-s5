@@ -1,5 +1,5 @@
 // Señales de riesgo del borrador para el semáforo y acciones concretas para corregirlas.
-import { findInvisibleCharacters, reviewText } from '@sigilo/huella';
+import { findInvisibleCharacters, isWorkHours, reviewText } from '@sigilo/huella';
 import type { RiskSignals } from '@sigilo/huella';
 import type { ReportDraft } from './report-draft.ts';
 
@@ -37,12 +37,6 @@ export function buildRiskSignals(draft: ReportDraft, now: Date = new Date()): Ri
   };
 }
 
-function isWorkHours(date: Date): boolean {
-  const day = date.getDay();
-  const hour = date.getHours();
-  return day >= 1 && day <= 5 && hour >= 8 && hour < 18;
-}
-
 /** Acciones para corregir cada señal presente. */
 export function buildRiskActions(signals: RiskSignals): RiskAction[] {
   const actions: RiskAction[] = [];
@@ -61,7 +55,7 @@ export function buildRiskActions(signals: RiskSignals): RiskAction[] {
   if (signals.locationPrecision === 'municipality') {
     actions.push({
       kind: 'remove-municipality',
-      text: 'Quitar el municipio y dejar solo la entidad.',
+      text: 'Quitar el municipio y dejar solo el estado.',
     });
   }
   if (signals.localTime !== undefined && isWorkHours(signals.localTime)) {

@@ -1,5 +1,7 @@
 // Paso 1: modo anónimo (recomendado) o identidad sellada, con sus datos.
 import { TextAreaField, TextField } from '../../../components/Field.tsx';
+import { advisorRecommendationStore } from '../../../lib/advisor-recommendation.ts';
+import { useMemoryStore } from '../../../state/memory-store.ts';
 import { reportDraftStore } from '../../../state/report-draft.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
 import type { FieldErrors } from '../../../state/report-validation.ts';
@@ -10,22 +12,44 @@ interface ModeStepProps {
   errors: FieldErrors;
 }
 
+const MODE_TITLES = { anonymous: 'Anónima', sealed: 'Identidad sellada' } as const;
+
 function setIdentity(field: keyof ReportDraft['identity'], value: string): void {
   reportDraftStore.set((draft) => ({ ...draft, identity: { ...draft.identity, [field]: value } }));
 }
 
 /** Elección del modo de denuncia. */
 export function ModeStep({ draft, errors }: ModeStepProps) {
+  const recommended = useMemoryStore(advisorRecommendationStore);
   const setMode = (mode: 'anonymous' | 'sealed'): void =>
     reportDraftStore.set((current) => ({ ...current, mode }));
+  const modeError = errors['mode'];
+  // Cada radio lleva el error y la recomendación; el primero recibe el foco desde el resumen.
+  const radioDescription =
+    [recommended === null ? '' : 'mode-recommendation', modeError ? 'mode-error' : '']
+      .filter(Boolean)
+      .join(' ') || undefined;
+  const radioProps = {
+    type: 'radio',
+    name: 'mode',
+    required: true,
+    'aria-describedby': radioDescription,
+    'aria-invalid': modeError ? true : undefined,
+  } as const;
   return (
     <>
-      <fieldset id="mode" aria-describedby={errors['mode'] ? 'mode-error' : undefined}>
-        <legend>¿Cómo quieres denunciar?</legend>
+      <fieldset id="mode" data-group-field>
+        <legend>Elige una opción</legend>
+        {recommended !== null && (
+          <p id="mode-recommendation" className="field__hint">
+            Según tus respuestas al asesor, te recomendamos: «{MODE_TITLES[recommended]}». Puedes
+            elegir otra opción.
+          </p>
+        )}
         <label className="choice">
           <input
-            type="radio"
-            name="mode"
+            {...radioProps}
+            id="mode-anonymous"
             value="anonymous"
             checked={draft.mode === 'anonymous'}
             onChange={() => setMode('anonymous')}
@@ -33,43 +57,44 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
           />
           <span>
             <span className="choice__title">Anónima (recomendada)</span>
-            No das tu nombre ni datos de contacto. Das seguimiento y respondes preguntas con tu
-            folio y un recibo de 8 palabras.
+            No das tu nombre ni datos de contacto. Ves cómo va tu denuncia y respondes preguntas con
+            tu folio y 8 palabras que te daremos.
           </span>
         </label>
         <label className="choice">
           <input
-            type="radio"
-            name="mode"
+            {...radioProps}
+            id="mode-sealed"
             value="sealed"
             checked={draft.mode === 'sealed'}
             onChange={() => setMode('sealed')}
             data-testid="mode-sealed"
           />
           <span>
-            <span className="choice__title">Con identidad sellada</span>
-            Das tu nombre, testigos y puedes pedir medidas de protección. Tus datos viajan cifrados:
-            solo la autoridad competente puede abrirlos, cada apertura queda registrada con su
-            fundamento y tú la verás en tu seguimiento.
+            <span className="choice__title">Identidad sellada</span>
+            Das tu nombre. Puedes pedir protección. Tu nombre va guardado bajo llave: solo la
+            autoridad puede abrirlo. Si lo abre, debe decir qué ley se lo permite. Tú lo verás.
           </span>
         </label>
-        {errors['mode'] && (
+        {modeError && (
           <p id="mode-error" className="field__error">
-            Error: {errors['mode']}
+            Error: {modeError}
           </p>
         )}
       </fieldset>
 
       {draft.mode === 'sealed' && (
         <section className="card" aria-labelledby="identity-title">
-          <h3 id="identity-title">Tus datos (se cifran en tu navegador)</h3>
+          <h3 id="identity-title">Tus datos, bajo llave</h3>
           <p>
-            Nadie en el servidor puede leerlos. Para abrirlos, la autoridad debe escribir el
-            fundamento legal; eso queda registrado y tú lo verás.
+            Tus datos se guardan bajo llave antes de salir de tu equipo. Nadie del sistema puede
+            leerlos. Solo la autoridad puede abrirlos y debe decir qué ley se lo permite. Tú verás
+            cada vez que los abran.
           </p>
           <TextField
             id="fullName"
             label="Nombre completo"
+            required
             value={draft.identity.fullName}
             maxLength={200}
             error={errors['fullName']}
@@ -78,8 +103,8 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
           />
           <TextField
             id="contact"
-            label="Medio de contacto (opcional)"
-            hint="No es necesario: la autoridad puede escribirte por el buzón anónimo."
+            label="Cómo contactarte (opcional)"
+            hint="No es necesario: la autoridad puede escribirte por mensajes en tu seguimiento."
             value={draft.identity.contact}
             maxLength={200}
             error={errors['contact']}
@@ -88,7 +113,7 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
           <TextAreaField
             id="witnesses"
             label="Testigos (opcional)"
-            hint={`Una persona por línea, hasta ${MAX_WITNESSES}.`}
+            hint={`Personas que vieron lo que pasó. Una por línea, hasta ${MAX_WITNESSES}.`}
             rows={4}
             value={draft.identity.witnesses}
             error={errors['witnesses']}
@@ -107,9 +132,10 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
               data-testid="protection-requested"
             />
             <span>
-              <span className="choice__title">Solicito medidas de protección</span>
-              Por ejemplo, contra represalias en tu trabajo. La autoridad lo verá al recibir tu
-              denuncia.
+              <span className="choice__title">
+                Pido protección (por ejemplo, para que no me castiguen en mi trabajo)
+              </span>
+              La autoridad lo verá al recibir tu denuncia.
             </span>
           </label>
         </section>

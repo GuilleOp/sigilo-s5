@@ -1,5 +1,5 @@
 // Panel de autoridad: importación de la llave de demostración, identidad y buzón.
-import { Base64UrlSchema, KeyIdSchema } from '@sigilo/contracts';
+import { AuthorityDemoKeySchema } from '@sigilo/contracts';
 import type {
   AuthorityMessageRequest,
   ComplaintDetail,
@@ -8,16 +8,16 @@ import type {
   OpenIdentityResponse,
 } from '@sigilo/contracts';
 import {
+  assertBoxKeyPair,
+  assertSigningKeyPair,
+  equalBytes,
   fromBase64Url,
+  identityContextFromDetail,
   keyIdFor,
-  openEnvelope,
+  nextMailboxSequence,
   openIdentity,
   openMailboxMessage,
   sealMailboxMessage,
-  sealToPublicKey,
-  sign,
-  utf8Encode,
-  verify,
 } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
 
@@ -30,75 +30,70 @@ export interface AuthorityKeys {
   signingPrivateKey: Uint8Array;
 }
 
-const KEY_LENGTH = 32;
-const PAIR_CHECK = utf8Encode('sigilo/web/authority-key-check');
 const INVALID_FILE = 'El archivo no es una llave de autoridad válida.';
 
-function readKey(record: Record<string, unknown>, field: string): Uint8Array {
-  const parsed = Base64UrlSchema.safeParse(record[field]);
-  if (!parsed.success) throw new Error(INVALID_FILE);
-  const bytes = fromBase64Url(parsed.data);
-  if (bytes.length !== KEY_LENGTH) throw new Error(INVALID_FILE);
-  return bytes;
-}
-
-/**
- * Lee `authority-demo-key.json` y comprueba que corresponda a las llaves FIJADAS y que cada
- * privada corresponda a su pública.
- * Seguridad: la llave se queda solo en memoria; no se guarda en el navegador.
- */
-export async function importAuthorityKey(text: string, pinned: PinnedKeys): Promise<AuthorityKeys> {
+function decodeKeyFile(text: string): AuthorityKeys {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
     throw new Error(INVALID_FILE);
   }
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error(INVALID_FILE);
-  const record = raw as Record<string, unknown>;
-  const keyId = KeyIdSchema.safeParse(record['keyId']);
-  if (record['version'] !== 1 || !keyId.success) throw new Error(INVALID_FILE);
+  const parsed = AuthorityDemoKeySchema.safeParse(raw);
+  if (!parsed.success) throw new Error(INVALID_FILE);
+  const file = parsed.data;
   const keys: AuthorityKeys = {
-    keyId: keyId.data,
-    boxPublicKey: readKey(record, 'boxPublicKey'),
-    boxPrivateKey: readKey(record, 'boxPrivateKey'),
-    signingPublicKey: readKey(record, 'signingPublicKey'),
-    signingPrivateKey: readKey(record, 'signingPrivateKey'),
+    keyId: file.keyId,
+    boxPublicKey: fromBase64Url(file.boxPublicKey),
+    boxPrivateKey: fromBase64Url(file.boxPrivateKey),
+    signingPublicKey: fromBase64Url(file.signingPublicKey),
+    signingPrivateKey: fromBase64Url(file.signingPrivateKey),
   };
-  if (
-    keys.keyId !== pinned.set.authority.keyId ||
-    keyIdFor(keys.boxPublicKey) !== keys.keyId ||
-    !equalBytes(keys.boxPublicKey, pinned.authorityBoxPublicKey) ||
-    !equalBytes(keys.signingPublicKey, pinned.authoritySigningPublicKey)
-  ) {
-    throw new Error('Esta llave no corresponde a la autoridad de este despliegue.');
-  }
-  if (!verify(sign(PAIR_CHECK, keys.signingPrivateKey), PAIR_CHECK, keys.signingPublicKey)) {
-    throw new Error(INVALID_FILE);
-  }
   try {
-    const probe = await sealToPublicKey(
-      PAIR_CHECK,
-      { keyId: keys.keyId, publicKey: keys.boxPublicKey },
-      PAIR_CHECK,
-    );
-    await openEnvelope(probe, keys.boxPrivateKey, PAIR_CHECK);
+    assertBoxKeyPair({ publicKey: keys.boxPublicKey, privateKey: keys.boxPrivateKey });
+    assertSigningKeyPair({ publicKey: keys.signingPublicKey, privateKey: keys.signingPrivateKey });
   } catch {
+    wipeAuthorityKeys(keys);
     throw new Error(INVALID_FILE);
   }
   return keys;
 }
 
-function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
-  return a.length === b.length && a.every((byte, index) => byte === b[index]);
+/**
+ * Lee `authority-demo-key.json` (`AuthorityDemoKeySchema`), comprueba que cada privada
+ * corresponda a su pública y que las públicas sean las FIJADAS en el bundle.
+ * Seguridad: la llave se queda solo en memoria; no se guarda en el navegador.
+ */
+export function importAuthorityKey(text: string, pinned: PinnedKeys): AuthorityKeys {
+  const keys = decodeKeyFile(text);
+  const matchesPinned =
+    keys.keyId === pinned.set.authority.keyId &&
+    keyIdFor(keys.boxPublicKey) === keys.keyId &&
+    equalBytes(keys.boxPublicKey, pinned.authorityBoxPublicKey) &&
+    equalBytes(keys.signingPublicKey, pinned.authoritySigningPublicKey);
+  if (!matchesPinned) {
+    wipeAuthorityKeys(keys);
+    throw new Error('Esta llave no corresponde a la autoridad de este despliegue.');
+  }
+  return keys;
 }
 
-/** Abre la identidad sellada que entregó el servidor tras registrar la solicitud. */
+/**
+ * Abre la identidad sellada con el contexto recalculado desde el detalle vigente.
+ * Seguridad: no se confía en ningún digesto del servidor; si alteró hechos, pruebas, llaves o el
+ * verificador del recibo, el sobre no abre. En modo sellado, abrirlo prueba además que
+ * `detail.reporterKeys` son las de la persona denunciante (van en el AAD).
+ */
 export function openSealedIdentity(
   response: OpenIdentityResponse,
+  detail: ComplaintDetail,
   keys: AuthorityKeys,
 ): Promise<IdentityBlock> {
-  return openIdentity(response.sealedIdentity, keys.boxPrivateKey, response.authVerifier);
+  return openIdentity(
+    response.sealedIdentity,
+    keys.boxPrivateKey,
+    identityContextFromDetail(detail),
+  );
 }
 
 /** Mensaje del buzón visto por la autoridad. */
@@ -113,7 +108,7 @@ export async function decodeAuthorityThread(
   keys: AuthorityKeys,
 ): Promise<AuthorityThreadItem[]> {
   const folio = detail.summary.folio;
-  const reporterSigning = fromBase64Url(detail.reporterSigningPublicKey);
+  const reporterSigning = fromBase64Url(detail.reporterKeys.signingPublicKey);
   return Promise.all(
     detail.messages.map(async (message: MailboxMessage): Promise<AuthorityThreadItem> => {
       const base = { messageId: message.messageId, sentOn: message.sentOn };
@@ -121,10 +116,7 @@ export async function decodeAuthorityThread(
         return { ...base, from: 'authority', state: 'sealed-for-reporter' };
       }
       try {
-        const text = await openMailboxMessage(message, keys.boxPrivateKey, reporterSigning, {
-          folio,
-          from: 'reporter',
-        });
+        const text = await openMailboxMessage(message, keys.boxPrivateKey, reporterSigning, folio);
         return { ...base, from: 'reporter', state: 'opened', text };
       } catch {
         return { ...base, from: 'reporter', state: 'unreadable' };
@@ -133,19 +125,25 @@ export async function decodeAuthorityThread(
   );
 }
 
-/** Cifra una pregunta hacia la llave del buzón de la persona denunciante y la firma. */
+/**
+ * Cifra una pregunta hacia la llave del buzón de la persona denunciante y la firma con la
+ * siguiente secuencia de la autoridad según los mensajes del detalle.
+ * Lanza error si el texto está vacío o excede `MAX_MAILBOX_TEXT_LENGTH`.
+ */
 export async function sealAuthorityQuestion(
   text: string,
   detail: ComplaintDetail,
   keys: AuthorityKeys,
 ): Promise<AuthorityMessageRequest> {
-  const reporterBox = fromBase64Url(detail.reporterBoxPublicKey);
-  return sealMailboxMessage(
+  const reporterBox = fromBase64Url(detail.reporterKeys.boxPublicKey);
+  const sequence = nextMailboxSequence(detail.messages, 'authority');
+  const sealed = await sealMailboxMessage(
     text,
     { keyId: keyIdFor(reporterBox), publicKey: reporterBox },
     keys.signingPrivateKey,
-    { folio: detail.summary.folio, from: 'authority' },
+    { folio: detail.summary.folio, from: 'authority', sequence },
   );
+  return { sequence: sealed.sequence, envelope: sealed.envelope, signature: sealed.signature };
 }
 
 /** Borra de memoria las llaves privadas de la autoridad. */

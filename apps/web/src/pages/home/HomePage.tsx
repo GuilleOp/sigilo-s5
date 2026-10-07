@@ -15,11 +15,11 @@ const GUARANTEES = [
   },
   {
     title: 'Si das tu nombre, solo la autoridad puede verlo',
-    text: 'Tu identidad viaja cifrada. Para abrirla, la autoridad debe escribir el motivo legal, y tú verás cuándo y por qué.',
+    text: 'Tu nombre va guardado bajo llave. Para abrirlo, la autoridad debe decir qué ley se lo permite, y tú verás cuándo y por qué.',
   },
   {
     title: 'Nadie puede borrar lo que pasó',
-    text: 'Cada paso queda en una bitácora pública que cualquiera puede verificar. Si alguien la altera, se nota.',
+    text: 'Cada paso queda anotado en un registro público. Nadie puede borrarlo sin que se note.',
   },
   {
     title: 'Sin rastreo',
@@ -55,7 +55,8 @@ export function HomePage() {
       </ul>
       <p>
         Si alguien se acerca mientras escribes, usa el botón rojo <strong>Salida rápida</strong>:
-        borra todo y abre una página del clima.
+        borra todo y abre una página del clima. También puedes pulsar dos veces la tecla{' '}
+        <kbd>Esc</kbd>.
       </p>
       <Advisor />
       <h2>Más información</h2>
@@ -65,8 +66,8 @@ export function HomePage() {
           identifiquen a nadie.
         </li>
         <li>
-          <Link to={PATHS.verify}>Verificar la bitácora</Link>: comprueba que nadie alteró el
-          registro.
+          <Link to={PATHS.verify}>Verificar la bitácora</Link>: comprueba que nadie cambió el
+          registro público.
         </li>
       </ul>
     </>

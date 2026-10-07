@@ -1,10 +1,11 @@
 // Acceso al panel: token bearer e importación local de authority-demo-key.json.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Alert } from '../../components/Alert.tsx';
 import { TextField } from '../../components/Field.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
-import { importAuthorityKey } from '../../crypto/authority.ts';
+import { importAuthorityKey, wipeAuthorityKeys } from '../../crypto/authority.ts';
+import type { AuthorityKeys } from '../../crypto/authority.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
@@ -21,9 +22,18 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isBusy, setBusy] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault();
+    if (isBusy) return;
     setError('');
     if (token.trim().length < MIN_TOKEN_LENGTH) {
       setError(`El token debe tener al menos ${MIN_TOKEN_LENGTH} caracteres.`);
@@ -34,17 +44,29 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
       return;
     }
     setBusy(true);
+    let keys: AuthorityKeys | null = null;
     try {
-      const keys = await importAuthorityKey(await file.text(), PINNED_KEYS);
+      keys = importAuthorityKey(await file.text(), PINNED_KEYS);
       // Comprueba el token antes de abrir el panel.
       await api.listComplaints(token.trim());
+      // Seguridad: si la pantalla se cerró mientras tanto, la llave no se queda en memoria.
+      if (!isMounted.current) {
+        wipeAuthorityKeys(keys);
+        return;
+      }
       onReady({ token: token.trim(), keys });
     } catch (failure) {
-      setError(
-        describeError(failure, failure instanceof Error ? failure.message : 'No se pudo iniciar.'),
-      );
+      if (keys !== null) wipeAuthorityKeys(keys);
+      if (isMounted.current) {
+        setError(
+          describeError(
+            failure,
+            failure instanceof Error ? failure.message : 'No pudimos abrir el panel.',
+          ),
+        );
+      }
     } finally {
-      setBusy(false);
+      if (isMounted.current) setBusy(false);
     }
   }
 
@@ -69,6 +91,7 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
       <TextField
         id="authority-token"
         label="Token de acceso"
+        required
         type="password"
         autoComplete="off"
         value={token}
@@ -80,6 +103,7 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
         <input
           id="authority-key"
           type="file"
+          aria-required="true"
           accept="application/json,.json"
           data-testid="authority-key-file"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
@@ -88,7 +112,7 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
       <button
         type="submit"
         className="button"
-        disabled={isBusy}
+        aria-disabled={isBusy ? true : undefined}
         data-testid="authority-login-submit"
       >
         {isBusy ? 'Verificando...' : 'Entrar al panel'}

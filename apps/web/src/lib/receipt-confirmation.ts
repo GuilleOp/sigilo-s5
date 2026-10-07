@@ -1,5 +1,6 @@
 // Confirmación del recibo: la persona escribe dos palabras elegidas al azar.
 import { normalizeWord } from '@sigilo/core';
+import { resolvedWord } from './receipt-words.ts';
 
 /**
  * Elige dos posiciones distintas al azar con `crypto.getRandomValues` (sin sesgo por módulo).
@@ -28,4 +29,14 @@ export function pickConfirmationPositions(
 /** Compara lo escrito con la palabra esperada, ignorando acentos, mayúsculas y espacios. */
 export function matchesWord(typed: string, expected: string): boolean {
   return normalizeWord(typed) !== '' && normalizeWord(typed) === normalizeWord(expected);
+}
+
+/**
+ * Como `matchesWord`, pero acepta también el prefijo que reconoce el seguimiento (basta con las
+ * primeras 4 letras), para que confirmar y dar seguimiento funcionen igual.
+ */
+export function matchesReceiptWord(typed: string, expected: string): boolean {
+  if (matchesWord(typed, expected)) return true;
+  const resolved = resolvedWord(typed);
+  return resolved !== null && matchesWord(resolved, expected);
 }

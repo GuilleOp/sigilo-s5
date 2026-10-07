@@ -10,16 +10,17 @@ export interface ResponseSchema<T> {
 /** Códigos de fallo que ve la interfaz: los de la API más los del propio cliente. */
 export type ClientErrorCode = ApiErrorCode | 'network' | 'invalid_response';
 
+/** Mensajes en lectura fácil: dicen qué pasó y qué puede hacer la persona. */
 const MESSAGES: Readonly<Record<ClientErrorCode, string>> = {
-  bad_request: 'El servidor no aceptó los datos. Revisa la información e inténtalo de nuevo.',
+  bad_request: 'El sistema no aceptó los datos. Revisa lo que escribiste e inténtalo de nuevo.',
   not_found: 'No encontramos lo que buscas.',
-  unauthorized: 'No tienes permiso para esta acción. Revisa tus credenciales.',
-  payload_too_large: 'El archivo o el mensaje es demasiado grande.',
-  unsupported_media_type: 'El servidor no acepta este tipo de archivo.',
-  rate_limited: 'Hiciste demasiados intentos. Espera un rato y vuelve a intentarlo.',
-  internal: 'El servidor tuvo un problema. Inténtalo más tarde.',
-  network: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
-  invalid_response: 'El servidor respondió algo inesperado. Por seguridad, no continuamos.',
+  unauthorized: 'No tienes permiso para hacer esto. Revisa tus datos de acceso.',
+  payload_too_large: 'El archivo o el mensaje es demasiado grande. Usa uno más pequeño.',
+  unsupported_media_type: 'No podemos recibir este tipo de archivo.',
+  rate_limited: 'Hubo demasiados intentos. Espera un rato y vuelve a intentarlo.',
+  internal: 'El sistema tuvo un problema. Inténtalo más tarde.',
+  network: 'No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.',
+  invalid_response: 'Recibimos una respuesta extraña. Por seguridad, nos detuvimos.',
 };
 
 /** Error de la API con un mensaje en español listo para mostrarse. */

@@ -1,102 +1,239 @@
 // Pantalla /seguimiento: acceso con folio y recibo, estatus, identidad, comprobante y buzón.
 import { useEffect, useRef, useState } from 'react';
-import type { TrackingView } from '@sigilo/contracts';
+import type { MailboxMessage, TrackingView } from '@sigilo/contracts';
+import { isMailboxSequenceComplete, ReceiptPhraseError } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch, KeyMismatchError } from '../../crypto/key-pinning.ts';
 import {
+  checkPublishedEvent,
   decodeReporterThread,
   sealReporterReply,
   startTrackingSession,
   verifyTrackingReceipt,
   wipeTrackingSession,
 } from '../../crypto/tracking.ts';
-import type { DecodedMessage, TrackingSession } from '../../crypto/tracking.ts';
+import type {
+  DecodedMessage,
+  PublicationStatus,
+  TrackingReceiptCheck,
+  TrackingSession,
+} from '../../crypto/tracking.ts';
+import { announce } from '../../lib/announce.ts';
+import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate } from '../../lib/format.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
 import { IdentityStatus } from './IdentityStatus.tsx';
+import { wordInputId } from './ReceiptWordInput.tsx';
 import { ReporterMailbox } from './ReporterMailbox.tsx';
 import { StatusTimeline } from './StatusTimeline.tsx';
 import { TrackingLogin } from './TrackingLogin.tsx';
 
+/** Encabezado de la vista de seguimiento: recibe el foco al entrar. */
+const TRACKING_VIEW_TITLE_ID = 'tracking-view-title';
+
 interface Loaded {
   view: TrackingView;
   messages: DecodedMessage[];
-  isReceiptValid: boolean;
+  check: TrackingReceiptCheck;
+  /** `unknown` si no se pudo consultar la bitácora pública. */
+  publication: PublicationStatus | 'unknown' | 'checking';
 }
 
-function loginError(error: unknown): string {
+/** Error del acceso y, si se sabe, la palabra (desde 1) que lo causó. */
+interface LoginFailure {
+  message: string;
+  wordPosition: number | null;
+}
+
+function loginFailure(error: unknown): LoginFailure {
   if (error instanceof ApiRequestError && error.code === 'not_found') {
-    return 'El folio o el recibo no coinciden. Revisa cada palabra e inténtalo de nuevo.';
+    return {
+      message: 'El folio o el recibo no coinciden. Revisa cada palabra e inténtalo de nuevo.',
+      wordPosition: null,
+    };
   }
-  if (error instanceof Error && error.message.startsWith('La palabra')) return error.message;
-  return describeError(error, 'No pudimos abrir tu seguimiento. Inténtalo de nuevo.');
+  if (error instanceof ReceiptPhraseError) {
+    return {
+      message:
+        error.position === null
+          ? 'Escribe las 8 palabras de tu recibo.'
+          : `La palabra ${error.position} no está en la lista. Revísala en tu recibo.`,
+      wordPosition: error.position,
+    };
+  }
+  return {
+    message: describeError(error, 'No pudimos abrir tu seguimiento. Inténtalo de nuevo.'),
+    wordPosition: null,
+  };
+}
+
+function ReceiptStatus({ loaded }: { loaded: Loaded }) {
+  const { view, check, publication } = loaded;
+  if (!check.isReceiptValid) {
+    return (
+      <Alert
+        tone="danger"
+        title="Atención: no pudimos comprobar tu denuncia"
+        testId="receipt-invalid"
+      >
+        <p>
+          No pudimos comprobar que esta información viene del sistema. Tómala con cuidado y vuelve a
+          entrar más tarde.
+        </p>
+      </Alert>
+    );
+  }
+  if (!check.isEventValid) {
+    return (
+      <Alert
+        tone="danger"
+        title="Atención: la anotación de tu denuncia no coincide"
+        testId="receipt-event-invalid"
+      >
+        <p>
+          Tu comprobante es válido, pero la anotación de tu denuncia en el registro público no
+          corresponde a él. Guarda tu folio y vuelve a entrar más tarde.
+        </p>
+      </Alert>
+    );
+  }
+  return (
+    <Alert tone="success" title="Tu denuncia está registrada" testId="receipt-verified">
+      <p>
+        Comprobamos que tu denuncia se recibió el {formatDayDate(view.receipt.receivedOn)} y que
+        quedó anotada en el registro público con el número {view.receivedEvent.seq}.
+      </p>
+      <p data-testid="ledger-publication">
+        {publication === 'checking' && 'Estamos buscando esa anotación en el registro público.'}
+        {publication === 'published' &&
+          'La anotación ya aparece en el registro público, igual que aquí.'}
+        {publication === 'pending' &&
+          'El registro público se actualiza una vez al día: tu anotación aparecerá mañana.'}
+        {publication === 'unknown' && 'Por ahora no pudimos consultar el registro público.'}
+      </p>
+      {publication === 'mismatch' && (
+        <p className="field__error" data-testid="ledger-publication-mismatch">
+          Atención: el registro público no muestra la misma anotación. El sistema podría estar
+          mostrando cosas distintas a cada persona.
+        </p>
+      )}
+    </Alert>
+  );
 }
 
 /** Seguimiento de la denuncia. Todo vive en memoria y se borra al salir. */
 export function TrackingPage() {
   useDocumentTitle('Dar seguimiento');
   const sessionRef = useRef<TrackingSession | null>(null);
+  const isMounted = useRef(true);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [isBusy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [failure, setFailure] = useState<LoginFailure | null>(null);
   const [replyStatus, setReplyStatus] = useState('');
   const [sentTexts, setSentTexts] = useState<Record<string, string>>({});
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
       if (sessionRef.current) wipeTrackingSession(sessionRef.current);
-    },
-    [],
-  );
+      sessionRef.current = null;
+    };
+  }, []);
 
-  async function load(session: TrackingSession): Promise<void> {
+  async function load(session: TrackingSession): Promise<TrackingView> {
     const view = await api.track(session.credentials);
     const messages = await decodeReporterThread(view.messages, session, PINNED_KEYS);
-    setLoaded({ view, messages, isReceiptValid: verifyTrackingReceipt(view, PINNED_KEYS) });
+    if (!isMounted.current) return view;
+    const check = verifyTrackingReceipt(view, PINNED_KEYS);
+    setLoaded({ view, messages, check, publication: check.isEventValid ? 'checking' : 'unknown' });
+    if (check.isEventValid) {
+      void checkPublishedEvent(view, (from, limit) => api.getLedgerEvents(from, limit)).then(
+        (publication) => updatePublication(view, publication),
+        () => updatePublication(view, 'unknown'),
+      );
+    }
+    return view;
+  }
+
+  function updatePublication(view: TrackingView, publication: Loaded['publication']): void {
+    if (!isMounted.current) return;
+    setLoaded((current) => (current?.view === view ? { ...current, publication } : current));
   }
 
   async function login(folio: string, words: string[]): Promise<void> {
     setBusy(true);
-    setError('');
+    setFailure(null);
     let session: TrackingSession | null = null;
     try {
       session = startTrackingSession(folio, words);
       await load(session);
+      // Seguridad: si la pantalla se cerró durante el acceso, las llaves no se quedan en memoria.
+      if (!isMounted.current) {
+        wipeTrackingSession(session);
+        return;
+      }
       sessionRef.current = session;
-    } catch (failure) {
+      // El formulario desaparece: el foco va al encabezado de la vista de seguimiento.
+      focusAfterRender(TRACKING_VIEW_TITLE_ID);
+    } catch (error) {
       if (session !== null) wipeTrackingSession(session);
-      setError(loginError(failure));
+      if (!isMounted.current) return;
+      const found = loginFailure(error);
+      setFailure(found);
+      if (found.wordPosition !== null) focusAfterRender(wordInputId(found.wordPosition - 1));
     } finally {
-      setBusy(false);
+      if (isMounted.current) setBusy(false);
+    }
+  }
+
+  /**
+   * Sella y envía la respuesta. Si el servidor la rechaza porque la secuencia ya no es la
+   * siguiente (por ejemplo, otra pestaña envió antes), recarga la vista y vuelve a sellar una vez.
+   */
+  async function sealAndSend(
+    text: string,
+    session: TrackingSession,
+    messages: readonly MailboxMessage[],
+  ): Promise<MailboxMessage> {
+    const send = async (current: readonly MailboxMessage[]) =>
+      api.sendReporterMessage(await sealReporterReply(text, session, PINNED_KEYS, current));
+    try {
+      return await send(messages);
+    } catch (error) {
+      if (!(error instanceof ApiRequestError) || error.code !== 'bad_request') throw error;
+      const fresh = await load(session);
+      return send(fresh.messages);
     }
   }
 
   async function sendReply(text: string): Promise<boolean> {
     const session = sessionRef.current;
-    if (session === null) return false;
+    if (session === null || loaded === null || isBusy) return false;
     setBusy(true);
-    setReplyStatus('Cifrando y enviando tu respuesta.');
+    setReplyStatus('Enviando tu respuesta.');
     try {
       await assertServedKeysMatch(() => api.getKeys(), PINNED_KEYS.set);
-      const message = await api.sendReporterMessage(
-        await sealReporterReply(text, session, PINNED_KEYS),
-      );
+      const message = await sealAndSend(text, session, loaded.view.messages);
+      if (!isMounted.current) return false;
       setSentTexts((current) => ({ ...current, [message.messageId]: text }));
       await load(session);
       setReplyStatus('Respuesta enviada. Solo la autoridad puede leerla.');
       return true;
-    } catch (failure) {
-      setReplyStatus(
-        failure instanceof KeyMismatchError
-          ? failure.message
-          : describeError(failure, 'No se pudo enviar tu respuesta. Inténtalo de nuevo.'),
-      );
+    } catch (error) {
+      if (isMounted.current) {
+        setReplyStatus(
+          error instanceof KeyMismatchError
+            ? 'Por seguridad no enviamos nada. Alguien podría estar espiando esta conexión. Usa otra conexión, por ejemplo los datos de tu celular.'
+            : describeError(error, 'No pudimos enviar tu respuesta. Inténtalo de nuevo.'),
+        );
+      }
       return false;
     } finally {
-      setBusy(false);
+      if (isMounted.current) setBusy(false);
     }
   }
 
@@ -106,49 +243,36 @@ export function TrackingPage() {
     setLoaded(null);
     setSentTexts({});
     setReplyStatus('');
+    focusAfterRender(() => document.querySelector<HTMLElement>('#contenido h1'));
+    announce('Cerraste tu seguimiento. Borramos tus datos de esta pantalla.');
   }
 
   return (
     <>
-      <h1>Dar seguimiento a tu denuncia</h1>
+      <h1 tabIndex={-1}>Dar seguimiento a tu denuncia</h1>
       {loaded === null ? (
         <TrackingLogin
           isBusy={isBusy}
-          error={error}
+          error={failure?.message ?? ''}
+          invalidWordPosition={failure?.wordPosition ?? null}
           onSubmit={(folio, words) => void login(folio, words)}
         />
       ) : (
         <div data-testid="tracking-view">
-          <p>
-            Folio <strong className="mono">{loaded.view.folio}</strong>.
-          </p>
-          {loaded.isReceiptValid ? (
-            <Alert
-              tone="success"
-              title="Comprobante verificado"
-              role="status"
-              testId="receipt-verified"
-            >
+          <h2 id={TRACKING_VIEW_TITLE_ID} tabIndex={-1}>
+            Tu denuncia con folio <span className="mono folio">{loaded.view.folio}</span>
+          </h2>
+          <ReceiptStatus loaded={loaded} />
+          <StatusTimeline view={loaded.view} />
+          <IdentityStatus view={loaded.view} />
+          {!isMailboxSequenceComplete(loaded.view.messages) && (
+            <Alert tone="danger" title="Faltan mensajes" testId="mailbox-incomplete">
               <p>
-                El servidor firmó la recepción el {formatDayDate(loaded.view.receipt.receivedOn)} y
-                la firma coincide con su llave fijada en esta aplicación.
-              </p>
-            </Alert>
-          ) : (
-            <Alert
-              tone="danger"
-              title="Alerta: el comprobante no es válido"
-              role="alert"
-              testId="receipt-invalid"
-            >
-              <p>
-                La firma del comprobante no coincide con la llave del servidor. Trata esta
-                información con cautela.
+                Faltan, sobran o están desordenados algunos mensajes. El sistema podría estar
+                ocultando parte de la conversación.
               </p>
             </Alert>
           )}
-          <StatusTimeline view={loaded.view} />
-          <IdentityStatus view={loaded.view} />
           <ReporterMailbox
             messages={loaded.messages}
             sentTexts={sentTexts}

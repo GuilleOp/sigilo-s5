@@ -1,17 +1,22 @@
-// Seguimiento: derivación de llaves desde el recibo, comprobante y buzón cifrado.
+// Seguimiento: derivación de llaves desde el recibo, comprobante, evento de la bitácora y buzón.
+import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import type {
+  LedgerPage,
   MailboxMessage,
   ReporterMessageRequest,
   TrackingCredentials,
   TrackingView,
 } from '@sigilo/contracts';
 import {
+  canonicalize,
   deriveReceiptKeys,
+  nextMailboxSequence,
   openMailboxMessage,
   phraseToEntropy,
   sealMailboxMessage,
   toBase64Url,
   verifyReceipt,
+  verifyReceiptEvent,
 } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
@@ -26,7 +31,7 @@ export interface TrackingSession {
 /**
  * Deriva las llaves a partir de las 8 palabras.
  * Seguridad: el recibo nunca sale del navegador; al servidor solo viaja `authKey`.
- * Lanza error (sin citar palabras) si alguna no está en la lista.
+ * Lanza `ReceiptPhraseError` (con la posición, sin citar la palabra) si alguna no está en la lista.
  */
 export function startTrackingSession(folio: string, words: readonly string[]): TrackingSession {
   const entropy = phraseToEntropy(words);
@@ -35,11 +40,50 @@ export function startTrackingSession(folio: string, words: readonly string[]): T
   return { folio, keys, credentials: { folio, authKey: toBase64Url(keys.authKey) } };
 }
 
-/** Comprueba que el comprobante de la vista esté firmado por el servidor y sea de este folio. */
-export function verifyTrackingReceipt(view: TrackingView, pinned: PinnedKeys): boolean {
-  return (
-    view.receipt.folio === view.folio && verifyReceipt(view.receipt, pinned.serverSigningPublicKey)
-  );
+/** Resultado de comprobar el comprobante y su evento en la bitácora. */
+export interface TrackingReceiptCheck {
+  /** El comprobante es de este folio y lo firmó la llave fijada del servidor. */
+  isReceiptValid: boolean;
+  /** El evento `complaint.received` corresponde al comprobante (seq, fecha y digestos). */
+  isEventValid: boolean;
+}
+
+/** Comprueba el comprobante firmado y que el evento de recepción corresponda a él. */
+export function verifyTrackingReceipt(
+  view: TrackingView,
+  pinned: PinnedKeys,
+): TrackingReceiptCheck {
+  const isReceiptValid =
+    view.receipt.folio === view.folio && verifyReceipt(view.receipt, pinned.serverSigningPublicKey);
+  return {
+    isReceiptValid,
+    isEventValid: isReceiptValid && verifyReceiptEvent(view.receivedEvent, view.receipt),
+  };
+}
+
+/**
+ * Estado del evento de recepción en la bitácora pública: publicado e idéntico, todavía no
+ * publicado (se publica al día siguiente) o distinto del que entregó el seguimiento.
+ */
+export type PublicationStatus = 'published' | 'pending' | 'mismatch';
+
+/**
+ * Busca el evento de recepción en la bitácora pública y lo compara con `view.receivedEvent`.
+ * Seguridad: una página vacía es normal el mismo día; pero si la cabeza pública ya pasó de esa
+ * secuencia y el evento no aparece, el servidor está mostrando algo distinto a cada quien.
+ */
+export async function checkPublishedEvent(
+  view: TrackingView,
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
+): Promise<PublicationStatus> {
+  const seq = view.receipt.ledgerSeq;
+  const page = await fetchPage(seq, 1);
+  const published = page.events[0];
+  if (published === undefined) {
+    const isPastHead = page.head.hash !== LEDGER_GENESIS_HASH && page.head.seq >= seq;
+    return isPastHead ? 'mismatch' : 'pending';
+  }
+  return canonicalize(published) === canonicalize(view.receivedEvent) ? 'published' : 'mismatch';
 }
 
 /** Mensaje del buzón ya procesado para mostrarse. */
@@ -69,7 +113,7 @@ export async function decodeReporterThread(
           message,
           session.keys.box.privateKey,
           pinned.authoritySigningPublicKey,
-          { folio: session.folio, from: 'authority' },
+          session.folio,
         );
         return { ...base, from: 'authority', state: 'opened', text };
       } catch {
@@ -79,19 +123,30 @@ export async function decodeReporterThread(
   );
 }
 
-/** Cifra la respuesta hacia la llave FIJADA del buzón de la autoridad y la firma. */
+/**
+ * Cifra la respuesta hacia la llave FIJADA del buzón de la autoridad y la firma, con la siguiente
+ * secuencia de la persona denunciante según `messages` (los del folio, tal como llegaron).
+ * Lanza error si el texto está vacío o excede `MAX_MAILBOX_TEXT_LENGTH`.
+ */
 export async function sealReporterReply(
   text: string,
   session: TrackingSession,
   pinned: PinnedKeys,
+  messages: readonly MailboxMessage[],
 ): Promise<ReporterMessageRequest> {
+  const sequence = nextMailboxSequence(messages, 'reporter');
   const sealed = await sealMailboxMessage(
     text,
     { keyId: pinned.set.authority.keyId, publicKey: pinned.authorityBoxPublicKey },
     session.keys.signing.privateKey,
-    { folio: session.folio, from: 'reporter' },
+    { folio: session.folio, from: 'reporter', sequence },
   );
-  return { ...session.credentials, envelope: sealed.envelope, signature: sealed.signature };
+  return {
+    ...session.credentials,
+    sequence: sealed.sequence,
+    envelope: sealed.envelope,
+    signature: sealed.signature,
+  };
 }
 
 /** Borra de memoria las llaves privadas de la sesión. */

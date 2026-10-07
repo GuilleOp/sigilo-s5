@@ -23,7 +23,7 @@ test.describe.serial('denuncia con identidad sellada', () => {
     openIsolatedPage,
   }) => {
     await reachSubmitStep(page, 'sealed', SYNTHETIC_NAME);
-    await expect(page.getByText('También cifra tu identidad')).toBeVisible();
+    await expect(page.getByText('También guardaremos tu nombre bajo llave')).toBeVisible();
     receipt = await submitAndKeepReceipt(page);
 
     // Panel de autoridad, en otro navegador.

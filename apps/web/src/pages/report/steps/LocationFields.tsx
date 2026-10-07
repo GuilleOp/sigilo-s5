@@ -1,6 +1,5 @@
-// Entidad federativa y municipio opcional; el catálogo se filtra en el navegador.
-import { municipalitiesOf } from '../../../catalogs/catalog-search.ts';
-import { STATES } from '../../../catalogs/states.ts';
+// Estado y municipio opcional, con los catálogos de contracts (los mismos que valida el servidor).
+import { municipalitiesOf, STATES } from '@sigilo/contracts';
 import { SelectField } from '../../../components/Field.tsx';
 import { setFact } from '../../../state/report-draft.ts';
 import type { FactsDraft } from '../../../state/report-draft.ts';
@@ -16,10 +15,11 @@ export function LocationFields({ facts, errors }: LocationFieldsProps) {
   const municipalities = municipalitiesOf(facts.stateCode);
   return (
     <fieldset>
-      <legend>¿Dónde ocurrió?</legend>
+      <legend>¿Dónde pasó?</legend>
       <SelectField
         id="stateCode"
-        label="Entidad federativa"
+        label="Estado"
+        required
         value={facts.stateCode}
         error={errors['stateCode']}
         onChange={(event) => {
@@ -28,7 +28,7 @@ export function LocationFields({ facts, errors }: LocationFieldsProps) {
         }}
         data-testid="state-select"
       >
-        <option value="">Elige una entidad</option>
+        <option value="">Elige un estado</option>
         {STATES.map((state) => (
           <option key={state.code} value={state.code}>
             {state.name}
@@ -45,7 +45,7 @@ export function LocationFields({ facts, errors }: LocationFieldsProps) {
             onChange={(event) => setFact('municipalityCode', event.target.value)}
             data-testid="municipality-select"
           >
-            <option value="">No indicar municipio (solo la entidad)</option>
+            <option value="">No indicar municipio (solo el estado)</option>
             {municipalities.map((municipality) => (
               <option key={municipality.code} value={municipality.code}>
                 {municipality.name}
@@ -54,7 +54,7 @@ export function LocationFields({ facts, errors }: LocationFieldsProps) {
           </SelectField>
         ) : (
           <p className="field__hint">
-            Para esta entidad la denuncia se registra solo a nivel entidad, sin municipio.
+            Para este estado la denuncia se registra solo con el estado, sin municipio.
           </p>
         ))}
     </fieldset>

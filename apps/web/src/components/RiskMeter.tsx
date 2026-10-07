@@ -19,7 +19,12 @@ interface RiskMeterProps {
   children?: ReactNode;
 }
 
-/** Muestra el resultado de `assessRisk`. */
+/** Resumen en una frase del nivel, para anunciarlo tras corregir algo. */
+export function riskSummary(assessment: RiskAssessment): string {
+  return `${LEVEL_TEXT[assessment.level]} (${assessment.score} de 100). ${LEVEL_HINT[assessment.level]}`;
+}
+
+/** Muestra el resultado de `assessRisk`. El título recibe el foco tras cada acción. */
 export function RiskMeter({ assessment, children }: RiskMeterProps) {
   return (
     <section
@@ -28,7 +33,7 @@ export function RiskMeter({ assessment, children }: RiskMeterProps) {
       data-testid="risk-meter"
       data-level={assessment.level}
     >
-      <h3 id="risk-title" className="risk__level">
+      <h3 id="risk-title" className="risk__level" tabIndex={-1}>
         <span className="risk__icon" aria-hidden="true" />
         {LEVEL_TEXT[assessment.level]} ({assessment.score} de 100)
       </h3>
