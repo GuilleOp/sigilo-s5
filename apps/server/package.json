@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/server",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "Servidor de referencia de SIGILO: almacena sobres cifrados, buzon y bitacora. No ve identidades.",
   "license": "CC-BY-NC-4.0",
   "private": true,
@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
-    "@sigilo/contracts": "0.1.0",
-    "@sigilo/core": "0.1.0",
+    "@sigilo/contracts": "0.9.0",
+    "@sigilo/core": "0.9.0",
     "hono": "^4.13.13",
     "zod": "^4.6.5"
   }

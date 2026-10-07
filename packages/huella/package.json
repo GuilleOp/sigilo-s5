@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/huella",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "Huella Cero: limpieza de pruebas, deteccion de marcas invisibles y revision de riesgo de reidentificacion.",
   "license": "CC-BY-NC-4.0",
   "type": "module",

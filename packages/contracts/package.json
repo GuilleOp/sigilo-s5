@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/contracts",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "Esquemas y tipos compartidos entre cliente y servidor (fuente unica de verdad de la API).",
   "license": "CC-BY-NC-4.0",
   "type": "module",

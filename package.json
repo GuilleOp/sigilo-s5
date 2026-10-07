@@ -1,6 +1,6 @@
 {
   "name": "sigilo-s5",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Capa de anonimato verificable para el Sistema de denuncias publicas (S5) de la Plataforma Digital Nacional.",
   "license": "CC-BY-NC-4.0",
