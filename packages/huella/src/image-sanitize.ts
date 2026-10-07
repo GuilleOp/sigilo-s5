@@ -76,8 +76,9 @@ function createCanvas(
  *
  * Seguridad: el lienzo solo contiene píxeles, así que la imagen resultante no conserva EXIF
  * (GPS, dispositivo, fecha), XMP, IPTC, el perfil ICC del original ni miniaturas. El codificador
- * JPEG de Chromium sí agrega su propio perfil sRGB genérico, igual para cualquier imagen, que no
- * identifica a nadie. La rotación EXIF se aplica
+ * JPEG de Chromium (y el de WebKit en Apple) sí agrega su propio perfil sRGB genérico, igual para
+ * cualquier imagen, que no identifica a nadie; `inspectImageMetadata` con
+ * `allowGenericSrgbProfile` lo acepta y rechaza cualquier otro. La rotación EXIF se aplica
  * antes de descartarla (`imageOrientation: 'from-image'`) para que la foto no quede girada.
  * Lanza un error en español si el navegador no tiene las capacidades o la imagen no se lee.
  */

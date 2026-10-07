@@ -14,3 +14,4 @@ export * from './identity.ts';
 export * from './mailbox.ts';
 export * from './signed-receipt.ts';
 export * from './ledger.ts';
+export * from './pow.ts';

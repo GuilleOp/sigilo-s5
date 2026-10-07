@@ -47,7 +47,11 @@ export default defineConfig({
         SIGILO_ALLOWED_ORIGIN: '',
         // Reloj de solo pruebas: la bitácora y los datos abiertos publican solo días y meses
         // anteriores, así que las pruebas adelantan el reloj del servidor (ver e2e/support/clock.ts).
+        // El servidor solo lo acepta en un entorno de pruebas declarado (SIGILO_E2E=1).
+        SIGILO_E2E: '1',
         SIGILO_TEST_CLOCK_FILE: clockFilePath(workspace),
+        // Dificultad baja pero real: la web la resuelve en su Web Worker en cada envío.
+        SIGILO_POW_BITS: '8',
       },
     },
     {

@@ -12,13 +12,18 @@ export type Row = Record<string, SQLOutputValue>;
 export function openDatabase(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec('PRAGMA foreign_keys = ON;');
+  // Otro proceso (por ejemplo, el anclaje) puede tener la base abierta un momento.
+  db.exec('PRAGMA busy_timeout = 5000;');
   if (path !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   migrate(db);
   return db;
 }
 
-/** Aplica, cada una en su transacción, las migraciones que aún no constan en la base. */
-export function migrate(db: DatabaseSync): void {
+/**
+ * Aplica, cada una en su transacción, las migraciones que aún no constan en la base, hasta
+ * `upToVersion` (por omisión, todas). Lanza el error de la comprobación previa si alguna falla.
+ */
+export function migrate(db: DatabaseSync, upToVersion = Number.MAX_SAFE_INTEGER): void {
   db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
   const applied = new Set(
     db
@@ -27,8 +32,9 @@ export function migrate(db: DatabaseSync): void {
       .map((row) => readInteger(row, 'version')),
   );
   for (const migration of MIGRATIONS) {
-    if (applied.has(migration.version)) continue;
+    if (applied.has(migration.version) || migration.version > upToVersion) continue;
     withTransaction(db, () => {
+      migration.precheck?.(db);
       db.exec(migration.sql);
       db.prepare('INSERT INTO schema_migrations (version) VALUES (?)').run(migration.version);
     });
@@ -64,6 +70,17 @@ export function readOptionalText(row: Row, column: string): string | null {
   if (value === null || value === undefined) return null;
   if (typeof value !== 'string') throw new Error(`Columna ${column} no es texto.`);
   return value;
+}
+
+/** Versión del esquema aplicada (0 si la base no tiene migraciones). */
+export function schemaVersion(db: DatabaseSync): number {
+  try {
+    const row = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get();
+    const value = row?.version;
+    return typeof value === 'number' || typeof value === 'bigint' ? Number(value) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 /** Lee una columna entera; lanza error si no lo es. */

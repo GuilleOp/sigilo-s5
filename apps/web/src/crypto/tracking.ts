@@ -1,7 +1,9 @@
 // Seguimiento: derivación de llaves desde el recibo, comprobante, evento de la bitácora y buzón.
 import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import type {
+  IdentityAccessEntry,
   LedgerPage,
+  SignedLedgerHead,
   MailboxMessage,
   ReporterMessageRequest,
   TrackingCredentials,
@@ -13,6 +15,7 @@ import {
   nextMailboxSequence,
   openMailboxMessage,
   phraseToEntropy,
+  reconcileIdentityOpenings,
   sealMailboxMessage,
   toBase64Url,
   verifyReceipt,
@@ -20,6 +23,7 @@ import {
 } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
+import { downloadAndVerifyLedger } from './ledger-verification.ts';
 
 /** Sesión de seguimiento en memoria: folio y llaves derivadas del recibo. */
 export interface TrackingSession {
@@ -40,50 +44,115 @@ export function startTrackingSession(folio: string, words: readonly string[]): T
   return { folio, keys, credentials: { folio, authKey: toBase64Url(keys.authKey) } };
 }
 
+/**
+ * Estado del evento de recepción que entrega el seguimiento: corresponde al comprobante, todavía
+ * no se publica (el día no ha cerrado) o no corresponde.
+ */
+export type ReceivedEventStatus = 'valid' | 'pending' | 'invalid';
+
 /** Resultado de comprobar el comprobante y su evento en la bitácora. */
 export interface TrackingReceiptCheck {
-  /** El comprobante es de este folio y lo firmó la llave fijada del servidor. */
+  /** El comprobante es de este folio, es coherente y lo firmó la llave fijada del servidor. */
   isReceiptValid: boolean;
-  /** El evento `complaint.received` corresponde al comprobante (seq, fecha y digestos). */
-  isEventValid: boolean;
+  /** Estado del evento `complaint.received` (fecha, digestos y hash recalculado). */
+  event: ReceivedEventStatus;
 }
 
-/** Comprueba el comprobante firmado y que el evento de recepción corresponda a él. */
+/** Comprueba el comprobante firmado y que el evento de recepción, si ya se publicó, corresponda. */
 export function verifyTrackingReceipt(
   view: TrackingView,
   pinned: PinnedKeys,
 ): TrackingReceiptCheck {
   const isReceiptValid =
     view.receipt.folio === view.folio && verifyReceipt(view.receipt, pinned.serverSigningPublicKey);
+  if (!isReceiptValid) return { isReceiptValid, event: 'invalid' };
+  if (view.receivedEvent === undefined) return { isReceiptValid, event: 'pending' };
   return {
     isReceiptValid,
-    isEventValid: isReceiptValid && verifyReceiptEvent(view.receivedEvent, view.receipt),
+    event: verifyReceiptEvent(view.receivedEvent, view.receipt) ? 'valid' : 'invalid',
   };
 }
 
 /**
- * Estado del evento de recepción en la bitácora pública: publicado e idéntico, todavía no
- * publicado (se publica al día siguiente) o distinto del que entregó el seguimiento.
+ * Estado del evento de recepción en la bitácora pública: publicado e idéntico, todavía pendiente
+ * de publicar (se publica al cerrar el día) o distinto del que entregó el seguimiento.
  */
 export type PublicationStatus = 'published' | 'pending' | 'mismatch';
 
 /**
+ * Indica si, según la cabeza pública, el día `day` ya se publicó: cada día se encadena completo al
+ * cerrar, así que todo evento con fecha anterior o igual a la de la cabeza ya debe estar.
+ */
+export function isDayPublished(head: SignedLedgerHead, day: string): boolean {
+  return head.hash !== LEDGER_GENESIS_HASH && day <= head.at;
+}
+
+/**
  * Busca el evento de recepción en la bitácora pública y lo compara con `view.receivedEvent`.
- * Seguridad: una página vacía es normal el mismo día; pero si la cabeza pública ya pasó de esa
- * secuencia y el evento no aparece, el servidor está mostrando algo distinto a cada quien.
+ * Seguridad: si el seguimiento dice que sigue pendiente pero la cabeza pública ya publicó su día,
+ * o si la bitácora pública muestra otro evento, el servidor está mostrando algo distinto a cada
+ * quien.
  */
 export async function checkPublishedEvent(
   view: TrackingView,
   fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
 ): Promise<PublicationStatus> {
-  const seq = view.receipt.ledgerSeq;
-  const page = await fetchPage(seq, 1);
-  const published = page.events[0];
-  if (published === undefined) {
-    const isPastHead = page.head.hash !== LEDGER_GENESIS_HASH && page.head.seq >= seq;
-    return isPastHead ? 'mismatch' : 'pending';
+  const received = view.receivedEvent;
+  if (received === undefined) {
+    const { head } = await fetchPage(0, 1);
+    return isDayPublished(head, view.receipt.receivedOn) ? 'mismatch' : 'pending';
   }
-  return canonicalize(published) === canonicalize(view.receivedEvent) ? 'published' : 'mismatch';
+  const page = await fetchPage(received.seq, 1);
+  const published = page.events[0];
+  if (published === undefined) return 'mismatch';
+  return canonicalize(published) === canonicalize(received) ? 'published' : 'mismatch';
+}
+
+/**
+ * Resultado de contrastar las aperturas de identidad del seguimiento con la bitácora pública:
+ * `consistent` si todo coincide, `hidden` si hay aperturas públicas con la etiqueta del recibo
+ * que el seguimiento no muestra, `unpublished` si una apertura de un día ya publicado no aparece,
+ * y `unknown` si la bitácora no se pudo verificar.
+ */
+export type IdentityOpeningsCheck =
+  | { status: 'consistent'; publishedOpeningIds: ReadonlySet<string> }
+  | { status: 'hidden'; hiddenCount: number }
+  | { status: 'unpublished'; unpublished: readonly IdentityAccessEntry[] }
+  | { status: 'unknown' };
+
+/**
+ * Descarga y verifica toda la bitácora pública con la llave fijada y busca, sin importar el folio,
+ * las aperturas con la etiqueta del recibo (`receiptTag`), para contrastarlas con
+ * `view.identityAccess`.
+ * Seguridad: el servidor podría registrar una apertura con otro folio u ocultarla en el
+ * seguimiento; la etiqueta depende del recibo, que solo conoce la persona denunciante.
+ */
+export async function checkIdentityOpenings(
+  view: TrackingView,
+  session: TrackingSession,
+  pinned: PinnedKeys,
+  fetchHead: () => Promise<SignedLedgerHead>,
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
+): Promise<IdentityOpeningsCheck> {
+  const ledger = await downloadAndVerifyLedger(fetchHead, fetchPage, pinned.serverSigningPublicKey);
+  if (ledger.status !== 'valid') return { status: 'unknown' };
+  const isGenesis = ledger.head.hash === LEDGER_GENESIS_HASH;
+  const result = reconcileIdentityOpenings(ledger.events, view.identityAccess, {
+    folio: view.folio,
+    authVerifier: session.keys.authVerifier,
+    publishedThrough: isGenesis ? null : ledger.head.at,
+  });
+  if (result.unlisted.length > 0) return { status: 'hidden', hiddenCount: result.unlisted.length };
+  if (result.unpublished.length > 0) {
+    return { status: 'unpublished', unpublished: result.unpublished };
+  }
+  // Sin anomalías, toda apertura de un día ya publicado está en la bitácora pública.
+  const publishedOpeningIds = new Set(
+    view.identityAccess
+      .filter((entry) => isDayPublished(ledger.head, entry.on))
+      .map((entry) => entry.openingId),
+  );
+  return { status: 'consistent', publishedOpeningIds };
 }
 
 /** Mensaje del buzón ya procesado para mostrarse. */

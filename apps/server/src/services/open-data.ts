@@ -1,6 +1,9 @@
-// Datos abiertos: CSV agregado de meses completos, con supresión de celdas pequeñas y conteos
-// redondeados.
-import type { OpenDataCell } from '../db/complaints-repository.ts';
+// Datos abiertos: instantánea congelada de cada mes completo y CSV con supresión de celdas pequeñas
+// y conteos redondeados.
+import type { DatabaseSync } from 'node:sqlite';
+import type { ComplaintsRepository, OpenDataCell } from '../db/complaints-repository.ts';
+import { withTransaction } from '../db/database.ts';
+import type { OpenDataRepository } from '../db/open-data-repository.ts';
 
 /** Encabezados del CSV, en español. */
 export const OPEN_DATA_HEADERS = ['entidad', 'conducta', 'mes_recepcion', 'estatus', 'denuncias'];
@@ -41,26 +44,63 @@ export function currentMonth(date: Date): string {
 
 /**
  * Construye el CSV con una fila por celda cuyo conteo real es al menos `minCell`, con el conteo
- * redondeado. Las celdas deben ser de meses ya completos.
- * Seguridad: las celdas pequeñas se omiten para impedir reidentificar casos aislados, y el
- * redondeo impide deducir una denuncia comparando dos versiones del archivo o restando la fila
- * final, que suma (también redondeado) lo suprimido y tiene tantas columnas como el encabezado.
+ * redondeado, y al final la fila de suprimidas. Las celdas deben ser de meses ya congelados.
+ * Seguridad: las celdas pequeñas se omiten para impedir reidentificar casos aislados. Lo suprimido
+ * se redondea por mes y después se suma, así cada mes aporta siempre lo mismo y comparar dos
+ * versiones del archivo no revela nada de los meses ya publicados. La fila final tiene tantas
+ * columnas como el encabezado.
  */
 export function buildOpenDataCsv(cells: readonly OpenDataCell[], policy: OpenDataPolicy): string {
   const lines = [OPEN_DATA_HEADERS.join(',')];
-  let suppressed = 0;
+  const suppressedByMonth = new Map<string, number>();
   for (const cell of cells) {
     if (cell.count < policy.minCell) {
-      suppressed += cell.count;
+      suppressedByMonth.set(cell.month, (suppressedByMonth.get(cell.month) ?? 0) + cell.count);
       continue;
     }
     const count = String(roundToMultiple(cell.count, policy.rounding));
     const fields = [cell.stateCode, cell.offenseCode, cell.month, cell.status, count];
     lines.push(fields.map(escapeCsvField).join(','));
   }
+  let suppressed = 0;
+  for (const count of suppressedByMonth.values()) {
+    suppressed += roundToMultiple(count, policy.rounding);
+  }
   const suppressedRow = OPEN_DATA_HEADERS.map(() => '');
   suppressedRow[0] = SUPPRESSED_ROW_LABEL;
-  suppressedRow[suppressedRow.length - 1] = String(roundToMultiple(suppressed, policy.rounding));
+  suppressedRow[suppressedRow.length - 1] = String(suppressed);
   lines.push(suppressedRow.join(','));
   return `${lines.join('\r\n')}\r\n`;
+}
+
+/** Dependencias de la congelación de meses. */
+export interface OpenDataFreezeDeps {
+  db: DatabaseSync;
+  complaints: ComplaintsRepository;
+  openData: OpenDataRepository;
+  now: () => Date;
+}
+
+/**
+ * Congela, en una transacción, cada mes de recepción ya completo que todavía no tenga
+ * instantánea, con las celdas reales de ese momento. Devuelve los meses congelados.
+ * Seguridad: un mes se calcula una sola vez (al cerrarse, por la tarea programada o en la primera
+ * consulta). Los cambios de estatus posteriores ya no mueven conteos entre sus celdas, que de otro
+ * modo permitirían seguir a una denuncia concreta restando versiones del archivo.
+ */
+export function freezeClosedMonths(deps: OpenDataFreezeDeps): string[] {
+  const month = currentMonth(deps.now());
+  const frozen = new Set(deps.openData.listMonths());
+  const missing = deps.complaints.listMonthsBefore(month).filter((item) => !frozen.has(item));
+  if (missing.length === 0) return [];
+  return withTransaction(deps.db, () => {
+    const already = new Set(deps.openData.listMonths());
+    const added: string[] = [];
+    for (const item of missing) {
+      if (already.has(item)) continue;
+      deps.openData.insertMonth(item, deps.complaints.countCellsOfMonth(item));
+      added.push(item);
+    }
+    return added;
+  });
 }

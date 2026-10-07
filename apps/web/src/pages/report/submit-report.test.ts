@@ -1,4 +1,5 @@
-// Pruebas del envío: bloqueo por llaves sustituidas, reintentos sin volver a subir pruebas,
+// Pruebas del envío: bloqueo por llaves sustituidas, prueba de trabajo, reintentos sin volver a
+// subir pruebas (salvo si el servidor las rechaza), descriptores comprobados contra la copia local,
 // identidad ligada al contenido y fallo cerrado ante pruebas sin verificar.
 import { describe, expect, it, vi } from 'vitest';
 import type {
@@ -7,15 +8,28 @@ import type {
   SubmitComplaintRequest,
   SubmitComplaintResponse,
 } from '@sigilo/contracts';
-import { computeSubmissionDigest, signReceipt } from '@sigilo/core';
+import {
+  computeSubmissionDigest,
+  isPowSolution,
+  parsePowHeader,
+  receivedPayloadDigest,
+  signReceipt,
+} from '@sigilo/core';
+import { digestBlob } from '@sigilo/huella';
 import { KeyMismatchError } from '../../crypto/key-pinning.ts';
+import { inlinePowSolver } from '../../crypto/proof-of-work.ts';
 import { createTestDeployment } from '../../crypto/test-keys.ts';
 import type { TestDeployment } from '../../crypto/test-keys.ts';
 import type { SigiloApi } from '../../services/api.ts';
 import { ApiRequestError } from '../../services/api-client.ts';
 import { emptyDraft } from '../../state/report-draft.ts';
 import type { EvidenceItem, ReportDraft } from '../../state/report-draft.ts';
-import { ReceiptVerificationError, SubmissionBlockedError, submitReport } from './submit-report.ts';
+import {
+  EvidenceMismatchError,
+  ReceiptVerificationError,
+  SubmissionBlockedError,
+  submitReport,
+} from './submit-report.ts';
 import type { UploadCache } from './submit-report.ts';
 
 function cleanItem(id: string, isVerified = true): EvidenceItem {
@@ -49,31 +63,47 @@ function filledDraft(mode: 'anonymous' | 'sealed' = 'anonymous'): ReportDraft {
   return draft;
 }
 
-/** API falsa: firma el comprobante con la llave sintética del servidor. */
+const POW_BITS = 4;
+
+/**
+ * API falsa: emite retos de prueba de trabajo, devuelve descriptores fieles a la copia subida y
+ * firma el comprobante con la llave sintética del servidor.
+ */
 function fakeApi(deployment: TestDeployment, served: PublicKeySet = deployment.pinned.set) {
   let uploads = 0;
+  let challenges = 0;
   const submitted: SubmitComplaintRequest[] = [];
+  const proofs: string[] = [];
   const api = {
     getKeys: vi.fn(async () => served),
-    uploadEvidence: vi.fn(async (blob: Blob): Promise<EvidenceDescriptor> => {
-      uploads += 1;
-      return {
-        evidenceId: String(uploads).padStart(32, '0'),
-        mediaType: 'image/jpeg',
-        sha256: 'c'.repeat(64),
-        sizeBytes: blob.size,
-      };
+    getPowChallenge: vi.fn(async (purpose: string) => {
+      challenges += 1;
+      return { token: `reto-${purpose}-${challenges}.firma`, bits: POW_BITS };
     }),
-    submitComplaint: vi.fn(async (request: SubmitComplaintRequest) => {
+    uploadEvidence: vi.fn(
+      async (blob: Blob, mediaType: string, proof: string): Promise<EvidenceDescriptor> => {
+        proofs.push(proof);
+        uploads += 1;
+        return {
+          evidenceId: String(uploads).padStart(32, '0'),
+          mediaType: mediaType === 'image/png' ? 'image/png' : 'image/jpeg',
+          sha256: await digestBlob(blob),
+          sizeBytes: blob.size,
+        };
+      },
+    ),
+    submitComplaint: vi.fn(async (request: SubmitComplaintRequest, proof: string) => {
+      proofs.push(proof);
       submitted.push(request);
+      const submissionDigest = computeSubmissionDigest(request);
       const response: SubmitComplaintResponse = {
         folio: 'ABCD-EFGH-JKMN',
         receipt: signReceipt(
           {
             folio: 'ABCD-EFGH-JKMN',
-            submissionDigest: computeSubmissionDigest(request),
+            submissionDigest,
             receivedOn: '2026-10-07',
-            ledgerSeq: 3,
+            payloadDigest: receivedPayloadDigest('ABCD-EFGH-JKMN', submissionDigest),
             serverKeyId: deployment.pinned.set.server.keyId,
           },
           deployment.server.privateKey,
@@ -82,7 +112,7 @@ function fakeApi(deployment: TestDeployment, served: PublicKeySet = deployment.p
       return response;
     }),
   };
-  return { api, submitted, sigilo: api as unknown as SigiloApi };
+  return { api, submitted, proofs, sigilo: api as unknown as SigiloApi };
 }
 
 const noProgress = (): void => undefined;
@@ -98,6 +128,7 @@ describe('submitReport', () => {
     await expect(
       submitReport(filledDraft('sealed'), sigilo, noProgress, {
         pinned: deployment.pinned,
+        solver: inlinePowSolver,
         uploads: new WeakMap(),
       }),
     ).rejects.toBeInstanceOf(KeyMismatchError);
@@ -111,7 +142,7 @@ describe('submitReport', () => {
     api.submitComplaint.mockRejectedValueOnce(new ApiRequestError('network', 0));
     const draft = filledDraft();
     const uploads: UploadCache = new WeakMap();
-    const options = { pinned: deployment.pinned, uploads };
+    const options = { pinned: deployment.pinned, solver: inlinePowSolver, uploads };
 
     await expect(submitReport(draft, sigilo, noProgress, options)).rejects.toMatchObject({
       code: 'network',
@@ -127,11 +158,86 @@ describe('submitReport', () => {
     ]);
   });
 
+  it('resuelve una prueba de trabajo distinta para cada subida y para el envío', async () => {
+    const deployment = createTestDeployment();
+    const { api, proofs, sigilo } = fakeApi(deployment);
+    const progress: string[] = [];
+    await submitReport(filledDraft(), sigilo, (message) => progress.push(message), {
+      pinned: deployment.pinned,
+      solver: inlinePowSolver,
+      uploads: new WeakMap(),
+    });
+    expect(api.getPowChallenge.mock.calls.map(([purpose]) => purpose)).toEqual([
+      'evidence',
+      'evidence',
+      'complaint',
+    ]);
+    expect(new Set(proofs).size).toBe(3);
+    for (const proof of proofs) {
+      const parsed = parsePowHeader(proof);
+      expect(parsed !== null && isPowSolution(parsed.token, parsed.counter, POW_BITS)).toBe(true);
+    }
+    expect(progress).toContain(
+      'Protegiendo tu envío contra envíos automáticos. Puede tardar unos segundos.',
+    );
+  });
+
+  it('aborta si el descriptor devuelto no corresponde a la copia limpia', async () => {
+    for (const forge of [
+      (descriptor: EvidenceDescriptor) => ({ ...descriptor, sha256: 'f'.repeat(64) }),
+      (descriptor: EvidenceDescriptor) => ({ ...descriptor, sizeBytes: descriptor.sizeBytes + 1 }),
+      (descriptor: EvidenceDescriptor): EvidenceDescriptor => ({
+        ...descriptor,
+        mediaType: 'image/png',
+      }),
+    ]) {
+      const deployment = createTestDeployment();
+      const { api, sigilo } = fakeApi(deployment);
+      const honest = api.uploadEvidence.getMockImplementation();
+      api.uploadEvidence.mockImplementationOnce(async (blob, mediaType, proof) => {
+        if (honest === undefined) throw new Error('Falta la implementación.');
+        return forge(await honest(blob, mediaType, proof));
+      });
+      const uploads: UploadCache = new WeakMap();
+      const draft = filledDraft();
+      await expect(
+        submitReport(draft, sigilo, noProgress, {
+          pinned: deployment.pinned,
+          solver: inlinePowSolver,
+          uploads,
+        }),
+      ).rejects.toBeInstanceOf(EvidenceMismatchError);
+      expect(api.submitComplaint).not.toHaveBeenCalled();
+      // La prueba alterada no queda en la caché de reintentos.
+      expect(uploads.has(draft.evidence[0]?.clean[0]?.blob ?? new Blob())).toBe(false);
+    }
+  });
+
+  it('vacía la caché de reintentos si el servidor rechaza los descriptores', async () => {
+    for (const code of ['bad_request', 'not_found'] as const) {
+      const deployment = createTestDeployment();
+      const { api, sigilo } = fakeApi(deployment);
+      api.submitComplaint.mockRejectedValueOnce(new ApiRequestError(code, 400));
+      const draft = filledDraft();
+      const options = {
+        pinned: deployment.pinned,
+        solver: inlinePowSolver,
+        uploads: new WeakMap() as UploadCache,
+      };
+      await expect(submitReport(draft, sigilo, noProgress, options)).rejects.toMatchObject({
+        code,
+      });
+      await submitReport(draft, sigilo, noProgress, options);
+      expect(api.uploadEvidence).toHaveBeenCalledTimes(4);
+    }
+  });
+
   it('envía los hechos sin caracteres invisibles y verifica el comprobante', async () => {
     const deployment = createTestDeployment();
     const { submitted, sigilo } = fakeApi(deployment);
     const result = await submitReport(filledDraft('sealed'), sigilo, noProgress, {
       pinned: deployment.pinned,
+      solver: inlinePowSolver,
       uploads: new WeakMap(),
     });
     expect(result.words).toHaveLength(8);
@@ -148,6 +254,7 @@ describe('submitReport', () => {
     await expect(
       submitReport(filledDraft(), sigilo, noProgress, {
         pinned: deployment.pinned,
+        solver: inlinePowSolver,
         uploads: new WeakMap(),
       }),
     ).rejects.toBeInstanceOf(ReceiptVerificationError);
@@ -159,7 +266,10 @@ describe('submitReport', () => {
     const draft = filledDraft();
     draft.evidence = [cleanItem('a'), cleanItem('b', false)];
     await expect(
-      submitReport(draft, sigilo, noProgress, { pinned: deployment.pinned }),
+      submitReport(draft, sigilo, noProgress, {
+        pinned: deployment.pinned,
+        solver: inlinePowSolver,
+      }),
     ).rejects.toBeInstanceOf(SubmissionBlockedError);
     expect(api.getKeys).not.toHaveBeenCalled();
     expect(api.uploadEvidence).not.toHaveBeenCalled();
@@ -171,7 +281,10 @@ describe('submitReport', () => {
     const draft = filledDraft('sealed');
     draft.identity.witnesses = Array.from({ length: 10 }, () => 'á'.repeat(500)).join('\n');
     await expect(
-      submitReport(draft, sigilo, noProgress, { pinned: deployment.pinned }),
+      submitReport(draft, sigilo, noProgress, {
+        pinned: deployment.pinned,
+        solver: inlinePowSolver,
+      }),
     ).rejects.toBeInstanceOf(SubmissionBlockedError);
     expect(api.uploadEvidence).not.toHaveBeenCalled();
     expect(api.submitComplaint).not.toHaveBeenCalled();

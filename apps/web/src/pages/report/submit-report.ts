@@ -1,9 +1,13 @@
-// Envío de la denuncia: llaves fijadas, subida de pruebas limpias, recibo, sellado y comprobante.
+// Envío de la denuncia: llaves fijadas, prueba de trabajo, subida de pruebas limpias comprobadas,
+// recibo, sellado y comprobante.
 import { IDENTITY_PADDED_SIZE } from '@sigilo/core';
-import type { EvidenceDescriptor } from '@sigilo/contracts';
+import type { EvidenceDescriptor, EvidenceMediaType } from '@sigilo/contracts';
+import { digestBlob } from '@sigilo/huella';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import type { PinnedKeys } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch } from '../../crypto/key-pinning.ts';
+import { obtainProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
+import type { PowSolver } from '../../crypto/proof-of-work.ts';
 import {
   buildIdentityBlock,
   buildSubmitRequest,
@@ -14,6 +18,7 @@ import {
   verifySubmission,
 } from '../../crypto/submission.ts';
 import type { SigiloApi } from '../../services/api.ts';
+import { ApiRequestError } from '../../services/api-client.ts';
 import type { ReportDraft } from '../../state/report-draft.ts';
 import { identityInputOf, toComplaintFacts } from '../../state/report-validation.ts';
 
@@ -45,13 +50,59 @@ export class SubmissionBlockedError extends Error {
   }
 }
 
+/**
+ * Error cuando el servidor devuelve un descriptor que no corresponde a la copia limpia enviada:
+ * otro digesto, tamaño o tipo. El mensaje es para mostrarse.
+ */
+export class EvidenceMismatchError extends Error {
+  constructor() {
+    super(
+      'El sistema no guardó una de tus pruebas tal como la enviamos. Por seguridad nos detuvimos; inténtalo de nuevo.',
+    );
+    this.name = 'EvidenceMismatchError';
+  }
+}
+
 /** Descriptores de las pruebas ya subidas, por copia limpia, para no volver a subirlas. */
 export type UploadCache = WeakMap<Blob, EvidenceDescriptor>;
 
-/** Opciones del envío; por omisión, las llaves fijadas del bundle y la caché del módulo. */
+/**
+ * Opciones del envío; por omisión, las llaves fijadas del bundle, la caché del módulo y la prueba
+ * de trabajo en un Web Worker.
+ */
 export interface SubmitOptions {
   pinned?: PinnedKeys;
   uploads?: UploadCache;
+  solver?: PowSolver;
+}
+
+function mediaTypeOf(blob: Blob): EvidenceMediaType {
+  return blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
+}
+
+/**
+ * Comprueba que el descriptor devuelto describa exactamente la copia limpia que se subió.
+ * Seguridad: el digesto del descriptor entra en el contenido firmado de la denuncia; si el
+ * servidor guardara otra imagen (o la cambiara) y se aceptara su descriptor, la autoridad
+ * recibiría una prueba distinta con un comprobante válido.
+ */
+async function assertDescriptorMatches(
+  descriptor: EvidenceDescriptor,
+  blob: Blob,
+  mediaType: EvidenceMediaType,
+): Promise<void> {
+  const isMatch =
+    descriptor.mediaType === mediaType &&
+    descriptor.sizeBytes === blob.size &&
+    descriptor.sha256 === (await digestBlob(blob));
+  if (!isMatch) throw new EvidenceMismatchError();
+}
+
+/** Indica si el rechazo del envío invalida los descriptores ya subidos (pruebas inexistentes). */
+function invalidatesUploads(error: unknown): boolean {
+  return (
+    error instanceof ApiRequestError && (error.code === 'bad_request' || error.code === 'not_found')
+  );
 }
 
 /**
@@ -64,7 +115,9 @@ const DEFAULT_UPLOADS: UploadCache = new WeakMap();
  * Ejecuta el envío completo e informa cada etapa con `onProgress`.
  * Seguridad: lo primero es comparar las llaves publicadas con las fijadas; si difieren no se
  * sube ni se cifra nada. El cifrado usa siempre las llaves fijadas. Solo se suben copias limpias
- * ya verificadas, y en un reintento se reutilizan los descriptores de las que ya se subieron.
+ * ya verificadas, cada descriptor devuelto se compara con la copia local, y en un reintento se
+ * reutilizan los descriptores de las que ya se subieron (salvo que el servidor los haya rechazado).
+ * Lanza `EvidenceMismatchError` si un descriptor no corresponde a la copia enviada.
  */
 export async function submitReport(
   draft: ReportDraft,
@@ -74,6 +127,7 @@ export async function submitReport(
 ): Promise<SubmittedReport> {
   const pinned = options.pinned ?? PINNED_KEYS;
   const uploads = options.uploads ?? DEFAULT_UPLOADS;
+  const solver = options.solver ?? workerPowSolver;
   const facts = toComplaintFacts(draft);
   if (facts === null || draft.mode === null) {
     throw new SubmissionBlockedError('Faltan datos de la denuncia. Revisa los pasos anteriores.');
@@ -111,9 +165,11 @@ export async function submitReport(
       evidence.push(known);
       continue;
     }
+    const proof = await obtainProof(api, 'evidence', solver, onProgress);
     onProgress(`Enviando tus pruebas limpias: ${index + 1} de ${images.length}.`);
-    const mediaType = image.blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    const descriptor = await api.uploadEvidence(image.blob, mediaType);
+    const mediaType = mediaTypeOf(image.blob);
+    const descriptor = await api.uploadEvidence(image.blob, mediaType, proof);
+    await assertDescriptorMatches(descriptor, image.blob, mediaType);
     uploads.set(image.blob, descriptor);
     evidence.push(descriptor);
   }
@@ -136,8 +192,17 @@ export async function submitReport(
 
   const request = buildSubmitRequest(input, receipt.keys, sealedIdentity);
 
+  const proof = await obtainProof(api, 'complaint', solver, onProgress);
   onProgress('Enviando tu denuncia.');
-  const response = await api.submitComplaint(request);
+  let response;
+  try {
+    response = await api.submitComplaint(request, proof);
+  } catch (error) {
+    // Una prueba ya asociada, purgada o inexistente hace fallar el envío: en el reintento se
+    // vuelven a subir todas en lugar de repetir los mismos descriptores.
+    if (invalidatesUploads(error)) for (const image of images) uploads.delete(image.blob);
+    throw error;
+  }
 
   onProgress('Comprobando que tu denuncia llegó completa.');
   if (!verifySubmission(request, response, pinned)) {

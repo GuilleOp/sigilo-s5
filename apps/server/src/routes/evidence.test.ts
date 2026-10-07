@@ -1,17 +1,20 @@
 // Pruebas de subida de pruebas: tipo real por bytes mágicos, tamaño máximo, descriptor devuelto,
-// cuota de subidas y purga de pendientes vencidas.
+// cuotas de subidas y de almacenamiento, purga de pendientes vencidas y retención sin seguimiento.
 import { describe, expect, it } from 'vitest';
 import {
   ApiErrorSchema,
   EvidenceUploadResponseSchema,
   MAX_EVIDENCE_BYTES,
+  ROUTES,
 } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
 import { sha256Hex } from '@sigilo/core';
+import { createComplaintsRepository } from '../db/complaints-repository.ts';
 import { createEvidenceRepository } from '../db/evidence-repository.ts';
 import {
   EVIDENCE_PURGE_INTERVAL_MS,
   purgeStalePendingEvidence,
+  purgeUntrackedEvidence,
   startEvidencePurge,
 } from '../services/evidence-service.ts';
 import type { Scheduler } from '../services/evidence-service.ts';
@@ -19,9 +22,13 @@ import {
   buildComplaintRequest,
   createReporter,
   createTestServer,
+  credentialsFor,
+  getAsAuthority,
+  postJson,
   sampleJpeg,
   samplePng,
   submitComplaint,
+  TEST_TOKEN,
   uploadEvidence,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
@@ -86,6 +93,90 @@ describe('cuota de subidas', () => {
     expect(statuses).toEqual([201, 201, 429]);
     server.setNow(new Date('2026-10-20T17:00:00Z'));
     expect((await uploadEvidence(server.app, samplePng(), 'image/png')).status).toBe(201);
+  });
+});
+
+describe('cuota de almacenamiento', () => {
+  it('responde 507 si la prueba excedería la cuota total y libera al purgar', async () => {
+    const server = createTestServer({ evidenceQuotaBytes: 200 });
+    expect((await uploadEvidence(server.app, samplePng(120), 'image/png')).status).toBe(201);
+    const full = await uploadEvidence(server.app, samplePng(120), 'image/png');
+    expect(full.status).toBe(507);
+    expect(ApiErrorSchema.parse(await full.json()).error.code).toBe('storage_full');
+    expect((await uploadEvidence(server.app, samplePng(80), 'image/png')).status).toBe(201);
+  });
+});
+
+describe('retención de pruebas sin seguimiento', () => {
+  async function scenario() {
+    const server = createTestServer();
+    const upload = async () =>
+      EvidenceUploadResponseSchema.parse(
+        await (await uploadEvidence(server.app, samplePng(), 'image/png')).json(),
+      );
+    const tracked = createReporter();
+    const untracked = createReporter();
+    const trackedEvidence = await upload();
+    const untrackedEvidence = await upload();
+    const first = await submitComplaint(
+      server,
+      await buildComplaintRequest(server, {
+        mode: 'anonymous',
+        reporter: tracked,
+        evidence: [trackedEvidence],
+      }),
+    );
+    const second = await submitComplaint(
+      server,
+      await buildComplaintRequest(server, {
+        mode: 'anonymous',
+        reporter: untracked,
+        evidence: [untrackedEvidence],
+      }),
+    );
+    await postJson(server.app, ROUTES.tracking, credentialsFor(first.folio, tracked));
+    return { server, trackedEvidence, untrackedEvidence, folios: [first.folio, second.folio] };
+  }
+
+  function purge(server: TestServer, now: Date, retentionDays: number) {
+    return purgeUntrackedEvidence({
+      complaints: createComplaintsRepository(server.db),
+      evidence: createEvidenceRepository(server.db),
+      evidenceStore: server.evidenceStore,
+      now: () => now,
+      retentionDays,
+    });
+  }
+
+  it('borra solo los archivos de denuncias sin seguimiento ni atención tras el plazo', async () => {
+    const { server, trackedEvidence, untrackedEvidence } = await scenario();
+    const later = new Date('2026-12-01T00:00:00Z');
+    expect(purge(server, later, 0)).toBe(0);
+    expect(purge(server, new Date('2026-10-25T00:00:00Z'), 30)).toBe(0);
+    expect(purge(server, later, 30)).toBe(1);
+    expect(server.evidenceStore.read(untrackedEvidence.evidenceId)).toBeNull();
+    expect(server.evidenceStore.read(trackedEvidence.evidenceId)).not.toBeNull();
+    expect(purge(server, later, 30)).toBe(0);
+    // El descriptor se conserva (para recalcular digestos); el archivo ya no se entrega.
+    const download = await getAsAuthority(
+      server.app,
+      ROUTES.authorityEvidence(untrackedEvidence.evidenceId),
+    );
+    expect(download.status).toBe(404);
+    expect(createEvidenceRepository(server.db).totalStoredBytes()).toBe(trackedEvidence.sizeBytes);
+  });
+
+  it('respeta las denuncias que la autoridad ya atendió', async () => {
+    const { server, untrackedEvidence, folios } = await scenario();
+    const [, untrackedFolio] = folios;
+    await postJson(
+      server.app,
+      ROUTES.authorityStatus(untrackedFolio ?? ''),
+      { status: 'routing' },
+      TEST_TOKEN,
+    );
+    expect(purge(server, new Date('2026-12-01T00:00:00Z'), 30)).toBe(0);
+    expect(server.evidenceStore.read(untrackedEvidence.evidenceId)).not.toBeNull();
   });
 });
 

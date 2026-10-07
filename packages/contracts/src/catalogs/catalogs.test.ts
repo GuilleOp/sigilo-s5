@@ -16,6 +16,7 @@ import {
   isStateCode,
   municipalitiesOf,
   offenseReference,
+  primaryOffenseCode,
 } from './index.ts';
 
 /** Las 31 claves del catálogo anterior: ninguna se pierde al quitar duplicados. */
@@ -90,5 +91,18 @@ describe('conductas', () => {
     expect(offenseReference('CPF-222')).toEqual({ law: 'CPF', article: '222' });
     expect(offenseReference('LGRA-52')).toEqual({ law: 'LGRA', article: '52' });
     expect(offenseReference('LGRA-1')).toBeUndefined();
+  });
+});
+
+describe('primaryOffenseCode', () => {
+  it('lleva cada clave equivalente a su principal y deja igual la principal', () => {
+    expect(primaryOffenseCode('CPF-222')).toBe('LGRA-52');
+    expect(primaryOffenseCode('LGRA-52')).toBe('LGRA-52');
+    expect(primaryOffenseCode('CPF-218')).toBe('CPF-218');
+    expect(primaryOffenseCode('LGRA-1')).toBeUndefined();
+    for (const offense of OFFENSES) {
+      for (const code of offense.equivalentCodes)
+        expect(primaryOffenseCode(code)).toBe(offense.code);
+    }
   });
 });

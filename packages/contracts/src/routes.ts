@@ -3,6 +3,8 @@ export const API_PREFIX = '/api/v1';
 
 export const ROUTES = {
   keys: `${API_PREFIX}/keys`,
+  /** `GET ?purpose=complaint|evidence`: reto de prueba de trabajo de un solo uso. */
+  powChallenge: `${API_PREFIX}/pow/challenge`,
   evidenceUpload: `${API_PREFIX}/evidence`,
   complaints: `${API_PREFIX}/complaints`,
   tracking: `${API_PREFIX}/tracking`,

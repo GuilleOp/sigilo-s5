@@ -3,7 +3,12 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTES, SubmitComplaintResponseSchema } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
-import { computeSubmissionDigest, isFolio, verifyReceipt } from '@sigilo/core';
+import {
+  computeSubmissionDigest,
+  isFolio,
+  receivedPayloadDigest,
+  verifyReceipt,
+} from '@sigilo/core';
 import {
   buildComplaintRequest,
   createReporter,
@@ -37,9 +42,10 @@ describe('POST complaints', () => {
     expect(receipt).toMatchObject({
       folio,
       receivedOn: '2026-10-20',
-      ledgerSeq: 0,
       submissionDigest: computeSubmissionDigest(request),
+      payloadDigest: receivedPayloadDigest(folio, computeSubmissionDigest(request)),
     });
+    expect(receipt).not.toHaveProperty('ledgerSeq');
     expect(verifyReceipt(receipt, server.serverPublicKey)).toBe(true);
   });
 

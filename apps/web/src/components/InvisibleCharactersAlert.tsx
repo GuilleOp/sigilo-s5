@@ -11,14 +11,17 @@ interface InvisibleCharactersAlertProps {
   fieldId: string;
 }
 
-/** Muestra el aviso solo cuando hay caracteres sospechosos. */
+/**
+ * Muestra el aviso solo cuando hay caracteres sospechosos. Las variantes tipográficas (comillas y
+ * rayas automáticas del teclado) no lo disparan; al eliminar, también se normalizan.
+ */
 export function InvisibleCharactersAlert({
   text,
   onChange,
   fieldLabel,
   fieldId,
 }: InvisibleCharactersAlertProps) {
-  const { count } = findInvisibleCharacters(text);
+  const { count } = findInvisibleCharacters(text, { shouldNormalizeTypography: false });
   if (count === 0) return null;
 
   function strip(): void {

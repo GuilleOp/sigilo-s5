@@ -1,6 +1,8 @@
 // Pruebas de los scripts de la raíz en un directorio temporal: generación de llaves, reinicio de la
 // demostración y anclaje de la bitácora desde la línea de comandos.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:net';
+import type { AddressInfo, Server } from 'node:net';
 import {
   existsSync,
   mkdirSync,
@@ -12,10 +14,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { LedgerAnchorSchema, PublicKeySetSchema } from '@sigilo/contracts';
 import { fromBase64Url, toDayDate, verifyLedgerHead } from '@sigilo/core';
 import { parseAuthorityDemoKey, parseKeysFile } from './keys-file.ts';
+import { MISSING_DATABASE_MESSAGE } from './ledger-anchor.ts';
+import { LOCK_FILE } from './server-lock.ts';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const directories: string[] = [];
@@ -26,12 +30,21 @@ function temporaryDir(): string {
   return directory;
 }
 
+/** Puerto libre de este proceso, para que los scripts no choquen con un servidor de desarrollo. */
+let freePort = 0;
+
 function runScript(script: string, env: Record<string, string>, args: string[] = []) {
   return spawnSync(process.execPath, [join(ROOT, 'scripts', script), ...args], {
     cwd: ROOT,
-    env: { ...process.env, ...env },
+    env: { ...process.env, SIGILO_PORT: String(freePort), ...env },
     encoding: 'utf8',
   });
+}
+
+async function listenOnFreePort(): Promise<Server> {
+  const server = createServer();
+  await new Promise<void>((resolvePromise) => server.listen(0, '127.0.0.1', resolvePromise));
+  return server;
 }
 
 function paths(directory: string) {
@@ -55,6 +68,13 @@ function keyEnv(directory: string): Record<string, string> {
 function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
+
+beforeAll(async () => {
+  // Se reserva un puerto y se libera: queda libre para los scripts durante las pruebas.
+  const server = await listenOnFreePort();
+  freePort = (server.address() as AddressInfo).port;
+  await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
+});
 
 afterEach(() => {
   for (const directory of directories.splice(0))
@@ -105,7 +125,7 @@ describe('scripts/generate-keys.ts', () => {
 });
 
 describe('scripts/demo-reset.ts', () => {
-  it('borra la base y las pruebas y conserva las llaves', () => {
+  function prepare(): string {
     const directory = temporaryDir();
     const { dataDir } = paths(directory);
     expect(runScript('generate-keys.ts', keyEnv(directory)).status).toBe(0);
@@ -114,15 +134,59 @@ describe('scripts/demo-reset.ts', () => {
     }
     mkdirSync(join(dataDir, 'evidence'));
     writeFileSync(join(dataDir, 'evidence', 'a'.repeat(32)), 'sintético');
+    return dataDir;
+  }
 
-    const result = runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir });
+  it('borra la base y las pruebas con --yes y conserva las llaves', () => {
+    const dataDir = prepare();
+    const result = runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir }, ['--yes']);
     expect(result.status, result.stderr).toBe(0);
     for (const name of ['sigilo.db', 'sigilo.db-wal', 'sigilo.db-shm', 'evidence']) {
       expect(existsSync(join(dataDir, name)), name).toBe(false);
     }
     expect(existsSync(join(dataDir, 'keys.json'))).toBe(true);
     expect(existsSync(join(dataDir, 'authority-demo-key.json'))).toBe(true);
-    expect(runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir }).stdout).toContain('No había');
+    expect(runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir }, ['--yes']).stdout).toContain(
+      'No había',
+    );
+  });
+
+  it('sin --yes ni marcador no borra nada; con el marcador sí', () => {
+    const dataDir = prepare();
+    const refused = runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir });
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('--yes');
+    expect(existsSync(join(dataDir, 'sigilo.db'))).toBe(true);
+    writeFileSync(join(dataDir, '.sigilo-demo'), '');
+    expect(runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir }).status).toBe(0);
+    expect(existsSync(join(dataDir, 'sigilo.db'))).toBe(false);
+  });
+
+  it('no se ejecuta si el servidor tiene el bloqueo o el puerto está ocupado', async () => {
+    const dataDir = prepare();
+    // Un proceso vivo distinto de este, como si fuera el servidor.
+    const holder = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)']);
+    try {
+      writeFileSync(join(dataDir, LOCK_FILE), `${holder.pid}\n`);
+      const locked = runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir }, ['--yes']);
+      expect(locked.status).toBe(1);
+      expect(locked.stderr).toContain('en marcha');
+    } finally {
+      holder.kill();
+    }
+    rmSync(join(dataDir, LOCK_FILE));
+    const server = await listenOnFreePort();
+    try {
+      const port = String((server.address() as AddressInfo).port);
+      const busy = runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir, SIGILO_PORT: port }, [
+        '--yes',
+      ]);
+      expect(busy.status).toBe(1);
+      expect(busy.stderr).toContain(`puerto ${port}`);
+    } finally {
+      await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
+    }
+    expect(existsSync(join(dataDir, 'sigilo.db'))).toBe(true);
   });
 });
 
@@ -145,6 +209,8 @@ describe('scripts/ledger-anchor.ts', () => {
     );
     expect(migrate.status, migrate.stderr).toBe(0);
 
+    // El directorio de anclajes no existe todavía: el script lo crea.
+    expect(existsSync(anchors)).toBe(false);
     const result = runScript('ledger-anchor.ts', env);
     expect(result.status, result.stderr).toBe(0);
     const anchorPath = join(anchors, `${toDayDate(new Date())}.json`);
@@ -154,5 +220,18 @@ describe('scripts/ledger-anchor.ts', () => {
     const again = runScript('ledger-anchor.ts', env);
     expect(again.status, again.stderr).toBe(0);
     expect(again.stdout).toContain('ya existe');
+  });
+
+  it('da un mensaje claro y sale con error si la base local no existe', () => {
+    const directory = temporaryDir();
+    const { anchors } = paths(directory);
+    expect(runScript('generate-keys.ts', keyEnv(directory)).status).toBe(0);
+    const result = runScript('ledger-anchor.ts', {
+      ...keyEnv(directory),
+      SIGILO_ANCHORS_DIR: anchors,
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(MISSING_DATABASE_MESSAGE);
+    expect(existsSync(anchors)).toBe(false);
   });
 });

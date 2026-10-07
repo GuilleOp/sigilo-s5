@@ -1,5 +1,6 @@
 // Pruebas de detección y eliminación de caracteres invisibles y homoglifos.
 import { describe, expect, it } from 'vitest';
+import { CONFUSABLES, TYPOGRAPHIC_VARIANTS } from './confusables.ts';
 import { findInvisibleCharacters, stripInvisibleCharacters } from './invisible-characters.ts';
 
 const kindsOf = (text: string): string[] =>
@@ -30,24 +31,32 @@ describe('findInvisibleCharacters', () => {
     ]);
   });
 
-  it('detecta letras cirílicas o griegas dentro de palabras latinas', () => {
+  it('detecta homoglifos cirílicos o griegos dentro de palabras latinas', () => {
     // «Secretаría» con «а» cirílica (U+0430) y «οficio» con ómicron griega.
     const report = findInvisibleCharacters('La Secretаría envió el οficio.');
     expect(report.items).toEqual([
-      { index: 9, codePoint: 0x0430, kind: 'mixed_script' },
-      { index: 23, codePoint: 0x03bf, kind: 'mixed_script' },
+      { index: 9, codePoint: 0x0430, kind: 'confusable' },
+      { index: 23, codePoint: 0x03bf, kind: 'confusable' },
     ]);
   });
 
-  it('no confunde palabras completas en otro alfabeto con homoglifos', () => {
-    expect(findInvisibleCharacters('Москва y Αθήνα son ciudades.').count).toBe(0);
+  it('reporta como mezcla las letras de otro alfabeto sin equivalente latino', () => {
+    // «л» (U+043B) no se parece a ninguna letra latina: no se cambia, pero se avisa.
+    expect(findInvisibleCharacters('Secretлría').items).toEqual([
+      { index: 6, codePoint: 0x043b, kind: 'mixed_script' },
+    ]);
+  });
+
+  it('también reporta homoglifos en palabras sin letras latinas', () => {
+    // Decisión: el mapa se aplica a todo token, así que una palabra rusa genuina se reporta.
+    expect(kindsOf('Москва')).toEqual(['confusable', 'confusable', 'confusable', 'confusable']);
   });
 });
 
 describe('stripInvisibleCharacters', () => {
   it('elimina invisibles, conserva saltos de línea y aplica NFKC', () => {
     const marked = 'Of​i­cio‮ 12\n﻿ﬁrma ＡＢＣ\u{E0041}\r\nfin\t.';
-    expect(stripInvisibleCharacters(marked)).toBe('Oficio 12\nfirma ABC\r\nfin\t.');
+    expect(stripInvisibleCharacters(marked)).toBe('Oficio 12\nfirma ABC\nfin\t.');
   });
 
   it('sustituye homoglifos en palabras mixtas', () => {
@@ -128,7 +137,12 @@ describe('espacios no estándar', () => {
   }
 
   it('no reporta el espacio normal, los tabuladores ni los saltos de línea', () => {
-    expect(findInvisibleCharacters('uno dos\ttres\ncuatro\r\ncinco').count).toBe(0);
+    expect(findInvisibleCharacters('uno dos\ttres\ncuatro\ncinco').count).toBe(0);
+  });
+
+  it('reporta el retorno de carro como control y lo convierte en salto de línea', () => {
+    expect(kindsOf('uno\r\ndos\rtres')).toEqual(['control', 'control']);
+    expect(stripInvisibleCharacters('uno\r\ndos\rtres')).toBe('uno\ndos\ntres');
   });
 });
 
@@ -145,8 +159,11 @@ describe('marcas combinantes', () => {
     expect(stripInvisibleCharacters(NFD_TEXT)).toBe(NFD_TEXT);
   });
 
-  it('acepta varios acentos sobre la misma letra', () => {
-    expect(findInvisibleCharacters('e\u0301\u0302').count).toBe(0);
+  it('acepta varios acentos sobre la misma letra si se componen', () => {
+    // e + circunflejo + agudo = «ế» (U+1EBF); en el orden inverso no existe forma compuesta.
+    expect(findInvisibleCharacters('e\u0302\u0301').count).toBe(0);
+    expect(stripInvisibleCharacters('e\u0302\u0301')).toBe('\u1EBF');
+    expect(kindsOf('e\u0301\u0302')).toEqual(['uncomposed_mark']);
   });
 
   it('detecta marcas sueltas al inicio, tras un espacio o tras puntuación', () => {
@@ -164,7 +181,7 @@ describe('marcas combinantes', () => {
 
   it('elimina las marcas sueltas sin tocar las que acompañan a una letra', () => {
     const cleaned = stripInvisibleCharacters('\u0301hola \u0308 acción y nin\u0303o');
-    expect(cleaned).toBe('hola  acción y niño');
+    expect(cleaned).toBe('hola acción y niño');
     expect(findInvisibleCharacters(cleaned).count).toBe(0);
   });
 
@@ -176,5 +193,187 @@ describe('marcas combinantes', () => {
   it('quita la marca suelta que NFKC genera a partir del acento agudo aislado', () => {
     const cleaned = stripInvisibleCharacters('nota\u00B4 final');
     expect(findInvisibleCharacters(cleaned).count).toBe(0);
+  });
+});
+
+// Marcas de «canario» que una segunda revisión encontró sin limpiar. Se escriben con escapes.
+describe('trampa del canario: homoglifos', () => {
+  it('limpia letras cirílicas sueltas que funcionan como palabras de una letra', () => {
+    // «а», «о» y «у» cirílicas (U+0430, U+043E, U+0443) entre nombres latinos.
+    const marked = 'Juan а Pedro о Luis у Ana';
+    expect(findInvisibleCharacters(marked).items).toEqual([
+      { index: 5, codePoint: 0x0430, kind: 'confusable' },
+      { index: 13, codePoint: 0x043e, kind: 'confusable' },
+      { index: 20, codePoint: 0x0443, kind: 'confusable' },
+    ]);
+    const cleaned = stripInvisibleCharacters(marked);
+    expect(cleaned).toBe('Juan a Pedro o Luis y Ana');
+    expect(findInvisibleCharacters(cleaned).count).toBe(0);
+  });
+
+  const HOMOGLYPHS: readonly { codePoint: number; latin: string; name: string }[] = [
+    { codePoint: 0x0585, latin: 'o', name: 'o armenia' },
+    { codePoint: 0x13aa, latin: 'A', name: 'a cheroqui' },
+    { codePoint: 0x0251, latin: 'a', name: 'alfa latina' },
+    { codePoint: 0x0261, latin: 'g', name: 'g de guion IPA' },
+    { codePoint: 0x0131, latin: 'i', name: 'i sin punto' },
+    { codePoint: 0x1d00, latin: 'a', name: 'versalita A' },
+  ];
+
+  for (const { codePoint, latin, name } of HOMOGLYPHS) {
+    const character = String.fromCodePoint(codePoint);
+
+    it(`limpia ${hex(codePoint)} (${name}) dentro de una palabra y como palabra suelta`, () => {
+      expect(kindsOf(`ofi${character}cio`)).toEqual(['confusable']);
+      expect(kindsOf(`y ${character} no`)).toEqual(['confusable']);
+      expect(stripInvisibleCharacters(`ofi${character}cio ${character}`)).toBe(
+        `ofi${latin}cio ${latin}`,
+      );
+    });
+  }
+
+  it('el mapa no cambia letras del español y sus claves son estables bajo NFKC', () => {
+    for (const letter of 'áéíóúüñÁÉÍÓÚÜÑ') expect(CONFUSABLES.has(letter)).toBe(false);
+    for (const [key, latin] of CONFUSABLES) {
+      expect(key.normalize('NFKC')).toBe(key);
+      expect(latin).toMatch(/^[a-zA-ZëïËÏ]$/u);
+    }
+  });
+});
+
+describe('trampa del canario: controles y caracteres no imprimibles', () => {
+  const CASES: readonly { codePoint: number; kind: string }[] = [
+    { codePoint: 0x001f, kind: 'control' },
+    { codePoint: 0x000b, kind: 'control' },
+    { codePoint: 0x000c, kind: 'control' },
+    { codePoint: 0x0000, kind: 'control' },
+    { codePoint: 0x007f, kind: 'control' },
+    { codePoint: 0x0085, kind: 'control' },
+    { codePoint: 0x0090, kind: 'control' },
+    { codePoint: 0xe000, kind: 'private_use' },
+    { codePoint: 0xf8ff, kind: 'private_use' },
+    { codePoint: 0xf0000, kind: 'private_use' },
+    { codePoint: 0x0378, kind: 'unassigned' },
+    { codePoint: 0xffff, kind: 'unassigned' },
+    { codePoint: 0xfdd0, kind: 'unassigned' },
+  ];
+
+  for (const { codePoint, kind } of CASES) {
+    const character = String.fromCodePoint(codePoint);
+
+    it(`detecta y elimina ${hex(codePoint)} como ${kind}`, () => {
+      expect(findInvisibleCharacters(`ofi${character}cio`).items).toEqual([
+        { index: 3, codePoint, kind },
+      ]);
+      const cleaned = stripInvisibleCharacters(`ofi${character}cio`);
+      expect(cleaned).toBe('oficio');
+      expect(findInvisibleCharacters(cleaned).count).toBe(0);
+    });
+  }
+
+  it('elimina sustitutos UTF-16 sueltos', () => {
+    expect(kindsOf('a\uD800b')).toEqual(['unassigned']);
+    expect(stripInvisibleCharacters('a\uD800b\uDC00')).toBe('ab');
+  });
+
+  it('convierte U+2028 y U+2029 en salto de línea', () => {
+    expect(findInvisibleCharacters('uno dos tres').items).toEqual([
+      { index: 3, codePoint: 0x2028, kind: 'line_separator' },
+      { index: 7, codePoint: 0x2029, kind: 'line_separator' },
+    ]);
+    expect(stripInvisibleCharacters('uno dos tres')).toBe('uno\ndos\ntres');
+  });
+});
+
+describe('trampa del canario: marcas combinantes que no se componen', () => {
+  it('detecta y elimina marcas sin forma compuesta después de una letra', () => {
+    expect(findInvisibleCharacters('q̇ueja').items).toEqual([
+      { index: 1, codePoint: 0x0307, kind: 'uncomposed_mark' },
+    ]);
+    expect(kindsOf('oficio̸')).toEqual(['uncomposed_mark']);
+    const cleaned = stripInvisibleCharacters('q̇ueja del oficio̸');
+    expect(cleaned).toBe('queja del oficio');
+    expect(findInvisibleCharacters(cleaned).count).toBe(0);
+  });
+
+  it('una marca que no se compone no impide que la siguiente sí lo haga', () => {
+    // U+0346 no se compone con «a» y bloquearía a U+0301 en NFC; al quitarla queda «á».
+    expect(kindsOf('a͆́')).toEqual(['uncomposed_mark']);
+    expect(stripInvisibleCharacters('a͆́')).toBe('á');
+  });
+});
+
+describe('trampa del canario: canales tipográficos', () => {
+  it('detecta y normaliza dobles espacios y espacios al final de la línea', () => {
+    const marked = 'uno  dos   tres \ncuatro\t\ncinco ';
+    expect(findInvisibleCharacters(marked).items).toEqual([
+      { index: 4, codePoint: 0x20, kind: 'typographic_variant' },
+      { index: 9, codePoint: 0x20, kind: 'typographic_variant' },
+      { index: 10, codePoint: 0x20, kind: 'typographic_variant' },
+      { index: 15, codePoint: 0x20, kind: 'typographic_variant' },
+      { index: 23, codePoint: 0x09, kind: 'typographic_variant' },
+      { index: 30, codePoint: 0x20, kind: 'typographic_variant' },
+    ]);
+    const cleaned = stripInvisibleCharacters(marked);
+    expect(cleaned).toBe('uno dos tres\ncuatro\ncinco');
+    expect(findInvisibleCharacters(cleaned).count).toBe(0);
+  });
+
+  it('un espacio no estándar junto a uno normal también se colapsa', () => {
+    expect(kindsOf('a  b')).toEqual(['nonstandard_space', 'typographic_variant']);
+    expect(stripInvisibleCharacters('a  b')).toBe('a b');
+  });
+
+  it('normaliza guiones variantes y comillas tipográficas', () => {
+    const marked = 'pre‐pago, 5 − 3, 2020–2026, “cita” y ‘otra’';
+    expect(kindsOf(marked)).toEqual(Array(7).fill('typographic_variant'));
+    const cleaned = stripInvisibleCharacters(marked);
+    expect(cleaned).toBe('pre-pago, 5 - 3, 2020-2026, "cita" y \'otra\'');
+    expect(findInvisibleCharacters(cleaned).count).toBe(0);
+  });
+
+  it('cubre el guion sin salto, que NFKC lleva a U+2010', () => {
+    expect(kindsOf('pre‑pago')).toEqual(['typographic_variant']);
+    expect(stripInvisibleCharacters('pre‑pago')).toBe('pre-pago');
+  });
+
+  it('la normalización tipográfica se puede desactivar', () => {
+    const options = { shouldNormalizeTypography: false };
+    const text = 'uno  dos – “tres” ';
+    expect(findInvisibleCharacters(text, options).count).toBe(0);
+    expect(stripInvisibleCharacters(text, options)).toBe(text);
+    // El resto de la limpieza sigue activa.
+    expect(stripInvisibleCharacters('a​а  b', options)).toBe('aa  b');
+  });
+
+  it('las variantes tipográficas no incluyen signos propios del español', () => {
+    for (const sign of '«»¿¡') expect(TYPOGRAPHIC_VARIANTS.has(sign)).toBe(false);
+  });
+});
+
+describe('texto largo en español', () => {
+  const SPANISH_TEXT = [
+    '¿Quién autorizó el pago? ¡Nadie lo sabe! Según el oficio 123/2026, la Secretaría de',
+    'Obras Públicas pagó $1,250,000.00 a una empresa sin experiencia. El señor Muñoz, jefe',
+    'del área, dijo: «no hay ningún problema». La cigüeña del logotipo y el pingüino de la',
+    'campaña costaron más que la obra. ÁRBOL, ÉPOCA, ÍNDICE, ÓRGANO, ÚLTIMO, PINGÜINO, AÑO.',
+    'Las facturas llegaron en junio; el contrato, en julio (fuera de plazo). ¿Por qué?',
+    '\tLa auditoría encontró 3 irregularidades: sobreprecio, obra incompleta y pagos dobles.',
+  ].join('\n');
+
+  it('no tiene falsos positivos ni cambia con la limpieza', () => {
+    expect(findInvisibleCharacters(SPANISH_TEXT)).toEqual({ count: 0, items: [] });
+    expect(stripInvisibleCharacters(SPANISH_TEXT)).toBe(SPANISH_TEXT);
+    expect(stripInvisibleCharacters(SPANISH_TEXT.normalize('NFD'))).toBe(SPANISH_TEXT);
+  });
+
+  it('solo cambia la tipografía cuando el texto trae guiones y comillas tipográficas', () => {
+    const typographic = `${SPANISH_TEXT}\n—Es un “error”, dijo el director—.`;
+    expect(stripInvisibleCharacters(typographic)).toBe(
+      `${SPANISH_TEXT}\n-Es un "error", dijo el director-.`,
+    );
+    expect(stripInvisibleCharacters(typographic, { shouldNormalizeTypography: false })).toBe(
+      typographic,
+    );
   });
 });

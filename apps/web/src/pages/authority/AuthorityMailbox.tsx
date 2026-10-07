@@ -6,7 +6,13 @@ import { Alert } from '../../components/Alert.tsx';
 import { TextAreaField } from '../../components/Field.tsx';
 import { MessageThread } from '../../components/MessageThread.tsx';
 import type { ThreadItem } from '../../components/MessageThread.tsx';
-import { decodeAuthorityThread, sealAuthorityQuestion } from '../../crypto/authority.ts';
+import { PINNED_KEYS } from '../../config/pinned-keys.ts';
+import {
+  decodeAuthorityThread,
+  sealAuthorityQuestion,
+  verifyReporterKeys,
+} from '../../crypto/authority.ts';
+import type { ReporterKeysVerification } from '../../crypto/authority.ts';
 import { mailboxCountText, prepareMailboxText } from '../../lib/mailbox-text.ts';
 import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
@@ -45,6 +51,33 @@ async function sendQuestion(
   }
 }
 
+/** Aviso del estado de las llaves del buzón frente al registro público. */
+function KeysStatus({ status }: { status: ReporterKeysVerification | 'checking' | 'unknown' }) {
+  if (status === 'verified') {
+    return (
+      <p className="field__hint" data-testid="reporter-keys-verified">
+        Las llaves de la persona coinciden con el registro público: los mensajes van a quien hizo la
+        denuncia.
+      </p>
+    );
+  }
+  if (status === 'mismatch') {
+    return (
+      <Alert tone="danger" title="Las llaves no coinciden" testId="reporter-keys-mismatch">
+        <p>
+          Los datos de esta denuncia no coinciden con su anotación en el registro público. El
+          servidor podría haber cambiado las llaves del buzón: no envíes preguntas.
+        </p>
+      </Alert>
+    );
+  }
+  return (
+    <p className="alert alert--warning" data-testid="reporter-keys-unverified">
+      Las llaves de la persona aún no están verificadas contra el registro público.
+    </p>
+  );
+}
+
 /** Hilo y formulario de pregunta. */
 export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxProps) {
   const [items, setItems] = useState<ThreadItem[]>([]);
@@ -55,6 +88,28 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
   const isSendingRef = useRef(false);
   const isMounted = useRef(true);
   const isComplete = isMailboxSequenceComplete(detail.messages);
+  const [keysStatus, setKeysStatus] = useState<ReporterKeysVerification | 'checking' | 'unknown'>(
+    'checking',
+  );
+
+  useEffect(() => {
+    let isActive = true;
+    void verifyReporterKeys(
+      detail,
+      (from, limit) => api.getLedgerEvents(from, limit),
+      PINNED_KEYS,
+    ).then(
+      (status) => {
+        if (isActive) setKeysStatus(status);
+      },
+      () => {
+        if (isActive) setKeysStatus('unknown');
+      },
+    );
+    return () => {
+      isActive = false;
+    };
+  }, [detail]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -125,12 +180,7 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
       data-testid="authority-mailbox"
     >
       <h3 id="authority-mailbox-title">Mensajes con la persona denunciante</h3>
-      {detail.summary.mode === 'anonymous' && (
-        <p className="field__hint">
-          En una denuncia anónima, la llave del buzón de la persona la entrega el servidor sin una
-          prueba criptográfica.
-        </p>
-      )}
+      <KeysStatus status={keysStatus} />
       {!isComplete && (
         <Alert tone="danger" title="La conversación está incompleta" testId="mailbox-incomplete">
           <p>

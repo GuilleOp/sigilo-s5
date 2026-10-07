@@ -1,6 +1,7 @@
 // Ancla la cabeza pública firmada de la bitácora en `anchors/AAAA-MM-DD.json` para versionarla en
-// el repositorio público. Lee de la base local o, con SIGILO_ANCHOR_URL, de la API pública.
-// Uso: npm run ledger:anchor
+// el repositorio público. Lee de la API pública con SIGILO_ANCHOR_URL (preferido: así se publican
+// los días ya cerrados) o, sin ella, de la base local en solo lectura.
+// Uso: SIGILO_ANCHOR_URL=http://127.0.0.1:8787 npm run ledger:anchor
 import { readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { PublicKeySetSchema } from '@sigilo/contracts';
@@ -23,6 +24,11 @@ async function main(): Promise<void> {
   // Seguridad: la cabeza se verifica con la llave FIJADA, no con la que publica el servidor.
   const pinned = PublicKeySetSchema.parse(JSON.parse(readFileSync(PINNED_KEYS_PATH, 'utf8')));
   const now = (): Date => new Date();
+  if (API_URL === '') {
+    console.warn(
+      'Aviso: sin SIGILO_ANCHOR_URL se lee la base local y solo se ancla lo ya publicado. Se recomienda anclar desde la API pública.',
+    );
+  }
   const source = API_URL === '' ? databaseAnchorSource(DATA_DIR, now) : apiAnchorSource(API_URL);
   try {
     const result = await anchorLedger({

@@ -13,6 +13,7 @@ import {
   credentialsFor,
   postJson,
   submitComplaint,
+  NEXT_DAY,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
 
@@ -58,8 +59,15 @@ describe('POST tracking', () => {
       identityAccess: [],
       messages: [],
     });
-    expect(view.receivedEvent.seq).toBe(view.receipt.ledgerSeq);
-    expect(verifyReceiptEvent(view.receivedEvent, view.receipt)).toBe(true);
+    // El mismo día el evento sigue pendiente de publicar: no se entrega.
+    expect(view.receivedEvent).toBeUndefined();
+    server.setNow(NEXT_DAY);
+    const nextDay = TrackingViewSchema.parse(
+      await (await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter))).json(),
+    );
+    if (nextDay.receivedEvent === undefined) throw new Error('Falta el evento publicado.');
+    expect(nextDay.receivedEvent.payloadDigest).toBe(view.receipt.payloadDigest);
+    expect(verifyReceiptEvent(nextDay.receivedEvent, view.receipt)).toBe(true);
   });
 
   it('responde exactamente igual a folio inexistente y a verificador incorrecto', async () => {
@@ -102,15 +110,20 @@ describe('POST tracking', () => {
     }
   });
 
-  it('limita los fallos por folio aunque el folio no exista y solo los fallos consumen', async () => {
+  it('limita los fallos por folio aunque el folio no exista y solo los fallos reciben 429', async () => {
     const { server, reporter, folio } = await setup();
     for (let attempt = 0; attempt < 10; attempt += 1) {
       expect((await postJson(server.app, ROUTES.tracking, wrongCredentials(folio))).status).toBe(
         404,
       );
     }
+    expect((await postJson(server.app, ROUTES.tracking, wrongCredentials(folio))).status).toBe(429);
+    // Seguridad: quien conozca el folio no puede bloquear a su dueña con fallos acumulados.
     const credentials = credentialsFor(folio, reporter);
-    expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(429);
+    expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(200);
+    const sealed = await sealReporterMessage(server, reporter, folio, 0);
+    const sent = await postJson(server.app, ROUTES.trackingMessages, { ...credentials, ...sealed });
+    expect(sent.status).toBe(201);
     const unknownFolio = generateFolio();
     for (let attempt = 0; attempt < 10; attempt += 1) {
       await postJson(server.app, ROUTES.tracking, wrongCredentials(unknownFolio));
@@ -118,7 +131,7 @@ describe('POST tracking', () => {
     const limited = await postJson(server.app, ROUTES.tracking, wrongCredentials(unknownFolio));
     expect(limited.status).toBe(429);
     server.setNow(new Date('2026-10-20T17:00:00Z'));
-    expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(200);
+    expect((await postJson(server.app, ROUTES.tracking, wrongCredentials(folio))).status).toBe(404);
   });
 
   it('frena sin bloquear cuando los fallos globales exceden el presupuesto', async () => {

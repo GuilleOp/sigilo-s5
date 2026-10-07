@@ -13,11 +13,16 @@ export interface RiskAction {
   text: string;
 }
 
-/** Caracteres invisibles en los campos de texto que llegan a la autoridad. */
+/**
+ * Caracteres invisibles o de otro alfabeto en los campos de texto que llegan a la autoridad.
+ * Las comillas y rayas tipográficas (que el teclado del celular pone solas) no cuentan: no marcan
+ * a nadie y se normalizan al construir los hechos.
+ */
 export function invisibleCount(draft: ReportDraft): number {
+  const options = { shouldNormalizeTypography: false };
   return (
-    findInvisibleCharacters(draft.facts.description).count +
-    findInvisibleCharacters(draft.facts.accused).count
+    findInvisibleCharacters(draft.facts.description, options).count +
+    findInvisibleCharacters(draft.facts.accused, options).count
   );
 }
 

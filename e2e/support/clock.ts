@@ -21,7 +21,8 @@ export function serverNow(): Date {
 /** Adelanta el reloj del servidor al menos hasta `target`. */
 export function advanceServerClockTo(target: Date): void {
   const needed = target.getTime() - Date.now();
-  if (needed > readOffset()) writeFileSync(clockFilePath(), String(needed));
+  // Seguridad: el servidor exige que el archivo no sea escribible por el grupo ni por otros.
+  if (needed > readOffset()) writeFileSync(clockFilePath(), String(needed), { mode: 0o600 });
 }
 
 /**

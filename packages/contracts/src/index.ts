@@ -10,3 +10,4 @@ export * from './ledger.ts';
 export * from './keys.ts';
 export * from './errors.ts';
 export * from './routes.ts';
+export * from './pow.ts';

@@ -1,11 +1,16 @@
 // Pantalla /verificar: descarga la bitácora, verifica la cadena y la cabeza con la llave fijada y,
-// si la persona pega un anclaje publicado, comprueba que la bitácora todavía lo contiene.
+// si la persona pega uno o varios anclajes publicados, comprueba que la bitácora todavía los
+// contiene todos.
 import { useState } from 'react';
 import { Alert } from '../../components/Alert.tsx';
 import { TextAreaField } from '../../components/Field.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
-import { compareWithAnchor, downloadAndVerifyLedger } from '../../crypto/ledger-verification.ts';
-import type { AnchorComparison, LedgerVerification } from '../../crypto/ledger-verification.ts';
+import { compareWithAnchors, downloadAndVerifyLedger } from '../../crypto/ledger-verification.ts';
+import type {
+  AnchorComparison,
+  AnchorsComparison,
+  LedgerVerification,
+} from '../../crypto/ledger-verification.ts';
 import { announce } from '../../lib/announce.ts';
 import { formatDayDate } from '../../lib/format.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
@@ -26,10 +31,16 @@ function resultSummary(result: LedgerVerification): string {
   return 'Atención: no pudimos comprobar la bitácora.';
 }
 
-function anchorSummary(comparison: AnchorComparison): string {
-  if (comparison.status === 'matches') return 'La bitácora contiene el anclaje publicado.';
+function anchorSummary(comparison: AnchorsComparison): string {
   if (comparison.status === 'invalid') return 'El texto pegado no es un anclaje válido.';
-  return 'Atención: la bitácora no coincide con el anclaje publicado.';
+  const failed = comparison.results.filter((result) => result.status !== 'matches').length;
+  const total = comparison.results.length;
+  if (failed === 0) {
+    return total === 1
+      ? 'La bitácora contiene el anclaje publicado.'
+      : `La bitácora contiene los ${total} anclajes publicados.`;
+  }
+  return `Atención: la bitácora no coincide con ${failed} de ${total} anclajes publicados.`;
 }
 
 function Result({ result }: { result: LedgerVerification }) {
@@ -89,16 +100,6 @@ function Result({ result }: { result: LedgerVerification }) {
 }
 
 function AnchorResult({ comparison }: { comparison: AnchorComparison }) {
-  if (comparison.status === 'invalid') {
-    return (
-      <Alert tone="danger" title="No es un anclaje válido" testId="anchor-invalid">
-        <p>
-          Pega el contenido completo de un archivo{' '}
-          <span className="mono">anchors/AAAA-MM-DD.json</span>.
-        </p>
-      </Alert>
-    );
-  }
   if (comparison.status === 'bad-signature') {
     return (
       <Alert tone="danger" title="El anclaje no tiene una firma válida" testId="anchor-mismatch">
@@ -130,13 +131,38 @@ function AnchorResult({ comparison }: { comparison: AnchorComparison }) {
   );
 }
 
+function AnchorsResult({ comparison }: { comparison: AnchorsComparison }) {
+  if (comparison.status === 'invalid') {
+    return (
+      <Alert tone="danger" title="No es un anclaje válido" testId="anchor-invalid">
+        <p>
+          Pega el contenido completo de uno o varios archivos{' '}
+          <span className="mono">anchors/AAAA-MM-DD.json</span>, uno tras otro.
+        </p>
+      </Alert>
+    );
+  }
+  const count = comparison.results.length;
+  return (
+    <div data-testid="anchor-results">
+      <p>Comparamos la bitácora con {count === 1 ? '1 anclaje' : `${count} anclajes`}.</p>
+      {comparison.results.map((item) => (
+        <AnchorResult
+          key={`${item.anchor.anchoredOn}-${item.anchor.head.seq}-${item.anchor.head.hash}`}
+          comparison={item}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** Verificador de la bitácora pública. */
 export function VerifyPage() {
   useDocumentTitle('Verificar bitácora');
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<LedgerVerification | null>(null);
   const [anchorText, setAnchorText] = useState('');
-  const [comparison, setComparison] = useState<AnchorComparison | null>(null);
+  const [comparison, setComparison] = useState<AnchorsComparison | null>(null);
   const [error, setError] = useState('');
   const [isBusy, setBusy] = useState(false);
 
@@ -167,35 +193,27 @@ export function VerifyPage() {
     }
   }
 
+  /**
+   * Descarga y verifica la bitácora y, si hay anclajes pegados, la compara automáticamente con
+   * todos. Se descarga cada vez para comparar contra la bitácora vigente.
+   */
   async function verify(): Promise<void> {
     if (isBusy) return;
     setBusy(true);
     try {
       const outcome = await download();
-      if (outcome !== null) announce(resultSummary(outcome));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function compare(): Promise<void> {
-    if (isBusy) return;
-    setBusy(true);
-    try {
-      // Se descarga de nuevo para comparar contra la bitácora vigente.
-      const outcome = await download();
       if (outcome === null) return;
-      if (outcome.status !== 'valid') {
+      if (outcome.status !== 'valid' || anchorText.trim() === '') {
         announce(resultSummary(outcome));
         return;
       }
-      const compared = compareWithAnchor(
+      const compared = compareWithAnchors(
         outcome.events,
         anchorText,
         PINNED_KEYS.serverSigningPublicKey,
       );
       setComparison(compared);
-      announce(anchorSummary(compared));
+      announce(`${resultSummary(outcome)} ${anchorSummary(compared)}`);
     } finally {
       setBusy(false);
     }
@@ -235,16 +253,17 @@ export function VerifyPage() {
       {result !== null && <Result result={result} />}
 
       <section className="card" aria-labelledby="anchor-title">
-        <h2 id="anchor-title">Comparar con un anclaje publicado (opcional)</h2>
+        <h2 id="anchor-title">Comparar con anclajes publicados (opcional)</h2>
         <p>
           Cada día se publica fuera del sistema una copia del último registro firmado, en un archivo{' '}
-          <span className="mono">anchors/AAAA-MM-DD.json</span>. Si la bitácora todavía contiene ese
-          registro, no se reescribió hasta ese punto.
+          <span className="mono">anchors/AAAA-MM-DD.json</span>. Si la bitácora todavía contiene
+          esos registros, no se reescribió hasta ese punto. Si pegas anclajes, al verificar los
+          comparamos todos.
         </p>
         <TextAreaField
           id="anchor-json"
-          label="Contenido del anclaje"
-          hint="Abre el archivo del anclaje, copia todo su contenido y pégalo aquí."
+          label="Contenido de los anclajes"
+          hint="Abre cada archivo de anclaje, copia todo su contenido y pégalo aquí, uno tras otro."
           rows={6}
           className="mono"
           value={anchorText}
@@ -254,13 +273,13 @@ export function VerifyPage() {
         <button
           type="button"
           className="button button--secondary"
-          onClick={() => void compare()}
+          onClick={() => void verify()}
           aria-disabled={isBusy ? true : undefined}
           data-testid="compare-anchor"
         >
-          Comparar con el anclaje
+          Comparar con los anclajes
         </button>
-        {comparison !== null && <AnchorResult comparison={comparison} />}
+        {comparison !== null && <AnchorsResult comparison={comparison} />}
       </section>
     </>
   );

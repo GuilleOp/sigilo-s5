@@ -25,6 +25,7 @@ const DETAIL: ComplaintDetail = {
   evidence: [],
   reporterKeys: { boxPublicKey: 'AA', signingPublicKey: 'AA' },
   authVerifier: 'AA',
+  sealedIdentityDigest: 'a'.repeat(64),
   messages: [],
   identityOpenedCount: 0,
 };
@@ -42,19 +43,41 @@ describe('ComplaintDetailSchema', () => {
     expect(ComplaintDetailSchema.safeParse(mismatch).success).toBe(false);
   });
 
+  it('acepta la clave equivalente en los hechos y la principal en el resumen', () => {
+    const equivalent = { ...DETAIL, facts: { ...DETAIL.facts, offenseCode: 'CPF-222' } };
+    expect(ComplaintDetailSchema.safeParse(equivalent).success).toBe(true);
+    const summaryWithEquivalent = {
+      ...equivalent,
+      summary: { ...DETAIL.summary, offenseCode: 'CPF-222' },
+    };
+    expect(ComplaintDetailSchema.safeParse(summaryWithEquivalent).success).toBe(false);
+  });
+
+  it('exige el digesto del sobre solo en modo sealed', () => {
+    const withoutDigest: Partial<ComplaintDetail> = { ...DETAIL };
+    delete withoutDigest.sealedIdentityDigest;
+    expect(ComplaintDetailSchema.safeParse(withoutDigest).success).toBe(false);
+    expect(ComplaintDetailSchema.safeParse({ ...DETAIL, receivedEventSeq: 3 }).success).toBe(true);
+  });
+
   it('rechaza identidad o protección en modo anonymous', () => {
-    const anonymous = { ...DETAIL, summary: { ...DETAIL.summary, mode: 'anonymous' as const } };
+    const base: Partial<ComplaintDetail> = { ...DETAIL };
+    delete base.sealedIdentityDigest;
+    const anonymous = { ...base, summary: { ...DETAIL.summary, mode: 'anonymous' as const } };
     expect(ComplaintDetailSchema.safeParse(anonymous).success).toBe(false);
     const clean = { ...anonymous, summary: { ...anonymous.summary, protectionRequested: false } };
     expect(ComplaintDetailSchema.safeParse(clean).success).toBe(true);
     expect(ComplaintDetailSchema.safeParse({ ...clean, identityOpenedCount: 1 }).success).toBe(
       false,
     );
+    expect(
+      ComplaintDetailSchema.safeParse({ ...clean, sealedIdentityDigest: 'a'.repeat(64) }).success,
+    ).toBe(false);
   });
 });
 
 describe('OpenIdentityResponseSchema', () => {
-  it('ya no lleva el verificador: el contexto sale del detalle', () => {
+  it('lleva el identificador de la apertura, no el verificador ni la secuencia', () => {
     const envelope = {
       v: 1,
       suite: 'DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305',
@@ -64,9 +87,11 @@ describe('OpenIdentityResponseSchema', () => {
     };
     const parsed = OpenIdentityResponseSchema.parse({
       sealedIdentity: envelope,
+      openingId: 'b'.repeat(32),
       ledgerSeq: 1,
       authVerifier: 'AA',
     });
-    expect(parsed).toEqual({ sealedIdentity: envelope, ledgerSeq: 1 });
+    expect(parsed).toEqual({ sealedIdentity: envelope, openingId: 'b'.repeat(32) });
+    expect(OpenIdentityResponseSchema.safeParse({ sealedIdentity: envelope }).success).toBe(false);
   });
 });

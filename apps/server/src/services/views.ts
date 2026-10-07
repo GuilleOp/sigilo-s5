@@ -1,21 +1,11 @@
 // Vistas de lectura: seguimiento de la persona denunciante y detalle para la autoridad.
-import { ComplaintStatusSchema } from '@sigilo/contracts';
-import type {
-  ComplaintDetail,
-  ComplaintSummary,
-  LedgerEvent,
-  TimelineEntry,
-  TrackingView,
-} from '@sigilo/contracts';
-import { folioDigest } from '@sigilo/core';
-import { z } from 'zod';
+import type { ComplaintDetail, ComplaintSummary, TrackingView } from '@sigilo/contracts';
+import { primaryOffenseCode } from '@sigilo/contracts';
+import { sealedIdentityDigest } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
-import type { StoredLedgerEvent } from '../db/ledger-repository.ts';
 
-const StatusPayloadSchema = z.object({ status: ComplaintStatusSchema });
-
-/** Resumen de la denuncia; nunca incluye el sobre de identidad. */
+/** Resumen de la denuncia con la clave principal de la conducta; nunca incluye el sobre. */
 export function toSummary(complaint: ComplaintRecord): ComplaintSummary {
   return {
     folio: complaint.folio,
@@ -23,63 +13,48 @@ export function toSummary(complaint: ComplaintRecord): ComplaintSummary {
     status: complaint.status,
     receivedOn: complaint.receivedOn,
     stateCode: complaint.facts.stateCode,
-    offenseCode: complaint.facts.offenseCode,
+    offenseCode: primaryOffenseCode(complaint.facts.offenseCode) ?? complaint.facts.offenseCode,
     protectionRequested: complaint.protectionRequested,
   };
 }
 
-function statusEvents(ctx: AppContext, folio: string): StoredLedgerEvent[] {
-  return ctx.ledgerRepository.listByFolioDigest(folioDigest(folio), [
+function publishedReceivedEvent(ctx: AppContext, complaint: ComplaintRecord) {
+  return ctx.ledgerRepository.findByPayloadDigest(
     'complaint.received',
-    'complaint.status_changed',
-  ]);
-}
-
-/** Línea de tiempo de estatus reconstruida desde la bitácora, con fechas por día. */
-function buildTimeline(events: readonly StoredLedgerEvent[]): TimelineEntry[] {
-  return events.map(({ event, payloadJson }) => ({
-    status:
-      event.type === 'complaint.received'
-        ? 'received'
-        : StatusPayloadSchema.parse(JSON.parse(payloadJson)).status,
-    on: event.at,
-  }));
-}
-
-function receivedEventOf(
-  complaint: ComplaintRecord,
-  events: readonly StoredLedgerEvent[],
-): LedgerEvent {
-  const found = events.find(({ event }) => event.seq === complaint.receipt.ledgerSeq)?.event;
-  if (found?.type !== 'complaint.received') {
-    throw new Error('Falta el evento de recepción de la denuncia.');
-  }
-  return found;
+    complaint.receipt.payloadDigest,
+  );
 }
 
 /**
- * Vista de seguimiento: estatus, línea de tiempo, accesos a la identidad, mensajes, comprobante y
- * el evento `complaint.received` para que el cliente lo verifique contra su comprobante.
+ * Vista de seguimiento: estatus, línea de tiempo, accesos a la identidad, mensajes, comprobante y,
+ * si ya se publicó, el evento `complaint.received` para que el cliente lo verifique contra su
+ * comprobante. Antes publica los días cerrados, para que el evento aparezca en cuanto corresponda.
+ * Seguridad: las aperturas de identidad se muestran de inmediato, aunque su evento siga pendiente.
  */
 export function buildTrackingView(ctx: AppContext, complaint: ComplaintRecord): TrackingView {
-  const events = statusEvents(ctx, complaint.folio);
+  ctx.ledger.publishClosedDays();
+  const receivedEvent = publishedReceivedEvent(ctx, complaint);
   return {
     folio: complaint.folio,
     mode: complaint.mode,
     status: complaint.status,
-    timeline: buildTimeline(events),
+    timeline: ctx.statusHistory.listByFolio(complaint.folio),
     identityAccess: ctx.identityOpenings.listByFolio(complaint.folio),
     messages: ctx.messages.listByFolio(complaint.folio),
     receipt: complaint.receipt,
-    receivedEvent: receivedEventOf(complaint, events),
+    ...(receivedEvent === null ? {} : { receivedEvent }),
   };
 }
 
 /**
- * Detalle para la autoridad, con lo necesario para recalcular el contexto de la identidad.
+ * Detalle para la autoridad, con lo necesario para recalcular el contexto de la identidad y el
+ * digesto del envío (incluido el digesto del sobre y, si ya se publicó, la secuencia de su
+ * evento `complaint.received`).
  * Seguridad: nunca incluye el sobre de identidad.
  */
 export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord): ComplaintDetail {
+  ctx.ledger.publishClosedDays();
+  const receivedEvent = publishedReceivedEvent(ctx, complaint);
   return {
     summary: toSummary(complaint),
     version: 1,
@@ -87,6 +62,10 @@ export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord
     evidence: ctx.evidence.listByFolio(complaint.folio),
     reporterKeys: complaint.reporterKeys,
     authVerifier: complaint.authVerifier,
+    ...(complaint.sealedIdentity === null
+      ? {}
+      : { sealedIdentityDigest: sealedIdentityDigest(complaint.sealedIdentity) }),
+    ...(receivedEvent === null ? {} : { receivedEventSeq: receivedEvent.seq }),
     messages: ctx.messages.listByFolio(complaint.folio),
     identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
   };

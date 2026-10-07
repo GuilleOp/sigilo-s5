@@ -4,20 +4,26 @@ import type {
   AuthorityMessageRequest,
   ComplaintDetail,
   IdentityBlock,
+  LedgerPage,
   MailboxMessage,
   OpenIdentityResponse,
 } from '@sigilo/contracts';
 import {
   assertBoxKeyPair,
   assertSigningKeyPair,
+  computeEventHash,
   equalBytes,
+  folioDigest,
   fromBase64Url,
   identityContextFromDetail,
   keyIdFor,
   nextMailboxSequence,
   openIdentity,
   openMailboxMessage,
+  receivedPayloadDigest,
   sealMailboxMessage,
+  submissionDigestFromDetail,
+  verifyLedgerHead,
 } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
 
@@ -94,6 +100,45 @@ export function openSealedIdentity(
     keys.boxPrivateKey,
     identityContextFromDetail(detail),
   );
+}
+
+/**
+ * Estado de las llaves de la persona denunciante frente al registro público: `verified` si el
+ * digesto del envío recalculado desde el detalle coincide con el evento `complaint.received`
+ * publicado, `pending` mientras ese evento no se publica y `mismatch` si no coincide.
+ */
+export type ReporterKeysVerification = 'verified' | 'pending' | 'mismatch';
+
+/**
+ * Recalcula `submissionDigest` desde el detalle (`submissionDigestFromDetail`) y lo compara con el
+ * `payloadDigest` del evento `complaint.received` publicado en la bitácora, cuya cabeza debe estar
+ * firmada por la llave FIJADA del servidor.
+ * Seguridad: el evento lo verificó la persona denunciante contra su comprobante; si coincide, las
+ * llaves del buzón, los hechos y las pruebas del detalle son los que ella envió, también en modo
+ * anónimo (donde no hay sobre de identidad que lo pruebe).
+ */
+export async function verifyReporterKeys(
+  detail: ComplaintDetail,
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
+  pinned: PinnedKeys,
+): Promise<ReporterKeysVerification> {
+  const seq = detail.receivedEventSeq;
+  if (seq === undefined) return 'pending';
+  const page = await fetchPage(seq, 1);
+  const event = page.events[0];
+  const folio = detail.summary.folio;
+  const isAuthentic =
+    event !== undefined &&
+    event.seq === seq &&
+    page.head.seq >= seq &&
+    verifyLedgerHead(page.head, pinned.serverSigningPublicKey) &&
+    event.type === 'complaint.received' &&
+    event.at === detail.summary.receivedOn &&
+    event.folioDigest === folioDigest(folio) &&
+    event.hash === computeEventHash(event);
+  if (!isAuthentic) return 'mismatch';
+  const expected = receivedPayloadDigest(folio, submissionDigestFromDetail(detail));
+  return event.payloadDigest === expected ? 'verified' : 'mismatch';
 }
 
 /** Mensaje del buzón visto por la autoridad. */

@@ -7,15 +7,21 @@ import { fromBase64Url, fromHex, toBase64Url } from './encoding.ts';
 import { generateSigningKeyPair, keyIdFor } from './keys.ts';
 import {
   buildEvent,
+  chainEvent,
   computeEventHash,
   folioDigest,
+  identityOpenedPayload,
+  identityOpenedPayloadDigest,
+  pendingEventFor,
+  receiptTagFor,
   receivedPayloadDigest,
+  reconcileIdentityOpenings,
   signLedgerHead,
   verifyChain,
   verifyLedgerHead,
   verifyReceiptEvent,
 } from './ledger.ts';
-import type { SignedReceipt } from '@sigilo/contracts';
+import type { IdentityAccessEntry, SignedReceipt } from '@sigilo/contracts';
 
 const FOLIO = '0123-4567-89AB';
 const SERVER_SECRET = fromHex('9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60');
@@ -191,7 +197,7 @@ describe('verifyReceiptEvent', () => {
     folio: FOLIO,
     submissionDigest,
     receivedOn: '2026-10-06',
-    ledgerSeq: 0,
+    payloadDigest: receivedPayloadDigest(FOLIO, submissionDigest),
     serverKeyId: keyIdFor(SERVER_PUBLIC),
     signature: 'AA',
   };
@@ -203,16 +209,28 @@ describe('verifyReceiptEvent', () => {
     payload: { folio: FOLIO, submissionDigest },
   });
 
-  it('acepta el evento que corresponde al comprobante', () => {
+  it('acepta el evento que corresponde al comprobante, sin importar su secuencia', () => {
     expect(event.payloadDigest).toBe(receivedPayloadDigest(FOLIO, submissionDigest));
     expect(verifyReceiptEvent(event, receipt)).toBe(true);
+    const later = chainEvent(
+      { ...event, seq: 41 },
+      pendingEventFor({
+        type: 'complaint.received',
+        folio: FOLIO,
+        at: '2026-10-06',
+        actorRole: 'system',
+        payload: { folio: FOLIO, submissionDigest },
+      }),
+    );
+    expect(later.seq).toBe(42);
+    expect(verifyReceiptEvent(later, receipt)).toBe(true);
   });
 
-  it('rechaza otro folio, digesto, secuencia, fecha, tipo o hash', () => {
+  it('rechaza otro folio, digesto, identificador, fecha, tipo o hash', () => {
     const variants: [LedgerEvent, SignedReceipt][] = [
       [event, { ...receipt, folio: '0123-4567-89AC' }],
       [event, { ...receipt, submissionDigest: 'c'.repeat(64) }],
-      [event, { ...receipt, ledgerSeq: 1 }],
+      [event, { ...receipt, payloadDigest: 'c'.repeat(64) }],
       [event, { ...receipt, receivedOn: '2026-10-07' }],
       [{ ...event, type: 'message.sent' }, receipt],
       [{ ...event, hash: 'd'.repeat(64) }, receipt],
@@ -220,5 +238,142 @@ describe('verifyReceiptEvent', () => {
     for (const [candidate, against] of variants) {
       expect(verifyReceiptEvent(candidate, against)).toBe(false);
     }
+  });
+});
+
+describe('eventos pendientes y etiqueta del recibo', () => {
+  const AUTH_VERIFIER = 'q83vEjRWeJA';
+
+  it('fija la etiqueta con separación de dominio y rechaza verificadores inválidos', () => {
+    expect(receiptTagFor(AUTH_VERIFIER)).toBe(sha256Hex(`sigilo/ledger/receipt:${AUTH_VERIFIER}`));
+    expect(() => receiptTagFor('no es base64url')).toThrow();
+  });
+
+  it('encadena un pendiente igual que buildEvent y conserva la etiqueta en el hash', () => {
+    const input = {
+      type: 'complaint.status_changed' as const,
+      folio: FOLIO,
+      at: '2026-10-06',
+      actorRole: 'authority' as const,
+      payload: { status: 'routing' },
+    };
+    const pending = pendingEventFor(input);
+    expect(pending).not.toHaveProperty('seq');
+    expect(chainEvent(null, pending)).toEqual(buildEvent(null, input));
+
+    const opening = {
+      folio: FOLIO,
+      openingId: 'a'.repeat(32),
+      legalBasis: 'Fundamento sintético',
+      authVerifier: AUTH_VERIFIER,
+    };
+    const payload = identityOpenedPayload(opening);
+    expect(payload.receiptTag).toBe(receiptTagFor(AUTH_VERIFIER));
+    const opened = buildEvent(null, {
+      type: 'identity.opened',
+      folio: FOLIO,
+      at: '2026-10-06',
+      actorRole: 'authority',
+      payload,
+      receiptTag: payload.receiptTag,
+    });
+    expect(opened.payloadDigest).toBe(identityOpenedPayloadDigest(opening));
+    expect(opened.receiptTag).toBe(payload.receiptTag);
+    expect(verifyChain([opened])).toEqual({ valid: true });
+    // Cambiar la etiqueta rompe el hash; quitarla deja un evento mal formado.
+    expect(verifyChain([{ ...opened, receiptTag: 'e'.repeat(64) }])).toMatchObject({
+      reason: 'hash',
+    });
+    const withoutTag: Partial<LedgerEvent> = { ...opened };
+    delete withoutTag.receiptTag;
+    expect(verifyChain([withoutTag as LedgerEvent])).toMatchObject({ reason: 'malformed' });
+  });
+
+  it('rechaza pendientes con fecha inválida', () => {
+    expect(() =>
+      pendingEventFor({
+        type: 'message.sent',
+        folio: FOLIO,
+        at: 'ayer',
+        actorRole: 'reporter',
+        payload: {},
+      }),
+    ).toThrow();
+  });
+});
+
+describe('reconcileIdentityOpenings', () => {
+  const AUTH_VERIFIER = 'q83vEjRWeJA';
+  const OTHER_FOLIO = '0123-4567-89AC';
+  const entry: IdentityAccessEntry = {
+    on: '2026-10-06',
+    actorRole: 'authority',
+    legalBasis: 'Fundamento sintético de la apertura de prueba',
+    openingId: '1'.repeat(32),
+  };
+
+  function openingEvent(folio: string, openingId: string, at = entry.on): LedgerEvent {
+    const payload = identityOpenedPayload({
+      folio,
+      openingId,
+      legalBasis: entry.legalBasis,
+      authVerifier: AUTH_VERIFIER,
+    });
+    return buildEvent(null, {
+      type: 'identity.opened',
+      folio,
+      at,
+      actorRole: 'authority',
+      payload,
+      receiptTag: payload.receiptTag,
+    });
+  }
+
+  const context = { folio: FOLIO, authVerifier: AUTH_VERIFIER, publishedThrough: '2026-10-06' };
+
+  it('acepta aperturas publicadas que coinciden con el seguimiento', () => {
+    const result = reconcileIdentityOpenings(
+      [openingEvent(FOLIO, entry.openingId)],
+      [entry],
+      context,
+    );
+    expect(result).toEqual({ unlisted: [], unpublished: [] });
+  });
+
+  it('detecta una apertura con la etiqueta registrada con otro folio o no listada', () => {
+    const hidden = openingEvent(OTHER_FOLIO, '2'.repeat(32));
+    const extra = openingEvent(FOLIO, '3'.repeat(32));
+    const result = reconcileIdentityOpenings(
+      [openingEvent(FOLIO, entry.openingId), hidden, extra],
+      [entry],
+      context,
+    );
+    expect(result.unlisted).toEqual([hidden, extra]);
+    expect(result.unpublished).toEqual([]);
+  });
+
+  it('detecta una apertura de un día publicado que no aparece, y espera las de días abiertos', () => {
+    expect(reconcileIdentityOpenings([], [entry], context).unpublished).toEqual([entry]);
+    expect(
+      reconcileIdentityOpenings([], [entry], { ...context, publishedThrough: '2026-10-05' }),
+    ).toEqual({ unlisted: [], unpublished: [] });
+    expect(
+      reconcileIdentityOpenings([], [entry], { ...context, publishedThrough: null }).unpublished,
+    ).toEqual([]);
+  });
+
+  it('ignora eventos de otros recibos y señala fechas que no coinciden', () => {
+    const otherReceipt = buildEvent(null, {
+      type: 'identity.opened',
+      folio: FOLIO,
+      at: entry.on,
+      actorRole: 'authority',
+      payload: {},
+      receiptTag: receiptTagFor('AAAA'),
+    });
+    const moved = openingEvent(FOLIO, entry.openingId, '2026-10-05');
+    const result = reconcileIdentityOpenings([otherReceipt, moved], [entry], context);
+    expect(result.unlisted).toEqual([moved]);
+    expect(result.unpublished).toEqual([entry]);
   });
 });

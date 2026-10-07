@@ -10,26 +10,28 @@ import { createLedgerRepository } from './db/ledger-repository.ts';
 import type { LedgerRepository } from './db/ledger-repository.ts';
 import { createMessagesRepository } from './db/messages-repository.ts';
 import type { MessagesRepository } from './db/messages-repository.ts';
+import { createOpenDataRepository } from './db/open-data-repository.ts';
+import type { OpenDataRepository } from './db/open-data-repository.ts';
+import { createStatusRepository } from './db/status-repository.ts';
+import type { StatusRepository } from './db/status-repository.ts';
+import type { RequestLog } from './http/request-log.ts';
 import type { ServerKeys } from './keys-file.ts';
 import { createLedgerService } from './ledger-service.ts';
 import type { LedgerService } from './ledger-service.ts';
 import { createRateLimiter, createThrottle } from './security/rate-limiter.ts';
 import type { RateLimiter, RateLimitRule, ThrottleRule } from './security/rate-limiter.ts';
+import { createPowGuard } from './security/proof-of-work.ts';
+import type { PowGuard } from './security/proof-of-work.ts';
 import { createReporterAuthenticator } from './security/reporter-auth.ts';
 import type { ReporterAuthenticator } from './security/reporter-auth.ts';
 import type { EvidenceStore } from './storage/evidence-store.ts';
 
-/** Entrada del registro de peticiones: sin IP, agente, cuerpo ni folio. */
-export interface RequestLogEntry {
-  method: string;
-  route: string;
-  status: number;
-  durationMs: number;
-}
+export type { RequestLogEntry } from './http/request-log.ts';
 
 /**
  * Límites del servidor. Sin direcciones IP (no se registran), los límites son por folio o
- * globales; los globales de escritura protegen el almacenamiento y el de seguimiento solo frena.
+ * globales; los globales de escritura protegen el almacenamiento como último recurso (después de
+ * la prueba de trabajo) y el de seguimiento solo frena.
  */
 export interface RateLimitConfig {
   /** Fallos de autenticación por folio; al agotarse, el folio responde 429 hasta que vence. */
@@ -62,7 +64,14 @@ export interface AppDeps {
   hstsMaxAgeSeconds?: number;
   /** Límites que sustituyen a los de `DEFAULT_RATE_LIMITS`. */
   rateLimits?: Partial<RateLimitConfig>;
-  logger?: (entry: RequestLogEntry) => void;
+  /** Registro de peticiones (ver `createRequestLog`); ausente no registra nada. */
+  requestLog?: RequestLog;
+  /** Dificultad de la prueba de trabajo en bits; 0 (por omisión) la desactiva. */
+  powBits?: number;
+  /** Llave HMAC de los retos; por omisión, aleatoria por proceso. */
+  powSecret?: Uint8Array;
+  /** Cuota total de almacenamiento de pruebas en bytes (`DEFAULT_EVIDENCE_QUOTA_BYTES`). */
+  evidenceQuotaBytes?: number;
 }
 
 /** Limitadores compartidos por las rutas. */
@@ -80,9 +89,12 @@ export interface AppContext {
   messages: MessagesRepository;
   ledgerRepository: LedgerRepository;
   identityOpenings: IdentityOpeningsRepository;
+  statusHistory: StatusRepository;
+  openData: OpenDataRepository;
   ledger: LedgerService;
   reporterAuth: ReporterAuthenticator;
   limiters: AppLimiters;
+  pow: PowGuard;
 }
 
 const MINUTE_MS = 60 * 1000;
@@ -117,7 +129,10 @@ export function createContext(deps: AppDeps): AppContext {
     messages: createMessagesRepository(deps.db),
     ledgerRepository,
     identityOpenings: createIdentityOpeningsRepository(deps.db),
+    statusHistory: createStatusRepository(deps.db),
+    openData: createOpenDataRepository(deps.db),
     ledger: createLedgerService({
+      db: deps.db,
       repository: ledgerRepository,
       serverKeyId: deps.keys.publicKeySet.server.keyId,
       serverSigningPrivateKey: deps.keys.serverSigningPrivateKey,
@@ -134,5 +149,10 @@ export function createContext(deps: AppDeps): AppContext {
       evidenceUploads: createRateLimiter(limits.evidenceUploads, deps.now),
       complaintSubmissions: createRateLimiter(limits.complaintSubmissions, deps.now),
     },
+    pow: createPowGuard({
+      bits: deps.powBits ?? 0,
+      now: deps.now,
+      ...(deps.powSecret === undefined ? {} : { secret: deps.powSecret }),
+    }),
   };
 }

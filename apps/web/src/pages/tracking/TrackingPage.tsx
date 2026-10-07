@@ -6,6 +6,7 @@ import { Alert } from '../../components/Alert.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch, KeyMismatchError } from '../../crypto/key-pinning.ts';
 import {
+  checkIdentityOpenings,
   checkPublishedEvent,
   decodeReporterThread,
   sealReporterReply,
@@ -15,6 +16,7 @@ import {
 } from '../../crypto/tracking.ts';
 import type {
   DecodedMessage,
+  IdentityOpeningsCheck,
   PublicationStatus,
   TrackingReceiptCheck,
   TrackingSession,
@@ -40,6 +42,8 @@ interface Loaded {
   check: TrackingReceiptCheck;
   /** `unknown` si no se pudo consultar la bitácora pública. */
   publication: PublicationStatus | 'unknown' | 'checking';
+  /** Contraste de las aperturas de identidad con la bitácora pública; `null` si es anónima. */
+  openings: IdentityOpeningsCheck | 'checking' | null;
 }
 
 /** Error del acceso y, si se sabe, la palabra (desde 1) que lo causó. */
@@ -86,7 +90,7 @@ function ReceiptStatus({ loaded }: { loaded: Loaded }) {
       </Alert>
     );
   }
-  if (!check.isEventValid) {
+  if (check.event === 'invalid') {
     return (
       <Alert
         tone="danger"
@@ -103,15 +107,17 @@ function ReceiptStatus({ loaded }: { loaded: Loaded }) {
   return (
     <Alert tone="success" title="Tu denuncia está registrada" testId="receipt-verified">
       <p>
-        Comprobamos que tu denuncia se recibió el {formatDayDate(view.receipt.receivedOn)} y que
-        quedó anotada en el registro público con el número {view.receivedEvent.seq}.
+        Comprobamos que tu denuncia se recibió el {formatDayDate(view.receipt.receivedOn)}
+        {view.receivedEvent === undefined
+          ? '.'
+          : ` y que quedó anotada en el registro público con el número ${view.receivedEvent.seq}.`}
       </p>
       <p data-testid="ledger-publication">
         {publication === 'checking' && 'Estamos buscando esa anotación en el registro público.'}
         {publication === 'published' &&
           'La anotación ya aparece en el registro público, igual que aquí.'}
         {publication === 'pending' &&
-          'El registro público se actualiza una vez al día: tu anotación aparecerá mañana.'}
+          'Tu anotación está pendiente de publicar: el registro público se actualiza una vez al día, cuando el día termina.'}
         {publication === 'unknown' && 'Por ahora no pudimos consultar el registro público.'}
       </p>
       {publication === 'mismatch' && (
@@ -149,19 +155,44 @@ export function TrackingPage() {
     const messages = await decodeReporterThread(view.messages, session, PINNED_KEYS);
     if (!isMounted.current) return view;
     const check = verifyTrackingReceipt(view, PINNED_KEYS);
-    setLoaded({ view, messages, check, publication: check.isEventValid ? 'checking' : 'unknown' });
-    if (check.isEventValid) {
-      void checkPublishedEvent(view, (from, limit) => api.getLedgerEvents(from, limit)).then(
-        (publication) => updatePublication(view, publication),
-        () => updatePublication(view, 'unknown'),
+    const canCheck = check.isReceiptValid && check.event !== 'invalid';
+    const isSealed = view.mode === 'sealed';
+    setLoaded({
+      view,
+      messages,
+      check,
+      publication: canCheck ? 'checking' : 'unknown',
+      openings: isSealed ? 'checking' : null,
+    });
+    const fetchPage = (from: number, limit: number) => api.getLedgerEvents(from, limit);
+    if (canCheck) {
+      void checkPublishedEvent(view, fetchPage).then(
+        (publication) => updateLoaded(view, { publication }),
+        () => updateLoaded(view, { publication: 'unknown' }),
+      );
+    }
+    if (isSealed) {
+      // Las aperturas se buscan en toda la bitácora pública, sin importar el folio.
+      void checkIdentityOpenings(
+        view,
+        session,
+        PINNED_KEYS,
+        () => api.getLedgerHead(),
+        fetchPage,
+      ).then(
+        (openings) => updateLoaded(view, { openings }),
+        () => updateLoaded(view, { openings: { status: 'unknown' } }),
       );
     }
     return view;
   }
 
-  function updatePublication(view: TrackingView, publication: Loaded['publication']): void {
+  function updateLoaded(
+    view: TrackingView,
+    changes: Partial<Pick<Loaded, 'publication' | 'openings'>>,
+  ): void {
     if (!isMounted.current) return;
-    setLoaded((current) => (current?.view === view ? { ...current, publication } : current));
+    setLoaded((current) => (current?.view === view ? { ...current, ...changes } : current));
   }
 
   async function login(folio: string, words: string[]): Promise<void> {
@@ -264,7 +295,7 @@ export function TrackingPage() {
           </h2>
           <ReceiptStatus loaded={loaded} />
           <StatusTimeline view={loaded.view} />
-          <IdentityStatus view={loaded.view} />
+          <IdentityStatus view={loaded.view} openings={loaded.openings} />
           {!isMailboxSequenceComplete(loaded.view.messages) && (
             <Alert tone="danger" title="Faltan mensajes" testId="mailbox-incomplete">
               <p>

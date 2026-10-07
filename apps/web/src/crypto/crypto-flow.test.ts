@@ -13,8 +13,11 @@ import {
   buildEvent,
   computeSubmissionDigest,
   IDENTITY_PADDED_SIZE,
+  identityOpenedPayload,
   keyIdFor,
   ReceiptPhraseError,
+  receivedPayloadDigest,
+  sealedIdentityDigest,
   signLedgerHead,
   signReceipt,
   toBase64Url,
@@ -25,12 +28,15 @@ import {
   importAuthorityKey,
   openSealedIdentity,
   sealAuthorityQuestion,
+  verifyReporterKeys,
 } from './authority.ts';
 import { assertServedKeysMatch, diffPublicKeys, KeyMismatchError } from './key-pinning.ts';
 import {
   compareWithAnchor,
+  compareWithAnchors,
   downloadAndVerifyLedger,
   evaluateLedger,
+  parseLedgerAnchors,
 } from './ledger-verification.ts';
 import {
   buildIdentityBlock,
@@ -38,6 +44,7 @@ import {
   createReceipt,
   identityBlockSize,
   identityFitsEnvelope,
+  normalizeSubmissionInput,
   sealReporterIdentity,
   verifySubmission,
 } from './submission.ts';
@@ -45,6 +52,7 @@ import type { SubmissionInput } from './submission.ts';
 import { createTestDeployment } from './test-keys.ts';
 import type { TestDeployment } from './test-keys.ts';
 import {
+  checkIdentityOpenings,
   checkPublishedEvent,
   decodeReporterThread,
   sealReporterReply,
@@ -108,6 +116,9 @@ function detailFor(
     evidence: request.evidence,
     reporterKeys: request.reporterKeys,
     authVerifier: request.authVerifier,
+    ...(request.sealedIdentity === undefined
+      ? {}
+      : { sealedIdentityDigest: sealedIdentityDigest(request.sealedIdentity) }),
     messages,
     identityOpenedCount: 0,
   };
@@ -117,12 +128,13 @@ function signedReceiptFor(
   request: SubmitComplaintRequest,
   deployment: TestDeployment,
 ): SignedReceipt {
+  const submissionDigest = computeSubmissionDigest(request);
   return signReceipt(
     {
       folio: FOLIO,
-      submissionDigest: computeSubmissionDigest(request),
+      submissionDigest,
       receivedOn: RECEIVED_ON,
-      ledgerSeq: 0,
+      payloadDigest: receivedPayloadDigest(FOLIO, submissionDigest),
       serverKeyId: deployment.pinned.set.server.keyId,
     },
     deployment.server.privateKey,
@@ -139,7 +151,11 @@ function receivedEventFor(receipt: SignedReceipt): LedgerEvent {
   });
 }
 
-function trackingViewFor(receipt: SignedReceipt, messages: MailboxMessage[] = []): TrackingView {
+function trackingViewFor(
+  receipt: SignedReceipt,
+  messages: MailboxMessage[] = [],
+  isPublished = true,
+): TrackingView {
   return {
     folio: FOLIO,
     mode: 'sealed',
@@ -148,8 +164,16 @@ function trackingViewFor(receipt: SignedReceipt, messages: MailboxMessage[] = []
     identityAccess: [],
     messages,
     receipt,
-    receivedEvent: receivedEventFor(receipt),
+    ...(isPublished ? { receivedEvent: receivedEventFor(receipt) } : {}),
   };
+}
+
+/** Cabeza firmada por el servidor de prueba. */
+function headFor(deployment: TestDeployment, seq: number, hash: string, at = RECEIVED_ON) {
+  return signLedgerHead(
+    { seq, hash, at, serverKeyId: deployment.pinned.set.server.keyId },
+    deployment.server.privateKey,
+  );
 }
 
 function toMessage(
@@ -217,7 +241,7 @@ describe('identidad sellada', () => {
   it('la autoridad la abre con el contexto recalculado desde el detalle', async () => {
     const { sealed, request, keys } = await sealedSubmission();
     const identity = await openSealedIdentity(
-      { sealedIdentity: sealed, ledgerSeq: 1 },
+      { sealedIdentity: sealed, openingId: 'a'.repeat(32) },
       detailFor(request),
       keys,
     );
@@ -235,13 +259,17 @@ describe('identidad sellada', () => {
     expect(request.facts).not.toHaveProperty('extra');
     const keys = importAuthorityKey(authorityKeyFile(deployment), deployment.pinned);
     await expect(
-      openSealedIdentity({ sealedIdentity: sealed, ledgerSeq: 1 }, detailFor(request), keys),
+      openSealedIdentity(
+        { sealedIdentity: sealed, openingId: 'a'.repeat(32) },
+        detailFor(request),
+        keys,
+      ),
     ).resolves.toMatchObject({ fullName: 'Persona Uno' });
   });
 
   it('no abre si el servidor altera hechos, pruebas, llaves o el verificador (trasplante)', async () => {
     const { sealed, request, keys } = await sealedSubmission();
-    const response = { sealedIdentity: sealed, ledgerSeq: 1 };
+    const response = { sealedIdentity: sealed, openingId: 'a'.repeat(32) };
     const other = createReceipt();
     const altered: ComplaintDetail[] = [
       { ...detailFor(request), facts: { ...request.facts, accused: 'Otra persona ficticia' } },
@@ -301,18 +329,22 @@ describe('envío y seguimiento', () => {
     expect(session.credentials.authKey).toBe(toBase64Url(receipt.keys.authKey));
 
     const view = trackingViewFor(signed);
-    expect(verifyTrackingReceipt(view, pinned)).toEqual({
-      isReceiptValid: true,
-      isEventValid: true,
-    });
-    const forgedEvent = { ...view.receivedEvent, payloadDigest: 'f'.repeat(64) };
+    expect(verifyTrackingReceipt(view, pinned)).toEqual({ isReceiptValid: true, event: 'valid' });
+    const published = view.receivedEvent;
+    if (published === undefined) throw new Error('Falta el evento.');
+    const forgedEvent = { ...published, payloadDigest: 'f'.repeat(64) };
     expect(verifyTrackingReceipt({ ...view, receivedEvent: forgedEvent }, pinned)).toEqual({
       isReceiptValid: true,
-      isEventValid: false,
+      event: 'invalid',
+    });
+    // Antes de que cierre el día, el seguimiento no trae el evento: queda pendiente.
+    expect(verifyTrackingReceipt(trackingViewFor(signed, [], false), pinned)).toEqual({
+      isReceiptValid: true,
+      event: 'pending',
     });
     expect(verifyTrackingReceipt(view, createTestDeployment().pinned)).toEqual({
       isReceiptValid: false,
-      isEventValid: false,
+      event: 'invalid',
     });
   });
 
@@ -324,43 +356,118 @@ describe('envío y seguimiento', () => {
       receipt.keys,
       undefined,
     );
-    const view = trackingViewFor(signedReceiptFor(request, deployment));
-    const genesis = signLedgerHead(
-      {
-        seq: 0,
-        hash: '0'.repeat(64),
-        at: RECEIVED_ON,
-        serverKeyId: deployment.pinned.set.server.keyId,
-      },
-      deployment.server.privateKey,
-    );
-    const publishedHead = signLedgerHead(
-      {
-        seq: 0,
-        hash: view.receivedEvent.hash,
-        at: RECEIVED_ON,
-        serverKeyId: deployment.pinned.set.server.keyId,
-      },
-      deployment.server.privateKey,
-    );
-    // El mismo día la página viene vacía y la cabeza es el génesis: se publicará mañana.
-    expect(await checkPublishedEvent(view, async () => ({ events: [], head: genesis }))).toBe(
-      'pending',
-    );
+    const signed = signedReceiptFor(request, deployment);
+    const view = trackingViewFor(signed);
+    const event = view.receivedEvent;
+    if (event === undefined) throw new Error('Falta el evento.');
+    const pendingView = trackingViewFor(signed, [], false);
+    const genesis = headFor(deployment, 0, '0'.repeat(64));
+    const publishedHead = headFor(deployment, 0, event.hash);
+    const earlierHead = headFor(deployment, 0, 'b'.repeat(64), '2026-10-19');
+    // Pendiente de publicar: la cabeza pública todavía no llega a su día.
     expect(
-      await checkPublishedEvent(view, async () => ({
-        events: [view.receivedEvent],
-        head: publishedHead,
-      })),
+      await checkPublishedEvent(pendingView, async () => ({ events: [], head: genesis })),
+    ).toBe('pending');
+    expect(
+      await checkPublishedEvent(pendingView, async () => ({ events: [], head: earlierHead })),
+    ).toBe('pending');
+    // El seguimiento dice pendiente, pero la cabeza pública ya publicó su día.
+    expect(
+      await checkPublishedEvent(pendingView, async () => ({ events: [], head: publishedHead })),
+    ).toBe('mismatch');
+    expect(
+      await checkPublishedEvent(view, async () => ({ events: [event], head: publishedHead })),
     ).toBe('published');
-    const other = { ...view.receivedEvent, payloadDigest: 'f'.repeat(64) };
+    const other = { ...event, payloadDigest: 'f'.repeat(64) };
     expect(
       await checkPublishedEvent(view, async () => ({ events: [other], head: publishedHead })),
     ).toBe('mismatch');
-    // La cabeza pública ya pasó de esa secuencia pero el evento no aparece.
+    // El seguimiento dice que se publicó, pero la bitácora pública no lo tiene.
     expect(await checkPublishedEvent(view, async () => ({ events: [], head: publishedHead }))).toBe(
       'mismatch',
     );
+  });
+
+  it('busca en toda la bitácora las aperturas con la etiqueta del recibo', async () => {
+    const deployment = createTestDeployment();
+    const receipt = createReceipt();
+    const session = startTrackingSession(FOLIO, receipt.words);
+    const signed = signedReceiptFor(
+      buildSubmitRequest(
+        { mode: 'anonymous', facts: FACTS, evidence: [], protectionRequested: false },
+        receipt.keys,
+        undefined,
+      ),
+      deployment,
+    );
+    const legalBasis = 'Fundamento sintético de la apertura en la prueba.';
+    const entry = {
+      on: RECEIVED_ON,
+      actorRole: 'authority' as const,
+      legalBasis,
+      openingId: '1'.repeat(32),
+    };
+    const openingEvent = (folio: string, openingId: string, previous: LedgerEvent | null) => {
+      const payload = identityOpenedPayload({
+        folio,
+        openingId,
+        legalBasis,
+        authVerifier: receipt.keys.authVerifier,
+      });
+      return buildEvent(previous, {
+        type: 'identity.opened',
+        folio,
+        at: RECEIVED_ON,
+        actorRole: 'authority',
+        payload,
+        receiptTag: payload.receiptTag,
+      });
+    };
+    const view = { ...trackingViewFor(signed), identityAccess: [entry] };
+    const serve = (events: LedgerEvent[]) => {
+      const last = events.at(-1);
+      const head = headFor(deployment, last?.seq ?? 0, last?.hash ?? '0'.repeat(64));
+      return {
+        fetchHead: async () => head,
+        fetchPage: async (from: number) => ({ events: events.slice(from), head }),
+      };
+    };
+    const check = (events: LedgerEvent[], current: TrackingView = view) => {
+      const { fetchHead, fetchPage } = serve(events);
+      return checkIdentityOpenings(current, session, deployment.pinned, fetchHead, fetchPage);
+    };
+
+    const own = openingEvent(FOLIO, entry.openingId, null);
+    const consistent = await check([own]);
+    expect(consistent.status).toBe('consistent');
+    if (consistent.status === 'consistent') {
+      expect([...consistent.publishedOpeningIds]).toEqual([entry.openingId]);
+    }
+    // Una apertura registrada con otro folio, pero ligada al mismo recibo, se detecta.
+    const hidden = openingEvent('ZZZZ-ZZZZ-ZZZZ', '2'.repeat(32), own);
+    expect(await check([own, hidden])).toEqual({ status: 'hidden', hiddenCount: 1 });
+    // Una apertura del seguimiento cuyo día ya se publicó debe estar en la bitácora.
+    const unrelated = buildEvent(null, {
+      type: 'complaint.received',
+      folio: 'ZZZZ-ZZZZ-ZZZZ',
+      at: RECEIVED_ON,
+      actorRole: 'system',
+      payload: {},
+    });
+    expect(await check([unrelated])).toEqual({ status: 'unpublished', unpublished: [entry] });
+    // Con la bitácora vacía todavía está pendiente; con una cadena rota no se puede saber.
+    expect(await check([])).toMatchObject({ status: 'consistent' });
+    expect(await check([{ ...own, payloadDigest: 'f'.repeat(64) }])).toEqual({
+      status: 'unknown',
+    });
+  });
+
+  it('normaliza la conducta a su clave principal antes de sellar y enviar', () => {
+    const normalized = normalizeSubmissionInput({
+      ...SEALED_INPUT,
+      facts: { ...FACTS, offenseCode: 'CPF-222' },
+    });
+    expect(normalized.facts.offenseCode).toBe('LGRA-52');
   });
 
   it('en modo anónimo no envía identidad ni solicitud de protección', () => {
@@ -540,34 +647,112 @@ describe('bitácora', () => {
     expect(requested[0]).toBe(0);
   });
 
-  it('compara la cadena con un anclaje publicado', () => {
+  it('compara la cadena con uno o varios anclajes publicados', () => {
     const { deployment, events } = buildLedger(4);
     const key = deployment.pinned.serverSigningPublicKey;
-    const anchored = events[2];
-    if (anchored === undefined) throw new Error('Falta el evento anclado.');
-    const anchorFor = (hash: string, signer: TestDeployment = deployment) =>
-      JSON.stringify({
-        version: 1,
-        anchoredOn: '2026-10-21',
+    const anchoredAt = (index: number) => {
+      const event = events[index];
+      if (event === undefined) throw new Error('Falta el evento anclado.');
+      return event;
+    };
+    const anchorFor = (index: number, hash?: string, signer: TestDeployment = deployment) => {
+      const event = anchoredAt(index);
+      return {
+        version: 1 as const,
+        anchoredOn: `2026-10-2${index}`,
         head: signLedgerHead(
-          { seq: anchored.seq, hash, at: anchored.at, serverKeyId: signer.pinned.set.server.keyId },
+          {
+            seq: event.seq,
+            hash: hash ?? event.hash,
+            at: event.at,
+            serverKeyId: signer.pinned.set.server.keyId,
+          },
           signer.server.privateKey,
         ),
-      });
-    expect(compareWithAnchor(events, anchorFor(anchored.hash), key)).toMatchObject({
-      status: 'matches',
-    });
-    expect(compareWithAnchor(events.slice(0, 2), anchorFor(anchored.hash), key)).toMatchObject({
+      };
+    };
+    expect(compareWithAnchor(events, anchorFor(2), key)).toMatchObject({ status: 'matches' });
+    expect(compareWithAnchor(events.slice(0, 2), anchorFor(2), key)).toMatchObject({
       status: 'missing',
     });
-    expect(compareWithAnchor(events, anchorFor('9'.repeat(64)), key)).toMatchObject({
+    expect(compareWithAnchor(events, anchorFor(2, '9'.repeat(64)), key)).toMatchObject({
       status: 'mismatch',
     });
     const foreign = createTestDeployment();
-    expect(compareWithAnchor(events, anchorFor(anchored.hash, foreign), key)).toEqual({
+    expect(compareWithAnchor(events, anchorFor(2, undefined, foreign), key)).toMatchObject({
       status: 'bad-signature',
     });
-    expect(compareWithAnchor(events, '{"version":1}', key)).toEqual({ status: 'invalid' });
-    expect(compareWithAnchor(events, 'no es JSON', key)).toEqual({ status: 'invalid' });
+
+    // Varios archivos pegados uno tras otro, o un arreglo: se comparan todos.
+    const pasted = [anchorFor(1), anchorFor(2, '9'.repeat(64)), anchorFor(3)]
+      .map((anchor) => JSON.stringify(anchor, null, 2))
+      .join('\n');
+    const compared = compareWithAnchors(events, pasted, key);
+    expect(compared.status).toBe('compared');
+    if (compared.status === 'compared') {
+      expect(compared.results.map((result) => result.status)).toEqual([
+        'matches',
+        'mismatch',
+        'matches',
+      ]);
+    }
+    expect(parseLedgerAnchors(JSON.stringify([anchorFor(1), anchorFor(3)]))).toHaveLength(2);
+    expect(parseLedgerAnchors(JSON.stringify(anchorFor(1)))).toHaveLength(1);
+    for (const invalid of [
+      '{"version":1}',
+      'no es JSON',
+      '',
+      `${JSON.stringify(anchorFor(1))} x`,
+    ]) {
+      expect(compareWithAnchors(events, invalid, key), invalid).toEqual({ status: 'invalid' });
+    }
+  });
+});
+
+describe('llaves del buzón frente al registro público', () => {
+  it('recalcula el digesto del envío desde el detalle y lo compara con el evento publicado', async () => {
+    const deployment = createTestDeployment();
+    const receipt = createReceipt();
+    const request = buildSubmitRequest(
+      { mode: 'anonymous', facts: FACTS, evidence: EVIDENCE, protectionRequested: false },
+      receipt.keys,
+      undefined,
+    );
+    const event = receivedEventFor(signedReceiptFor(request, deployment));
+    const head = headFor(deployment, event.seq, event.hash);
+    const fetchPage = async () => ({ events: [event], head });
+    const detail = { ...detailFor(request), receivedEventSeq: event.seq };
+    expect(await verifyReporterKeys(detailFor(request), fetchPage, deployment.pinned)).toBe(
+      'pending',
+    );
+    expect(await verifyReporterKeys(detail, fetchPage, deployment.pinned)).toBe('verified');
+    const other = createReceipt();
+    const swapped = {
+      ...detail,
+      reporterKeys: { ...detail.reporterKeys, boxPublicKey: toBase64Url(other.keys.box.publicKey) },
+    };
+    expect(await verifyReporterKeys(swapped, fetchPage, deployment.pinned)).toBe('mismatch');
+    // Una cabeza firmada por otra llave o un evento ausente tampoco verifican.
+    expect(await verifyReporterKeys(detail, fetchPage, createTestDeployment().pinned)).toBe(
+      'mismatch',
+    );
+    expect(
+      await verifyReporterKeys(detail, async () => ({ events: [], head }), deployment.pinned),
+    ).toBe('mismatch');
+  });
+
+  it('también en modo sellado, con el digesto del sobre', async () => {
+    const deployment = createTestDeployment();
+    const receipt = createReceipt();
+    const block = buildIdentityBlock({ fullName: 'Persona Uno', contact: '', witnesses: [] }, []);
+    const sealed = await sealReporterIdentity(block, SEALED_INPUT, receipt.keys, deployment.pinned);
+    const request = buildSubmitRequest(SEALED_INPUT, receipt.keys, sealed);
+    const event = receivedEventFor(signedReceiptFor(request, deployment));
+    const head = headFor(deployment, event.seq, event.hash);
+    const detail = { ...detailFor(request), receivedEventSeq: event.seq };
+    const fetchPage = async () => ({ events: [event], head });
+    expect(await verifyReporterKeys(detail, fetchPage, deployment.pinned)).toBe('verified');
+    const otherDigest = { ...detail, sealedIdentityDigest: 'a'.repeat(64) };
+    expect(await verifyReporterKeys(otherDigest, fetchPage, deployment.pinned)).toBe('mismatch');
   });
 });

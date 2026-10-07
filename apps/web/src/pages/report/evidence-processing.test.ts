@@ -74,13 +74,13 @@ afterEach(() => {
 });
 
 describe('cleanEvidence', () => {
-  it('guarda la copia limpia verificada sin perfil de color', async () => {
+  it('guarda la copia limpia verificada, admitiendo solo el perfil sRGB genérico', async () => {
     const id = addItem();
     await cleanEvidence(id);
     expect(itemOf(id)).toMatchObject({ status: 'clean', cleanVerified: true });
     expect(itemOf(id)?.clean).toHaveLength(1);
     expect(huella.inspectImageMetadata).toHaveBeenCalledWith(expect.any(Blob), {
-      includeColorProfile: false,
+      allowGenericSrgbProfile: true,
     });
   });
 

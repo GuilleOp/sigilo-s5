@@ -5,6 +5,7 @@ export { findInvisibleCharacters, stripInvisibleCharacters } from './invisible-c
 export type {
   InvisibleCharacter,
   InvisibleCharacterKind,
+  InvisibleCharacterOptions,
   InvisibleCharacterReport,
 } from './invisible-characters.ts';
 

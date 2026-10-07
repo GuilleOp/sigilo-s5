@@ -141,7 +141,7 @@ export async function cleanEvidence(id: string): Promise<void> {
       );
     }
     const checks = await Promise.all(
-      blobs.map((blob) => inspectImageMetadata(blob, { includeColorProfile: false })),
+      blobs.map((blob) => inspectImageMetadata(blob, { allowGenericSrgbProfile: true })),
     );
     if (!exists(id)) return;
     if (checks.some((report) => report.hasAnyMetadata)) {

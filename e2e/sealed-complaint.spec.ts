@@ -6,6 +6,7 @@ import { loginAsAuthority, openComplaint } from './support/authority.ts';
 import { openServerDatabase, readAllCells } from './support/database.ts';
 import { reachSubmitStep, submitAndKeepReceipt } from './support/report-wizard.ts';
 import type { Receipt } from './support/report-wizard.ts';
+import { advanceServerClockToNextDay } from './support/clock.ts';
 import { openTracking } from './support/tracking.ts';
 
 // Nombre inventado y poco común para poder buscarlo sin falsos positivos.
@@ -33,6 +34,10 @@ test.describe.serial('denuncia con identidad sellada', () => {
     const detail = authority.getByTestId('complaint-detail');
     await expect(detail).toContainText('Sellada; aperturas registradas: 0');
     await expect(detail).not.toContainText(SYNTHETIC_NAME);
+    // El mismo día, el evento de recepción aún no se publica: las llaves no están verificadas.
+    await expect(detail.getByTestId('reporter-keys-unverified')).toHaveText(
+      'Las llaves de la persona aún no están verificadas contra el registro público.',
+    );
 
     await detail.getByTestId('status-select').selectOption('investigating');
     await detail.getByTestId('save-status').click();
@@ -57,6 +62,10 @@ test.describe.serial('denuncia con identidad sellada', () => {
     const identity = view.getByTestId('identity-status');
     await expect(identity.getByTestId('identity-opened')).toContainText('1 vez');
     await expect(identity).toContainText(`Fundamento: «${LEGAL_BASIS}»`);
+    // La apertura se ve de inmediato, aunque su evento público siga pendiente.
+    await expect(identity.getByTestId('identity-access-entry')).toContainText(
+      'Pendiente de publicar en el registro público',
+    );
 
     await view.getByTestId('reply-input').fill(REPLY);
     await view.getByTestId('send-reply').click();
@@ -70,6 +79,20 @@ test.describe.serial('denuncia con identidad sellada', () => {
     const thread = authority.getByTestId('authority-mailbox');
     await expect(thread.getByTestId('mailbox-message')).toHaveCount(2);
     await expect(thread.getByTestId('mailbox-message').nth(1)).toContainText(REPLY);
+
+    // Al día siguiente se publica el día: la autoridad verifica las llaves contra el registro
+    // público y la persona encuentra la apertura por la etiqueta de su recibo.
+    advanceServerClockToNextDay();
+    await authority.getByRole('button', { name: 'Volver al listado' }).click();
+    await openComplaint(authority, receipt.folio);
+    await expect(authority.getByTestId('reporter-keys-verified')).toBeVisible();
+    await page.getByTestId('tracking-logout').click();
+    await openTracking(page, receipt.folio, receipt.words);
+    const published = page.getByTestId('identity-status');
+    await expect(published.getByTestId('identity-access-entry')).toContainText(
+      'Ya aparece en el registro público.',
+    );
+    await expect(published.getByTestId('identity-openings-hidden')).toHaveCount(0);
   });
 
   test('la base de datos no contiene el nombre sintético en ninguna tabla', () => {

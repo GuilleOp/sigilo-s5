@@ -19,12 +19,19 @@ export const TimelineEntrySchema = z.object({
 });
 export type TimelineEntry = z.infer<typeof TimelineEntrySchema>;
 
-/** Cada apertura de la identidad sellada queda visible para la persona denunciante. */
+/** Identificador aleatorio de una apertura de identidad (16 bytes en hexadecimal). */
+export const OpeningIdSchema = z.string().regex(/^[0-9a-f]{32}$/, 'Identificador inválido');
+
+/**
+ * Cada apertura de la identidad sellada queda visible para la persona denunciante de inmediato,
+ * aunque su evento `identity.opened` se publique hasta que cierre el día. Con `openingId` y
+ * `legalBasis` la persona recalcula el `payloadDigest` del evento (`identityOpenedPayloadDigest`).
+ */
 export const IdentityAccessEntrySchema = z.object({
   on: DayDateSchema,
   actorRole: z.literal('authority'),
   legalBasis: z.string(),
-  ledgerSeq: z.number().int().nonnegative(),
+  openingId: OpeningIdSchema,
 });
 export type IdentityAccessEntry = z.infer<typeof IdentityAccessEntrySchema>;
 
@@ -37,11 +44,11 @@ export const TrackingViewSchema = z.object({
   messages: z.array(MailboxMessageSchema),
   receipt: SignedReceiptSchema,
   /**
-   * Evento `complaint.received` de la denuncia. El cliente comprueba que corresponda a su
-   * comprobante (`folioDigest`, `payloadDigest`, `seq` y fecha) y después puede buscarlo en la
-   * bitácora pública con `ledgerEvents?from=<seq>&limit=1`, una vez publicado su día.
+   * Evento `complaint.received` ya publicado (encadenado al cerrar su día). Falta mientras está
+   * pendiente de publicar. El cliente comprueba que corresponda a su comprobante (`folioDigest`,
+   * `payloadDigest` y fecha) y lo busca en la bitácora pública con `ledgerEvents?from=<seq>&limit=1`.
    */
-  receivedEvent: LedgerEventSchema,
+  receivedEvent: LedgerEventSchema.optional(),
 });
 export type TrackingView = z.infer<typeof TrackingViewSchema>;
 

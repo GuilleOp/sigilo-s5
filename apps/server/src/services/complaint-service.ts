@@ -5,7 +5,15 @@ import type {
   SubmitComplaintRequest,
   SubmitComplaintResponse,
 } from '@sigilo/contracts';
-import { computeSubmissionDigest, generateFolio, signReceipt, toDayDate } from '@sigilo/core';
+import {
+  computeSubmissionDigest,
+  generateFolio,
+  identityOpenedPayload,
+  randomBytes,
+  signReceipt,
+  toDayDate,
+  toHex,
+} from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import { withTransaction } from '../db/database.ts';
@@ -79,7 +87,8 @@ export function submitComplaint(
     const folio = newFolio(ctx);
     // Seguridad: los datos de cada evento incluyen el folio (60 bits secretos), así su digesto
     // público no se puede adivinar probando valores, pero la persona denunciante sí lo verifica.
-    const event = ctx.ledger.append({
+    // El evento queda pendiente hasta que cierre el día; el comprobante firma su `payloadDigest`.
+    const event = ctx.ledger.record({
       type: 'complaint.received',
       folio,
       at: receivedOn,
@@ -91,7 +100,7 @@ export function submitComplaint(
         folio,
         submissionDigest,
         receivedOn,
-        ledgerSeq: event.seq,
+        payloadDigest: event.payloadDigest,
         serverKeyId: ctx.deps.keys.publicKeySet.server.keyId,
       },
       ctx.deps.keys.serverSigningPrivateKey,
@@ -109,6 +118,7 @@ export function submitComplaint(
       receipt,
     });
     associateEvidence(ctx, request, folio);
+    ctx.statusHistory.insert(folio, 'received', receivedOn);
     return { folio, receipt };
   });
 }
@@ -128,14 +138,18 @@ export function changeStatus(
     const current = ctx.complaints.find(folio);
     if (current === null) throw new ApiFailure('not_found');
     if (current.status === status) throw new ApiFailure('bad_request');
-    ctx.ledger.append({
+    const changedOn = toDayDate(ctx.deps.now());
+    ctx.ledger.record({
       type: 'complaint.status_changed',
       folio,
-      at: toDayDate(ctx.deps.now()),
+      at: changedOn,
       actorRole: 'authority',
-      payload: { folio, status },
+      // Seguridad: un identificador aleatorio hace único el digesto aunque el estatus se repita,
+      // y el folio impide adivinarlo probando estatus.
+      payload: { folio, status, changeId: toHex(randomBytes(16)) },
     });
     ctx.complaints.updateStatus(folio, status);
+    ctx.statusHistory.insert(folio, status, changedOn);
     return { ...current, status };
   });
 }
@@ -144,7 +158,9 @@ export function changeStatus(
  * Registra `identity.opened` con su fundamento y después entrega el sobre de identidad. La
  * autoridad recalcula su contexto (AAD) desde el detalle de la denuncia.
  * Lanza `not_found` si la denuncia es anónima.
- * Seguridad: es la única vía para obtener el sobre y siempre deja rastro visible para la persona.
+ * Seguridad: es la única vía para obtener el sobre y siempre deja rastro. La persona denunciante
+ * ve la apertura de inmediato en su seguimiento; el evento público se encadena al cerrar el día y
+ * lleva la etiqueta de su recibo, para que lo encuentre aunque se registre con otro folio.
  */
 export function openIdentity(
   ctx: AppContext,
@@ -154,16 +170,23 @@ export function openIdentity(
   const sealedIdentity = complaint.sealedIdentity;
   if (complaint.mode !== 'sealed' || sealedIdentity === null) throw new ApiFailure('not_found');
   const openedOn = toDayDate(ctx.deps.now());
-  const event = withTransaction(ctx.deps.db, () => {
-    const appended = ctx.ledger.append({
+  const openingId = toHex(randomBytes(16));
+  const payload = identityOpenedPayload({
+    folio: complaint.folio,
+    openingId,
+    legalBasis,
+    authVerifier: complaint.authVerifier,
+  });
+  withTransaction(ctx.deps.db, () => {
+    ctx.ledger.record({
       type: 'identity.opened',
       folio: complaint.folio,
       at: openedOn,
       actorRole: 'authority',
-      payload: { folio: complaint.folio, legalBasis },
+      payload,
+      receiptTag: payload.receiptTag,
     });
-    ctx.identityOpenings.insert(complaint.folio, appended.seq, openedOn, legalBasis);
-    return appended;
+    ctx.identityOpenings.insert(complaint.folio, openingId, openedOn, legalBasis);
   });
-  return { sealedIdentity, ledgerSeq: event.seq };
+  return { sealedIdentity, openingId };
 }

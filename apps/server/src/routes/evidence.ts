@@ -5,12 +5,14 @@ import { EvidenceMediaTypeSchema, MAX_EVIDENCE_BYTES, ROUTES } from '@sigilo/con
 import type { AppContext } from '../context.ts';
 import { ApiFailure, errorResponse } from '../http/errors.ts';
 import { mediaTypeOf } from '../http/request.ts';
+import { requireProofOfWork } from '../security/proof-of-work.ts';
 import { storeEvidence } from '../services/evidence-service.ts';
 
-/** Registra `POST evidenceUpload`. */
+/** Registra `POST evidenceUpload`, que exige la prueba de trabajo de propósito `evidence`. */
 export function registerEvidenceRoutes(app: Hono, ctx: AppContext): void {
   app.post(
     ROUTES.evidenceUpload,
+    requireProofOfWork(ctx.pow, 'evidence'),
     bodyLimit({
       maxSize: MAX_EVIDENCE_BYTES,
       onError: (c) => errorResponse(c, 'payload_too_large'),

@@ -66,6 +66,7 @@ export function readLedgerEvents(db: DatabaseSync): LedgerEvent[] {
       at: String(row.at),
       actorRole: String(row.actor_role) as LedgerEvent['actorRole'],
       payloadDigest: String(row.payload_digest),
+      ...(row.receipt_tag === null ? {} : { receiptTag: String(row.receipt_tag) }),
       prevHash: String(row.prev_hash),
       hash: String(row.hash),
     }));

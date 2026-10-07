@@ -10,6 +10,8 @@ const STATUS_BY_CODE: Record<ApiErrorCode, ContentfulStatusCode> = {
   payload_too_large: 413,
   unsupported_media_type: 415,
   rate_limited: 429,
+  proof_required: 428,
+  storage_full: 507,
   internal: 500,
 };
 
@@ -21,6 +23,8 @@ const MESSAGE_BY_CODE: Record<ApiErrorCode, string> = {
   payload_too_large: 'El contenido excede el tamaño permitido.',
   unsupported_media_type: 'Tipo de contenido no admitido.',
   rate_limited: 'Demasiados intentos. Intenta más tarde.',
+  proof_required: 'Falta una prueba de trabajo válida y vigente.',
+  storage_full: 'No hay espacio para más pruebas por ahora. Intenta más tarde.',
   internal: 'Error interno del servidor.',
 };
 

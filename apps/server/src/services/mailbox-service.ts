@@ -79,7 +79,7 @@ export function recordMessage(
     if (sequence !== ctx.messages.nextSequence(complaint.folio, from)) {
       throw new ApiFailure('bad_request');
     }
-    const event = ctx.ledger.append({
+    ctx.ledger.record({
       type: 'message.sent',
       folio: complaint.folio,
       at: toDayDate(now),
@@ -92,7 +92,7 @@ export function recordMessage(
         envelopeDigest: sha256Hex(canonicalize(envelope)),
       },
     });
-    ctx.messages.insert(complaint.folio, message, event.seq);
+    ctx.messages.insert(complaint.folio, message);
     return message;
   });
 }

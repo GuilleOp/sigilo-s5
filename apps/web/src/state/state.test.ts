@@ -4,7 +4,7 @@ import { assessRisk } from '@sigilo/huella';
 import { createMemoryStore, resetAllStores } from './memory-store.ts';
 import { emptyDraft } from './report-draft.ts';
 import type { ReportDraft } from './report-draft.ts';
-import { buildRiskActions, buildRiskSignals } from './report-risk.ts';
+import { buildRiskActions, buildRiskSignals, invisibleCount } from './report-risk.ts';
 import {
   toComplaintFacts,
   validateEvidenceStep,
@@ -75,6 +75,15 @@ describe('validación', () => {
 });
 
 describe('riesgo', () => {
+  it('no cuenta comillas ni rayas tipográficas como caracteres invisibles', () => {
+    const draft = emptyDraft();
+    draft.facts.description = '“Contrato” sin licitación — según el oficio’s anexo.';
+    draft.facts.accused = 'Titular de la unidad';
+    expect(invisibleCount(draft)).toBe(0);
+    draft.facts.accused = 'Titular\u200b de la unidad';
+    expect(invisibleCount(draft)).toBe(1);
+  });
+
   it('sube con GPS sin limpiar y propone acciones', () => {
     const draft = filledDraft();
     draft.facts.municipalityCode = '014';

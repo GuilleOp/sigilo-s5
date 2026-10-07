@@ -1,6 +1,7 @@
 // Repositorio de denuncias: hechos legibles, sobre de identidad, llaves y comprobante.
 import type { DatabaseSync } from 'node:sqlite';
 import {
+  primaryOffenseCode,
   ComplaintFactsSchema,
   ComplaintModeSchema,
   ComplaintStatusSchema,
@@ -19,7 +20,11 @@ import type {
 import { readInteger, readOptionalText, readText } from './database.ts';
 import type { Row } from './database.ts';
 
-/** Denuncia tal como se almacena. */
+/**
+ * Denuncia tal como se almacena. `facts` son los hechos tal como se enviaron (forman parte del
+ * contexto de la identidad y del digesto del envío); la columna de conducta guarda la clave
+ * principal, que es la que usan el listado y los datos abiertos.
+ */
 export interface ComplaintRecord {
   folio: string;
   mode: ComplaintMode;
@@ -57,8 +62,17 @@ export interface ComplaintsRepository {
   find(folio: string): ComplaintRecord | null;
   listSummaries(): ComplaintSummary[];
   updateStatus(folio: string, status: ComplaintStatus): void;
-  /** Conteos por celda de los meses de recepción anteriores a `beforeMonth` (`AAAA-MM`). */
-  countByCell(beforeMonth: string): OpenDataCell[];
+  /** Conteos por celda del mes de recepción `month` (`AAAA-MM`), con la clave principal. */
+  countCellsOfMonth(month: string): OpenDataCell[];
+  /** Meses de recepción (`AAAA-MM`) anteriores a `beforeMonth` que tienen denuncias, en orden. */
+  listMonthsBefore(beforeMonth: string): string[];
+  /** Marca que la persona denunciante entró al seguimiento al menos una vez (sin fecha). */
+  markTracked(folio: string): void;
+  /**
+   * Folios recibidos antes del día `beforeDay` que nunca tuvieron seguimiento y siguen en estatus
+   * `received` (la autoridad no los ha atendido). Ver la política de retención.
+   */
+  listUntrackedBefore(beforeDay: string): string[];
 }
 
 const SUMMARY_COLUMNS =
@@ -129,9 +143,20 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
     `SELECT state_code, offense_code, substr(received_on, 1, 7) AS month, status,
        COUNT(*) AS total
      FROM complaints
-     WHERE substr(received_on, 1, 7) < ?
+     WHERE substr(received_on, 1, 7) = ?
      GROUP BY state_code, offense_code, month, status
      ORDER BY state_code, offense_code, month, status`,
+  );
+  const monthsStatement = db.prepare(
+    `SELECT DISTINCT substr(received_on, 1, 7) AS month FROM complaints
+     WHERE substr(received_on, 1, 7) < ? ORDER BY month`,
+  );
+  const trackedStatement = db.prepare(
+    'UPDATE complaints SET has_been_tracked = 1 WHERE folio = ? AND has_been_tracked = 0',
+  );
+  const untrackedStatement = db.prepare(
+    `SELECT folio FROM complaints
+     WHERE has_been_tracked = 0 AND status = 'received' AND received_on < ? ORDER BY folio`,
   );
 
   return {
@@ -148,7 +173,8 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
         record.status,
         record.receivedOn,
         record.facts.stateCode,
-        record.facts.offenseCode,
+        // Seguridad: una misma conducta no debe repartirse en dos celdas de datos abiertos.
+        primaryOffenseCode(record.facts.offenseCode) ?? record.facts.offenseCode,
         record.protectionRequested ? 1 : 0,
         JSON.stringify(record.facts),
         record.sealedIdentity === null ? null : JSON.stringify(record.sealedIdentity),
@@ -166,6 +192,13 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
     updateStatus: (folio, status) => {
       updateStatusStatement.run(status, folio);
     },
-    countByCell: (beforeMonth) => cellsStatement.all(beforeMonth).map(toCell),
+    countCellsOfMonth: (month) => cellsStatement.all(month).map(toCell),
+    listMonthsBefore: (beforeMonth) =>
+      monthsStatement.all(beforeMonth).map((row) => readText(row, 'month')),
+    markTracked: (folio) => {
+      trackedStatement.run(folio);
+    },
+    listUntrackedBefore: (beforeDay) =>
+      untrackedStatement.all(beforeDay).map((row) => readText(row, 'folio')),
   };
 }

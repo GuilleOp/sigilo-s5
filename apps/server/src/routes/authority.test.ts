@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ComplaintDetailSchema,
   ComplaintSummarySchema,
+  LedgerPageSchema,
   MailboxMessageSchema,
   OpenIdentityResponseSchema,
   ROUTES,
@@ -17,6 +18,13 @@ import type {
 import {
   fromBase64Url,
   identityContextFromDetail,
+  identityOpenedPayloadDigest,
+  receiptTagFor,
+  receivedPayloadDigest,
+  reconcileIdentityOpenings,
+  sealedIdentityDigest,
+  submissionDigestFromDetail,
+  verifyChain,
   openIdentity,
   openMailboxMessage,
   sealMailboxMessage,
@@ -33,6 +41,7 @@ import {
   createTestServer,
   credentialsFor,
   getAsAuthority,
+  NEXT_DAY,
   postJson,
   reporterRecipient,
   samplePng,
@@ -54,12 +63,20 @@ interface Scenario {
   request: SubmitComplaintRequest;
 }
 
-async function setup(mode: 'sealed' | 'anonymous' = 'sealed'): Promise<Scenario> {
+async function setup(
+  mode: 'sealed' | 'anonymous' = 'sealed',
+  offenseCode?: string,
+): Promise<Scenario> {
   const server = createTestServer();
   const reporter = createReporter();
   const upload = await uploadEvidence(server.app, samplePng(128), 'image/png');
   const evidence = (await upload.json()) as EvidenceDescriptor;
-  const request = await buildComplaintRequest(server, { mode, reporter, evidence: [evidence] });
+  const request = await buildComplaintRequest(server, {
+    mode,
+    reporter,
+    evidence: [evidence],
+    ...(offenseCode === undefined ? {} : { offenseCode }),
+  });
   const { folio } = await submitComplaint(server, request);
   return { server, reporter, folio, evidence, request };
 }
@@ -136,7 +153,38 @@ describe('listado y detalle', () => {
       identityOpenedCount: 0,
     });
     expect(fromBase64Url(detail.reporterKeys.boxPublicKey)).toEqual(reporter.box.publicKey);
-    expect(raw).not.toContain('sealedIdentity');
+    // Solo viaja el digesto del sobre, nunca el sobre.
+    expect(detail).not.toHaveProperty('sealedIdentity');
+    expect(raw).not.toContain('"ct"');
+    if (request.sealedIdentity === undefined) throw new Error('Falta el sobre.');
+    expect(detail.sealedIdentityDigest).toBe(sealedIdentityDigest(request.sealedIdentity));
+  });
+
+  it('permite recalcular el digesto del envío y compararlo con el evento publicado', async () => {
+    for (const mode of ['sealed', 'anonymous'] as const) {
+      const { server, folio } = await setup(mode);
+      const sameDay = await fetchDetail(server, folio);
+      expect(sameDay.receivedEventSeq).toBeUndefined();
+      server.setNow(NEXT_DAY);
+      const detail = await fetchDetail(server, folio);
+      const seq = detail.receivedEventSeq;
+      if (seq === undefined) throw new Error('Falta la secuencia publicada.');
+      const page = LedgerPageSchema.parse(
+        await (await server.app.request(`${ROUTES.ledgerEvents}?from=${seq}&limit=1`)).json(),
+      );
+      expect(page.events[0]?.payloadDigest).toBe(
+        receivedPayloadDigest(folio, submissionDigestFromDetail(detail)),
+      );
+    }
+  });
+
+  it('guarda la clave equivalente en los hechos y la principal en el resumen', async () => {
+    const { server, folio, request } = await setup('anonymous', 'CPF-222');
+    const detail = await fetchDetail(server, folio);
+    expect(detail.facts.offenseCode).toBe('CPF-222');
+    expect(detail.summary.offenseCode).toBe('LGRA-52');
+    // Los hechos tal como se enviaron mantienen el digesto del envío.
+    expect(detail.facts).toEqual(request.facts);
   });
 
   it('responde 404 con folio inexistente o mal formado', async () => {
@@ -163,11 +211,47 @@ describe('apertura de identidad', () => {
     );
     expect(identity).toEqual(SYNTHETIC_IDENTITY);
 
+    // La persona la ve de inmediato, aunque el evento siga pendiente de publicar.
     const view = await trackingView(scenario);
     expect(view.identityAccess).toEqual([
-      { on: '2026-10-22', actorRole: 'authority', legalBasis: LEGAL_BASIS, ledgerSeq: 1 },
+      {
+        on: '2026-10-22',
+        actorRole: 'authority',
+        legalBasis: LEGAL_BASIS,
+        openingId: opened.openingId,
+      },
     ]);
     expect((await fetchDetail(server, folio)).identityOpenedCount).toBe(1);
+    const authVerifier = scenario.reporter.authVerifier;
+    const sameDay = LedgerPageSchema.parse(
+      await (await server.app.request(ROUTES.ledgerEvents)).json(),
+    );
+    expect(sameDay.events.some((event) => event.type === 'identity.opened')).toBe(false);
+
+    // Al día siguiente, el evento público lleva la etiqueta del recibo y concilia con el seguimiento.
+    server.setNow(new Date('2026-10-23T09:00:00Z'));
+    const page = LedgerPageSchema.parse(
+      await (await server.app.request(ROUTES.ledgerEvents)).json(),
+    );
+    expect(verifyChain(page.events)).toEqual({ valid: true });
+    const openings = page.events.filter((event) => event.type === 'identity.opened');
+    expect(openings).toHaveLength(1);
+    expect(openings[0]?.receiptTag).toBe(receiptTagFor(authVerifier));
+    expect(openings[0]?.payloadDigest).toBe(
+      identityOpenedPayloadDigest({
+        folio,
+        openingId: opened.openingId,
+        legalBasis: LEGAL_BASIS,
+        authVerifier,
+      }),
+    );
+    expect(
+      reconcileIdentityOpenings(page.events, view.identityAccess, {
+        folio,
+        authVerifier,
+        publishedThrough: page.head.at,
+      }),
+    ).toEqual({ unlisted: [], unpublished: [] });
   });
 
   it('no abre si el servidor altera hechos, pruebas o llaves del detalle', async () => {

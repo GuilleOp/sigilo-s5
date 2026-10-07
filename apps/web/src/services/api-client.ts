@@ -18,6 +18,9 @@ const MESSAGES: Readonly<Record<ClientErrorCode, string>> = {
   payload_too_large: 'El archivo o el mensaje es demasiado grande. Usa uno más pequeño.',
   unsupported_media_type: 'No podemos recibir este tipo de archivo.',
   rate_limited: 'Hubo demasiados intentos. Espera un rato y vuelve a intentarlo.',
+  proof_required:
+    'No pudimos completar la protección contra envíos automáticos. Inténtalo de nuevo.',
+  storage_full: 'El sistema no tiene espacio para más pruebas por ahora. Inténtalo más tarde.',
   internal: 'El sistema tuvo un problema. Inténtalo más tarde.',
   network: 'No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.',
   invalid_response: 'Recibimos una respuesta extraña. Por seguridad, nos detuvimos.',
@@ -48,6 +51,8 @@ export interface RequestOptions {
   contentType?: string;
   /** Token bearer de la autoridad. */
   bearer?: string;
+  /** Cabeceras adicionales (por ejemplo, la prueba de trabajo). */
+  headers?: Readonly<Record<string, string>>;
   query?: Readonly<Record<string, string>>;
 }
 
@@ -57,7 +62,9 @@ function statusToCode(status: number): ApiErrorCode {
   if (status === 404) return 'not_found';
   if (status === 413) return 'payload_too_large';
   if (status === 415) return 'unsupported_media_type';
+  if (status === 428) return 'proof_required';
   if (status === 429) return 'rate_limited';
+  if (status === 507) return 'storage_full';
   return 'internal';
 }
 
@@ -99,6 +106,7 @@ export function createApiClient(
       body = options.binary;
     }
     if (options.bearer !== undefined) headers.set('Authorization', `Bearer ${options.bearer}`);
+    for (const [name, value] of Object.entries(options.headers ?? {})) headers.set(name, value);
 
     let response: Response;
     try {

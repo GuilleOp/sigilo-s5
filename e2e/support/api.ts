@@ -3,6 +3,8 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import {
   ComplaintDetailSchema,
+  POW_HEADER,
+  PowChallengeSchema,
   PublicKeySetSchema,
   ROUTES,
   SubmitComplaintResponseSchema,
@@ -13,7 +15,8 @@ import type {
   HpkeEnvelope,
   SubmitComplaintRequest,
 } from '@sigilo/contracts';
-import { fromBase64Url } from '@sigilo/core';
+import { formatPowHeader, fromBase64Url, solvePow } from '@sigilo/core';
+import type { PowPurpose } from '@sigilo/contracts';
 import type { PinnedKeys } from '../../apps/web/src/config/pinned-keys.ts';
 import {
   buildIdentityBlock,
@@ -39,17 +42,39 @@ export function syntheticFacts(overrides: Partial<ComplaintFacts> = {}): Complai
   };
 }
 
-/** Recibo de una denuncia sembrada, con la secuencia de su evento en la bitácora. */
+/**
+ * Recibo de una denuncia sembrada, con el identificador (`payloadDigest`) de su evento en la
+ * bitácora: su secuencia no existe hasta que se publica el día.
+ */
 export interface SeededComplaint extends Receipt {
-  ledgerSeq: number;
+  payloadDigest: string;
 }
 
-/** Envía una solicitud de denuncia tal cual, sin comprobar la respuesta. */
-export function postComplaint(
+/**
+ * Pide un reto de prueba de trabajo al servidor de prueba y lo resuelve en Node, igual que el
+ * worker del navegador. Devuelve el valor de la cabecera `POW_HEADER`.
+ */
+export async function solveProofOfWork(
+  request: APIRequestContext,
+  purpose: PowPurpose,
+): Promise<string> {
+  const response = await request.get(`${API_ORIGIN}${ROUTES.powChallenge}?purpose=${purpose}`);
+  const { token, bits } = PowChallengeSchema.parse(await response.json());
+  const counter = solvePow(token, bits);
+  if (counter === null) throw new Error('No se pudo resolver la prueba de trabajo.');
+  return formatPowHeader(token, counter);
+}
+
+/** Envía una solicitud de denuncia tal cual, con su prueba de trabajo, sin comprobar la respuesta. */
+export async function postComplaint(
   request: APIRequestContext,
   body: SubmitComplaintRequest,
 ): Promise<APIResponse> {
-  return request.post(`${API_ORIGIN}${ROUTES.complaints}`, { data: body });
+  const proof = await solveProofOfWork(request, 'complaint');
+  return request.post(`${API_ORIGIN}${ROUTES.complaints}`, {
+    data: body,
+    headers: { [POW_HEADER]: proof },
+  });
 }
 
 async function submitSeed(
@@ -60,12 +85,16 @@ async function submitSeed(
   const response = await postComplaint(request, body);
   if (!response.ok()) throw new Error(`No se pudo sembrar la denuncia: ${response.status()}`);
   const parsed = SubmitComplaintResponseSchema.parse(await response.json());
-  return { folio: parsed.folio, words: receipt.words, ledgerSeq: parsed.receipt.ledgerSeq };
+  return {
+    folio: parsed.folio,
+    words: receipt.words,
+    payloadDigest: parsed.receipt.payloadDigest,
+  };
 }
 
 /**
  * Siembra una denuncia anónima: genera el recibo y las llaves igual que el navegador y la envía.
- * Devuelve el folio, las 8 palabras para dar seguimiento y la secuencia de su evento.
+ * Devuelve el folio, las 8 palabras para dar seguimiento y el identificador de su evento.
  */
 export async function seedAnonymousComplaint(
   request: APIRequestContext,

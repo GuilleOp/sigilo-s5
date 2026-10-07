@@ -22,11 +22,17 @@ export interface ImageMetadataReport {
 /** Opciones de `inspectImageMetadata`. */
 export interface InspectImageMetadataOptions {
   /**
-   * Incluir el perfil de color ICC. Por defecto, `true`. Se desactiva al comprobar una copia
-   * limpia: el codificador del lienzo (Chromium) agrega su propio perfil sRGB genérico, que no
-   * proviene del original ni identifica a nadie.
+   * Incluir el perfil de color ICC. Por defecto, `true`. Con `false` se ignora cualquier perfil,
+   * aunque no sea genérico; para comprobar una copia limpia conviene `allowGenericSrgbProfile`.
    */
   includeColorProfile?: boolean;
+  /**
+   * Aceptar sin reportarlo un perfil ICC sRGB genérico de los que agregan los codificadores de
+   * los navegadores (ver `isGenericSrgbProfile`). Por defecto, `false`. Cualquier otro perfil
+   * cuenta como metadato. No tiene efecto con `includeColorProfile: false`, que ignora todo
+   * perfil.
+   */
+  allowGenericSrgbProfile?: boolean;
 }
 
 type Block = Record<string, unknown>;
@@ -126,6 +132,96 @@ function joinDevice(make: string | undefined, model: string | undefined): string
   return model.toLowerCase().startsWith(make.toLowerCase()) ? model : `${make} ${model}`;
 }
 
+// Descripciones de los perfiles sRGB que escriben los codificadores de los navegadores:
+// - Chromium (Skia, `SkICC`): «sRGB», con copyright «Google Inc. 2016».
+// - WebKit en macOS e iOS (ImageIO de Apple): «sRGB IEC61966-2.1», con copyright de Apple.
+// - Firefox no incrusta perfil al codificar un lienzo; el perfil sRGB clásico de HP/Microsoft
+//   («sRGB IEC61966-2.1», «Copyright (c) 1998 Hewlett-Packard Company») cubre los codificadores
+//   del sistema que lo reutilizan.
+const GENERIC_SRGB_DESCRIPTIONS: ReadonlySet<string> = new Set(['sRGB', 'sRGB IEC61966-2.1']);
+// Copyright de proveedor, con año opcional. Cualquier otro texto se trata como metadato.
+const GENERIC_ICC_COPYRIGHT =
+  /^(?:Copyright\s+)?(?:\(c\)\s*)?(?:\d{4}\s+)?(?:Google Inc\.|Apple Inc\.|Apple Computer,? Inc\.|Hewlett-Packard Company)(?:,?\s*\d{4})?\.?$/u;
+// Textos fijos del perfil sRGB de HP/Microsoft.
+const GENERIC_ICC_TEXTS: Readonly<Record<string, ReadonlySet<string>>> = {
+  DeviceMfgDesc: new Set(['IEC http://www.iec.ch']),
+  DeviceModelDesc: new Set(['IEC 61966-2.1 Default RGB colour space - sRGB']),
+  ViewingCondDesc: new Set(['Reference Viewing Condition in IEC61966-2.1']),
+};
+// Campos de la cabecera ICC (firmas de 4 bytes, versión, fecha) y etiquetas colorimétricas sin
+// texto libre. Una etiqueta fuera de esta lista o de las de texto anteriores no es genérica.
+const ICC_STRUCTURAL_KEYS: ReadonlySet<string> = new Set([
+  'ProfileCMMType',
+  'ProfileVersion',
+  'ProfileClass',
+  'ColorSpaceData',
+  'ProfileConnectionSpace',
+  'ProfileDateTime',
+  'ProfileFileSignature',
+  'PrimaryPlatform',
+  'DeviceManufacturer',
+  'DeviceModel',
+  'RenderingIntent',
+  'ProfileCreator',
+  'MediaWhitePoint',
+  'MediaBlackPoint',
+  'RedMatrixColumn',
+  'GreenMatrixColumn',
+  'BlueMatrixColumn',
+  'RedTRC',
+  'GreenTRC',
+  'BlueTRC',
+  'ChromaticAdaptation',
+  'Chromaticity',
+  'Luminance',
+  'Measurement',
+  'Technology',
+  'ViewingConditions',
+  'cicp',
+]);
+
+/** Textos de una etiqueta ICC: cadena simple o lista multilingüe (`mluc`) de exifr. */
+function iccTexts(value: unknown): string[] | undefined {
+  if (typeof value === 'string') return [value];
+  if (!Array.isArray(value)) return undefined;
+  const texts: string[] = [];
+  for (const entry of value) {
+    if (!isBlock(entry) || typeof entry['text'] !== 'string') return undefined;
+    texts.push(entry['text']);
+  }
+  return texts.length === 0 ? undefined : texts;
+}
+
+/**
+ * Indica si un bloque ICC de exifr es un perfil sRGB genérico de navegador: perfil de monitor
+ * RGB con espacio de conexión XYZ, descripción conocida, copyright de proveedor (o ninguno) y
+ * sin otras etiquetas de texto.
+ *
+ * Seguridad: se decide por descripción y estructura, no por una huella binaria, porque los bytes
+ * cambian entre versiones de Skia e ImageIO. Un perfil con cualquier texto desconocido (nombre de
+ * persona, modelo de monitor, etiquetas privadas) se trata como metadato y la copia no se acepta.
+ */
+function isGenericSrgbProfile(icc: Block): boolean {
+  if (icc['ProfileClass'] !== 'mntr') return false;
+  if (icc['ColorSpaceData'] !== 'RGB' || icc['ProfileConnectionSpace'] !== 'XYZ') return false;
+  let hasDescription = false;
+  for (const [key, value] of Object.entries(icc)) {
+    if (value === undefined || ICC_STRUCTURAL_KEYS.has(key)) continue;
+    const texts = iccTexts(value);
+    if (texts === undefined) return false;
+    if (key === 'ProfileDescription' || key === 'ProfileDescriptionML') {
+      if (!texts.every((text) => GENERIC_SRGB_DESCRIPTIONS.has(text))) return false;
+      hasDescription = true;
+    } else if (key === 'ProfileCopyright') {
+      if (!texts.every((text) => GENERIC_ICC_COPYRIGHT.test(text))) return false;
+    } else {
+      const allowed = GENERIC_ICC_TEXTS[key];
+      if (allowed === undefined || !texts.every((text) => allowed.has(text))) return false;
+    }
+  }
+  return hasDescription;
+}
+
 /**
  * Lee los metadatos de una imagen y resume lo que podría identificar a la persona.
  * Nunca lanza por un archivo sin metadatos o ilegible: en ese caso devuelve un reporte vacío.
@@ -175,10 +271,14 @@ export async function inspectImageMetadata(
   const xmp = block('xmp');
   const iptc = block('iptc');
 
+  const icc = block('icc');
+  const isIgnoredColorProfile =
+    icc !== undefined && options.allowGenericSrgbProfile === true && isGenericSrgbProfile(icc);
+  const isPresent = (key: string): boolean =>
+    block(key) !== undefined && !(key === 'icc' && isIgnoredColorProfile);
+
   const report = emptyReport();
-  const presentBlocks = ['ifd0', 'ifd1', 'exif', 'gps', 'xmp', 'iptc', 'icc'].filter(
-    (key) => block(key) !== undefined,
-  );
+  const presentBlocks = ['ifd0', 'ifd1', 'exif', 'gps', 'xmp', 'iptc', 'icc'].filter(isPresent);
   report.hasAnyMetadata = presentBlocks.length > 0;
 
   const latitude = gpsBlock?.['latitude'];
@@ -218,7 +318,7 @@ export async function inspectImageMetadata(
     }
   }
   for (const segment of SEGMENT_LABELS) {
-    if (block(segment.block) !== undefined) report.otherFields.push(segment.label);
+    if (isPresent(segment.block)) report.otherFields.push(segment.label);
   }
   return report;
 }

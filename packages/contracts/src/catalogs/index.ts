@@ -71,6 +71,16 @@ export function isOffenseCode(code: string): boolean {
   return OFFENSE_BY_CODE.has(code);
 }
 
+/**
+ * Clave principal de una conducta: la misma si ya es principal y la de la LGRA si es una
+ * equivalente del CPF; `undefined` si la clave no existe.
+ * Seguridad: los datos abiertos agregan por esta clave para que una misma conducta no se reparta
+ * en dos celdas más pequeñas.
+ */
+export function primaryOffenseCode(code: string): string | undefined {
+  return OFFENSE_BY_CODE.get(code)?.code;
+}
+
 /** Ley y artículo de una clave, por ejemplo `{ law: 'LGRA', article: '52' }`. */
 export function offenseReference(code: string): { law: OffenseLaw; article: string } | undefined {
   const match = /^(LGRA|CPF)-(\d+)$/u.exec(code);

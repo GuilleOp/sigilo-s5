@@ -7,7 +7,8 @@ import type { Row } from './database.ts';
 
 /** Operaciones sobre la tabla `messages`. */
 export interface MessagesRepository {
-  insert(folio: string, message: MailboxMessage, ledgerSeq: number): void;
+  insert(folio: string, message: MailboxMessage): void;
+  /** Mensajes del folio en el orden en que llegaron. */
   listByFolio(folio: string): MailboxMessage[];
   /** Secuencia que debe llevar el siguiente mensaje de `sender` en el folio (0 si no hay). */
   nextSequence(folio: string, sender: MailboxSender): number;
@@ -27,26 +28,27 @@ function toMessage(row: Row): MailboxMessage {
 /** Crea el repositorio de mensajes sobre `db`. */
 export function createMessagesRepository(db: DatabaseSync): MessagesRepository {
   const insertStatement = db.prepare(
-    `INSERT INTO messages (message_id, folio, sender, sequence, sent_on, envelope_json, signature,
-       ledger_seq)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO messages (message_id, folio, sender, sequence, position, sent_on, envelope_json,
+       signature)
+     VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position) + 1, 0) FROM messages WHERE folio = ?), ?,
+       ?, ?)`,
   );
-  const listStatement = db.prepare('SELECT * FROM messages WHERE folio = ? ORDER BY ledger_seq');
+  const listStatement = db.prepare('SELECT * FROM messages WHERE folio = ? ORDER BY position');
   const nextStatement = db.prepare(
     'SELECT COALESCE(MAX(sequence) + 1, 0) AS next FROM messages WHERE folio = ? AND sender = ?',
   );
 
   return {
-    insert: (folio, message, ledgerSeq) => {
+    insert: (folio, message) => {
       insertStatement.run(
         message.messageId,
         folio,
         message.from,
         message.sequence,
+        folio,
         message.sentOn,
         JSON.stringify(message.envelope),
         message.signature,
-        ledgerSeq,
       );
     },
     listByFolio: (folio) => listStatement.all(folio).map(toMessage),

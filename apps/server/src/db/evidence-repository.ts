@@ -21,6 +21,12 @@ export interface EvidenceRepository {
   listPendingBefore(beforeDay: string): string[];
   /** Borra una prueba solo si sigue pendiente; devuelve `true` si la borró. */
   deletePending(evidenceId: string): boolean;
+  /** Bytes de todas las pruebas cuyo archivo sigue guardado (pendientes o asociadas). */
+  totalStoredBytes(): number;
+  /** Identificadores de las pruebas del folio cuyo archivo sigue guardado. */
+  listStoredByFolio(folio: string): string[];
+  /** Marca que el archivo de la prueba se borró por la política de retención. */
+  markUnstored(evidenceId: string): void;
 }
 
 function toDescriptor(row: Row): EvidenceDescriptor {
@@ -49,6 +55,13 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
   const deleteStatement = db.prepare(
     'DELETE FROM evidence WHERE evidence_id = ? AND folio IS NULL',
   );
+  const totalStatement = db.prepare(
+    'SELECT COALESCE(SUM(size_bytes), 0) AS total FROM evidence WHERE is_stored = 1',
+  );
+  const storedByFolioStatement = db.prepare(
+    'SELECT evidence_id FROM evidence WHERE folio = ? AND is_stored = 1 ORDER BY position',
+  );
+  const unstoreStatement = db.prepare('UPDATE evidence SET is_stored = 0 WHERE evidence_id = ?');
 
   return {
     insertPending: (descriptor, uploadedOn) => {
@@ -71,5 +84,14 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
     listPendingBefore: (beforeDay) =>
       pendingStatement.all(beforeDay).map((row) => readText(row, 'evidence_id')),
     deletePending: (evidenceId) => Number(deleteStatement.run(evidenceId).changes) === 1,
+    totalStoredBytes: () => {
+      const row = totalStatement.get();
+      return row === undefined ? 0 : readInteger(row, 'total');
+    },
+    listStoredByFolio: (folio) =>
+      storedByFolioStatement.all(folio).map((row) => readText(row, 'evidence_id')),
+    markUnstored: (evidenceId) => {
+      unstoreStatement.run(evidenceId);
+    },
   };
 }

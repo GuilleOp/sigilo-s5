@@ -3,6 +3,7 @@ import {
   ComplaintFactsSchema,
   EvidenceDescriptorSchema,
   MAX_EVIDENCE_ITEMS,
+  primaryOffenseCode,
   SubmitComplaintRequestSchema,
 } from '@sigilo/contracts';
 import type {
@@ -99,7 +100,8 @@ export function identityFitsEnvelope(identity: IdentityInput): boolean {
 
 /**
  * Deja la entrada exactamente como viajará: hechos y descriptores validados por sus esquemas
- * (zod quita campos sobrantes) y, en modo anónimo, sin solicitud de protección.
+ * (zod quita campos sobrantes), la conducta con su clave principal y, en modo anónimo, sin
+ * solicitud de protección.
  * Seguridad: el digesto del contenido que liga la identidad se calcula sobre estos valores, así
  * que deben ser idénticos a los de la solicitud final.
  */
@@ -110,9 +112,10 @@ export function normalizeSubmissionInput(input: SubmissionInput): SubmissionInpu
     .safeParse(input.evidence);
   // Seguridad: no se muestran detalles de validación porque podrían citar datos de la denuncia.
   if (!facts.success || !evidence.success) throw new Error(INVALID_REQUEST);
+  const offenseCode = primaryOffenseCode(facts.data.offenseCode) ?? facts.data.offenseCode;
   return {
     mode: input.mode,
-    facts: facts.data,
+    facts: { ...facts.data, offenseCode },
     evidence: evidence.data,
     protectionRequested: input.mode === 'sealed' ? input.protectionRequested : false,
   };

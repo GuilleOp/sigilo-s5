@@ -26,6 +26,7 @@ import type { KeyPair, ReceiptKeys } from '@sigilo/core';
 import { createApp } from '../app.ts';
 import type { AppDeps, RequestLogEntry } from '../app.ts';
 import { openDatabase } from '../db/database.ts';
+import { createRequestLog } from '../http/request-log.ts';
 import type { ServerKeys } from '../keys-file.ts';
 import { createMemoryEvidenceStore } from '../storage/evidence-store.ts';
 import type { EvidenceStore } from '../storage/evidence-store.ts';
@@ -57,7 +58,10 @@ export const NEXT_DAY = new Date('2026-10-21T09:00:00Z');
 /** Primer día del mes siguiente: el mes inicial ya está completo para datos abiertos. */
 export const NEXT_MONTH = new Date('2026-11-02T09:00:00Z');
 
-/** Crea un servidor con SQLite en memoria y llaves nuevas. */
+/**
+ * Crea un servidor con SQLite en memoria y llaves nuevas. La prueba de trabajo queda desactivada
+ * (`powBits` 0) salvo que se indique otra cosa.
+ */
 export function createTestServer(overrides: Partial<AppDeps> = {}): TestServer {
   const server = generateSigningKeyPair();
   const authorityBox = generateBoxKeyPair();
@@ -86,7 +90,14 @@ export function createTestServer(overrides: Partial<AppDeps> = {}): TestServer {
     sleep: async (ms) => {
       sleeps.push(ms);
     },
-    logger: (entry) => logs.push(entry),
+    // Una línea por petición para poder revisar en las pruebas que no se registran datos.
+    requestLog: createRequestLog({
+      mode: 'requests',
+      now: () => now,
+      write: (line) => {
+        if ('route' in line) logs.push(line);
+      },
+    }),
     ...overrides,
   });
   return {

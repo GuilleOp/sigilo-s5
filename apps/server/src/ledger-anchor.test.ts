@@ -5,13 +5,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
+import { ROUTES } from '@sigilo/contracts';
 import type { KeysFile } from '@sigilo/contracts';
-import { generateSigningKeyPair, toBase64Url } from '@sigilo/core';
+import { computeEventHash, generateSigningKeyPair, toBase64Url } from '@sigilo/core';
+import { readLedgerRows } from './test-support/ledger-rows.ts';
 import { openDatabase } from './db/database.ts';
 import {
   anchorLedger,
   apiAnchorSource,
   databaseAnchorSource,
+  MISSING_DATABASE_MESSAGE,
   readLatestAnchor,
 } from './ledger-anchor.ts';
 import type { AnchorSource } from './ledger-anchor.ts';
@@ -60,8 +63,15 @@ async function submitSome(server: TestServer, count: number): Promise<void> {
   }
 }
 
+/** El servidor publica los días cerrados en su primera consulta pública del día. */
+async function publishAt(server: TestServer, date: Date): Promise<void> {
+  server.setNow(date);
+  await server.app.request(ROUTES.ledgerHead);
+}
+
 async function anchorOn(deployment: Deployment, date: Date, source?: AnchorSource) {
   const now = () => date;
+  if (source === undefined) await publishAt(deployment.server, date);
   const used = source ?? databaseAnchorSource(deployment.dataDir, now);
   try {
     return await anchorLedger({
@@ -141,5 +151,78 @@ describe('anchorLedger', () => {
     );
     expect(result.anchor.head.seq).toBe(1);
     expect(result.path.endsWith('2026-10-22.json')).toBe(true);
+  });
+
+  it('recalcula los hashes: rechaza un evento posterior al anclaje alterado sin recalcular', async () => {
+    const deployment = deploy();
+    await submitSome(deployment.server, 1);
+    await anchorOn(deployment, new Date('2026-10-21T08:00:00Z'));
+    deployment.server.setNow(new Date('2026-10-21T09:00:00Z'));
+    await submitSome(deployment.server, 2);
+    await publishAt(deployment.server, new Date('2026-10-22T08:00:00Z'));
+    // Se cambia el contenido del último evento, conservando su hash almacenado (el de la cabeza).
+    const db = new DatabaseSync(join(deployment.dataDir, 'sigilo.db'));
+    db.exec('DROP TRIGGER ledger_events_no_update;');
+    db.prepare('UPDATE ledger_events SET payload_digest = ? WHERE seq = 2').run('f'.repeat(64));
+    db.close();
+    await expect(anchorOn(deployment, new Date('2026-10-22T08:00:00Z'))).rejects.toThrow(
+      'posible reescritura',
+    );
+  });
+
+  it('rechaza una cadena reescrita con hashes recalculados desde el anclaje', async () => {
+    const deployment = deploy();
+    await submitSome(deployment.server, 2);
+    await anchorOn(deployment, new Date('2026-10-21T08:00:00Z'));
+    const db = new DatabaseSync(join(deployment.dataDir, 'sigilo.db'));
+    db.exec('DROP TRIGGER ledger_events_no_update;');
+    // Quien controla la base reescribe el evento anclado y recalcula su hash: ya no coincide.
+    const [first, second] = readLedgerRows(db);
+    if (first === undefined || second === undefined) throw new Error('Faltan eventos.');
+    const forged = { ...second, payloadDigest: 'a'.repeat(64) };
+    db.prepare('UPDATE ledger_events SET payload_digest = ?, hash = ? WHERE seq = ?').run(
+      forged.payloadDigest,
+      computeEventHash(forged),
+      second.seq,
+    );
+    db.close();
+    await expect(anchorOn(deployment, new Date('2026-10-22T08:00:00Z'))).rejects.toThrow(
+      'el evento anclado cambió',
+    );
+  });
+
+  it('sin anclaje previo verifica la cadena completa desde el génesis', async () => {
+    const deployment = deploy();
+    await submitSome(deployment.server, 3);
+    await publishAt(deployment.server, new Date('2026-10-21T08:00:00Z'));
+    const db = new DatabaseSync(join(deployment.dataDir, 'sigilo.db'));
+    db.exec('DROP TRIGGER ledger_events_no_update;');
+    db.prepare('UPDATE ledger_events SET at = ? WHERE seq = 0').run('2026-10-19');
+    db.close();
+    await expect(anchorOn(deployment, new Date('2026-10-21T08:00:00Z'))).rejects.toThrow(
+      'no es íntegra',
+    );
+  });
+
+  it('da un mensaje claro si la base local no existe y crea el directorio de anclajes', async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'sigilo-anchor-'));
+    directories.push(dataDir);
+    expect(() => databaseAnchorSource(dataDir, () => new Date())).toThrow(MISSING_DATABASE_MESSAGE);
+    const deployment = deploy();
+    const nested = join(deployment.anchorsDir, 'nuevo');
+    const now = () => new Date('2026-10-21T08:00:00Z');
+    const source = databaseAnchorSource(deployment.dataDir, now);
+    try {
+      const result = await anchorLedger({
+        source,
+        serverPublicKey: deployment.server.serverPublicKey,
+        anchorsDir: nested,
+        now,
+      });
+      expect(result.created).toBe(true);
+      expect(readdirSync(nested)).toEqual(['2026-10-21.json']);
+    } finally {
+      source.close();
+    }
   });
 });

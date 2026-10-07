@@ -32,7 +32,7 @@ describe('roundToMultiple y currentMonth', () => {
 });
 
 describe('buildOpenDataCsv', () => {
-  it('redondea los conteos, suprime los menores que 5 y redondea la fila de suprimidas', () => {
+  it('redondea los conteos, suprime los menores que 5 y redondea lo suprimido de cada mes', () => {
     const csv = buildOpenDataCsv(
       [
         { stateCode: '01', offenseCode: 'LGRA-52', month: '2026-10', status: 'received', count: 4 },
@@ -47,7 +47,8 @@ describe('buildOpenDataCsv', () => {
       'entidad,conducta,mes_recepcion,estatus,denuncias',
       '02,LGRA-53,2026-10,routed,5',
       '03,LGRA-54,2026-10,received,10',
-      'suprimidas,,,,5',
+      // 4 suprimidas en octubre (redondea a 5) y 3 en septiembre (redondea a 5).
+      'suprimidas,,,,10',
       '',
     ]);
     const header = lines[0]?.split(',') ?? [];

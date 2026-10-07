@@ -2,17 +2,22 @@
 import type { Hono } from 'hono';
 import { OPEN_DATA_MIN_CELL, OPEN_DATA_ROUNDING, ROUTES } from '@sigilo/contracts';
 import type { AppContext } from '../context.ts';
-import { buildOpenDataCsv, currentMonth } from '../services/open-data.ts';
+import { buildOpenDataCsv, freezeClosedMonths } from '../services/open-data.ts';
 
 /**
  * Registra `GET openDataCsv`.
- * Seguridad: solo se publican meses completos anteriores al actual, así el archivo de un mes no
- * cambia por denuncias nuevas y no revela cuándo llegó cada una.
+ * Seguridad: solo se publican meses completos anteriores al actual, cada uno con su instantánea
+ * congelada, así el archivo de un mes no cambia por denuncias nuevas ni por cambios de estatus.
  */
 export function registerOpenDataRoutes(app: Hono, ctx: AppContext): void {
   app.get(ROUTES.openDataCsv, (c) => {
-    const cells = ctx.complaints.countByCell(currentMonth(ctx.deps.now()));
-    const csv = buildOpenDataCsv(cells, {
+    freezeClosedMonths({
+      db: ctx.deps.db,
+      complaints: ctx.complaints,
+      openData: ctx.openData,
+      now: ctx.deps.now,
+    });
+    const csv = buildOpenDataCsv(ctx.openData.listCells(), {
       minCell: OPEN_DATA_MIN_CELL,
       rounding: OPEN_DATA_ROUNDING,
     });

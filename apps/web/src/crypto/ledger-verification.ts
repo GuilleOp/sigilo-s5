@@ -80,22 +80,74 @@ export async function downloadAndVerifyLedger(
 
 /** Resultado de comparar la bitácora descargada con un anclaje publicado. */
 export type AnchorComparison =
-  | { status: 'invalid' }
-  | { status: 'bad-signature' }
+  | { status: 'bad-signature'; anchor: LedgerAnchor }
   | { status: 'matches'; anchor: LedgerAnchor }
   | { status: 'missing'; anchor: LedgerAnchor }
   | { status: 'mismatch'; anchor: LedgerAnchor };
 
+/** Resultado de comparar contra todos los anclajes pegados. */
+export type AnchorsComparison =
+  { status: 'invalid' } | { status: 'compared'; results: readonly AnchorComparison[] };
+
+/** Máximo de anclajes que se comparan de una vez. */
+export const MAX_ANCHORS = 400;
+
 /**
- * Lee el JSON de un anclaje (`LedgerAnchorSchema`); `null` si no es válido.
+ * Separa el texto en valores JSON de primer nivel: un arreglo, un objeto, o varios objetos uno
+ * tras otro (separados por espacios, saltos de línea o comas). Devuelve `null` si sobra texto.
  */
-export function parseLedgerAnchor(text: string): LedgerAnchor | null {
+function splitJsonValues(text: string): string[] | null {
+  const values: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let isInString = false;
+  let isEscaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (isInString) {
+      if (isEscaped) isEscaped = false;
+      else if (char === '\\') isEscaped = true;
+      else if (char === '"') isInString = false;
+      continue;
+    }
+    if (char === '"') {
+      if (depth === 0) return null;
+      isInString = true;
+    } else if (char === '{' || char === '[') {
+      if (depth === 0) start = index;
+      depth += 1;
+    } else if (char === '}' || char === ']') {
+      depth -= 1;
+      if (depth < 0) return null;
+      if (depth === 0) values.push(text.slice(start, index + 1));
+    } else if (depth === 0 && char !== undefined && !/[\s,]/u.test(char)) {
+      return null;
+    }
+  }
+  return depth === 0 ? values : null;
+}
+
+/**
+ * Lee uno o varios anclajes (`LedgerAnchorSchema`): el contenido de un archivo, varios archivos
+ * pegados uno tras otro o un arreglo JSON. Devuelve `null` si alguno no es válido o no hay ninguno.
+ */
+export function parseLedgerAnchors(text: string): LedgerAnchor[] | null {
+  const parts = splitJsonValues(text);
+  if (parts === null || parts.length === 0) return null;
+  const anchors: LedgerAnchor[] = [];
   try {
-    const parsed = LedgerAnchorSchema.safeParse(JSON.parse(text));
-    return parsed.success ? parsed.data : null;
+    for (const part of parts) {
+      const value: unknown = JSON.parse(part);
+      for (const item of Array.isArray(value) ? (value as unknown[]) : [value]) {
+        const parsed = LedgerAnchorSchema.safeParse(item);
+        if (!parsed.success) return null;
+        anchors.push(parsed.data);
+      }
+    }
   } catch {
     return null;
   }
+  return anchors.length === 0 || anchors.length > MAX_ANCHORS ? null : anchors;
 }
 
 /**
@@ -106,16 +158,28 @@ export function parseLedgerAnchor(text: string): LedgerAnchor | null {
  */
 export function compareWithAnchor(
   events: readonly LedgerEvent[],
-  anchorText: string,
+  anchor: LedgerAnchor,
   serverPublicKey: Uint8Array,
 ): AnchorComparison {
-  const anchor = parseLedgerAnchor(anchorText);
-  if (anchor === null) return { status: 'invalid' };
-  if (!verifyLedgerHead(anchor.head, serverPublicKey)) return { status: 'bad-signature' };
+  if (!verifyLedgerHead(anchor.head, serverPublicKey)) return { status: 'bad-signature', anchor };
   if (anchor.head.hash === LEDGER_GENESIS_HASH) return { status: 'matches', anchor };
   const event = events.find((candidate) => candidate.seq === anchor.head.seq);
   if (event === undefined) return { status: 'missing', anchor };
   return event.hash === anchor.head.hash
     ? { status: 'matches', anchor }
     : { status: 'mismatch', anchor };
+}
+
+/** Compara la cadena verificada con todos los anclajes del texto pegado. */
+export function compareWithAnchors(
+  events: readonly LedgerEvent[],
+  anchorsText: string,
+  serverPublicKey: Uint8Array,
+): AnchorsComparison {
+  const anchors = parseLedgerAnchors(anchorsText);
+  if (anchors === null) return { status: 'invalid' };
+  return {
+    status: 'compared',
+    results: anchors.map((anchor) => compareWithAnchor(events, anchor, serverPublicKey)),
+  };
 }

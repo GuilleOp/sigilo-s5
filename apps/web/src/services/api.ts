@@ -6,6 +6,8 @@ import {
   LedgerPageSchema,
   MailboxMessageSchema,
   OpenIdentityResponseSchema,
+  POW_HEADER,
+  PowChallengeSchema,
   PublicKeySetSchema,
   ROUTES,
   SignedLedgerHeadSchema,
@@ -21,6 +23,8 @@ import type {
   LedgerPage,
   MailboxMessage,
   OpenIdentityResponse,
+  PowChallenge,
+  PowPurpose,
   PublicKeySet,
   ReporterMessageRequest,
   SignedLedgerHead,
@@ -37,8 +41,16 @@ const SummaryListSchema = ComplaintSummarySchema.array();
 /** API de SIGILO sobre un cliente HTTP. */
 export interface SigiloApi {
   getKeys(): Promise<PublicKeySet>;
-  uploadEvidence(image: Blob, mediaType: 'image/jpeg' | 'image/png'): Promise<EvidenceDescriptor>;
-  submitComplaint(request: SubmitComplaintRequest): Promise<SubmitComplaintResponse>;
+  /** Reto de prueba de trabajo de un solo uso para `purpose`. */
+  getPowChallenge(purpose: PowPurpose): Promise<PowChallenge>;
+  /** Sube una prueba limpia; `proof` es el valor de `POW_HEADER` de un reto `evidence`. */
+  uploadEvidence(
+    image: Blob,
+    mediaType: 'image/jpeg' | 'image/png',
+    proof: string,
+  ): Promise<EvidenceDescriptor>;
+  /** Envía la denuncia; `proof` es el valor de `POW_HEADER` de un reto `complaint`. */
+  submitComplaint(request: SubmitComplaintRequest, proof: string): Promise<SubmitComplaintResponse>;
   track(credentials: TrackingCredentials): Promise<TrackingView>;
   sendReporterMessage(request: ReporterMessageRequest): Promise<MailboxMessage>;
   listComplaints(token: string): Promise<ComplaintSummary[]>;
@@ -60,13 +72,19 @@ export interface SigiloApi {
 export function createSigiloApi(client: ApiClient = createApiClient()): SigiloApi {
   return {
     getKeys: () => client.json(ROUTES.keys, PublicKeySetSchema),
-    uploadEvidence: (image, mediaType) =>
+    getPowChallenge: (purpose) =>
+      client.json(ROUTES.powChallenge, PowChallengeSchema, { query: { purpose } }),
+    uploadEvidence: (image, mediaType, proof) =>
       client.json(ROUTES.evidenceUpload, EvidenceUploadResponseSchema, {
         binary: image,
         contentType: mediaType,
+        headers: { [POW_HEADER]: proof },
       }),
-    submitComplaint: (request) =>
-      client.json(ROUTES.complaints, SubmitComplaintResponseSchema, { json: request }),
+    submitComplaint: (request, proof) =>
+      client.json(ROUTES.complaints, SubmitComplaintResponseSchema, {
+        json: request,
+        headers: { [POW_HEADER]: proof },
+      }),
     track: (credentials) => client.json(ROUTES.tracking, TrackingViewSchema, { json: credentials }),
     sendReporterMessage: (request) =>
       client.json(ROUTES.trackingMessages, MailboxMessageSchema, { json: request }),

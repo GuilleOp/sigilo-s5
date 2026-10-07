@@ -1,6 +1,6 @@
 // Pruebas del cliente HTTP: rutas permitidas, validación de respuestas y errores.
 import { describe, expect, it } from 'vitest';
-import { PublicKeySetSchema, ROUTES } from '@sigilo/contracts';
+import { POW_HEADER, PublicKeySetSchema, ROUTES } from '@sigilo/contracts';
 import { ApiRequestError, buildApiUrl, createApiClient } from './api-client.ts';
 import type { FetchLike } from './api-client.ts';
 import { createSigiloApi } from './api.ts';
@@ -100,8 +100,27 @@ describe('createSigiloApi', () => {
       sizeBytes: 3,
     };
     const sigilo = createSigiloApi(createApiClient(fakeFetch(Response.json(descriptor), calls)));
-    await sigilo.uploadEvidence(new Blob([new Uint8Array([1, 2, 3])]), 'image/jpeg');
-    expect(new Headers(calls[0]?.init.headers).get('Content-Type')).toBe('image/jpeg');
+    await sigilo.uploadEvidence(new Blob([new Uint8Array([1, 2, 3])]), 'image/jpeg', 'reto.x:7');
+    const headers = new Headers(calls[0]?.init.headers);
+    expect(headers.get('Content-Type')).toBe('image/jpeg');
+    expect(headers.get(POW_HEADER)).toBe('reto.x:7');
     expect(calls[0]?.init.method).toBe('POST');
+  });
+
+  it('pide el reto de prueba de trabajo y traduce sus errores', async () => {
+    const calls: { input: string; init: RequestInit }[] = [];
+    const challenge = { token: 'abc.def', bits: 8 };
+    const sigilo = createSigiloApi(createApiClient(fakeFetch(Response.json(challenge), calls)));
+    expect(await sigilo.getPowChallenge('complaint')).toEqual(challenge);
+    expect(calls[0]?.input).toBe(`${ROUTES.powChallenge}?purpose=complaint`);
+    for (const [status, code] of [
+      [428, 'proof_required'],
+      [507, 'storage_full'],
+    ] as const) {
+      const failing = createSigiloApi(
+        createApiClient(fakeFetch(new Response('sin cuerpo', { status }), [])),
+      );
+      await expect(failing.getKeys()).rejects.toMatchObject({ code });
+    }
   });
 });

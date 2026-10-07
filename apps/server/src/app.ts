@@ -1,12 +1,10 @@
 // Composición de la aplicación Hono: middleware de seguridad, rutas de la API, web opcional en el
 // mismo origen y manejo uniforme de errores.
 import { Hono } from 'hono';
-import type { MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
-import { routePath } from 'hono/route';
-import { API_PREFIX } from '@sigilo/contracts';
+import { API_PREFIX, POW_HEADER } from '@sigilo/contracts';
 import { createContext } from './context.ts';
-import type { AppDeps, RequestLogEntry } from './context.ts';
+import type { AppDeps } from './context.ts';
 import { ApiFailure, errorResponse } from './http/errors.ts';
 import { loadWebAssets } from './http/web-assets.ts';
 import { registerAuthorityRoutes } from './routes/authority.ts';
@@ -15,28 +13,12 @@ import { registerEvidenceRoutes } from './routes/evidence.ts';
 import { registerKeysRoutes } from './routes/keys.ts';
 import { registerLedgerRoutes } from './routes/ledger.ts';
 import { registerOpenDataRoutes } from './routes/open-data.ts';
+import { registerPowRoutes } from './routes/pow.ts';
 import { registerTrackingRoutes } from './routes/tracking.ts';
 import { isApiPath, securityHeaders } from './security/headers.ts';
 
 export type { AppDeps, RateLimitConfig, RequestLogEntry } from './context.ts';
-
-/**
- * Registro de peticiones.
- * Seguridad: solo método, ruta normalizada (el patrón, sin folio ni identificadores), estatus y
- * duración. Nunca IP, agente de usuario, cabeceras ni cuerpos.
- */
-function requestLogger(log: (entry: RequestLogEntry) => void): MiddlewareHandler {
-  return async (c, next) => {
-    const startedAt = performance.now();
-    await next();
-    log({
-      method: c.req.method,
-      route: routePath(c),
-      status: c.res.status,
-      durationMs: Math.round(performance.now() - startedAt),
-    });
-  };
-}
+export type { RequestLogLine } from './http/request-log.ts';
 
 /**
  * Sirve la web construida para las rutas fuera de la API: archivos tal cual y `index.html` para
@@ -53,13 +35,16 @@ function registerWebRoutes(app: Hono, distDir: string): void {
   });
 }
 
-/** Crea la aplicación con las dependencias inyectadas (base, llaves, almacén, reloj y token). */
+/**
+ * Crea la aplicación con las dependencias inyectadas (base, llaves, almacén, reloj, token, prueba
+ * de trabajo y registro).
+ */
 export function createApp(deps: AppDeps): Hono {
   const ctx = createContext(deps);
   const app = new Hono();
   const servesWeb = deps.webDistDir !== undefined;
 
-  if (deps.logger) app.use('*', requestLogger(deps.logger));
+  if (deps.requestLog) app.use('*', deps.requestLog.middleware);
   app.use('*', securityHeaders({ servesWeb, hstsMaxAgeSeconds: deps.hstsMaxAgeSeconds }));
   if (deps.allowedOrigin) {
     // Solo para desarrollo con otro origen: por omisión la web y la API comparten origen.
@@ -68,13 +53,14 @@ export function createApp(deps: AppDeps): Hono {
       cors({
         origin: deps.allowedOrigin,
         allowMethods: ['GET', 'POST'],
-        allowHeaders: ['Content-Type', 'Authorization'],
+        allowHeaders: ['Content-Type', 'Authorization', POW_HEADER],
         maxAge: 600,
       }),
     );
   }
 
   registerKeysRoutes(app, ctx);
+  registerPowRoutes(app, ctx);
   registerEvidenceRoutes(app, ctx);
   registerComplaintRoutes(app, ctx);
   registerTrackingRoutes(app, ctx);

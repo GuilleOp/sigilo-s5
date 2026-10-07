@@ -119,6 +119,8 @@ describe('flujo completo', () => {
       ['authority', 0],
     ]);
     expect(isMailboxSequenceComplete(view.messages)).toBe(true);
+    // El día de recepción ya cerró: su evento está publicado y corresponde al comprobante.
+    if (view.receivedEvent === undefined) throw new Error('Falta el evento de recepción.');
     expect(verifyReceiptEvent(view.receivedEvent, view.receipt)).toBe(true);
 
     // Al día siguiente, la bitácora pública es una cadena íntegra con cabeza firmada.
@@ -126,16 +128,19 @@ describe('flujo completo', () => {
     const page = LedgerPageSchema.parse(
       await (await server.app.request(ROUTES.ledgerEvents)).json(),
     );
-    expect(page.events.map((event) => [event.type, event.actorRole])).toEqual([
-      ['complaint.received', 'system'],
-      ['message.sent', 'reporter'],
-      ['message.sent', 'authority'],
-      ['identity.opened', 'authority'],
-      ['complaint.status_changed', 'authority'],
+    const described = page.events.map((event) => `${event.at} ${event.type} ${event.actorRole}`);
+    // Cada día va completo y en orden de días; dentro del día el orden es barajado.
+    expect(described[0]).toBe('2026-10-20 complaint.received system');
+    expect(described.slice(1, 4).sort()).toEqual([
+      '2026-10-21 identity.opened authority',
+      '2026-10-21 message.sent authority',
+      '2026-10-21 message.sent reporter',
     ]);
+    expect(described[4]).toBe('2026-10-25 complaint.status_changed authority');
     expect(verifyChain(page.events)).toEqual({ valid: true });
     expect(verifyLedgerHead(page.head, server.serverPublicKey)).toBe(true);
     expect(page.head.hash).toBe(page.events.at(-1)?.hash);
-    expect(page.events[receipt.ledgerSeq]).toEqual(view.receivedEvent);
+    const published = page.events.find((event) => event.payloadDigest === receipt.payloadDigest);
+    expect(published).toEqual(view.receivedEvent);
   });
 });

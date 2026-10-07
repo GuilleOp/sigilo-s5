@@ -13,6 +13,7 @@ export function registerTrackingRoutes(app: Hono, ctx: AppContext): void {
   app.post(ROUTES.tracking, jsonBodyLimit, async (c) => {
     const credentials = await readJson(c, TrackingCredentialsSchema);
     const complaint = await ctx.reporterAuth.authenticate(credentials);
+    ctx.complaints.markTracked(complaint.folio);
     return c.json(buildTrackingView(ctx, complaint));
   });
 
@@ -22,6 +23,7 @@ export function registerTrackingRoutes(app: Hono, ctx: AppContext): void {
       ReporterMessageRequestSchema,
     );
     const complaint = await ctx.reporterAuth.authenticate({ folio, authKey });
+    ctx.complaints.markTracked(complaint.folio);
     // El límite de mensajes es aparte del de autenticación: escribir no gasta intentos de acceso.
     if (!ctx.limiters.reporterMessages.consume(folioDigest(folio))) {
       throw new ApiFailure('rate_limited');

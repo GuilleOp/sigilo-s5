@@ -138,10 +138,18 @@ export type SubmitComplaintRequest = z.infer<typeof SubmitComplaintRequestSchema
 /** Comprobante firmado por el servidor: prueba de que la denuncia fue recibida. */
 export const SignedReceiptSchema = z.object({
   folio: FolioSchema,
-  /** SHA-256 de la forma canónica (JCS) de la solicitud enviada. */
+  /**
+   * SHA-256 de la forma canónica de la solicitud enviada, con `sealedIdentity` sustituido por su
+   * propio digesto (ver `computeSubmissionDigest` en @sigilo/core).
+   */
   submissionDigest: Sha256HexSchema,
   receivedOn: DayDateSchema,
-  ledgerSeq: z.number().int().nonnegative(),
+  /**
+   * Identificador de su evento `complaint.received`: el `payloadDigest` del evento, que es
+   * `sha256Hex(canonicalize({ folio, submissionDigest }))`. No es la secuencia: el evento recibe su
+   * lugar en la bitácora hasta que se cierra el día, en orden barajado.
+   */
+  payloadDigest: Sha256HexSchema,
   serverKeyId: KeyIdSchema,
   /** Firma Ed25519 sobre la forma canónica del comprobante sin este campo. */
   signature: Base64UrlSchema,

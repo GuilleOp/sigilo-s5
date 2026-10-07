@@ -13,7 +13,9 @@ import {
 } from './complaint.ts';
 import { HpkeEnvelopeSchema } from './envelope.ts';
 import { MailboxMessageSchema, MailboxSequenceSchema } from './mailbox.ts';
-import { Base64UrlSchema, DayDateSchema, FolioSchema } from './primitives.ts';
+import { primaryOffenseCode } from './catalogs/index.ts';
+import { Base64UrlSchema, DayDateSchema, FolioSchema, Sha256HexSchema } from './primitives.ts';
+import { OpeningIdSchema } from './tracking.ts';
 
 export const ComplaintSummarySchema = z.object({
   folio: FolioSchema,
@@ -21,6 +23,7 @@ export const ComplaintSummarySchema = z.object({
   status: ComplaintStatusSchema,
   receivedOn: DayDateSchema,
   stateCode: StateCodeSchema,
+  /** Clave principal de la conducta (las equivalentes del CPF se guardan como la de la LGRA). */
   offenseCode: OffenseCodeSchema,
   protectionRequested: z.boolean(),
 });
@@ -29,7 +32,10 @@ export type ComplaintSummary = z.infer<typeof ComplaintSummarySchema>;
 /**
  * Detalle para la autoridad. Trae todo lo necesario para recalcular el contexto del sobre de
  * identidad (`version`, modo, hechos, pruebas, protección, `reporterKeys` y `authVerifier`); si el
- * servidor alterara cualquiera de esos datos, el sobre no abriría.
+ * servidor alterara cualquiera de esos datos, el sobre no abriría. Con `sealedIdentityDigest`
+ * además se recalcula `submissionDigest` (`submissionDigestFromDetail`) y se compara con el evento
+ * `complaint.received` publicado: así se comprueban las llaves del buzón también en modo anónimo.
+ * `facts` son los hechos tal como se enviaron (la clave de conducta puede ser una equivalente).
  */
 export const ComplaintDetailSchema = z
   .object({
@@ -41,17 +47,29 @@ export const ComplaintDetailSchema = z
     reporterKeys: ReporterKeysSchema,
     /** Digesto de la llave de autenticación: forma parte del AAD de la identidad, no autentica. */
     authVerifier: Base64UrlSchema,
+    /** `sha256Hex(canonicalize(sealedIdentity))`; solo en modo `sealed`. */
+    sealedIdentityDigest: Sha256HexSchema.optional(),
+    /** Secuencia del evento `complaint.received` una vez publicado; falta mientras está pendiente. */
+    receivedEventSeq: z.number().int().nonnegative().optional(),
     messages: z.array(MailboxMessageSchema),
     identityOpenedCount: z.number().int().nonnegative(),
   })
   .superRefine((detail, ctx) => {
     const { summary, facts } = detail;
-    if (summary.stateCode !== facts.stateCode || summary.offenseCode !== facts.offenseCode) {
+    const isSameOffense = summary.offenseCode === primaryOffenseCode(facts.offenseCode);
+    if (summary.stateCode !== facts.stateCode || !isSameOffense) {
       ctx.addIssue({ code: 'custom', message: 'El resumen no corresponde a los hechos.' });
     }
     const isAnonymous = summary.mode === 'anonymous';
     if (isAnonymous && (summary.protectionRequested || detail.identityOpenedCount > 0)) {
       ctx.addIssue({ code: 'custom', message: 'El modo anonymous no admite identidad.' });
+    }
+    if (isAnonymous === (detail.sealedIdentityDigest !== undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['sealedIdentityDigest'],
+        message: 'Solo el modo sealed lleva el digesto del sobre, y siempre.',
+      });
     }
   });
 export type ComplaintDetail = z.infer<typeof ComplaintDetailSchema>;
@@ -65,7 +83,8 @@ export type OpenIdentityRequest = z.infer<typeof OpenIdentityRequestSchema>;
 /** Sobre de identidad. Su contexto (AAD) se recalcula desde `ComplaintDetail`. */
 export const OpenIdentityResponseSchema = z.object({
   sealedIdentity: HpkeEnvelopeSchema,
-  ledgerSeq: z.number().int().nonnegative(),
+  /** Identificador de la apertura; forma parte de los datos de su evento `identity.opened`. */
+  openingId: OpeningIdSchema,
 });
 export type OpenIdentityResponse = z.infer<typeof OpenIdentityResponseSchema>;
 
