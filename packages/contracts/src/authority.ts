@@ -6,9 +6,13 @@ import {
   ComplaintModeSchema,
   ComplaintStatusSchema,
   EvidenceDescriptorSchema,
+  MAX_EVIDENCE_ITEMS,
+  OffenseCodeSchema,
+  ReporterKeysSchema,
+  StateCodeSchema,
 } from './complaint.ts';
 import { HpkeEnvelopeSchema } from './envelope.ts';
-import { MailboxMessageSchema } from './mailbox.ts';
+import { MailboxMessageSchema, MailboxSequenceSchema } from './mailbox.ts';
 import { Base64UrlSchema, DayDateSchema, FolioSchema } from './primitives.ts';
 
 export const ComplaintSummarySchema = z.object({
@@ -16,21 +20,40 @@ export const ComplaintSummarySchema = z.object({
   mode: ComplaintModeSchema,
   status: ComplaintStatusSchema,
   receivedOn: DayDateSchema,
-  stateCode: z.string(),
-  offenseCode: z.string(),
+  stateCode: StateCodeSchema,
+  offenseCode: OffenseCodeSchema,
   protectionRequested: z.boolean(),
 });
 export type ComplaintSummary = z.infer<typeof ComplaintSummarySchema>;
 
-export const ComplaintDetailSchema = z.object({
-  summary: ComplaintSummarySchema,
-  facts: ComplaintFactsSchema,
-  evidence: z.array(EvidenceDescriptorSchema),
-  reporterBoxPublicKey: Base64UrlSchema,
-  reporterSigningPublicKey: Base64UrlSchema,
-  messages: z.array(MailboxMessageSchema),
-  identityOpenedCount: z.number().int().nonnegative(),
-});
+/**
+ * Detalle para la autoridad. Trae todo lo necesario para recalcular el contexto del sobre de
+ * identidad (`version`, modo, hechos, pruebas, protección, `reporterKeys` y `authVerifier`); si el
+ * servidor alterara cualquiera de esos datos, el sobre no abriría.
+ */
+export const ComplaintDetailSchema = z
+  .object({
+    summary: ComplaintSummarySchema,
+    /** Versión del formato de la solicitud original. */
+    version: z.literal(1),
+    facts: ComplaintFactsSchema,
+    evidence: z.array(EvidenceDescriptorSchema).max(MAX_EVIDENCE_ITEMS),
+    reporterKeys: ReporterKeysSchema,
+    /** Digesto de la llave de autenticación: forma parte del AAD de la identidad, no autentica. */
+    authVerifier: Base64UrlSchema,
+    messages: z.array(MailboxMessageSchema),
+    identityOpenedCount: z.number().int().nonnegative(),
+  })
+  .superRefine((detail, ctx) => {
+    const { summary, facts } = detail;
+    if (summary.stateCode !== facts.stateCode || summary.offenseCode !== facts.offenseCode) {
+      ctx.addIssue({ code: 'custom', message: 'El resumen no corresponde a los hechos.' });
+    }
+    const isAnonymous = summary.mode === 'anonymous';
+    if (isAnonymous && (summary.protectionRequested || detail.identityOpenedCount > 0)) {
+      ctx.addIssue({ code: 'custom', message: 'El modo anonymous no admite identidad.' });
+    }
+  });
 export type ComplaintDetail = z.infer<typeof ComplaintDetailSchema>;
 
 export const OpenIdentityRequestSchema = z.object({
@@ -39,10 +62,9 @@ export const OpenIdentityRequestSchema = z.object({
 });
 export type OpenIdentityRequest = z.infer<typeof OpenIdentityRequestSchema>;
 
+/** Sobre de identidad. Su contexto (AAD) se recalcula desde `ComplaintDetail`. */
 export const OpenIdentityResponseSchema = z.object({
   sealedIdentity: HpkeEnvelopeSchema,
-  /** Necesario para reconstruir el AAD del sobre. Es un digesto: no permite autenticarse. */
-  authVerifier: Base64UrlSchema,
   ledgerSeq: z.number().int().nonnegative(),
 });
 export type OpenIdentityResponse = z.infer<typeof OpenIdentityResponseSchema>;
@@ -53,6 +75,7 @@ export const UpdateStatusRequestSchema = z.object({
 export type UpdateStatusRequest = z.infer<typeof UpdateStatusRequestSchema>;
 
 export const AuthorityMessageRequestSchema = z.object({
+  sequence: MailboxSequenceSchema,
   envelope: HpkeEnvelopeSchema,
   signature: Base64UrlSchema,
 });

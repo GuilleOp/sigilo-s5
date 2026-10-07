@@ -1,8 +1,12 @@
-// Pruebas de seguimiento: respuesta indistinguible ante fallos, límite de intentos y buzón.
+// Pruebas de seguimiento: respuesta indistinguible ante fallos, límites separados (fallos por
+// folio, freno global y mensajes) y buzón con secuencia.
 import { describe, expect, it } from 'vitest';
 import { MailboxMessageSchema, ROUTES, TrackingViewSchema } from '@sigilo/contracts';
-import { generateFolio, sealMailboxMessage, toBase64Url } from '@sigilo/core';
+import { generateFolio, sealMailboxMessage, toBase64Url, verifyReceiptEvent } from '@sigilo/core';
+import type { ReceiptKeys } from '@sigilo/core';
+import type { RateLimitConfig } from '../app.ts';
 import {
+  authorityRecipient,
   buildComplaintRequest,
   createReporter,
   createTestServer,
@@ -11,28 +15,37 @@ import {
   submitComplaint,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
-import type { ReceiptKeys } from '@sigilo/core';
 
-async function setup(): Promise<{ server: TestServer; reporter: ReceiptKeys; folio: string }> {
-  const server = createTestServer();
+async function setup(
+  rateLimits: Partial<RateLimitConfig> = {},
+): Promise<{ server: TestServer; reporter: ReceiptKeys; folio: string }> {
+  const server = createTestServer({ rateLimits });
   const reporter = createReporter();
   const request = await buildComplaintRequest(server, { mode: 'anonymous', reporter });
   const { folio } = await submitComplaint(server, request);
   return { server, reporter, folio };
 }
 
-async function sealReporterMessage(server: TestServer, reporter: ReceiptKeys, folio: string) {
-  const { authority } = server.keys.publicKeySet;
+async function sealReporterMessage(
+  server: TestServer,
+  reporter: ReceiptKeys,
+  folio: string,
+  sequence = 0,
+) {
   return sealMailboxMessage(
     'Respuesta sintética de la persona denunciante.',
-    { keyId: authority.keyId, publicKey: server.authorityBox.publicKey },
+    authorityRecipient(server),
     reporter.signing.privateKey,
-    { folio, from: 'reporter' },
+    { folio, from: 'reporter', sequence },
   );
 }
 
+function wrongCredentials(folio: string) {
+  return { folio, authKey: toBase64Url(createReporter().authKey) };
+}
+
 describe('POST tracking', () => {
-  it('devuelve la vista de seguimiento con credenciales válidas', async () => {
+  it('devuelve la vista de seguimiento con su evento de recepción', async () => {
     const { server, reporter, folio } = await setup();
     const response = await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter));
     expect(response.status).toBe(200);
@@ -45,6 +58,8 @@ describe('POST tracking', () => {
       identityAccess: [],
       messages: [],
     });
+    expect(view.receivedEvent.seq).toBe(view.receipt.ledgerSeq);
+    expect(verifyReceiptEvent(view.receivedEvent, view.receipt)).toBe(true);
   });
 
   it('responde exactamente igual a folio inexistente y a verificador incorrecto', async () => {
@@ -61,40 +76,70 @@ describe('POST tracking', () => {
     expect([...mismatch.headers.entries()]).toEqual([...unknown.headers.entries()]);
   });
 
-  it('trata un authKey no canónico como credencial incorrecta', async () => {
+  it('trata un authKey no canónico o de otra longitud como credencial incorrecta', async () => {
     const { server, folio } = await setup();
-    const response = await postJson(server.app, ROUTES.tracking, { folio, authKey: 'A' });
-    expect(response.status).toBe(404);
+    for (const authKey of ['A', 'AAAA']) {
+      const response = await postJson(server.app, ROUTES.tracking, { folio, authKey });
+      expect(response.status).toBe(404);
+    }
   });
 
-  it('limita los intentos por folio aunque el folio no exista', async () => {
-    const { server, reporter, folio } = await setup();
+  it('no cuenta los accesos legítimos: iniciar sesión y responder no agotan el límite', async () => {
+    const { server, reporter, folio } = await setup({
+      authFailuresPerFolio: { limit: 3, windowMs: 60 * 60 * 1000 },
+    });
     const credentials = credentialsFor(folio, reporter);
-    for (let attempt = 0; attempt < 10; attempt += 1) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
       expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(200);
     }
-    const limited = await postJson(server.app, ROUTES.tracking, credentials);
+    for (let sequence = 0; sequence < 5; sequence += 1) {
+      const sealed = await sealReporterMessage(server, reporter, folio, sequence);
+      const sent = await postJson(server.app, ROUTES.trackingMessages, {
+        ...credentials,
+        ...sealed,
+      });
+      expect(sent.status).toBe(201);
+    }
+  });
+
+  it('limita los fallos por folio aunque el folio no exista y solo los fallos consumen', async () => {
+    const { server, reporter, folio } = await setup();
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      expect((await postJson(server.app, ROUTES.tracking, wrongCredentials(folio))).status).toBe(
+        404,
+      );
+    }
+    const credentials = credentialsFor(folio, reporter);
+    expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(429);
+    const unknownFolio = generateFolio();
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await postJson(server.app, ROUTES.tracking, wrongCredentials(unknownFolio));
+    }
+    const limited = await postJson(server.app, ROUTES.tracking, wrongCredentials(unknownFolio));
     expect(limited.status).toBe(429);
     server.setNow(new Date('2026-10-20T17:00:00Z'));
     expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(200);
   });
 
-  it('aplica un límite global', async () => {
-    const server = createTestServer({
-      rateLimits: {
-        perFolio: { limit: 10, windowMs: 60_000 },
-        global: { limit: 3, windowMs: 60_000 },
-      },
+  it('frena sin bloquear cuando los fallos globales exceden el presupuesto', async () => {
+    const { server, reporter, folio } = await setup({
+      authFailuresGlobal: { limit: 3, windowMs: 60_000, stepMs: 100, maxDelayMs: 250 },
     });
     const statuses: number[] = [];
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      const credentials = {
-        folio: generateFolio(),
-        authKey: toBase64Url(createReporter().authKey),
-      };
-      statuses.push((await postJson(server.app, ROUTES.tracking, credentials)).status);
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const response = await postJson(
+        server.app,
+        ROUTES.tracking,
+        wrongCredentials(generateFolio()),
+      );
+      statuses.push(response.status);
     }
-    expect(statuses).toEqual([404, 404, 404, 429]);
+    expect(statuses).toEqual([404, 404, 404, 404, 404, 404]);
+    expect(server.sleeps).toEqual([100, 200]);
+    // Las credenciales correctas siguen entrando, solo con espera.
+    const legit = await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter));
+    expect(legit.status).toBe(200);
+    expect(server.sleeps.at(-1)).toBe(250);
   });
 });
 
@@ -108,11 +153,40 @@ describe('POST tracking/messages', () => {
     });
     expect(response.status).toBe(201);
     const message = MailboxMessageSchema.parse(await response.json());
-    expect(message).toMatchObject({ from: 'reporter', sentOn: '2026-10-20T15:00Z' });
+    expect(message).toMatchObject({ from: 'reporter', sequence: 0, sentOn: '2026-10-20T15:00Z' });
     const view = TrackingViewSchema.parse(
       await (await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter))).json(),
     );
     expect(view.messages).toEqual([message]);
+  });
+
+  it('rechaza repetir un mensaje o saltar la secuencia', async () => {
+    const { server, reporter, folio } = await setup();
+    const credentials = credentialsFor(folio, reporter);
+    const first = await sealReporterMessage(server, reporter, folio, 0);
+    const post = (body: object) =>
+      postJson(server.app, ROUTES.trackingMessages, { ...credentials, ...body });
+    expect((await post(first)).status).toBe(201);
+    expect((await post(first)).status).toBe(400);
+    expect((await post(await sealReporterMessage(server, reporter, folio, 2))).status).toBe(400);
+    expect((await post(await sealReporterMessage(server, reporter, folio, 1))).status).toBe(201);
+  });
+
+  it('aplica un límite de mensajes por folio aparte del de autenticación', async () => {
+    const { server, reporter, folio } = await setup({
+      reporterMessagesPerFolio: { limit: 2, windowMs: 60 * 60 * 1000 },
+    });
+    const credentials = credentialsFor(folio, reporter);
+    const statuses: number[] = [];
+    for (let sequence = 0; sequence < 3; sequence += 1) {
+      const sealed = await sealReporterMessage(server, reporter, folio, sequence);
+      statuses.push(
+        (await postJson(server.app, ROUTES.trackingMessages, { ...credentials, ...sealed })).status,
+      );
+    }
+    expect(statuses).toEqual([201, 201, 429]);
+    // Leer el seguimiento sigue permitido.
+    expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(200);
   });
 
   it('rechaza una firma inválida o de otra llave', async () => {
@@ -120,16 +194,13 @@ describe('POST tracking/messages', () => {
     const sealed = await sealReporterMessage(server, reporter, folio);
     const impostor = await sealMailboxMessage(
       'Mensaje sintético firmado con otra llave.',
-      {
-        keyId: server.keys.publicKeySet.authority.keyId,
-        publicKey: server.authorityBox.publicKey,
-      },
+      authorityRecipient(server),
       createReporter().signing.privateKey,
-      { folio, from: 'reporter' },
+      { folio, from: 'reporter', sequence: 0 },
     );
     for (const body of [
       { ...sealed, signature: impostor.signature },
-      { envelope: impostor.envelope, signature: impostor.signature },
+      { sequence: 0, envelope: impostor.envelope, signature: impostor.signature },
     ]) {
       const response = await postJson(server.app, ROUTES.trackingMessages, {
         ...credentialsFor(folio, reporter),
@@ -143,8 +214,7 @@ describe('POST tracking/messages', () => {
     const { server, reporter, folio } = await setup();
     const sealed = await sealReporterMessage(server, reporter, folio);
     const response = await postJson(server.app, ROUTES.trackingMessages, {
-      folio,
-      authKey: toBase64Url(createReporter().authKey),
+      ...wrongCredentials(folio),
       ...sealed,
     });
     expect(response.status).toBe(404);

@@ -1,28 +1,13 @@
-// Formato de los archivos de llaves del despliegue (`keys.json` y `authority-demo-key.json`) y su
-// validación. Lo comparten el servidor y el script `scripts/generate-keys.ts`.
-import { z } from 'zod';
-import { Base64UrlSchema, KeyIdSchema, PublicKeySetSchema } from '@sigilo/contracts';
-import type { PublicKeySet } from '@sigilo/contracts';
-import { fromBase64Url, keyIdFor, sign, utf8Encode, verify } from '@sigilo/core';
-
-/** Contenido de `keys.json`: privada del servidor y públicas de todo el despliegue. */
-export const KeysFileSchema = z.object({
-  version: z.literal(1),
-  publicKeys: PublicKeySetSchema,
-  server: z.object({ signingPrivateKey: Base64UrlSchema }),
-});
-export type KeysFile = z.infer<typeof KeysFileSchema>;
-
-/** Contenido de `authority-demo-key.json`: llaves de la autoridad de demostración. */
-export const AuthorityDemoKeySchema = z.object({
-  version: z.literal(1),
-  keyId: KeyIdSchema,
-  boxPublicKey: Base64UrlSchema,
-  boxPrivateKey: Base64UrlSchema,
-  signingPublicKey: Base64UrlSchema,
-  signingPrivateKey: Base64UrlSchema,
-});
-export type AuthorityDemoKey = z.infer<typeof AuthorityDemoKeySchema>;
+// Validación de los archivos de llaves del despliegue (`keys.json` y `authority-demo-key.json`),
+// cuyos esquemas están en @sigilo/contracts. La comparten el servidor y `scripts/generate-keys.ts`.
+import { AuthorityDemoKeySchema, KeysFileSchema } from '@sigilo/contracts';
+import type { AuthorityDemoKey, PublicKeySet } from '@sigilo/contracts';
+import {
+  assertBoxKeyPair,
+  assertSigningKeyPair,
+  buildPublicKeySet,
+  fromBase64Url,
+} from '@sigilo/core';
 
 /** Llaves que usa el servidor en memoria, ya decodificadas. */
 export interface ServerKeys {
@@ -32,7 +17,6 @@ export interface ServerKeys {
 }
 
 const KEY_LENGTH = 32;
-const KEY_CHECK_MESSAGE = utf8Encode('sigilo/v1/key-check');
 
 function decodeKey(value: string): Uint8Array {
   const bytes = fromBase64Url(value);
@@ -40,10 +24,14 @@ function decodeKey(value: string): Uint8Array {
   return bytes;
 }
 
-function assertSigningPair(privateKey: Uint8Array, publicKey: Uint8Array): void {
-  if (!verify(sign(KEY_CHECK_MESSAGE, privateKey), KEY_CHECK_MESSAGE, publicKey)) {
-    throw new Error('La llave privada del servidor no corresponde a su llave pública.');
-  }
+function samePublicKeySet(left: PublicKeySet, right: PublicKeySet): boolean {
+  return (
+    left.server.keyId === right.server.keyId &&
+    left.server.signingPublicKey === right.server.signingPublicKey &&
+    left.authority.keyId === right.authority.keyId &&
+    left.authority.boxPublicKey === right.authority.boxPublicKey &&
+    left.authority.signingPublicKey === right.authority.signingPublicKey
+  );
 }
 
 /**
@@ -55,17 +43,53 @@ export function parseKeysFile(raw: unknown): ServerKeys {
   const parsed = KeysFileSchema.safeParse(raw);
   if (!parsed.success) throw new Error('El archivo de llaves no tiene el formato esperado.');
   const { publicKeys, server } = parsed.data;
-  const serverPublicKey = decodeKey(publicKeys.server.signingPublicKey);
-  const authorityBoxPublicKey = decodeKey(publicKeys.authority.boxPublicKey);
+  const serverSigningPublicKey = decodeKey(publicKeys.server.signingPublicKey);
   const authoritySigningPublicKey = decodeKey(publicKeys.authority.signingPublicKey);
-  if (publicKeys.server.keyId !== keyIdFor(serverPublicKey)) {
-    throw new Error('El identificador de la llave del servidor no corresponde.');
-  }
+  const expected = buildPublicKeySet({
+    serverSigningPublicKey,
+    authorityBoxPublicKey: decodeKey(publicKeys.authority.boxPublicKey),
+    authoritySigningPublicKey,
+  });
   // El keyId de la autoridad identifica su llave de buzón, que es la destinataria de los sobres.
-  if (publicKeys.authority.keyId !== keyIdFor(authorityBoxPublicKey)) {
-    throw new Error('El identificador de la llave de la autoridad no corresponde.');
+  if (!samePublicKeySet(publicKeys, expected)) {
+    throw new Error('Un identificador de llave no corresponde a su llave pública.');
   }
   const serverSigningPrivateKey = decodeKey(server.signingPrivateKey);
-  assertSigningPair(serverSigningPrivateKey, serverPublicKey);
+  try {
+    assertSigningKeyPair({
+      publicKey: serverSigningPublicKey,
+      privateKey: serverSigningPrivateKey,
+    });
+  } catch {
+    throw new Error('La llave privada del servidor no corresponde a su llave pública.');
+  }
   return { publicKeySet: publicKeys, serverSigningPrivateKey, authoritySigningPublicKey };
+}
+
+/**
+ * Valida `authority-demo-key.json` contra las llaves públicas del despliegue.
+ * Lanza error si el formato es inválido, si alguna privada no corresponde a su pública o si las
+ * públicas no son las de `publicKeys`.
+ */
+export function parseAuthorityDemoKey(raw: unknown, publicKeys: PublicKeySet): AuthorityDemoKey {
+  const parsed = AuthorityDemoKeySchema.safeParse(raw);
+  if (!parsed.success) throw new Error('La llave de la autoridad no tiene el formato esperado.');
+  const key = parsed.data;
+  assertBoxKeyPair({
+    publicKey: decodeKey(key.boxPublicKey),
+    privateKey: decodeKey(key.boxPrivateKey),
+  });
+  assertSigningKeyPair({
+    publicKey: decodeKey(key.signingPublicKey),
+    privateKey: decodeKey(key.signingPrivateKey),
+  });
+  const { authority } = publicKeys;
+  const isSameAuthority =
+    key.keyId === authority.keyId &&
+    key.boxPublicKey === authority.boxPublicKey &&
+    key.signingPublicKey === authority.signingPublicKey;
+  if (!isSameAuthority) {
+    throw new Error('La llave de la autoridad no corresponde a las llaves públicas.');
+  }
+  return key;
 }

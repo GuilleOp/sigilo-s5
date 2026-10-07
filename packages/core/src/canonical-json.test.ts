@@ -15,9 +15,17 @@ describe('canonicalize', () => {
     );
   });
 
-  it('serializa números y cadenas como JSON', () => {
-    expect(canonicalize([0, -0, 1.5, 1e21, 'a"b\n'])).toBe('[0,0,1.5,1e+21,"a\\"b\\n"]');
+  it('serializa enteros seguros y cadenas como JSON', () => {
+    expect(canonicalize([0, -0, 42, -7, Number.MAX_SAFE_INTEGER, 'a"b\n'])).toBe(
+      '[0,0,42,-7,9007199254740991,"a\\"b\\n"]',
+    );
     expect(canonicalize(Object.create(null) as object)).toBe('{}');
+  });
+
+  it('rechaza decimales y enteros fuera del rango seguro', () => {
+    for (const invalid of [1.5, 1e21, Number.MAX_SAFE_INTEGER + 1, -(2 ** 60)]) {
+      expect(() => canonicalize({ n: invalid })).toThrow('enteros seguros');
+    }
   });
 
   it('rechaza tipos no admitidos', () => {

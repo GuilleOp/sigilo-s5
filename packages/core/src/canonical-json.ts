@@ -15,8 +15,10 @@ function serialize(value: unknown, ancestors: Set<object>): string {
     case 'string':
       return JSON.stringify(value);
     case 'number':
-      if (!Number.isFinite(value)) {
-        throw new Error('La forma canónica no admite números no finitos.');
+      // Seguridad: solo enteros seguros, para que la forma canónica se reproduzca igual en
+      // cualquier lenguaje (sin reglas de serialización de decimales ni pérdida de precisión).
+      if (!Number.isSafeInteger(value)) {
+        throw new Error('La forma canónica solo admite enteros seguros.');
       }
       return JSON.stringify(value);
     case 'object':
@@ -56,9 +58,10 @@ function serialize(value: unknown, ancestors: Set<object>): string {
 }
 
 /**
- * Serializa un valor JSON con llaves ordenadas y sin espacios.
- * Admite null, booleanos, cadenas, números finitos, arreglos y objetos planos; omite
- * propiedades `undefined`. Lanza error con cualquier otro tipo o con referencias circulares.
+ * Serializa un valor JSON con llaves ordenadas por unidades de código UTF-16 y sin espacios.
+ * Admite null, booleanos, cadenas, enteros seguros (`Number.isSafeInteger`), arreglos y objetos
+ * planos; omite propiedades `undefined`. Lanza error con cualquier otro tipo, con decimales o
+ * enteros fuera del rango seguro y con referencias circulares.
  */
 export function canonicalize(value: unknown): string {
   return serialize(value, new Set());

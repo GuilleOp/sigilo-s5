@@ -1,6 +1,14 @@
 // Pruebas de codificaciones Base64URL, hexadecimal y UTF-8.
 import { describe, expect, it } from 'vitest';
-import { fromBase64Url, fromHex, toBase64Url, toHex, utf8Decode, utf8Encode } from './encoding.ts';
+import {
+  equalBytes,
+  fromBase64Url,
+  fromHex,
+  toBase64Url,
+  toHex,
+  utf8Decode,
+  utf8Encode,
+} from './encoding.ts';
 
 describe('Base64URL', () => {
   it('coincide con los vectores de RFC 4648 sin relleno', () => {
@@ -58,5 +66,14 @@ describe('UTF-8', () => {
 
   it('rechaza secuencias inválidas', () => {
     expect(() => utf8Decode(new Uint8Array([0xc3]))).toThrow('UTF-8 válido');
+  });
+});
+
+describe('equalBytes', () => {
+  it('compara contenido y longitud', () => {
+    expect(equalBytes(fromHex('0102'), fromHex('0102'))).toBe(true);
+    expect(equalBytes(new Uint8Array(0), new Uint8Array(0))).toBe(true);
+    expect(equalBytes(fromHex('0102'), fromHex('0103'))).toBe(false);
+    expect(equalBytes(fromHex('0102'), fromHex('010200'))).toBe(false);
   });
 });

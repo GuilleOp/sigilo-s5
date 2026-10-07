@@ -1,4 +1,5 @@
-// Pruebas de recepción de denuncias: modos, asociación de pruebas y comprobante firmado.
+// Pruebas de recepción de denuncias: modos, catálogos, recibo único, cuota de envíos, asociación
+// de pruebas y comprobante firmado.
 import { describe, expect, it } from 'vitest';
 import { ROUTES, SubmitComplaintResponseSchema } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
@@ -98,6 +99,51 @@ describe('POST complaints', () => {
     });
     if (request.sealedIdentity) request.sealedIdentity.keyId = '0123456789abcdef';
     expect((await postJson(server.app, ROUTES.complaints, request)).status).toBe(400);
+  });
+
+  it('rechaza un authVerifier que ya usa otra denuncia', async () => {
+    const server = createTestServer();
+    const reporter = createReporter();
+    await submitComplaint(
+      server,
+      await buildComplaintRequest(server, { mode: 'anonymous', reporter }),
+    );
+    const again = await buildComplaintRequest(server, { mode: 'anonymous', reporter });
+    const response = await postJson(server.app, ROUTES.complaints, again);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual(errorBody('bad_request'));
+  });
+
+  it('rechaza claves fuera de catálogo en los campos que se publican', async () => {
+    const server = createTestServer();
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+    });
+    for (const facts of [
+      { ...request.facts, stateCode: 'Juan Perez es corrupto' },
+      { ...request.facts, offenseCode: 'Juan Perez es corrupto' },
+      { ...request.facts, entityId: 'Juan Perez es corrupto' },
+      { ...request.facts, stateCode: '09', municipalityCode: '014' },
+    ]) {
+      const response = await postJson(server.app, ROUTES.complaints, { ...request, facts });
+      expect(response.status).toBe(400);
+    }
+  });
+
+  it('aplica la cuota global de envíos de denuncias', async () => {
+    const server = createTestServer({
+      rateLimits: { complaintSubmissions: { limit: 2, windowMs: 60 * 60 * 1000 } },
+    });
+    const statuses: number[] = [];
+    for (let index = 0; index < 3; index += 1) {
+      const request = await buildComplaintRequest(server, {
+        mode: 'anonymous',
+        reporter: createReporter(),
+      });
+      statuses.push((await postJson(server.app, ROUTES.complaints, request)).status);
+    }
+    expect(statuses).toEqual([201, 201, 429]);
   });
 
   it('rechaza solicitudes que no cumplen el esquema o no son JSON', async () => {

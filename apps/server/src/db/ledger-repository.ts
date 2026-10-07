@@ -14,8 +14,12 @@ export interface StoredLedgerEvent {
 /** Operaciones sobre la tabla `ledger_events`. */
 export interface LedgerRepository {
   insert(event: LedgerEvent, payloadJson: string): void;
+  /** Último evento, publicado o no; solo para encadenar el siguiente. */
   last(): LedgerEvent | null;
-  page(fromSeq: number, limit: number): LedgerEvent[];
+  /** Último evento con fecha anterior a `day` (`AAAA-MM-DD`), o `null`. */
+  lastBefore(day: string): LedgerEvent | null;
+  /** Eventos desde `fromSeq` hasta `maxSeq` inclusive, en orden, a lo más `limit`. */
+  page(fromSeq: number, maxSeq: number, limit: number): LedgerEvent[];
   listByFolioDigest(folioDigest: string, types: readonly LedgerEventType[]): StoredLedgerEvent[];
 }
 
@@ -40,8 +44,11 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const lastStatement = db.prepare('SELECT * FROM ledger_events ORDER BY seq DESC LIMIT 1');
+  const lastBeforeStatement = db.prepare(
+    'SELECT * FROM ledger_events WHERE at < ? ORDER BY seq DESC LIMIT 1',
+  );
   const pageStatement = db.prepare(
-    'SELECT * FROM ledger_events WHERE seq >= ? ORDER BY seq LIMIT ?',
+    'SELECT * FROM ledger_events WHERE seq >= ? AND seq <= ? ORDER BY seq LIMIT ?',
   );
   const byFolioStatement = db.prepare(
     `SELECT * FROM ledger_events
@@ -67,7 +74,11 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
       const row = lastStatement.get();
       return row === undefined ? null : toEvent(row);
     },
-    page: (fromSeq, limit) => pageStatement.all(fromSeq, limit).map(toEvent),
+    lastBefore: (day) => {
+      const row = lastBeforeStatement.get(day);
+      return row === undefined ? null : toEvent(row);
+    },
+    page: (fromSeq, maxSeq, limit) => pageStatement.all(fromSeq, maxSeq, limit).map(toEvent),
     listByFolioDigest: (folioDigest, types) =>
       byFolioStatement.all(folioDigest, JSON.stringify(types)).map((row) => ({
         event: toEvent(row),

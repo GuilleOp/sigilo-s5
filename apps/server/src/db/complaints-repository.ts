@@ -45,11 +45,20 @@ export interface OpenDataCell {
 /** Operaciones sobre la tabla `complaints`. */
 export interface ComplaintsRepository {
   exists(folio: string): boolean;
+  /** Indica si algún recibo ya usa este verificador. */
+  hasAuthVerifier(authVerifier: string): boolean;
+  /**
+   * Solo el `authVerifier` del folio, o `null` si no existe.
+   * Seguridad: es una consulta ligera para que el tiempo de un intento fallido no dependa de
+   * cargar y validar el registro completo.
+   */
+  findAuthVerifier(folio: string): string | null;
   insert(record: ComplaintRecord): void;
   find(folio: string): ComplaintRecord | null;
   listSummaries(): ComplaintSummary[];
   updateStatus(folio: string, status: ComplaintStatus): void;
-  countByCell(): OpenDataCell[];
+  /** Conteos por celda de los meses de recepción anteriores a `beforeMonth` (`AAAA-MM`). */
+  countByCell(beforeMonth: string): OpenDataCell[];
 }
 
 const SUMMARY_COLUMNS =
@@ -100,6 +109,10 @@ function toCell(row: Row): OpenDataCell {
 /** Crea el repositorio de denuncias sobre `db`. */
 export function createComplaintsRepository(db: DatabaseSync): ComplaintsRepository {
   const existsStatement = db.prepare('SELECT 1 AS found FROM complaints WHERE folio = ?');
+  const verifierExistsStatement = db.prepare(
+    'SELECT 1 AS found FROM complaints WHERE auth_verifier = ?',
+  );
+  const verifierStatement = db.prepare('SELECT auth_verifier FROM complaints WHERE folio = ?');
   const insertStatement = db.prepare(
     `INSERT INTO complaints (folio, mode, status, received_on, state_code, offense_code,
        protection_requested, facts_json, sealed_identity_json, reporter_box_public_key,
@@ -116,12 +129,18 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
     `SELECT state_code, offense_code, substr(received_on, 1, 7) AS month, status,
        COUNT(*) AS total
      FROM complaints
+     WHERE substr(received_on, 1, 7) < ?
      GROUP BY state_code, offense_code, month, status
      ORDER BY state_code, offense_code, month, status`,
   );
 
   return {
     exists: (folio) => existsStatement.get(folio) !== undefined,
+    hasAuthVerifier: (authVerifier) => verifierExistsStatement.get(authVerifier) !== undefined,
+    findAuthVerifier: (folio) => {
+      const row = verifierStatement.get(folio);
+      return row === undefined ? null : readText(row, 'auth_verifier');
+    },
     insert: (record) => {
       insertStatement.run(
         record.folio,
@@ -147,6 +166,6 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
     updateStatus: (folio, status) => {
       updateStatusStatement.run(status, folio);
     },
-    countByCell: () => cellsStatement.all().map(toCell),
+    countByCell: (beforeMonth) => cellsStatement.all(beforeMonth).map(toCell),
   };
 }

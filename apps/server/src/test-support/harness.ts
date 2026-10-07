@@ -1,19 +1,23 @@
 // Utilidades de prueba: servidor en memoria con llaves generadas, reloj controlable y datos sintéticos.
+import type { DatabaseSync } from 'node:sqlite';
 import type { Hono } from 'hono';
 import { ROUTES } from '@sigilo/contracts';
 import type {
   ComplaintMode,
   EvidenceDescriptor,
   EvidenceMediaType,
+  IdentityBlock,
   PublicKeySet,
   SubmitComplaintRequest,
   SubmitComplaintResponse,
 } from '@sigilo/contracts';
 import {
+  buildPublicKeySet,
   deriveReceiptKeys,
   generateBoxKeyPair,
   generateReceiptPhrase,
   generateSigningKeyPair,
+  identityContextFor,
   keyIdFor,
   sealIdentity,
   toBase64Url,
@@ -24,52 +28,72 @@ import type { AppDeps, RequestLogEntry } from '../app.ts';
 import { openDatabase } from '../db/database.ts';
 import type { ServerKeys } from '../keys-file.ts';
 import { createMemoryEvidenceStore } from '../storage/evidence-store.ts';
+import type { EvidenceStore } from '../storage/evidence-store.ts';
 
 /** Token sintético de la autoridad para pruebas. */
 export const TEST_TOKEN = 'token-de-prueba-0123456789-abcdefghijkl';
 
-/** Servidor de prueba con sus llaves y su reloj. */
+/** Servidor de prueba con sus llaves, su base y su reloj. */
 export interface TestServer {
   app: Hono;
+  db: DatabaseSync;
+  evidenceStore: EvidenceStore;
   keys: ServerKeys;
   serverPublicKey: Uint8Array;
   authorityBox: KeyPair;
   authoritySigning: KeyPair;
   logs: RequestLogEntry[];
   setNow(date: Date): void;
+  /** Esperas que pidió el freno global, en milisegundos (no se espera de verdad). */
+  sleeps: number[];
 }
+
+/** Momento inicial del reloj de prueba: un martes a media tarde (UTC). */
+export const TEST_START = new Date('2026-10-20T15:42:17Z');
+
+/** Un día después del inicio: los eventos del día inicial ya se publicaron en la bitácora. */
+export const NEXT_DAY = new Date('2026-10-21T09:00:00Z');
+
+/** Primer día del mes siguiente: el mes inicial ya está completo para datos abiertos. */
+export const NEXT_MONTH = new Date('2026-11-02T09:00:00Z');
 
 /** Crea un servidor con SQLite en memoria y llaves nuevas. */
 export function createTestServer(overrides: Partial<AppDeps> = {}): TestServer {
   const server = generateSigningKeyPair();
   const authorityBox = generateBoxKeyPair();
   const authoritySigning = generateSigningKeyPair();
-  const publicKeySet: PublicKeySet = {
-    server: { keyId: keyIdFor(server.publicKey), signingPublicKey: toBase64Url(server.publicKey) },
-    authority: {
-      keyId: keyIdFor(authorityBox.publicKey),
-      boxPublicKey: toBase64Url(authorityBox.publicKey),
-      signingPublicKey: toBase64Url(authoritySigning.publicKey),
-    },
-  };
+  const publicKeySet: PublicKeySet = buildPublicKeySet({
+    serverSigningPublicKey: server.publicKey,
+    authorityBoxPublicKey: authorityBox.publicKey,
+    authoritySigningPublicKey: authoritySigning.publicKey,
+  });
   const keys: ServerKeys = {
     publicKeySet,
     serverSigningPrivateKey: server.privateKey,
     authoritySigningPublicKey: authoritySigning.publicKey,
   };
-  let now = new Date('2026-10-20T15:42:17Z');
+  let now = TEST_START;
   const logs: RequestLogEntry[] = [];
+  const sleeps: number[] = [];
+  const db = overrides.db ?? openDatabase(':memory:');
+  const evidenceStore = overrides.evidenceStore ?? createMemoryEvidenceStore();
   const app = createApp({
-    db: openDatabase(':memory:'),
+    db,
     keys,
-    evidenceStore: createMemoryEvidenceStore(),
+    evidenceStore,
     authorityToken: TEST_TOKEN,
     now: () => now,
+    sleep: async (ms) => {
+      sleeps.push(ms);
+    },
     logger: (entry) => logs.push(entry),
     ...overrides,
   });
   return {
     app,
+    db,
+    evidenceStore,
+    sleeps,
     keys,
     serverPublicKey: server.publicKey,
     authorityBox,
@@ -134,6 +158,13 @@ export interface ComplaintOptions {
   offenseCode?: string;
 }
 
+/** Bloque de identidad sintético de las denuncias selladas de prueba. */
+export const SYNTHETIC_IDENTITY: IdentityBlock = {
+  fullName: 'Persona Sintética de Prueba',
+  witnesses: [],
+  originalEvidenceSha256: [],
+};
+
 /** Construye una solicitud de denuncia con hechos sintéticos y, si es sellada, su identidad. */
 export async function buildComplaintRequest(
   server: TestServer,
@@ -145,7 +176,7 @@ export async function buildComplaintRequest(
     mode,
     facts: {
       stateCode: options.stateCode ?? '22',
-      entityId: 'ente-sintetico-001',
+      entityId: 'VE-OBRAS',
       offenseCode: options.offenseCode ?? 'LGRA-52',
       occurredPeriod: '2026-08',
       accused: 'Titular de la unidad sintética de compras',
@@ -161,13 +192,9 @@ export async function buildComplaintRequest(
   };
   if (mode === 'sealed') {
     request.sealedIdentity = await sealIdentity(
-      {
-        fullName: 'Persona Sintética de Prueba',
-        witnesses: [],
-        originalEvidenceSha256: [],
-      },
+      SYNTHETIC_IDENTITY,
       { keyId: server.keys.publicKeySet.authority.keyId, publicKey: server.authorityBox.publicKey },
-      reporter.authVerifier,
+      identityContextFor(request),
     );
   }
   return request;
@@ -186,4 +213,17 @@ export async function submitComplaint(
 /** Credenciales de seguimiento de la persona denunciante. */
 export function credentialsFor(folio: string, reporter: ReceiptKeys) {
   return { folio, authKey: toBase64Url(reporter.authKey) };
+}
+
+/** Destinatario de los sobres hacia la autoridad de prueba. */
+export function authorityRecipient(server: TestServer) {
+  return {
+    keyId: server.keys.publicKeySet.authority.keyId,
+    publicKey: server.authorityBox.publicKey,
+  };
+}
+
+/** Destinatario de los sobres hacia el buzón de la persona denunciante. */
+export function reporterRecipient(reporter: ReceiptKeys) {
+  return { keyId: keyIdFor(reporter.box.publicKey), publicKey: reporter.box.publicKey };
 }

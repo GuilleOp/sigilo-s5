@@ -43,3 +43,15 @@ export const LedgerPageSchema = z.object({
   head: SignedLedgerHeadSchema,
 });
 export type LedgerPage = z.infer<typeof LedgerPageSchema>;
+
+/**
+ * Anclaje de la cabeza pública, versionado en `anchors/AAAA-MM-DD.json` fuera del servidor.
+ * Una reescritura de la bitácora deja de coincidir con las cabezas ya ancladas.
+ */
+export const LedgerAnchorSchema = z.object({
+  version: z.literal(1),
+  /** Día (UTC) en que se tomó el anclaje. */
+  anchoredOn: DayDateSchema,
+  head: SignedLedgerHeadSchema,
+});
+export type LedgerAnchor = z.infer<typeof LedgerAnchorSchema>;

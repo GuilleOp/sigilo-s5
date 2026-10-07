@@ -2,7 +2,7 @@
 import { ed25519, x25519 } from '@noble/curves/ed25519.js';
 import { describe, expect, it } from 'vitest';
 import { fromHex, toBase64Url, toHex, utf8Encode } from './encoding.ts';
-import { deriveReceiptKeys } from './receipt-keys.ts';
+import { computeAuthVerifier, deriveReceiptKeys } from './receipt-keys.ts';
 import { randomBytes } from './random.ts';
 
 const ENTROPY = fromHex('000102030405060708090a');
@@ -64,5 +64,13 @@ describe('deriveReceiptKeys', () => {
   it('rechaza entropía de longitud incorrecta', () => {
     expect(() => deriveReceiptKeys(new Uint8Array(10))).toThrow('11 bytes');
     expect(() => deriveReceiptKeys(new Uint8Array(32))).toThrow('11 bytes');
+  });
+});
+
+describe('computeAuthVerifier', () => {
+  it('es el SHA-256 en Base64URL de authKey y rechaza otras longitudes', () => {
+    const keys = deriveReceiptKeys(ENTROPY);
+    expect(computeAuthVerifier(keys.authKey)).toBe('DzZ9K2ARNLPcxa10AivpU5UUBNjfy5vRGH3x3sqbDEU');
+    expect(() => computeAuthVerifier(new Uint8Array(31))).toThrow('32 bytes');
   });
 });

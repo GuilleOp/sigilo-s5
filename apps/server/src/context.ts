@@ -13,8 +13,8 @@ import type { MessagesRepository } from './db/messages-repository.ts';
 import type { ServerKeys } from './keys-file.ts';
 import { createLedgerService } from './ledger-service.ts';
 import type { LedgerService } from './ledger-service.ts';
-import { createRateLimiter } from './security/rate-limiter.ts';
-import type { RateLimitRule } from './security/rate-limiter.ts';
+import { createRateLimiter, createThrottle } from './security/rate-limiter.ts';
+import type { RateLimiter, RateLimitRule, ThrottleRule } from './security/rate-limiter.ts';
 import { createReporterAuthenticator } from './security/reporter-auth.ts';
 import type { ReporterAuthenticator } from './security/reporter-auth.ts';
 import type { EvidenceStore } from './storage/evidence-store.ts';
@@ -27,10 +27,21 @@ export interface RequestLogEntry {
   durationMs: number;
 }
 
-/** Límites de intentos de seguimiento. */
+/**
+ * Límites del servidor. Sin direcciones IP (no se registran), los límites son por folio o
+ * globales; los globales de escritura protegen el almacenamiento y el de seguimiento solo frena.
+ */
 export interface RateLimitConfig {
-  perFolio: RateLimitRule;
-  global: RateLimitRule;
+  /** Fallos de autenticación por folio; al agotarse, el folio responde 429 hasta que vence. */
+  authFailuresPerFolio: RateLimitRule;
+  /** Fallos de autenticación en total; al excederse, el seguimiento se retrasa sin rechazarse. */
+  authFailuresGlobal: ThrottleRule;
+  /** Mensajes de la persona denunciante por folio. */
+  reporterMessagesPerFolio: RateLimitRule;
+  /** Subidas de pruebas en total. */
+  evidenceUploads: RateLimitRule;
+  /** Envíos de denuncias en total. */
+  complaintSubmissions: RateLimitRule;
 }
 
 /** Dependencias externas de la aplicación; se inyectan para poder probarla. */
@@ -41,10 +52,24 @@ export interface AppDeps {
   evidenceStore: EvidenceStore;
   authorityToken: string;
   now: () => Date;
+  /** Espera usada por el freno global; por omisión, `setTimeout`. */
+  sleep?: (ms: number) => Promise<void>;
   /** Origen permitido por CORS; vacío o ausente lo desactiva. */
   allowedOrigin?: string;
-  rateLimits?: RateLimitConfig;
+  /** Directorio con la web construida (`apps/web/dist`) para servirla en el mismo origen. */
+  webDistDir?: string;
+  /** `max-age` en segundos de `Strict-Transport-Security`; ausente no envía la cabecera. */
+  hstsMaxAgeSeconds?: number;
+  /** Límites que sustituyen a los de `DEFAULT_RATE_LIMITS`. */
+  rateLimits?: Partial<RateLimitConfig>;
   logger?: (entry: RequestLogEntry) => void;
+}
+
+/** Limitadores compartidos por las rutas. */
+export interface AppLimiters {
+  reporterMessages: RateLimiter;
+  evidenceUploads: RateLimiter;
+  complaintSubmissions: RateLimiter;
 }
 
 /** Servicios compartidos por las rutas. */
@@ -57,19 +82,32 @@ export interface AppContext {
   identityOpenings: IdentityOpeningsRepository;
   ledger: LedgerService;
   reporterAuth: ReporterAuthenticator;
+  limiters: AppLimiters;
 }
 
-const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 
-/** Límites por omisión: 10 intentos por folio por hora y 600 en total por minuto. */
+/**
+ * Límites por omisión. Los accesos legítimos al seguimiento no cuentan; 10 fallos por folio por
+ * hora; más de 600 fallos por minuto en total frenan hasta 2 s cada intento; 30 mensajes de la
+ * persona denunciante por folio por hora; 600 subidas de pruebas y 120 denuncias por hora.
+ */
 export const DEFAULT_RATE_LIMITS: RateLimitConfig = {
-  perFolio: { limit: 10, windowMs: HOUR_MS },
-  global: { limit: 600, windowMs: 60 * 1000 },
+  authFailuresPerFolio: { limit: 10, windowMs: HOUR_MS },
+  authFailuresGlobal: { limit: 600, windowMs: MINUTE_MS, stepMs: 10, maxDelayMs: 2000 },
+  reporterMessagesPerFolio: { limit: 30, windowMs: HOUR_MS },
+  evidenceUploads: { limit: 600, windowMs: HOUR_MS },
+  complaintSubmissions: { limit: 120, windowMs: HOUR_MS },
 };
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /** Construye repositorios y servicios a partir de las dependencias. */
 export function createContext(deps: AppDeps): AppContext {
-  const limits = deps.rateLimits ?? DEFAULT_RATE_LIMITS;
+  const limits: RateLimitConfig = { ...DEFAULT_RATE_LIMITS, ...deps.rateLimits };
   const complaints = createComplaintsRepository(deps.db);
   const ledgerRepository = createLedgerRepository(deps.db);
   return {
@@ -87,8 +125,14 @@ export function createContext(deps: AppDeps): AppContext {
     }),
     reporterAuth: createReporterAuthenticator({
       complaints,
-      perFolioLimiter: createRateLimiter(limits.perFolio, deps.now),
-      globalLimiter: createRateLimiter(limits.global, deps.now),
+      failuresPerFolio: createRateLimiter(limits.authFailuresPerFolio, deps.now),
+      failureThrottle: createThrottle(limits.authFailuresGlobal, deps.now),
+      sleep: deps.sleep ?? defaultSleep,
     }),
+    limiters: {
+      reporterMessages: createRateLimiter(limits.reporterMessagesPerFolio, deps.now),
+      evidenceUploads: createRateLimiter(limits.evidenceUploads, deps.now),
+      complaintSubmissions: createRateLimiter(limits.complaintSubmissions, deps.now),
+    },
   };
 }

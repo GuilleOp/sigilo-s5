@@ -1,5 +1,6 @@
 // Punto de entrada público de @sigilo/contracts.
 export * from './primitives.ts';
+export * from './catalogs/index.ts';
 export * from './envelope.ts';
 export * from './complaint.ts';
 export * from './mailbox.ts';

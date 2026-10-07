@@ -6,7 +6,12 @@ import {
   LedgerEventSchema,
   SignedLedgerHeadSchema,
 } from '@sigilo/contracts';
-import type { LedgerEvent, LedgerEventType, SignedLedgerHead } from '@sigilo/contracts';
+import type {
+  LedgerEvent,
+  LedgerEventType,
+  SignedLedgerHead,
+  SignedReceipt,
+} from '@sigilo/contracts';
 import { canonicalize, sha256Hex } from './canonical-json.ts';
 import { fromBase64Url, toBase64Url, utf8Encode } from './encoding.ts';
 import { keyIdFor } from './keys.ts';
@@ -116,6 +121,35 @@ export function verifyLedgerHead(head: SignedLedgerHead, publicKey: Uint8Array):
   if (!parsed.success || parsed.data.serverKeyId !== keyIdFor(publicKey)) return false;
   try {
     return verify(fromBase64Url(parsed.data.signature), headMessage(parsed.data), publicKey);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `payloadDigest` del evento `complaint.received`:
+ * `sha256Hex(canonicalize({ folio, submissionDigest }))`.
+ */
+export function receivedPayloadDigest(folio: string, submissionDigest: string): string {
+  return sha256Hex(canonicalize({ folio, submissionDigest }));
+}
+
+/**
+ * Indica si `event` es el `complaint.received` que corresponde al comprobante: misma secuencia y
+ * fecha, `folioDigest` del folio y `payloadDigest` del digesto de la solicitud. Junto con la
+ * verificación de la cadena, prueba que la denuncia quedó registrada en la bitácora pública.
+ */
+export function verifyReceiptEvent(event: LedgerEvent, receipt: SignedReceipt): boolean {
+  try {
+    return (
+      event.type === 'complaint.received' &&
+      event.actorRole === 'system' &&
+      event.seq === receipt.ledgerSeq &&
+      event.at === receipt.receivedOn &&
+      event.folioDigest === folioDigest(receipt.folio) &&
+      event.payloadDigest === receivedPayloadDigest(receipt.folio, receipt.submissionDigest) &&
+      event.hash === computeEventHash(event)
+    );
   } catch {
     return false;
   }

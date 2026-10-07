@@ -1,13 +1,16 @@
-// Pruebas del CSV de datos abiertos: agregación por celda y supresión de celdas pequeñas.
+// Pruebas del CSV de datos abiertos: solo meses completos, redondeo y supresión de celdas pequeñas.
 import { describe, expect, it } from 'vitest';
-import { OPEN_DATA_MIN_CELL, ROUTES } from '@sigilo/contracts';
+import { ROUTES } from '@sigilo/contracts';
 import {
   buildComplaintRequest,
   createReporter,
   createTestServer,
+  NEXT_MONTH,
   submitComplaint,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
+
+const HEADER = 'entidad,conducta,mes_recepcion,estatus,denuncias';
 
 async function submitMany(server: TestServer, count: number, stateCode: string): Promise<void> {
   for (let index = 0; index < count; index += 1) {
@@ -20,27 +23,34 @@ async function submitMany(server: TestServer, count: number, stateCode: string):
   }
 }
 
+async function readCsv(server: TestServer): Promise<string> {
+  return (await server.app.request(ROUTES.openDataCsv)).text();
+}
+
 describe('GET open-data CSV', () => {
-  it('publica las celdas grandes y suprime las menores al umbral', async () => {
+  it('no publica el mes en curso', async () => {
     const server = createTestServer();
-    await submitMany(server, OPEN_DATA_MIN_CELL, '22');
-    await submitMany(server, 2, '09');
+    await submitMany(server, 7, '22');
     const response = await server.app.request(ROUTES.openDataCsv);
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
-    expect(await response.text()).toBe(
-      [
-        'entidad,conducta,mes_recepcion,estatus,denuncias',
-        `22,LGRA-52,2026-10,received,${OPEN_DATA_MIN_CELL}`,
-        'suprimidas,2',
-        '',
-      ].join('\r\n'),
+    expect(await response.text()).toBe(`${HEADER}\r\nsuprimidas,,,,0\r\n`);
+  });
+
+  it('publica meses completos con conteos redondeados y suprime las celdas menores que 5', async () => {
+    const server = createTestServer();
+    await submitMany(server, 7, '22');
+    await submitMany(server, 3, '09');
+    server.setNow(NEXT_MONTH);
+    // Lo recibido en el mes nuevo no aparece todavía.
+    await submitMany(server, 6, '14');
+    expect(await readCsv(server)).toBe(
+      [HEADER, '22,LGRA-52,2026-10,received,5', 'suprimidas,,,,5', ''].join('\r\n'),
     );
   });
 
-  it('incluye la fila de suprimidas aunque no haya datos', async () => {
+  it('incluye la fila de suprimidas con todas las columnas aunque no haya datos', async () => {
     const server = createTestServer();
-    const text = await (await server.app.request(ROUTES.openDataCsv)).text();
-    expect(text).toBe('entidad,conducta,mes_recepcion,estatus,denuncias\r\nsuprimidas,0\r\n');
+    expect(await readCsv(server)).toBe(`${HEADER}\r\nsuprimidas,,,,0\r\n`);
   });
 });

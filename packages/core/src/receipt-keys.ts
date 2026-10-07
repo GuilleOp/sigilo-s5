@@ -21,6 +21,18 @@ const RECEIPT_ENTROPY_BYTES = 11;
 const DERIVED_KEY_LENGTH = 32;
 const EMPTY_SALT = new Uint8Array(0);
 
+/**
+ * Verificador de autenticación: `Base64URL(SHA-256(authKey))`. Es lo único que guarda el servidor
+ * y lo que compara (en tiempo constante) al recibir una `authKey`.
+ * Lanza error si `authKey` no mide 32 bytes.
+ */
+export function computeAuthVerifier(authKey: Uint8Array): string {
+  if (authKey.length !== DERIVED_KEY_LENGTH) {
+    throw new Error(`La llave de autenticación debe medir ${DERIVED_KEY_LENGTH} bytes.`);
+  }
+  return toBase64Url(sha256(authKey));
+}
+
 function expand(entropy: Uint8Array, context: string): Uint8Array {
   return hkdf(sha256, entropy, EMPTY_SALT, utf8Encode(context), DERIVED_KEY_LENGTH);
 }
@@ -39,7 +51,7 @@ export function deriveReceiptKeys(entropy: Uint8Array): ReceiptKeys {
   const signingPrivateKey = expand(entropy, 'sigilo/v1/sign');
   return {
     authKey,
-    authVerifier: toBase64Url(sha256(authKey)),
+    authVerifier: computeAuthVerifier(authKey),
     box: { publicKey: x25519.getPublicKey(boxPrivateKey), privateKey: boxPrivateKey },
     signing: { publicKey: ed25519.getPublicKey(signingPrivateKey), privateKey: signingPrivateKey },
   };

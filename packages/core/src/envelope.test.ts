@@ -4,7 +4,7 @@ import type { HpkeEnvelope } from '@sigilo/contracts';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { describe, expect, it } from 'vitest';
 import { fromBase64Url, fromHex, toBase64Url, utf8Decode, utf8Encode } from './encoding.ts';
-import { openEnvelope, sealToPublicKey } from './envelope.ts';
+import { envelopePlaintextLength, openEnvelope, sealToPublicKey } from './envelope.ts';
 import { generateBoxKeyPair, keyIdFor } from './keys.ts';
 
 const OPEN_ERROR = 'No se pudo abrir el sobre.';
@@ -93,5 +93,26 @@ describe('sobres HPKE', () => {
         new Uint8Array(0),
       ),
     ).rejects.toThrow('identificador de llave');
+  });
+});
+
+describe('envelopePlaintextLength', () => {
+  it('calcula la longitud del texto en claro sin abrir el sobre', async () => {
+    expect(envelopePlaintextLength(FIXED_ENVELOPE)).toBe(
+      fromBase64Url(FIXED_ENVELOPE.ct).length - 16,
+    );
+    const pair = generateBoxKeyPair();
+    const sealed = await sealToPublicKey(
+      new Uint8Array(100),
+      recipientFor(pair.publicKey),
+      new Uint8Array(0),
+    );
+    expect(envelopePlaintextLength(sealed)).toBe(100);
+  });
+
+  it('devuelve null con enc de otra longitud, ct corto o Base64URL no canónico', () => {
+    expect(envelopePlaintextLength({ ...FIXED_ENVELOPE, enc: 'AAAA' })).toBeNull();
+    expect(envelopePlaintextLength({ ...FIXED_ENVELOPE, ct: 'AAAA' })).toBeNull();
+    expect(envelopePlaintextLength({ ...FIXED_ENVELOPE, ct: 'A' })).toBeNull();
   });
 });

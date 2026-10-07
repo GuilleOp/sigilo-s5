@@ -2,7 +2,8 @@
 import { z } from 'zod';
 import { ComplaintModeSchema, ComplaintStatusSchema, SignedReceiptSchema } from './complaint.ts';
 import { HpkeEnvelopeSchema } from './envelope.ts';
-import { MailboxMessageSchema } from './mailbox.ts';
+import { LedgerEventSchema } from './ledger.ts';
+import { MailboxMessageSchema, MailboxSequenceSchema } from './mailbox.ts';
 import { Base64UrlSchema, DayDateSchema, FolioSchema } from './primitives.ts';
 
 export const TrackingCredentialsSchema = z.object({
@@ -35,10 +36,17 @@ export const TrackingViewSchema = z.object({
   identityAccess: z.array(IdentityAccessEntrySchema),
   messages: z.array(MailboxMessageSchema),
   receipt: SignedReceiptSchema,
+  /**
+   * Evento `complaint.received` de la denuncia. El cliente comprueba que corresponda a su
+   * comprobante (`folioDigest`, `payloadDigest`, `seq` y fecha) y después puede buscarlo en la
+   * bitácora pública con `ledgerEvents?from=<seq>&limit=1`, una vez publicado su día.
+   */
+  receivedEvent: LedgerEventSchema,
 });
 export type TrackingView = z.infer<typeof TrackingViewSchema>;
 
 export const ReporterMessageRequestSchema = TrackingCredentialsSchema.extend({
+  sequence: MailboxSequenceSchema,
   envelope: HpkeEnvelopeSchema,
   signature: Base64UrlSchema,
 });

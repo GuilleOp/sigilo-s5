@@ -13,6 +13,7 @@ import { ApiFailure } from '../http/errors.ts';
 import { hasIdentityShape, isKey32 } from './crypto-checks.ts';
 
 const MAX_FOLIO_ATTEMPTS = 8;
+const SUBMISSIONS_KEY = 'global';
 
 function assertRequestShape(ctx: AppContext, request: SubmitComplaintRequest): void {
   const { reporterKeys, authVerifier, sealedIdentity } = request;
@@ -57,16 +58,24 @@ function newFolio(ctx: AppContext): string {
 
 /**
  * Valida y guarda la denuncia, asocia sus pruebas, registra `complaint.received` y firma el
- * comprobante, todo en una sola transacción. Lanza `bad_request` si algo no corresponde.
+ * comprobante, todo en una sola transacción.
+ * Lanza `rate_limited` si se agotó la cuota global de envíos y `bad_request` si algo no
+ * corresponde, en particular si otro recibo ya usa el mismo `authVerifier`.
  */
 export function submitComplaint(
   ctx: AppContext,
   request: SubmitComplaintRequest,
 ): SubmitComplaintResponse {
   assertRequestShape(ctx, request);
+  if (!ctx.limiters.complaintSubmissions.consume(SUBMISSIONS_KEY)) {
+    throw new ApiFailure('rate_limited');
+  }
   const submissionDigest = computeSubmissionDigest(request);
   const receivedOn = toDayDate(ctx.deps.now());
   return withTransaction(ctx.deps.db, () => {
+    // Seguridad: cada recibo pertenece a una sola denuncia. Reutilizar el verificador de otra es
+    // el primer paso para trasplantar su sobre de identidad (el índice único también lo impide).
+    if (ctx.complaints.hasAuthVerifier(request.authVerifier)) throw new ApiFailure('bad_request');
     const folio = newFolio(ctx);
     // Seguridad: los datos de cada evento incluyen el folio (60 bits secretos), así su digesto
     // público no se puede adivinar probando valores, pero la persona denunciante sí lo verifica.
@@ -104,34 +113,36 @@ export function submitComplaint(
   });
 }
 
-/** Cambia el estatus y registra `complaint.status_changed`. Lanza `bad_request` si no cambia. */
+/**
+ * Cambia el estatus y registra `complaint.status_changed`.
+ * Lanza `not_found` si el folio no existe y `bad_request` si el estatus no cambia.
+ * Seguridad: el estatus vigente se vuelve a leer dentro de la transacción, así dos cambios
+ * simultáneos no registran dos eventos del mismo estatus.
+ */
 export function changeStatus(
   ctx: AppContext,
-  complaint: ComplaintRecord,
+  folio: string,
   status: ComplaintStatus,
 ): ComplaintRecord {
-  if (complaint.status === status) throw new ApiFailure('bad_request');
-  withTransaction(ctx.deps.db, () => {
+  return withTransaction(ctx.deps.db, () => {
+    const current = ctx.complaints.find(folio);
+    if (current === null) throw new ApiFailure('not_found');
+    if (current.status === status) throw new ApiFailure('bad_request');
     ctx.ledger.append({
       type: 'complaint.status_changed',
-      folio: complaint.folio,
+      folio,
       at: toDayDate(ctx.deps.now()),
       actorRole: 'authority',
-      payload: { folio: complaint.folio, status },
+      payload: { folio, status },
     });
-    ctx.complaints.updateStatus(complaint.folio, status);
+    ctx.complaints.updateStatus(folio, status);
+    return { ...current, status };
   });
-  return { ...complaint, status };
 }
 
 /**
- * Respuesta de apertura. Agrega `authVerifier` al contrato porque es el AAD del sobre y sin él
- * la autoridad no puede descifrarlo; no permite autenticarse porque es un digesto de `authKey`.
- */
-export type OpenIdentityResult = OpenIdentityResponse & { authVerifier: string };
-
-/**
- * Registra `identity.opened` con su fundamento y después entrega el sobre de identidad.
+ * Registra `identity.opened` con su fundamento y después entrega el sobre de identidad. La
+ * autoridad recalcula su contexto (AAD) desde el detalle de la denuncia.
  * Lanza `not_found` si la denuncia es anónima.
  * Seguridad: es la única vía para obtener el sobre y siempre deja rastro visible para la persona.
  */
@@ -139,7 +150,7 @@ export function openIdentity(
   ctx: AppContext,
   complaint: ComplaintRecord,
   legalBasis: string,
-): OpenIdentityResult {
+): OpenIdentityResponse {
   const sealedIdentity = complaint.sealedIdentity;
   if (complaint.mode !== 'sealed' || sealedIdentity === null) throw new ApiFailure('not_found');
   const openedOn = toDayDate(ctx.deps.now());
@@ -154,5 +165,5 @@ export function openIdentity(
     ctx.identityOpenings.insert(complaint.folio, appended.seq, openedOn, legalBasis);
     return appended;
   });
-  return { sealedIdentity, ledgerSeq: event.seq, authVerifier: complaint.authVerifier };
+  return { sealedIdentity, ledgerSeq: event.seq };
 }

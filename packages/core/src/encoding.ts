@@ -92,3 +92,17 @@ export function utf8Decode(bytes: Uint8Array): string {
     throw new Error('Los bytes no son UTF-8 válido.');
   }
 }
+
+/**
+ * Indica si dos arreglos de bytes son idénticos.
+ * Seguridad: recorre siempre todo el arreglo, sin salir en la primera diferencia, para no
+ * revelar por tiempo en qué posición difieren (solo la longitud es observable).
+ */
+export function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= (left[index] ?? 0) ^ (right[index] ?? 0);
+  }
+  return difference === 0;
+}

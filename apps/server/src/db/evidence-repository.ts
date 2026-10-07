@@ -17,6 +17,10 @@ export interface EvidenceRepository {
   /** Asocia una prueba pendiente; devuelve `false` si ya no estaba pendiente. */
   associate(evidenceId: string, folio: string, position: number): boolean;
   listByFolio(folio: string): EvidenceDescriptor[];
+  /** Identificadores de pruebas pendientes subidas antes del día `beforeDay` (`AAAA-MM-DD`). */
+  listPendingBefore(beforeDay: string): string[];
+  /** Borra una prueba solo si sigue pendiente; devuelve `true` si la borró. */
+  deletePending(evidenceId: string): boolean;
 }
 
 function toDescriptor(row: Row): EvidenceDescriptor {
@@ -39,6 +43,12 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
     'UPDATE evidence SET folio = ?, position = ? WHERE evidence_id = ? AND folio IS NULL',
   );
   const listStatement = db.prepare('SELECT * FROM evidence WHERE folio = ? ORDER BY position');
+  const pendingStatement = db.prepare(
+    'SELECT evidence_id FROM evidence WHERE folio IS NULL AND uploaded_on < ?',
+  );
+  const deleteStatement = db.prepare(
+    'DELETE FROM evidence WHERE evidence_id = ? AND folio IS NULL',
+  );
 
   return {
     insertPending: (descriptor, uploadedOn) => {
@@ -58,5 +68,8 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
     associate: (evidenceId, folio, position) =>
       Number(associateStatement.run(folio, position, evidenceId).changes) === 1,
     listByFolio: (folio) => listStatement.all(folio).map(toDescriptor),
+    listPendingBefore: (beforeDay) =>
+      pendingStatement.all(beforeDay).map((row) => readText(row, 'evidence_id')),
+    deletePending: (evidenceId) => Number(deleteStatement.run(evidenceId).changes) === 1,
   };
 }

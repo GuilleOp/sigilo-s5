@@ -18,5 +18,8 @@ export const ROUTES = {
   openDataCsv: `${API_PREFIX}/open-data/complaints.csv`,
 } as const;
 
-/** Umbral de supresión de celdas pequeñas en datos abiertos. */
+/** Umbral de supresión de celdas pequeñas en datos abiertos (conteo real menor que este valor). */
 export const OPEN_DATA_MIN_CELL = 5;
+
+/** Los conteos publicados en datos abiertos se redondean al múltiplo más cercano de este valor. */
+export const OPEN_DATA_ROUNDING = 5;

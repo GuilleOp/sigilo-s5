@@ -4,6 +4,7 @@ import { wordlist } from '@scure/bip39/wordlists/spanish.js';
 import { toHex } from './encoding.ts';
 import {
   RECEIPT_WORD_COUNT,
+  ReceiptPhraseError,
   completeWord,
   generateReceiptPhrase,
   normalizeWord,
@@ -61,6 +62,29 @@ describe('phraseToEntropy', () => {
       phraseToEntropy(wrong);
     } catch (error) {
       expect(String(error)).not.toContain('secretoinventado');
+    }
+  });
+
+  it('lanza ReceiptPhraseError con la posición de la palabra o nula si faltan palabras', () => {
+    const wrong = [...FIXED_WORDS];
+    wrong[5] = 'zzzz';
+    const failure = (): unknown => {
+      try {
+        phraseToEntropy(wrong);
+      } catch (error) {
+        return error;
+      }
+      return null;
+    };
+    const error = failure();
+    expect(error).toBeInstanceOf(ReceiptPhraseError);
+    expect((error as ReceiptPhraseError).position).toBe(6);
+    expect((error as ReceiptPhraseError).name).toBe('ReceiptPhraseError');
+    expect(() => phraseToEntropy([])).toThrow(ReceiptPhraseError);
+    try {
+      phraseToEntropy([]);
+    } catch (countError) {
+      expect((countError as ReceiptPhraseError).position).toBeNull();
     }
   });
 });

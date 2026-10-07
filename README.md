@@ -17,14 +17,36 @@ Protege la identidad de la persona denunciante en las tres etapas del proceso:
 
 ## Inicio rápido
 
-Requisitos: Node.js 22.13 o superior.
+Requisitos: Node.js 22.18 o superior (ver `.nvmrc`; desde 22.18 Node ejecuta TypeScript sin
+compilar).
 
 ```sh
 npm install
-npm run keys:generate
-npm run dev:server
-npm run dev:web
+npm run keys:generate   # llaves de demostración, llaves fijadas de la web y apps/server/.env
+npm run dev:server      # API en http://127.0.0.1:8787
+npm run dev:web         # en otra terminal: http://127.0.0.1:5173
 ```
+
+Abre `http://127.0.0.1:5173`. La web y la API comparten origen a través del proxy de Vite, así
+que CORS queda desactivado.
+
+Panel de la autoridad (`http://127.0.0.1:5173/autoridad`):
+
+- Token: el valor de `SIGILO_AUTHORITY_TOKEN` en `apps/server/.env`, que `keys:generate` crea
+  con un valor aleatorio si no existe.
+- Llave: importa el archivo `apps/server/data/authority-demo-key.json`.
+
+Otros comandos:
+
+| Comando                            | Uso                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------ |
+| `npm run demo:reset`               | Borra la base y las pruebas de la demostración y conserva las llaves.                      |
+| `npm run ledger:anchor`            | Escribe `anchors/AAAA-MM-DD.json` con la cabeza pública firmada (ver `SIGILO_ANCHOR_URL`). |
+| `npm run keys:generate -- --force` | Reemplaza las llaves; después reconstruye la web para fijar las nuevas.                    |
+
+Un solo origen sin Vite: `npm run build -w @sigilo/web` y después
+`SIGILO_WEB_DIST=../web/dist npm run start -w @sigilo/server`; la web queda en
+`http://127.0.0.1:8787` con su CSP como cabecera.
 
 ## Estructura
 

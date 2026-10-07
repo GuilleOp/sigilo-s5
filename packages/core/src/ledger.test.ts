@@ -9,10 +9,13 @@ import {
   buildEvent,
   computeEventHash,
   folioDigest,
+  receivedPayloadDigest,
   signLedgerHead,
   verifyChain,
   verifyLedgerHead,
+  verifyReceiptEvent,
 } from './ledger.ts';
+import type { SignedReceipt } from '@sigilo/contracts';
 
 const FOLIO = '0123-4567-89AB';
 const SERVER_SECRET = fromHex('9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60');
@@ -179,5 +182,43 @@ describe('cabeza firmada', () => {
     expect(() =>
       signLedgerHead({ ...head, serverKeyId: '0000000000000000' }, SERVER_SECRET),
     ).toThrow('identificador de llave');
+  });
+});
+
+describe('verifyReceiptEvent', () => {
+  const submissionDigest = 'b'.repeat(64);
+  const receipt: SignedReceipt = {
+    folio: FOLIO,
+    submissionDigest,
+    receivedOn: '2026-10-06',
+    ledgerSeq: 0,
+    serverKeyId: keyIdFor(SERVER_PUBLIC),
+    signature: 'AA',
+  };
+  const event = buildEvent(null, {
+    type: 'complaint.received',
+    folio: FOLIO,
+    at: '2026-10-06',
+    actorRole: 'system',
+    payload: { folio: FOLIO, submissionDigest },
+  });
+
+  it('acepta el evento que corresponde al comprobante', () => {
+    expect(event.payloadDigest).toBe(receivedPayloadDigest(FOLIO, submissionDigest));
+    expect(verifyReceiptEvent(event, receipt)).toBe(true);
+  });
+
+  it('rechaza otro folio, digesto, secuencia, fecha, tipo o hash', () => {
+    const variants: [LedgerEvent, SignedReceipt][] = [
+      [event, { ...receipt, folio: '0123-4567-89AC' }],
+      [event, { ...receipt, submissionDigest: 'c'.repeat(64) }],
+      [event, { ...receipt, ledgerSeq: 1 }],
+      [event, { ...receipt, receivedOn: '2026-10-07' }],
+      [{ ...event, type: 'message.sent' }, receipt],
+      [{ ...event, hash: 'd'.repeat(64) }, receipt],
+    ];
+    for (const [candidate, against] of variants) {
+      expect(verifyReceiptEvent(candidate, against)).toBe(false);
+    }
   });
 });

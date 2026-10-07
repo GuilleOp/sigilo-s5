@@ -6,7 +6,7 @@
   "license": "CC-BY-NC-4.0",
   "type": "module",
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.18"
   },
   "workspaces": [
     "packages/contracts",
@@ -29,7 +29,9 @@
     "dev:server": "npm run dev -w @sigilo/server",
     "dev:web": "npm run dev -w @sigilo/web",
     "hooks:install": "node scripts/install-hooks.mjs",
-    "keys:generate": "node scripts/generate-keys.ts"
+    "keys:generate": "node scripts/generate-keys.ts",
+    "ledger:anchor": "node scripts/ledger-anchor.ts",
+    "demo:reset": "node scripts/demo-reset.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

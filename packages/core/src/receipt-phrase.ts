@@ -8,6 +8,21 @@ export const RECEIPT_WORD_COUNT = 8;
 const BITS_PER_WORD = 11;
 const ENTROPY_BYTES = (RECEIPT_WORD_COUNT * BITS_PER_WORD) / 8;
 
+/**
+ * Error de la frase del recibo. `position` es la posición (desde 1) de la palabra que no está en
+ * la lista, o `null` si el número de palabras es incorrecto.
+ * Seguridad: nunca cita la palabra, porque forma parte del secreto.
+ */
+export class ReceiptPhraseError extends Error {
+  readonly position: number | null;
+
+  constructor(message: string, position: number | null) {
+    super(message);
+    this.name = 'ReceiptPhraseError';
+    this.position = position;
+  }
+}
+
 /** Palabras en forma NFC para mostrarlas; la lista original está en NFD. */
 const DISPLAY_WORDS: readonly string[] = wordlist.map((word) => word.normalize('NFC'));
 
@@ -51,11 +66,15 @@ export function generateReceiptPhrase(): { words: string[]; entropy: Uint8Array 
 
 /**
  * Recupera la entropía (11 bytes) a partir de las 8 palabras, ignorando acentos y mayúsculas.
- * Lanza error si el número de palabras es incorrecto o alguna palabra no está en la lista.
+ * Lanza `ReceiptPhraseError` si el número de palabras es incorrecto (`position` nulo) o si alguna
+ * palabra no está en la lista (`position` de la primera que falla).
  */
 export function phraseToEntropy(words: readonly string[]): Uint8Array {
   if (words.length !== RECEIPT_WORD_COUNT) {
-    throw new Error(`La frase del recibo debe tener ${RECEIPT_WORD_COUNT} palabras.`);
+    throw new ReceiptPhraseError(
+      `La frase del recibo debe tener ${RECEIPT_WORD_COUNT} palabras.`,
+      null,
+    );
   }
   const entropy = new Uint8Array(ENTROPY_BYTES);
   let buffer = 0;
@@ -64,8 +83,12 @@ export function phraseToEntropy(words: readonly string[]): Uint8Array {
   words.forEach((word, wordPosition) => {
     const index = WORD_INDEX.get(normalizeWord(word));
     if (index === undefined) {
-      // Seguridad: el mensaje indica la posición, nunca la palabra, porque forma parte del secreto.
-      throw new Error(`La palabra ${wordPosition + 1} del recibo no está en la lista.`);
+      // Seguridad: el error indica la posición, nunca la palabra, porque forma parte del secreto.
+      const position = wordPosition + 1;
+      throw new ReceiptPhraseError(
+        `La palabra ${position} del recibo no está en la lista.`,
+        position,
+      );
     }
     buffer = (buffer << BITS_PER_WORD) | index;
     bits += BITS_PER_WORD;

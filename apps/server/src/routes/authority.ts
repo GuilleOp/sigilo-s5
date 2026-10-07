@@ -62,13 +62,19 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   app.post(ROUTES.authorityStatus(':folio'), jsonBodyLimit, async (c) => {
     const complaint = findComplaint(ctx, c);
     const { status } = await readJson(c, UpdateStatusRequestSchema);
-    return c.json(toSummary(changeStatus(ctx, complaint, status)));
+    return c.json(toSummary(changeStatus(ctx, complaint.folio, status)));
   });
 
   app.post(ROUTES.authorityMessages(':folio'), jsonBodyLimit, async (c) => {
     const complaint = findComplaint(ctx, c);
-    const { envelope, signature } = await readJson(c, AuthorityMessageRequestSchema);
-    return c.json(recordMessage(ctx, complaint, { from: 'authority', envelope, signature }), 201);
+    const { sequence, envelope, signature } = await readJson(c, AuthorityMessageRequestSchema);
+    const message = recordMessage(ctx, complaint, {
+      from: 'authority',
+      sequence,
+      envelope,
+      signature,
+    });
+    return c.json(message, 201);
   });
 
   app.get(ROUTES.authorityEvidence(':evidenceId'), (c) => serveEvidence(ctx, c));

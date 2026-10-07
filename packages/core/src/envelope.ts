@@ -15,6 +15,8 @@ export interface EnvelopeRecipient {
 }
 
 const HPKE_INFO = utf8Encode('sigilo/v1/hpke');
+const ENCAPSULATED_KEY_LENGTH = 32;
+const AEAD_TAG_LENGTH = 16;
 const OPEN_ERROR = 'No se pudo abrir el sobre.';
 
 const suite = new CipherSuite({
@@ -70,5 +72,20 @@ export async function openEnvelope(
     return new Uint8Array(plaintext);
   } catch {
     throw new Error(OPEN_ERROR);
+  }
+}
+
+/**
+ * Longitud del texto en claro de un sobre sin abrirlo (texto cifrado menos la etiqueta), o `null`
+ * si `enc` o `ct` no son Base64URL canónico de la longitud esperada.
+ * Permite que quien no tiene la llave (el servidor) compruebe el relleno fijo.
+ */
+export function envelopePlaintextLength(envelope: HpkeEnvelope): number | null {
+  try {
+    if (fromBase64Url(envelope.enc).length !== ENCAPSULATED_KEY_LENGTH) return null;
+    const ctLength = fromBase64Url(envelope.ct).length;
+    return ctLength < AEAD_TAG_LENGTH ? null : ctLength - AEAD_TAG_LENGTH;
+  } catch {
+    return null;
   }
 }

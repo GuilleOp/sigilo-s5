@@ -77,5 +77,44 @@ CREATE TABLE identity_openings (
 CREATE INDEX identity_openings_by_folio ON identity_openings (folio, ledger_seq);
 `;
 
+// Seguridad: un recibo identifica a una sola denuncia; repetir el `authVerifier` permitiría
+// trasplantar el sobre de identidad de otra denuncia. La secuencia del buzón impide repetir o
+// reordenar mensajes, y las aperturas de identidad y los mensajes quedan de solo agregar.
+const RECEIPT_AND_MAILBOX_INTEGRITY = `
+CREATE UNIQUE INDEX complaints_by_auth_verifier ON complaints (auth_verifier);
+
+ALTER TABLE messages ADD COLUMN sequence INTEGER NOT NULL DEFAULT 0;
+UPDATE messages SET sequence = (
+  SELECT COUNT(*) FROM messages AS earlier
+  WHERE earlier.folio = messages.folio
+    AND earlier.sender = messages.sender
+    AND earlier.ledger_seq < messages.ledger_seq
+);
+CREATE UNIQUE INDEX messages_by_sender_sequence ON messages (folio, sender, sequence);
+
+CREATE INDEX evidence_pending_by_day ON evidence (uploaded_on) WHERE folio IS NULL;
+CREATE INDEX ledger_events_by_day ON ledger_events (at, seq);
+
+CREATE TRIGGER messages_no_update BEFORE UPDATE ON messages
+BEGIN
+  SELECT RAISE(ABORT, 'El buzón es de solo agregar.');
+END;
+CREATE TRIGGER messages_no_delete BEFORE DELETE ON messages
+BEGIN
+  SELECT RAISE(ABORT, 'El buzón es de solo agregar.');
+END;
+CREATE TRIGGER identity_openings_no_update BEFORE UPDATE ON identity_openings
+BEGIN
+  SELECT RAISE(ABORT, 'El registro de aperturas es de solo agregar.');
+END;
+CREATE TRIGGER identity_openings_no_delete BEFORE DELETE ON identity_openings
+BEGIN
+  SELECT RAISE(ABORT, 'El registro de aperturas es de solo agregar.');
+END;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
-export const MIGRATIONS: readonly Migration[] = [{ version: 1, sql: INITIAL_SCHEMA }];
+export const MIGRATIONS: readonly Migration[] = [
+  { version: 1, sql: INITIAL_SCHEMA },
+  { version: 2, sql: RECEIPT_AND_MAILBOX_INTEGRITY },
+];

@@ -1,6 +1,7 @@
 // Envío de denuncia. El servidor recibe hechos legibles (necesarios para el trámite)
 // y, solo en modo "sealed", la identidad cifrada hacia la autoridad competente.
 import { z } from 'zod';
+import { isEntityId, isMunicipalityOf, isOffenseCode, isStateCode } from './catalogs/index.ts';
 import { HpkeEnvelopeSchema } from './envelope.ts';
 import {
   Base64UrlSchema,
@@ -45,23 +46,52 @@ export type EvidenceDescriptor = z.infer<typeof EvidenceDescriptorSchema>;
 export const EvidenceUploadResponseSchema = EvidenceDescriptorSchema;
 export type EvidenceUploadResponse = z.infer<typeof EvidenceUploadResponseSchema>;
 
-export const ComplaintFactsSchema = z.object({
-  /** Clave INEGI de entidad federativa (2 digitos). */
-  stateCode: z.string().regex(/^\d{2}$/),
-  /** Clave INEGI de municipio (3 digitos). Opcional: menor precisión, menor riesgo. */
-  municipalityCode: z
-    .string()
-    .regex(/^\d{3}$/)
-    .optional(),
-  /** Identificador del ente público en el catálogo local. */
-  entityId: z.string().min(1).max(64),
-  /** Clave de la conducta en el catálogo (LGRA o Código Penal Federal). */
-  offenseCode: z.string().min(1).max(64),
-  occurredPeriod: MonthPeriodSchema,
-  /** Persona o cargo denunciado, en texto libre. */
-  accused: z.string().min(1).max(2000),
-  description: z.string().min(20).max(10000),
-});
+/** Clave INEGI de entidad federativa (2 dígitos) que existe en el catálogo. */
+export const StateCodeSchema = z
+  .string()
+  .regex(/^\d{2}$/, 'Entidad inválida')
+  .refine(isStateCode, 'Entidad desconocida');
+
+/** Clave INEGI de municipio (3 dígitos). Su pertenencia a la entidad se valida en los hechos. */
+export const MunicipalityCodeSchema = z.string().regex(/^\d{3}$/, 'Municipio inválido');
+
+/** Identificador de un ente público del catálogo. */
+export const EntityIdSchema = z.string().max(64).refine(isEntityId, 'Ente público desconocido');
+
+/** Clave de conducta del catálogo (principal o equivalente). */
+export const OffenseCodeSchema = z.string().max(64).refine(isOffenseCode, 'Conducta desconocida');
+
+/**
+ * Hechos legibles de la denuncia.
+ * Seguridad: las claves de ubicación, ente y conducta solo pueden tomar valores de los catálogos,
+ * porque aparecen en los datos abiertos; el texto libre queda en `accused` y `description`, que
+ * nunca se publican.
+ */
+export const ComplaintFactsSchema = z
+  .object({
+    /** Clave INEGI de entidad federativa (2 dígitos). */
+    stateCode: StateCodeSchema,
+    /** Clave INEGI de municipio (3 dígitos). Opcional: menor precisión, menor riesgo. */
+    municipalityCode: MunicipalityCodeSchema.optional(),
+    /** Identificador del ente público en el catálogo local. */
+    entityId: EntityIdSchema,
+    /** Clave de la conducta en el catálogo (LGRA o Código Penal Federal). */
+    offenseCode: OffenseCodeSchema,
+    occurredPeriod: MonthPeriodSchema,
+    /** Persona o cargo denunciado, en texto libre. */
+    accused: z.string().min(1).max(2000),
+    description: z.string().min(20).max(10000),
+  })
+  .superRefine((facts, ctx) => {
+    const { stateCode, municipalityCode } = facts;
+    if (municipalityCode !== undefined && !isMunicipalityOf(stateCode, municipalityCode)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['municipalityCode'],
+        message: 'El municipio no pertenece a la entidad.',
+      });
+    }
+  });
 export type ComplaintFacts = z.infer<typeof ComplaintFactsSchema>;
 
 /** Contenido del bloque de identidad antes de cifrarse (solo existe en el navegador). */
