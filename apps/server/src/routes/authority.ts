@@ -1,0 +1,75 @@
+// Panel de la autoridad: listado, detalle, apertura de identidad, estatus, buzón y pruebas.
+import type { Context, Hono } from 'hono';
+import {
+  API_PREFIX,
+  AuthorityMessageRequestSchema,
+  FolioSchema,
+  OpenIdentityRequestSchema,
+  ROUTES,
+  UpdateStatusRequestSchema,
+} from '@sigilo/contracts';
+import type { AppContext } from '../context.ts';
+import type { ComplaintRecord } from '../db/complaints-repository.ts';
+import { ApiFailure } from '../http/errors.ts';
+import { jsonBodyLimit, readJson } from '../http/request.ts';
+import { requireAuthority } from '../security/authority-auth.ts';
+import { changeStatus, openIdentity } from '../services/complaint-service.ts';
+import { recordMessage } from '../services/mailbox-service.ts';
+import { buildComplaintDetail, toSummary } from '../services/views.ts';
+
+const EVIDENCE_ID_PATTERN = /^[0-9a-f]{32}$/;
+const EXTENSION_BY_TYPE = { 'image/jpeg': 'jpg', 'image/png': 'png' } as const;
+
+function findComplaint(ctx: AppContext, c: Context): ComplaintRecord {
+  const folio = FolioSchema.safeParse(c.req.param('folio'));
+  const complaint = folio.success ? ctx.complaints.find(folio.data) : null;
+  if (complaint === null) throw new ApiFailure('not_found');
+  return complaint;
+}
+
+function serveEvidence(ctx: AppContext, c: Context): Response {
+  const evidenceId = c.req.param('evidenceId') ?? '';
+  const record = EVIDENCE_ID_PATTERN.test(evidenceId) ? ctx.evidence.find(evidenceId) : null;
+  // Las pruebas pendientes (sin denuncia) no se sirven.
+  const bytes = record?.folio ? ctx.deps.evidenceStore.read(evidenceId) : null;
+  if (record === null || bytes === null) throw new ApiFailure('not_found');
+  c.header('Content-Type', record.mediaType);
+  // Seguridad: se fuerza la descarga y se impide que el navegador reinterprete el tipo.
+  c.header(
+    'Content-Disposition',
+    `attachment; filename="${evidenceId}.${EXTENSION_BY_TYPE[record.mediaType]}"`,
+  );
+  c.header('X-Content-Type-Options', 'nosniff');
+  return c.body(new Uint8Array(bytes));
+}
+
+/** Registra las rutas de la autoridad, todas protegidas con token bearer. */
+export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
+  app.use(`${API_PREFIX}/authority/*`, requireAuthority(ctx.deps.authorityToken));
+
+  app.get(ROUTES.authorityComplaints, (c) => c.json(ctx.complaints.listSummaries()));
+
+  app.get(ROUTES.authorityComplaint(':folio'), (c) =>
+    c.json(buildComplaintDetail(ctx, findComplaint(ctx, c))),
+  );
+
+  app.post(ROUTES.authorityIdentity(':folio'), jsonBodyLimit, async (c) => {
+    const complaint = findComplaint(ctx, c);
+    const { legalBasis } = await readJson(c, OpenIdentityRequestSchema);
+    return c.json(openIdentity(ctx, complaint, legalBasis));
+  });
+
+  app.post(ROUTES.authorityStatus(':folio'), jsonBodyLimit, async (c) => {
+    const complaint = findComplaint(ctx, c);
+    const { status } = await readJson(c, UpdateStatusRequestSchema);
+    return c.json(toSummary(changeStatus(ctx, complaint, status)));
+  });
+
+  app.post(ROUTES.authorityMessages(':folio'), jsonBodyLimit, async (c) => {
+    const complaint = findComplaint(ctx, c);
+    const { envelope, signature } = await readJson(c, AuthorityMessageRequestSchema);
+    return c.json(recordMessage(ctx, complaint, { from: 'authority', envelope, signature }), 201);
+  });
+
+  app.get(ROUTES.authorityEvidence(':evidenceId'), (c) => serveEvidence(ctx, c));
+}

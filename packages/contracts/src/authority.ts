@@ -41,6 +41,8 @@ export type OpenIdentityRequest = z.infer<typeof OpenIdentityRequestSchema>;
 
 export const OpenIdentityResponseSchema = z.object({
   sealedIdentity: HpkeEnvelopeSchema,
+  /** Necesario para reconstruir el AAD del sobre. Es un digesto: no permite autenticarse. */
+  authVerifier: Base64UrlSchema,
   ledgerSeq: z.number().int().nonnegative(),
 });
 export type OpenIdentityResponse = z.infer<typeof OpenIdentityResponseSchema>;
