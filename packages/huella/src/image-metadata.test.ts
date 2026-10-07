@@ -21,6 +21,16 @@ describe('inspectImageMetadata', () => {
     expect(report.author).toBe(SYNTHETIC_EXIF.artist);
   });
 
+  it('sin el perfil de color sigue detectando el resto de los metadatos', async () => {
+    const report = await inspectImageMetadata(
+      new Blob([buildSyntheticExifJpeg()], { type: 'image/jpeg' }),
+      { includeColorProfile: false },
+    );
+    expect(report.hasAnyMetadata).toBe(true);
+    expect(report.gps?.latitude).toBeCloseTo(SYNTHETIC_EXIF.latitude, 6);
+    expect(report.device).toBe('Marca Ficticia Modelo X1');
+  });
+
   it('devuelve un reporte vacío para un JPEG sin metadatos', async () => {
     const report = await inspectImageMetadata(new Blob([buildBareJpeg()], { type: 'image/jpeg' }));
     expect(report).toEqual({ hasAnyMetadata: false, otherFields: [] });

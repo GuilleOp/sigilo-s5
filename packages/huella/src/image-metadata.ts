@@ -15,6 +15,16 @@ export interface ImageMetadataReport {
   otherFields: string[];
 }
 
+/** Opciones de `inspectImageMetadata`. */
+export interface InspectImageMetadataOptions {
+  /**
+   * Incluir el perfil de color ICC. Por defecto, `true`. Se desactiva al comprobar una copia
+   * limpia: el codificador del lienzo (Chromium) agrega su propio perfil sRGB genérico, que no
+   * proviene del original ni identifica a nadie.
+   */
+  includeColorProfile?: boolean;
+}
+
 type Block = Record<string, unknown>;
 
 const MONTHS = [
@@ -118,7 +128,11 @@ function joinDevice(make: string | undefined, model: string | undefined): string
  * Seguridad: a exifr se le entrega siempre un `ArrayBuffer`, nunca una cadena, porque con una
  * cadena intentaría descargar una URL o leer una ruta.
  */
-export async function inspectImageMetadata(blob: Blob): Promise<ImageMetadataReport> {
+export async function inspectImageMetadata(
+  blob: Blob,
+  options: InspectImageMetadataOptions = {},
+): Promise<ImageMetadataReport> {
+  const includeColorProfile = options.includeColorProfile ?? true;
   let output: unknown;
   try {
     const buffer = await blob.arrayBuffer();
@@ -130,7 +144,7 @@ export async function inspectImageMetadata(blob: Blob): Promise<ImageMetadataRep
       interop: false,
       xmp: true,
       iptc: true,
-      icc: true,
+      icc: includeColorProfile,
       jfif: false,
       ihdr: false,
       makerNote: true,

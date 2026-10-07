@@ -15,7 +15,7 @@ export { classifyFile, DEFAULT_MAX_FILE_BYTES } from './file-policy.ts';
 export type { FileClassification, FileDescriptor, FilePolicyOptions } from './file-policy.ts';
 
 export { inspectImageMetadata } from './image-metadata.ts';
-export type { ImageMetadataReport } from './image-metadata.ts';
+export type { ImageMetadataReport, InspectImageMetadataOptions } from './image-metadata.ts';
 
 export {
   DEFAULT_JPEG_QUALITY,

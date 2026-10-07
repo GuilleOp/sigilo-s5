@@ -84,8 +84,11 @@ export async function cleanEvidence(id: string): Promise<void> {
         `Solo puedes enviar ${MAX_EVIDENCE_ITEMS} imágenes en total y esta prueba agregaría ${blobs.length}. Quita alguna o divide el PDF.`,
       );
     }
-    // Comprobación: la copia limpia no debe conservar metadatos.
-    const checks = await Promise.all(blobs.map((blob) => inspectImageMetadata(blob)));
+    // Comprobación: la copia limpia no debe conservar metadatos. Se omite el perfil ICC porque lo
+    // agrega el propio codificador del lienzo (sRGB genérico); con él nunca se daría por limpia.
+    const checks = await Promise.all(
+      blobs.map((blob) => inspectImageMetadata(blob, { includeColorProfile: false })),
+    );
     updateEvidence(id, {
       status: 'clean',
       clean: blobs.map(toClean),
