@@ -170,23 +170,35 @@ contra el registro público (ver «Comprobante firmado»).
 
 - `hash = sha256Hex(canonicalize(evento sin el campo hash))`; `receiptTag` se omite si no existe.
 - El primer evento usa `prevHash = LEDGER_GENESIS_HASH` (64 ceros); cada evento siguiente usa el
-  `hash` del anterior y `seq` consecutivo.
+  `hash` del anterior, `seq` consecutivo y una fecha `at` no decreciente.
 - **Cierre diario.** Un evento nuevo queda pendiente, sin `seq` ni `prevHash` (`pendingEventFor`) y
-  con un identificador aleatorio. Al terminar su día (UTC), los pendientes de cada día se barajan
-  con Fisher-Yates criptográfico (`shuffle`) y se encadenan en ese orden (`chainEvent`). El orden
-  dentro del día no revela el de llegada.
+  con un identificador aleatorio. Al terminar su día (UTC), los pendientes del día se barajan con
+  Fisher-Yates criptográfico (`shuffle`) y se encadenan en ese orden (`chainEvent`), en lotes de
+  5000 por transacción. Si el cierre se interrumpe, lo que queda del día se vuelve a barajar al
+  reanudar. El orden dentro del día no revela el de llegada.
+- Tope: un día admite a lo más 200 000 eventos pendientes; al alcanzarlo, las escrituras reciben
+  `503 ledger_day_full`.
+- Después de cerrar, el servidor hace un checkpoint del WAL de SQLite, que conserva páginas con los
+  pendientes en su orden de llegada.
 - Cabeza: `signature = Ed25519(llave del servidor, canonicalize({ seq, hash, at, serverKeyId }))`
-  del último evento encadenado. Regla de publicación: un día está publicado si y solo si
-  `at <= head.at`, y cada día se publica completo.
-- `verifyChain(events, previous?)` recalcula cada hash y comprueba secuencia y encadenamiento desde
-  el génesis o, con `previous`, desde ese evento ya confiable. Además se verifica la firma de la
-  cabeza y que el último evento coincida con ella.
+  del último evento de un día publicado completo: mientras un día tenga pendientes, la cabeza no
+  avanza sobre él. Regla de publicación: un día está publicado si y solo si `at <= head.at`.
+- `verifyChain(events, previous?)` recalcula cada hash y comprueba secuencia, encadenamiento y fechas
+  no decrecientes (motivo `'date'`) desde el génesis o, con `previous`, desde ese evento ya
+  confiable. Además se verifica la firma de la cabeza y que el último evento coincida con ella.
+- `verifyEventInChain(event, chain, head, serverPublicKey, { anchors })` prueba que un evento
+  pertenece a la bitácora: el tramo debe empezar en ese evento y llegar sin huecos hasta la cabeza
+  firmada, y los anclajes que caen dentro del tramo deben coincidir. Un evento con un hash coherente
+  consigo mismo no prueba nada por sí solo.
 - Seguimiento: la persona recibe su evento `complaint.received` (ausente mientras su día no cierra)
   y comprueba con `verifyReceiptEvent` que `at`, `folioDigest` y `payloadDigest` correspondan a su
-  comprobante; no compara `seq`. Con `reconcileIdentityOpenings` busca en toda la bitácora los
-  `identity.opened` con su `receiptTag` y los contrasta con las aperturas del seguimiento (por
-  `openingId`): reporta las publicadas que el servidor no mostró y las de días publicados que no
-  aparecen en la bitácora.
+  comprobante; no compara `seq`. Después descarga el tramo desde el último evento anterior a su día
+  de recepción (`GET /api/v1/ledger/events?since=AAAA-MM-DD`) hasta la cabeza y lo verifica. Como
+  las fechas no decrecen, ese tramo contiene su evento de recepción y toda apertura ligada a su
+  recibo: no hace falta descargar la bitácora desde el génesis. Con `reconcileIdentityOpenings`
+  contrasta los `identity.opened` del tramo que llevan su `receiptTag` con las aperturas del
+  seguimiento (por `openingId`). No existe una ruta filtrada por `receiptTag` porque una lista
+  filtrada no prueba que no falte ninguna; un tramo encadenado hasta la cabeza firmada sí.
 - Anclaje: `npm run ledger:anchor` verifica la cabeza pública con la llave fijada, recalcula con
   `verifyChain` la cadena desde el anclaje anterior (o el génesis) hasta la cabeza nueva, exige que
   el evento anclado conserve su hash y escribe `anchors/AAAA-MM-DD.json` (`LedgerAnchorSchema`), que
@@ -194,15 +206,28 @@ contra el registro público (ver «Comprobante firmado»).
 
 ## Prueba de trabajo
 
-- Reto: `GET /api/v1/pow/challenge?purpose=complaint|evidence` devuelve `{ token, bits }`. El
-  servidor firma el token con HMAC; vence en 10 minutos, sirve para un solo propósito y se gasta al
-  usarse.
+- Reto: `GET /api/v1/pow/challenge?purpose=complaint|evidence|message` devuelve `{ token, bits }`.
+  El servidor firma el token con HMAC-SHA256 (llave aleatoria por proceso); vence en 10 minutos,
+  sirve para un solo propósito y se gasta al usarse.
 - Solución: un contador decimal tal que `SHA-256(token + ":" + contador)` empieza con `bits` bits en
   cero (`isPowSolution`; en promedio 2^bits intentos). El navegador lo busca en un Web Worker
   (`solvePow`).
-- Cabecera: `X-Sigilo-Pow: <token>:<contador>` (`POW_HEADER`, `formatPowHeader`).
+- Cabecera: `X-Sigilo-Pow: <token>:<contador>` (`POW_HEADER`, `formatPowHeader`). La exigen
+  `POST complaints`, `POST evidence` y `POST tracking/messages`.
 - El servidor responde `428 proof_required` si falta, no es válida, es de otro propósito, venció o
-  ya se usó. La dificultad por omisión es 18 bits (`SIGILO_POW_BITS`); 0 la desactiva.
+  ya se usó.
+- **Dificultad adaptativa.** La base es `SIGILO_POW_BITS` (18; 0 desactiva la exigencia). Por cada
+  duplicación de las soluciones aceptadas en la última hora sobre el umbral de su propósito (60
+  denuncias, 300 pruebas, 300 mensajes), la dificultad de ese propósito sube un bit, hasta
+  `SIGILO_POW_MAX_BITS` (24). Cuando la carga sale de la ventana, vuelve a bajar.
+- **Presión de la lista de gastados.** El servidor no guarda los retos emitidos (van firmados), solo
+  los gastados hasta que vencen, con un tope de 200 000. Al pasar del 50, 75 y 90 % de ese tope, los
+  retos nuevos suman un bit cada vez y su vigencia se acorta hacia 2 minutos. Si la lista se llena,
+  se olvidan primero los gastados más antiguos (los más próximos a vencer) en vez de rechazar.
+- **Freno extremo.** Por encima de la prueba de trabajo, un límite por hora responde 429 y solo
+  cuenta escrituras confirmadas: 3000 denuncias, 10 000 pruebas y 6000 mensajes.
+- Residual: quien acumule retos emitidos mientras hay poca carga puede usarlos, con su dificultad de
+  emisión, durante su vigencia.
 
 ## Llaves fijadas
 
@@ -221,14 +246,31 @@ distinto (otro contexto, folio, remitente o secuencia), llave equivocada, traspl
 identidad y eslabón modificado. Este formato redefine v1 antes del lanzamiento: los sobres creados
 con el AAD anterior ya no abren.
 
+## Datos abiertos
+
+- Cada mes cerrado se congela una sola vez con sus conteos reales y una semilla secreta nueva
+  (`open_data_months`).
+- Cada conteo se redondea al azar a un múltiplo de 5, de forma insesgada: `conteo = q·5 + r` sube a
+  `(q + 1)·5` con probabilidad `r / 5` y baja a `q·5` en otro caso. El valor esperado es el real.
+- El azar sale de los primeros 48 bits de `HMAC-SHA256(semilla del mes, etiqueta de la celda)`: el
+  valor publicado de cada celda es estable, así que volver a descargar no da muestras nuevas del
+  ruido, y no se puede predecir sin la semilla.
+- Lo que redondea a menos de 5 se suprime. Lo suprimido se suma por mes, se redondea igual y va en
+  la fila `suprimidas`.
+- Garantía: una celda con `k` denuncias y otra con `k + 1` (para `k >= 1`) pueden publicar el mismo
+  valor, así que quien rellena una celda con denuncias propias y la ve aparecer o cambiar no sabe
+  con certeza si había una denuncia real. Es una garantía probabilística, no privacidad
+  diferencial: con 4 denuncias propias, ver la celda publicada pasa de 80 % a 100 % si existe la
+  denuncia objetivo. Una celda con una sola denuncia real se publica como 5 con probabilidad 1/5,
+  lo que revela que no está vacía; una celda vacía nunca aparece.
+
 ## Riesgos residuales
 
-- Relleno de celdas en datos abiertos: un atacante puede enviar denuncias falsas para llevar una
-  celda pequeña al umbral de publicación y, restando las suyas, deducir si hay una denuncia real en
-  ella. Los meses se congelan al publicarse, los conteos se redondean a múltiplos de 5 y cada envío
-  cuesta una prueba de trabajo, pero cruzar el umbral sigue siendo posible.
+- Relleno de celdas en datos abiertos: el redondeo aleatorio lo vuelve probabilístico, pero no lo
+  impide (ver «Datos abiertos»).
 - Ventana de anclaje: entre dos anclajes, quien tenga la llave de firma del servidor podría
   reescribir eventos todavía no anclados.
+- Retos acumulados: los retos emitidos con poca carga sirven, a su dificultad, durante su vigencia.
 
 ## Trabajo futuro
 

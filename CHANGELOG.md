@@ -43,6 +43,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   `identityOpenedPayloadDigest`, `reconcileIdentityOpenings`, `sealedIdentityDigest`,
   `submissionDigestInput`, `submissionDigestFromDetail`, `randomInt`, `shuffle` y el módulo `pow`.
   En contracts: `primaryOffenseCode`, `pow.ts` y `POW_HEADER`.
+- Prueba de trabajo para los mensajes de la persona denunciante (propósito `message`).
+- `verifyEventInChain` en core y ruta `GET ledger/events?since=AAAA-MM-DD` para verificar la
+  bitácora desde el día de recepción.
+- Paginación `offset`/`limit` en el listado de la autoridad.
+- Código `ledger_day_full` (503) y tope de 200 000 eventos pendientes por día.
+- Variables `SIGILO_POW_MAX_BITS` (24) y `SIGILO_EVIDENCE_RETENTION_DAYS` (30).
+- Huella Cero: categoría `compatibility_form`, `PUNCTUATION_CONFUSABLES`, `LEGITIMATE_MARKS` y la
+  opción `shouldRemoveUncomposedMarks` para la limpieza manual.
+- Web: `sendReporterMessage(request, proof)`, `listComplaints(token, offset, limit)`,
+  `getLedgerSince` y `loadTrackingLedger`.
 
 ### Cambiado
 
@@ -70,6 +80,28 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   siempre se aceptan.
 - Huella Cero normaliza la tipografía por omisión (`shouldNormalizeTypography`) y `\r\n` a `\n`; la
   copia limpia acepta solo el perfil sRGB genérico del navegador (`allowGenericSrgbProfile`).
+- Migración 4: tablas privadas `WITHOUT ROWID`, `secure_delete`, columna `received_month` indexada y
+  semilla de ruido por mes; rechaza bases con datos anteriores e indica `demo:reset -- --yes`.
+- La prueba de trabajo es adaptativa: sube un bit por cada duplicación de la carga de la última hora
+  sobre su umbral, hasta 24 bits, y se endurece y acorta su vigencia cuando se llena la lista de
+  retos gastados.
+- Los frenos extremos por hora (3000 denuncias, 10 000 pruebas, 6000 mensajes) solo cuentan
+  escrituras confirmadas.
+- El cierre diario de la bitácora encadena en lotes de 5000, vuelve a barajar si se interrumpe y no
+  avanza la cabeza mientras un día tenga pendientes; después hace un checkpoint del WAL.
+- `verifyChain` exige fechas no decrecientes (motivo `date`).
+- El seguimiento verifica el tramo desde su día de recepción en lugar de toda la bitácora.
+- Datos abiertos con redondeo aleatorio insesgado y semilla secreta por mes; el CSV se guarda en
+  caché hasta el siguiente congelado.
+- `SIGILO_EVIDENCE_RETENTION_DAYS` reemplaza a `SIGILO_UNTRACKED_RETENTION_DAYS`, que ahora se
+  rechaza; reserva del 10 % de la cuota, pendientes hasta el 25 %, tope por denuncia y desalojo de
+  las denuncias sin atender más antiguas.
+- El registro agregado excluye `GET keys` y la bitácora.
+- `server.lock` se crea con `wx`, se renueva cada 10 minutos y tiene criterios de abandono.
+- Huella Cero aplica NFC en general y NFKC solo en formas de compatibilidad que marcan, amplía el
+  mapa de confusables (Lisu, silabario canadiense, copto, tifinagh y versalitas), cambia el criterio
+  de `mixed_script` y conserva «º», «ª», superíndices, fracciones, el saltillo y las vocales con
+  marcas legítimas de lenguas indígenas de México.
 
 ### Corregido
 
@@ -102,3 +134,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Homoglifos aislados y caracteres de control, uso privado y no asignados eliminados.
 - El reloj de pruebas solo se acepta con `SIGILO_E2E=1` o `NODE_ENV=test`, con un archivo seguro y
   un desfase de 0 a 400 días.
+- Una copia de la base ya no conserva el orden de llegada (`WITHOUT ROWID`, `secure_delete`, WAL).
+- Pertenencia de eventos verificada hasta la cabeza firmada y las anclas (`verifyEventInChain`).
+- Prueba de trabajo adaptativa también en los mensajes, contra la saturación.
+- Redondeo aleatorio de los datos abiertos contra el relleno de celdas (garantía probabilística).
+- Cuota de almacenamiento con reserva y desalojo, y tope de pendientes por día.

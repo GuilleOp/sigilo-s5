@@ -23,8 +23,8 @@ comandos se ejecutan desde la raíz del repositorio con Node 22.18 o superior.
    ```
 
    Sin `--yes`, el script exige el marcador `.sigilo-demo` en `apps/server/data`, y se niega a correr
-   si el servidor está en marcha. Una base creada antes de la migración 3 no arranca: el servidor
-   pide ejecutar este mismo comando.
+   si el servidor está en marcha. Una base creada antes de las migraciones 3 o 4 no arranca: el
+   servidor pide ejecutar este mismo comando.
 
 3. Preparar el reloj de demostración y levantar el servidor y la web, en dos terminales:
 
@@ -63,7 +63,7 @@ comandos se ejecutan desde la raíz del repositorio con Node 22.18 o superior.
    - Texto con caracteres invisibles, copiado al portapapeles:
 
      ```sh
-     node -e "process.stdout.write('Memo interno​ de la Secretaría‌ de Obras de Villa Ejemplo')" | pbcopy
+     node -e "process.stdout.write('Memo interno\u200b de la Secretar\u0456a\u200c de Obras de Villa Ejemplo')" | pbcopy
      ```
 
 6. Caso ficticio: adjudicación directa irregular en la Secretaría de Obras de Villa Ejemplo.
@@ -79,8 +79,12 @@ puertas.
 
 1. Mostrar la barra mínima con «Salida rápida» y mencionar el atajo: Esc dos veces.
 2. Elegir «Anónima (recomendada)» o «Identidad sellada» y explicar la diferencia en una frase.
-3. En «Hechos», pegar el texto del portapapeles: aparece el aviso de marcas escondidas y se quitan.
-   Aunque no se quiten, se eliminan siempre al enviar.
+3. En «Hechos», pegar el texto del portapapeles: aparece «Encontramos N caracteres invisibles o de
+   otro alfabeto» con el aviso de marcas escondidas y el botón «Eliminar caracteres invisibles».
+   Aunque no se quiten, se eliminan siempre al enviar. La «і» cirílica de «Secretaria» pasa a «i»
+   sola; una letra de otro alfabeto sin equivalente se señala con «Hay 1 letra de otro alfabeto que
+   se ve igual a una de las nuestras» y se pide escribir esa palabra de nuevo, porque podría ser
+   parte de un nombre.
 4. Escribir «soy la única auxiliar contable del área»: el revisor la subraya y sugiere otra
    redacción.
 5. En «Pruebas», adjuntar la foto. El panel «Esta foto revela» muestra el lugar exacto, el
@@ -104,7 +108,8 @@ puertas.
 1. Entrar en «Dar seguimiento» con el folio y las 8 palabras.
 2. Ver la línea de tiempo, el comprobante verificado, la pregunta descifrada en el navegador y el
    aviso de que su anotación está pendiente de publicar.
-3. Responder; el revisor avisa si la respuesta revela algo.
+3. Responder; el revisor avisa si la respuesta revela algo. La respuesta también resuelve una
+   prueba de trabajo (propósito `message`) antes de enviarse.
 4. Ver «Tu nombre sigue bajo llave. Nadie lo ha abierto».
 
 ## Acto 4. Apertura con rendición de cuentas (1 min 30 s)
@@ -161,7 +166,7 @@ puertas.
 ## Acto 6. Adopción (1 min)
 
 1. Mostrar los paquetes `core` y `huella` y la [guía de integración](integracion-s5.md).
-2. Mostrar «Datos abiertos»: solo meses congelados al cerrarse, conteos redondeados a múltiplos de 5
+2. Mostrar «Datos abiertos»: solo meses congelados al cerrarse, conteos redondeados al azar a múltiplos de 5
    y las denuncias que no se muestran para proteger a quienes denunciaron.
 3. Lámina final: recepción, trámite y seguimiento, con sus mecanismos.
 

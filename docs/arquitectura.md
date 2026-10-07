@@ -47,17 +47,17 @@ flowchart LR
 
 ## Qué ve cada actor
 
-| Dato                                          | Persona denunciante  | Servidor y operación         | Autoridad competente                                 | Público                                                       |
-| --------------------------------------------- | -------------------- | ---------------------------- | ---------------------------------------------------- | ------------------------------------------------------------- |
-| Hechos (descripción, ente, conducta, periodo) | Sí                   | Sí                           | Sí                                                   | No                                                            |
-| Pruebas limpias                               | Sí                   | Sí                           | Sí                                                   | No                                                            |
-| Pruebas originales                            | Solo en su navegador | No                           | No (solo su digesto, dentro de la identidad sellada) | No                                                            |
-| Identidad (modo `sealed`)                     | Sí                   | Solo texto cifrado           | Sí, tras solicitud con fundamento registrada         | No                                                            |
-| Recibo de 8 palabras                          | Sí                   | No (solo `SHA-256(authKey)`) | No                                                   | No                                                            |
-| Mensajes del buzón                            | Sí                   | Solo texto cifrado           | Sí                                                   | No                                                            |
-| Folio                                         | Sí                   | Sí                           | Sí                                                   | No (la bitácora pública usa `folioDigest`)                    |
-| Eventos de la bitácora                        | Los de su denuncia   | Todos                        | Todos                                                | Solo los de días cerrados, barajados, con `folioDigest`       |
-| Estadísticas agregadas                        | Sí                   | Sí                           | Sí                                                   | Meses congelados, múltiplos de 5, celdas menores a 5 omitidas |
+| Dato                                          | Persona denunciante  | Servidor y operación         | Autoridad competente                                 | Público                                                                                           |
+| --------------------------------------------- | -------------------- | ---------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Hechos (descripción, ente, conducta, periodo) | Sí                   | Sí                           | Sí                                                   | No                                                                                                |
+| Pruebas limpias                               | Sí                   | Sí                           | Sí                                                   | No                                                                                                |
+| Pruebas originales                            | Solo en su navegador | No                           | No (solo su digesto, dentro de la identidad sellada) | No                                                                                                |
+| Identidad (modo `sealed`)                     | Sí                   | Solo texto cifrado           | Sí, tras solicitud con fundamento registrada         | No                                                                                                |
+| Recibo de 8 palabras                          | Sí                   | No (solo `SHA-256(authKey)`) | No                                                   | No                                                                                                |
+| Mensajes del buzón                            | Sí                   | Solo texto cifrado           | Sí                                                   | No                                                                                                |
+| Folio                                         | Sí                   | Sí                           | Sí                                                   | No (la bitácora pública usa `folioDigest`)                                                        |
+| Eventos de la bitácora                        | Los de su denuncia   | Todos                        | Todos                                                | Solo los de días cerrados, barajados, con `folioDigest`                                           |
+| Estadísticas agregadas                        | Sí                   | Sí                           | Sí                                                   | Meses congelados, redondeo aleatorio a múltiplos de 5, celdas que redondean a menos de 5 omitidas |
 
 ## Flujos por etapa
 
@@ -120,11 +120,13 @@ sequenceDiagram
   W->>S: POST /tracking (folio, authKey)
   S-->>W: Estatus, línea de tiempo, aperturas, mensajes cifrados, comprobante, evento de recepción
   W->>W: Verifica el comprobante y, si su día cerró, que el evento de recepción le corresponda
-  W->>S: GET /ledger/events (bitácora publicada)
+  W->>S: GET /ledger/events?since=AAAA-MM-DD (tramo desde su día de recepción)
+  W->>W: Verifica el tramo hasta la cabeza firmada
   W->>W: Concilia las aperturas publicadas con su receiptTag contra las del seguimiento
   W->>W: Descifra los mensajes y avisa si falta alguno en la secuencia
   D->>W: Responde
-  W->>S: POST /tracking/messages (sobre hacia la autoridad, firmado, con secuencia)
+  W->>S: GET /pow/challenge?purpose=message
+  W->>S: POST /tracking/messages con X-Sigilo-Pow (sobre hacia la autoridad, firmado, con secuencia)
 ```
 
 - Las credenciales inválidas y los folios inexistentes producen la misma respuesta.
@@ -186,12 +188,18 @@ Ver [criptografia.md](criptografia.md).
 - **Cabeceras de la API:** `Content-Security-Policy: default-src 'none'`, `no-store` y `nosniff`.
 - **Sin terceros.** La web no hace peticiones fuera de su origen; una prueba E2E lo comprueba.
 - **Historial.** La web usa un router en memoria: no deja rutas ni entradas nuevas en el historial.
-- **Abuso.** Prueba de trabajo para denuncias y pruebas (`SIGILO_POW_BITS`), límites en memoria con
-  tope LRU, cuota total de pruebas (`SIGILO_EVIDENCE_QUOTA_BYTES`) y retención opcional de pruebas
-  sin seguimiento (`SIGILO_UNTRACKED_RETENTION_DAYS`).
+- **Abuso.** Prueba de trabajo adaptativa para denuncias, pruebas y mensajes (`SIGILO_POW_BITS`,
+  `SIGILO_POW_MAX_BITS`), frenos extremos sobre escrituras confirmadas, límites en memoria con tope
+  LRU, cuota total de pruebas con reserva y tope por denuncia (`SIGILO_EVIDENCE_QUOTA_BYTES`),
+  retención de pruebas de denuncias sin atender (`SIGILO_EVIDENCE_RETENTION_DAYS`) y tope de
+  pendientes por día en la bitácora.
+- **Almacenamiento.** Tablas privadas `WITHOUT ROWID`, `secure_delete` y checkpoint del WAL tras cada
+  cierre diario, para que una copia de la base no conserve el orden de llegada.
 - **Registros.** Por omisión, contadores agregados por hora sin las rutas de la persona denunciante
-  (`SIGILO_REQUEST_LOG=aggregate`); nunca IP, agente de usuario, cuerpos ni folios.
-- **Un solo servidor por base.** `server.lock` en el directorio de datos.
+  ni `GET keys` y la bitácora (`SIGILO_REQUEST_LOG=aggregate`); nunca IP, agente de usuario, cuerpos
+  ni folios.
+- **Un solo servidor por base.** `server.lock` en el directorio de datos, creado con `wx` y
+  renovado cada 10 minutos.
 - **Llaves.** Las llaves privadas viven en `apps/server/data/` y no se versionan. Las públicas se
   fijan en `apps/web/src/config/pinned-keys.json`.
 - **Reloj de pruebas.** `SIGILO_TEST_CLOCK_FILE` desplaza el reloj del servidor solo en pruebas

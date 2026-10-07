@@ -60,11 +60,13 @@ como cabeceras.
 
 Las variables del servidor están documentadas en `apps/server/.env.example` y en
 [interfaces.md](docs/interfaces.md). Entre ellas: `SIGILO_POW_BITS` (prueba de trabajo, 18 bits por
-omisión), `SIGILO_EVIDENCE_QUOTA_BYTES` (5 GiB), `SIGILO_UNTRACKED_RETENTION_DAYS` (desactivada) y
-`SIGILO_REQUEST_LOG` (`aggregate` por omisión).
+omisión, adaptativa hasta `SIGILO_POW_MAX_BITS`, 24), `SIGILO_EVIDENCE_QUOTA_BYTES` (5 GiB),
+`SIGILO_EVIDENCE_RETENTION_DAYS` (30 días para denuncias sin atender) y `SIGILO_REQUEST_LOG`
+(`aggregate` por omisión). `SIGILO_UNTRACKED_RETENTION_DAYS` se retiró y el servidor se niega a
+arrancar si se define.
 
-Una base creada antes de la migración 3 del servidor no arranca: el servidor indica ejecutar
-`npm run demo:reset -- --yes`.
+Una base creada antes de las migraciones 3 o 4 del servidor no arranca: el servidor indica
+ejecutar `npm run demo:reset -- --yes` (con el servidor detenido).
 
 ## Pruebas
 
