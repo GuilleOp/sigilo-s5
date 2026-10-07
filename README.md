@@ -39,7 +39,16 @@ docs/               Arquitectura, decisiones, modelo de amenazas
 
 ## Documentación
 
+- [Arquitectura](docs/arquitectura.md)
+- [Modelo de amenazas](docs/modelo-de-amenazas.md)
+- [Criptografía: especificación del formato v1](docs/criptografia.md)
+- [Integración con el S5](docs/integracion-s5.md)
+- [Accesibilidad](docs/accesibilidad.md)
+- [Datos sintéticos](docs/datos-sinteticos.md)
+- [Declaración de uso de IA](docs/uso-de-ia.md)
+- [Guion de la demostración](docs/demo.md)
 - [Convenciones](docs/convenciones.md)
+- [Glosario](docs/glosario.md)
 - [Plan de trabajo](docs/plan.md)
 - [Interfaces entre paquetes](docs/interfaces.md)
 - [Decisiones de arquitectura](docs/adr/)
