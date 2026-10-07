@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es-MX" translate="no">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      Seguridad: CSP estricta. Todo se sirve desde el propio origen; no hay CDN, fuentes externas
+      ni analíticas. En desarrollo, vite.config.ts la relaja solo para el refresco en caliente.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="google" content="notranslate" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="SIGILO: denuncia hechos de corrupción sin revelar quién eres."
+    />
+    <!-- Ícono vacío para que el navegador no pida /favicon.ico. -->
+    <link rel="icon" href="data:," />
+    <title>SIGILO, denuncia protegida</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      Esta aplicación necesita JavaScript porque protege tus datos dentro de tu navegador antes de
+      enviarlos.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
