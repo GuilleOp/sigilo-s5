@@ -21,6 +21,8 @@ const MESSAGES: Readonly<Record<ClientErrorCode, string>> = {
   proof_required:
     'No pudimos completar la protección contra envíos automáticos. Inténtalo de nuevo.',
   storage_full: 'El sistema no tiene espacio para más pruebas por ahora. Inténtalo más tarde.',
+  ledger_day_full:
+    'El registro público ya no admite más movimientos por hoy. Inténtalo de nuevo mañana.',
   internal: 'El sistema tuvo un problema. Inténtalo más tarde.',
   network: 'No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.',
   invalid_response: 'Recibimos una respuesta extraña. Por seguridad, nos detuvimos.',
@@ -64,6 +66,7 @@ function statusToCode(status: number): ApiErrorCode {
   if (status === 415) return 'unsupported_media_type';
   if (status === 428) return 'proof_required';
   if (status === 429) return 'rate_limited';
+  if (status === 503) return 'ledger_day_full';
   if (status === 507) return 'storage_full';
   return 'internal';
 }

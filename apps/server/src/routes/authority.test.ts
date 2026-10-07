@@ -139,6 +139,18 @@ describe('listado y detalle', () => {
     expect(raw).not.toContain('sealedIdentity');
   });
 
+  it('pagina el listado con offset y limit', async () => {
+    const { server, folio } = await setup();
+    const page = async (query: string) =>
+      (await getAsAuthority(server.app, `${ROUTES.authorityComplaints}?${query}`)).json();
+    expect(await page('offset=0&limit=1')).toMatchObject([{ folio }]);
+    expect(await page('offset=1&limit=1')).toEqual([]);
+    for (const query of ['limit=0', 'offset=-1', 'limit=x']) {
+      const response = await getAsAuthority(server.app, `${ROUTES.authorityComplaints}?${query}`);
+      expect(response.status, query).toBe(400);
+    }
+  });
+
   it('devuelve el detalle con todo lo necesario para recalcular el contexto, sin identidad', async () => {
     const { server, folio, evidence, reporter, request } = await setup();
     const response = await getAsAuthority(server.app, ROUTES.authorityComplaint(folio));

@@ -54,15 +54,18 @@ export interface RequestLogOptions {
 }
 
 /**
- * Rutas de escritura de la persona denunciante (y el reto que las precede). En modo `aggregate`
- * no se registran ni se cuentan.
+ * Rutas que en modo `aggregate` no se registran ni se cuentan: las de la persona denunciante (y el
+ * reto que las precede) y las públicas que ella consulta para verificar (llaves y bitácora).
  */
-export const REPORTER_ROUTES: ReadonlySet<string> = new Set([
+export const UNCOUNTED_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.complaints,
   ROUTES.evidenceUpload,
   ROUTES.tracking,
   ROUTES.trackingMessages,
   ROUTES.powChallenge,
+  ROUTES.keys,
+  ROUTES.ledgerHead,
+  ROUTES.ledgerEvents,
 ]);
 
 /**
@@ -70,7 +73,8 @@ export const REPORTER_ROUTES: ReadonlySet<string> = new Set([
  * Seguridad: aun sin datos, una línea por petición con su orden y duración permite correlacionar
  * la hora de un envío con otras fuentes (proxy, red). Por eso en producción solo hay contadores
  * por hora, ordenados por ruta y no por llegada, y las rutas de la persona denunciante no se
- * cuentan: su volumen por hora también acotaría cuándo llegó una denuncia.
+ * cuentan: su volumen por hora también acotaría cuándo llegó una denuncia. Tampoco se cuentan
+ * `GET keys` ni la bitácora, que la web consulta justo antes y después de enviar y al seguir.
  */
 export function createRequestLog(options: RequestLogOptions): RequestLog {
   const { mode, now, write } = options;
@@ -115,7 +119,7 @@ export function createRequestLog(options: RequestLogOptions): RequestLog {
       });
       return;
     }
-    if (REPORTER_ROUTES.has(route)) return;
+    if (UNCOUNTED_ROUTES.has(route)) return;
     count(c.req.method, route, c.res.status);
   };
 

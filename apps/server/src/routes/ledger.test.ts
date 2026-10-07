@@ -114,5 +114,27 @@ describe('bitácora', () => {
     }
     const large = await server.app.request(`${ROUTES.ledgerEvents}?limit=100000`);
     expect(large.status).toBe(200);
+    for (const query of ['since=2026-1-01', 'since=ayer', 'since=2026-10-20&from=0']) {
+      const response = await server.app.request(`${ROUTES.ledgerEvents}?${query}`);
+      expect(response.status, query).toBe(400);
+    }
+  });
+
+  it('con since entrega la página desde el vecino anterior a ese día', async () => {
+    const server = createTestServer();
+    await submitAnonymous(server);
+    server.setNow(NEXT_DAY);
+    await submitAnonymous(server);
+    await submitAnonymous(server);
+    server.setNow(new Date('2026-10-22T09:00:00Z'));
+    const page = await readPage(server, '?since=2026-10-21');
+    expect(page.events.map((event) => [event.seq, event.at])).toEqual([
+      [0, '2026-10-20'],
+      [1, '2026-10-21'],
+      [2, '2026-10-21'],
+    ]);
+    expect(verifyChain(page.events)).toEqual({ valid: true });
+    const first = await readPage(server, '?since=2026-10-20');
+    expect(first.events[0]?.seq).toBe(0);
   });
 });

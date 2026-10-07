@@ -9,6 +9,7 @@ export const ROUTES = {
   complaints: `${API_PREFIX}/complaints`,
   tracking: `${API_PREFIX}/tracking`,
   trackingMessages: `${API_PREFIX}/tracking/messages`,
+  /** `GET ?offset=&limit=`: listado paginado (100 por omisión, 500 como máximo). */
   authorityComplaints: `${API_PREFIX}/authority/complaints`,
   authorityComplaint: (folio: string) => `${API_PREFIX}/authority/complaints/${folio}`,
   authorityIdentity: (folio: string) => `${API_PREFIX}/authority/complaints/${folio}/identity`,
@@ -16,6 +17,10 @@ export const ROUTES = {
   authorityMessages: (folio: string) => `${API_PREFIX}/authority/complaints/${folio}/messages`,
   authorityEvidence: (evidenceId: string) => `${API_PREFIX}/authority/evidence/${evidenceId}`,
   ledgerHead: `${API_PREFIX}/ledger/head`,
+  /**
+   * `GET ?from=<seq>&limit=` o `GET ?since=AAAA-MM-DD&limit=`: con `since`, la página empieza en
+   * el último evento anterior a ese día (su vecino, que acota el tramo) o en el génesis.
+   */
   ledgerEvents: `${API_PREFIX}/ledger/events`,
   openDataCsv: `${API_PREFIX}/open-data/complaints.csv`,
 } as const;

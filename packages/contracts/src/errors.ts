@@ -12,6 +12,8 @@ export const ApiErrorCodeSchema = z.enum([
   'proof_required',
   /** Se alcanzó la cuota total de almacenamiento de pruebas. */
   'storage_full',
+  /** Se alcanzó el tope de eventos pendientes del día en la bitácora (503). */
+  'ledger_day_full',
   'internal',
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;

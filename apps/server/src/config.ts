@@ -6,7 +6,11 @@ import type { RequestLogMode } from './http/request-log.ts';
 import { REQUEST_LOG_MODES } from './http/request-log.ts';
 import { parseKeysFile } from './keys-file.ts';
 import type { ServerKeys } from './keys-file.ts';
-import { DEFAULT_EVIDENCE_QUOTA_BYTES } from './services/evidence-service.ts';
+import { DEFAULT_POW_MAX_BITS } from './security/proof-of-work.ts';
+import {
+  DEFAULT_EVIDENCE_QUOTA_BYTES,
+  DEFAULT_EVIDENCE_RETENTION_DAYS,
+} from './services/evidence-service.ts';
 
 /** Configuración del proceso del servidor. */
 export interface ServerConfig {
@@ -25,12 +29,17 @@ export interface ServerConfig {
    * (`SIGILO_TEST_CLOCK_FILE`), o `null` para usar el reloj real. Ver `createOffsetClock`.
    */
   testClockFile: string | null;
-  /** Dificultad de la prueba de trabajo (`SIGILO_POW_BITS`); 0 la desactiva. */
+  /** Dificultad base de la prueba de trabajo (`SIGILO_POW_BITS`); 0 la desactiva. */
   powBits: number;
+  /** Dificultad máxima adaptativa (`SIGILO_POW_MAX_BITS`); nunca menor que `powBits`. */
+  powMaxBits: number;
   /** Cuota total de almacenamiento de pruebas (`SIGILO_EVIDENCE_QUOTA_BYTES`). */
   evidenceQuotaBytes: number;
-  /** Días de retención de pruebas sin seguimiento (`SIGILO_UNTRACKED_RETENTION_DAYS`); 0 desactiva. */
-  untrackedRetentionDays: number;
+  /**
+   * Días que se conservan las pruebas de denuncias sin atender (`SIGILO_EVIDENCE_RETENTION_DAYS`,
+   * 30 por omisión); 0 desactiva la retención.
+   */
+  evidenceRetentionDays: number;
   /** Registro de peticiones (`SIGILO_REQUEST_LOG`). */
   requestLogMode: RequestLogMode;
 }
@@ -68,6 +77,32 @@ function parsePowBits(value: string | undefined): number {
   const bits = parseInteger('SIGILO_POW_BITS', value, DEFAULT_POW_BITS) ?? DEFAULT_POW_BITS;
   if (bits > MAX_POW_BITS) throw new Error(`SIGILO_POW_BITS debe estar entre 0 y ${MAX_POW_BITS}.`);
   return bits;
+}
+
+function parsePowMaxBits(value: string | undefined, powBits: number): number {
+  const fallback = Math.max(powBits, DEFAULT_POW_MAX_BITS);
+  const bits = parseInteger('SIGILO_POW_MAX_BITS', value, fallback) ?? fallback;
+  if (bits < powBits || bits > MAX_POW_BITS) {
+    throw new Error(`SIGILO_POW_MAX_BITS debe estar entre SIGILO_POW_BITS y ${MAX_POW_BITS}.`);
+  }
+  return bits;
+}
+
+function parseRetentionDays(env: NodeJS.ProcessEnv): number {
+  // La variable anterior eximía a las denuncias con seguimiento; se rechaza para no cambiar su
+  // significado en silencio.
+  if ((env.SIGILO_UNTRACKED_RETENTION_DAYS ?? '') !== '') {
+    throw new Error(
+      'SIGILO_UNTRACKED_RETENTION_DAYS se reemplazó por SIGILO_EVIDENCE_RETENTION_DAYS (el seguimiento ya no exime de la retención).',
+    );
+  }
+  return (
+    parseInteger(
+      'SIGILO_EVIDENCE_RETENTION_DAYS',
+      env.SIGILO_EVIDENCE_RETENTION_DAYS,
+      DEFAULT_EVIDENCE_RETENTION_DAYS,
+    ) ?? DEFAULT_EVIDENCE_RETENTION_DAYS
+  );
 }
 
 function isTestEnvironment(env: NodeJS.ProcessEnv): boolean {
@@ -136,7 +171,7 @@ export function createOffsetClock(file: string, realNow: () => number = Date.now
 /**
  * Construye la configuración a partir de las variables de entorno.
  * Lanza error si `SIGILO_AUTHORITY_TOKEN` falta o mide menos de 32 caracteres, si algún número no
- * es válido, si `SIGILO_TEST_CLOCK_FILE` se define fuera de un entorno de pruebas
+ * es válido, si se usa la variable retirada `SIGILO_UNTRACKED_RETENTION_DAYS`, si `SIGILO_TEST_CLOCK_FILE` se define fuera de un entorno de pruebas
  * (`SIGILO_E2E=1` o `NODE_ENV=test`) o con un archivo inseguro, o si `SIGILO_REQUEST_LOG` no es
  * válido para el entorno.
  * Seguridad: CORS queda desactivado salvo que `SIGILO_ALLOWED_ORIGIN` lo configure; la web se
@@ -161,6 +196,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
   }
   const testClockFile = testClock === '' ? null : resolve(testClock);
   if (testClockFile !== null) assertTestClockFileSafe(testClockFile);
+  const powBits = parsePowBits(env.SIGILO_POW_BITS);
   return {
     host: '127.0.0.1',
     port: parsePort(env.SIGILO_PORT),
@@ -170,12 +206,12 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
     webDistDir: webDist === '' ? null : resolve(webDist),
     hstsMaxAgeSeconds: parseInteger('SIGILO_HSTS_MAX_AGE', env.SIGILO_HSTS_MAX_AGE, null),
     testClockFile,
-    powBits: parsePowBits(env.SIGILO_POW_BITS),
+    powBits,
+    powMaxBits: parsePowMaxBits(env.SIGILO_POW_MAX_BITS, powBits),
     evidenceQuotaBytes:
       parseInteger('SIGILO_EVIDENCE_QUOTA_BYTES', env.SIGILO_EVIDENCE_QUOTA_BYTES, null) ??
       DEFAULT_EVIDENCE_QUOTA_BYTES,
-    untrackedRetentionDays:
-      parseInteger('SIGILO_UNTRACKED_RETENTION_DAYS', env.SIGILO_UNTRACKED_RETENTION_DAYS, 0) ?? 0,
+    evidenceRetentionDays: parseRetentionDays(env),
     requestLogMode: parseRequestLog(env),
   };
 }

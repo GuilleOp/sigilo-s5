@@ -4,6 +4,7 @@ import type {
   AuthorityMessageRequest,
   ComplaintDetail,
   IdentityBlock,
+  LedgerAnchor,
   LedgerPage,
   MailboxMessage,
   OpenIdentityResponse,
@@ -11,7 +12,6 @@ import type {
 import {
   assertBoxKeyPair,
   assertSigningKeyPair,
-  computeEventHash,
   equalBytes,
   folioDigest,
   fromBase64Url,
@@ -23,9 +23,10 @@ import {
   receivedPayloadDigest,
   sealMailboxMessage,
   submissionDigestFromDetail,
-  verifyLedgerHead,
+  verifyEventInChain,
 } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
+import { downloadSegment, LEDGER_PAGE_SIZE } from './ledger-verification.ts';
 
 /** Llaves de la autoridad, en memoria y decodificadas. */
 export interface AuthorityKeys {
@@ -111,31 +112,36 @@ export type ReporterKeysVerification = 'verified' | 'pending' | 'mismatch';
 
 /**
  * Recalcula `submissionDigest` desde el detalle (`submissionDigestFromDetail`) y lo compara con el
- * `payloadDigest` del evento `complaint.received` publicado en la bitácora, cuya cabeza debe estar
- * firmada por la llave FIJADA del servidor.
- * Seguridad: el evento lo verificó la persona denunciante contra su comprobante; si coincide, las
- * llaves del buzón, los hechos y las pruebas del detalle son los que ella envió, también en modo
- * anónimo (donde no hay sobre de identidad que lo pruebe).
+ * `payloadDigest` del evento `complaint.received` publicado en la bitácora. El evento debe quedar
+ * probado dentro de la cadena (`verifyEventInChain`): se descarga el tramo desde su secuencia
+ * hasta la cabeza, firmada por la llave FIJADA del servidor, y el último eslabón debe ser el de la
+ * cabeza. Si se dan anclajes (configurados o pegados), los del tramo deben coincidir.
+ * Seguridad: un evento fabricado con un hash coherente consigo mismo no basta; el servidor tendría
+ * que reescribir la cadena hasta la cabeza firmada que ven todos. El evento lo verificó la persona
+ * denunciante contra su comprobante; si coincide, las llaves del buzón, los hechos y las pruebas
+ * del detalle son los que ella envió, también en modo anónimo.
  */
 export async function verifyReporterKeys(
   detail: ComplaintDetail,
   fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
   pinned: PinnedKeys,
+  anchors: readonly LedgerAnchor[] = [],
 ): Promise<ReporterKeysVerification> {
   const seq = detail.receivedEventSeq;
   if (seq === undefined) return 'pending';
-  const page = await fetchPage(seq, 1);
-  const event = page.events[0];
+  const first = await fetchPage(seq, LEDGER_PAGE_SIZE);
+  const event = first.events[0];
   const folio = detail.summary.folio;
+  if (event === undefined || event.seq !== seq || first.head.seq < seq) return 'mismatch';
+  const chain = await downloadSegment(fetchPage, seq, first.head, first.events);
+  const inChain = verifyEventInChain(event, chain, first.head, pinned.serverSigningPublicKey, {
+    anchors,
+  });
   const isAuthentic =
-    event !== undefined &&
-    event.seq === seq &&
-    page.head.seq >= seq &&
-    verifyLedgerHead(page.head, pinned.serverSigningPublicKey) &&
+    inChain.valid &&
     event.type === 'complaint.received' &&
     event.at === detail.summary.receivedOn &&
-    event.folioDigest === folioDigest(folio) &&
-    event.hash === computeEventHash(event);
+    event.folioDigest === folioDigest(folio);
   if (!isAuthentic) return 'mismatch';
   const expected = receivedPayloadDigest(folio, submissionDigestFromDetail(detail));
   return event.payloadDigest === expected ? 'verified' : 'mismatch';

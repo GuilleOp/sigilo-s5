@@ -3,7 +3,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import { migrate, openDatabase, readInteger, schemaVersion, withTransaction } from './database.ts';
-import { LATEST_SCHEMA_VERSION, LEGACY_DATA_MESSAGE, MIGRATIONS } from './schema.ts';
+import {
+  LATEST_SCHEMA_VERSION,
+  LEGACY_DATA_MESSAGE,
+  MIGRATIONS,
+  ROWID_DATA_MESSAGE,
+} from './schema.ts';
 
 function insertComplaint(db: DatabaseSync, folio: string, authVerifier: string): void {
   db.prepare(
@@ -62,7 +67,7 @@ describe('migraciones', () => {
       .all()
       .map((row) => readInteger(row, 'version'));
     expect(versions).toEqual(MIGRATIONS.map((migration) => migration.version));
-    expect(versions).toEqual([1, 2, 3]);
+    expect(versions).toEqual([1, 2, 3, 4]);
     expect(schemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
     expect(schemaVersion(new DatabaseSync(':memory:'))).toBe(0);
   });
@@ -83,6 +88,33 @@ describe('migraciones', () => {
     // La transacción se revirtió: la base sigue en la versión 2 con sus datos.
     expect(schemaVersion(db)).toBe(2);
     expect(db.prepare('SELECT COUNT(*) AS total FROM messages').get()?.total).toBe(3);
+  });
+
+  it('la versión 4 se niega a migrar una base con datos de la versión 3', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db, 3);
+    insertComplaint(db, 'AAAA-AAAA-AAAA', 'verificador');
+    expect(() => migrate(db)).toThrow(ROWID_DATA_MESSAGE);
+    expect(schemaVersion(db)).toBe(3);
+  });
+
+  it('guarda las tablas privadas sin rowid y activa el borrado seguro', () => {
+    const db = openDatabase(':memory:');
+    for (const table of [
+      'complaints',
+      'status_changes',
+      'messages',
+      'identity_openings',
+      'evidence',
+      'ledger_pending',
+    ]) {
+      expect(() => db.prepare(`SELECT rowid FROM ${table}`).all(), table).toThrow(/rowid/);
+    }
+    expect(db.prepare('PRAGMA secure_delete').get()?.secure_delete).toBe(1);
+    insertComplaint(db, 'AAAA-AAAA-AAAA', 'verificador');
+    expect(db.prepare('SELECT received_month FROM complaints').get()?.received_month).toBe(
+      '2026-10',
+    );
   });
 
   it('impide dos denuncias con el mismo authVerifier y dos mensajes con la misma secuencia', () => {
@@ -107,7 +139,9 @@ describe('migraciones', () => {
       `INSERT INTO status_changes (folio, position, status, changed_on)
        VALUES ('AAAA-AAAA-AAAA', 0, 'received', '2026-10-20')`,
     ).run();
-    db.prepare("INSERT INTO open_data_months (month, cells_json) VALUES ('2026-09', '[]')").run();
+    db.prepare(
+      "INSERT INTO open_data_months (month, cells_json, noise_seed) VALUES ('2026-09', '[]', 'AA')",
+    ).run();
     db.prepare(
       `INSERT INTO ledger_pending (pending_id, type, folio_digest, at, actor_role, payload_digest,
          payload_json)

@@ -58,6 +58,7 @@ const EXPECTED_FUNCTIONS = [
   'computeEventHash',
   'buildEvent',
   'verifyChain',
+  'verifyEventInChain',
   'signLedgerHead',
   'verifyLedgerHead',
   'receivedPayloadDigest',

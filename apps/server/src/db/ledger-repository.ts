@@ -27,12 +27,24 @@ export interface LedgerRepository {
   listPendingBefore(day: string): StoredPendingEvent[];
   /** Indica si hay pendientes con fecha anterior a `day`, sin leerlos. */
   hasPendingBefore(day: string): boolean;
+  /** Días (`AAAA-MM-DD`) anteriores a `day` con pendientes, en orden. */
+  listPendingDaysBefore(day: string): string[];
+  /** Fecha más antigua con pendientes, o `null` si no hay ninguno. */
+  firstPendingDay(): string | null;
+  /** Identificadores de los pendientes del día, sin ningún orden significativo. */
+  listPendingIdsOn(day: string): string[];
+  /** Pendiente por su identificador, o `null` si ya no existe. */
+  findPending(pendingId: string): StoredPendingEvent | null;
+  /** Cuántos pendientes tiene el día. */
+  countPendingOn(day: string): number;
   deletePending(pendingId: string): void;
   insert(event: LedgerEvent, payloadJson: string): void;
   /** Último evento encadenado, o `null`. */
   last(): LedgerEvent | null;
-  /** Eventos encadenados desde `fromSeq`, en orden, a lo más `limit`. */
-  page(fromSeq: number, limit: number): LedgerEvent[];
+  /** Último evento encadenado con fecha anterior a `day`, o `null`. */
+  lastBefore(day: string): LedgerEvent | null;
+  /** Eventos encadenados desde `fromSeq` hasta `maxSeq` (incluido), en orden, a lo más `limit`. */
+  page(fromSeq: number, limit: number, maxSeq?: number): LedgerEvent[];
   /** Eventos encadenados del folio (por su digesto) y de los tipos dados, en orden. */
   listByFolioDigest(folioDigest: string, types: readonly LedgerEventType[]): StoredLedgerEvent[];
   /** Evento encadenado de ese tipo con ese `payloadDigest`, o `null`. */
@@ -100,6 +112,15 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
   const hasPendingStatement = db.prepare(
     'SELECT 1 AS found FROM ledger_pending WHERE at < ? LIMIT 1',
   );
+  const pendingDaysStatement = db.prepare(
+    'SELECT DISTINCT at FROM ledger_pending WHERE at < ? ORDER BY at',
+  );
+  const firstPendingDayStatement = db.prepare('SELECT MIN(at) AS day FROM ledger_pending');
+  const pendingIdsStatement = db.prepare('SELECT pending_id FROM ledger_pending WHERE at = ?');
+  const findPendingStatement = db.prepare('SELECT * FROM ledger_pending WHERE pending_id = ?');
+  const countPendingStatement = db.prepare(
+    'SELECT COUNT(*) AS total FROM ledger_pending WHERE at = ?',
+  );
   const deletePendingStatement = db.prepare('DELETE FROM ledger_pending WHERE pending_id = ?');
   const insertStatement = db.prepare(
     `INSERT INTO ledger_events (seq, type, folio_digest, at, actor_role, payload_digest,
@@ -107,8 +128,11 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const lastStatement = db.prepare('SELECT * FROM ledger_events ORDER BY seq DESC LIMIT 1');
+  const lastBeforeStatement = db.prepare(
+    'SELECT * FROM ledger_events WHERE at < ? ORDER BY at DESC, seq DESC LIMIT 1',
+  );
   const pageStatement = db.prepare(
-    'SELECT * FROM ledger_events WHERE seq >= ? ORDER BY seq LIMIT ?',
+    'SELECT * FROM ledger_events WHERE seq >= ? AND seq <= ? ORDER BY seq LIMIT ?',
   );
   const byFolioStatement = db.prepare(
     `SELECT * FROM ledger_events
@@ -133,6 +157,15 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
     },
     listPendingBefore: (day) => pendingBeforeStatement.all(day).map(toPending),
     hasPendingBefore: (day) => hasPendingStatement.get(day) !== undefined,
+    listPendingDaysBefore: (day) => pendingDaysStatement.all(day).map((row) => readText(row, 'at')),
+    firstPendingDay: () => readOptionalText(firstPendingDayStatement.get() ?? {}, 'day'),
+    listPendingIdsOn: (day) =>
+      pendingIdsStatement.all(day).map((row) => readText(row, 'pending_id')),
+    findPending: (pendingId) => {
+      const row = findPendingStatement.get(pendingId);
+      return row === undefined ? null : toPending(row);
+    },
+    countPendingOn: (day) => Number(countPendingStatement.get(day)?.total ?? 0),
     deletePending: (pendingId) => {
       deletePendingStatement.run(pendingId);
     },
@@ -154,7 +187,12 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
       const row = lastStatement.get();
       return row === undefined ? null : toEvent(row);
     },
-    page: (fromSeq, limit) => pageStatement.all(fromSeq, limit).map(toEvent),
+    lastBefore: (day) => {
+      const row = lastBeforeStatement.get(day);
+      return row === undefined ? null : toEvent(row);
+    },
+    page: (fromSeq, limit, maxSeq = Number.MAX_SAFE_INTEGER) =>
+      pageStatement.all(fromSeq, maxSeq, limit).map(toEvent),
     listByFolioDigest: (folioDigest, types) =>
       byFolioStatement.all(folioDigest, JSON.stringify(types)).map((row) => ({
         event: toEvent(row),

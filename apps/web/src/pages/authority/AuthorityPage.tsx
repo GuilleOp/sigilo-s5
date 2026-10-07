@@ -4,7 +4,7 @@ import type { ComplaintSummary } from '@sigilo/contracts';
 import { wipeAuthorityKeys } from '../../crypto/authority.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
-import { api } from '../../services/api.ts';
+import { api, AUTHORITY_PAGE_SIZE } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import { AuthorityLogin } from './AuthorityLogin.tsx';
 import type { AuthoritySession } from './authority-session.ts';
@@ -21,6 +21,8 @@ export function AuthorityPage() {
   const [complaints, setComplaints] = useState<ComplaintSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setLoadingMore] = useState(false);
   /** Sesión vigente: una respuesta de otra sesión (o tras cerrar la sesión) se ignora. */
   const activeSession = useRef<AuthoritySession | null>(null);
 
@@ -28,11 +30,13 @@ export function AuthorityPage() {
     activeSession.current = session;
   }, [session]);
 
+  // Al volver al listado se recarga la primera página; las demás se piden con «Mostrar más».
   const refresh = useCallback((current: AuthoritySession) => {
-    api.listComplaints(current.token).then(
+    api.listComplaints(current.token, 0, AUTHORITY_PAGE_SIZE).then(
       (list) => {
         if (activeSession.current !== current) return;
         setComplaints(list);
+        setHasMore(list.length === AUTHORITY_PAGE_SIZE);
         setError('');
       },
       (failure: unknown) => {
@@ -41,6 +45,27 @@ export function AuthorityPage() {
       },
     );
   }, []);
+
+  function loadMore(current: AuthoritySession): void {
+    setLoadingMore(true);
+    api.listComplaints(current.token, complaints.length, AUTHORITY_PAGE_SIZE).then(
+      (list) => {
+        if (activeSession.current !== current) return;
+        // Si llegó una denuncia nueva entretanto, la página puede repetir un folio.
+        setComplaints((shown) => {
+          const known = new Set(shown.map((item) => item.folio));
+          return [...shown, ...list.filter((item) => !known.has(item.folio))];
+        });
+        setHasMore(list.length === AUTHORITY_PAGE_SIZE);
+        setLoadingMore(false);
+      },
+      (failure: unknown) => {
+        if (activeSession.current !== current) return;
+        setLoadingMore(false);
+        setError(describeError(failure, 'No pudimos cargar más denuncias. Inténtalo de nuevo.'));
+      },
+    );
+  }
 
   useEffect(() => {
     if (session !== null && selected === null) refresh(session);
@@ -74,6 +99,7 @@ export function AuthorityPage() {
                 setSession(null);
                 setSelected(null);
                 setComplaints([]);
+                setHasMore(false);
                 setError('');
                 focusAfterRender(() => document.querySelector<HTMLElement>('#contenido h1'));
               }}
@@ -99,6 +125,19 @@ export function AuthorityPage() {
                   focusAfterRender('detail-title');
                 }}
               />
+              {hasMore && (
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    disabled={isLoadingMore}
+                    onClick={() => loadMore(session)}
+                    data-testid="load-more-complaints"
+                  >
+                    {isLoadingMore ? 'Cargando más denuncias…' : 'Mostrar más denuncias'}
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <ComplaintDetailView

@@ -2,7 +2,7 @@
 // tiene, contra un anclaje publicado fuera del servidor (`anchors/AAAA-MM-DD.json`).
 import { LEDGER_GENESIS_HASH, LedgerAnchorSchema } from '@sigilo/contracts';
 import type { LedgerAnchor, LedgerEvent, LedgerPage, SignedLedgerHead } from '@sigilo/contracts';
-import { verifyChain, verifyLedgerHead } from '@sigilo/core';
+import { computeEventHash, verifyChain, verifyLedgerHead } from '@sigilo/core';
 import type { ChainFailureReason } from '@sigilo/core';
 
 /** Resultado de la verificación, listo para explicarse en lenguaje claro. */
@@ -76,6 +76,84 @@ export async function downloadAndVerifyLedger(
     }
   }
   return evaluateLedger(events, head, serverPublicKey);
+}
+
+/**
+ * Descarga el tramo de la bitácora desde `fromSeq` hasta `head.seq` (incluidos), por páginas.
+ * Devuelve lo que el servidor entregó; la verificación es aparte (`verifyEventInChain` o
+ * `evaluateSince`). Se detiene si una página no avanza.
+ */
+export async function downloadSegment(
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
+  fromSeq: number,
+  head: SignedLedgerHead,
+  initial: readonly LedgerEvent[] = [],
+): Promise<LedgerEvent[]> {
+  const events = initial.filter((event) => event.seq <= head.seq);
+  let next = (events.at(-1)?.seq ?? fromSeq - 1) + 1;
+  while (next <= head.seq) {
+    const page = await fetchPage(next, LEDGER_PAGE_SIZE);
+    const fresh = page.events.filter((event) => event.seq >= next && event.seq <= head.seq);
+    if (fresh.length === 0) break;
+    events.push(...fresh);
+    next = (fresh.at(-1)?.seq ?? next) + 1;
+  }
+  return events;
+}
+
+/** Tramo verificado de la bitácora desde un día: todos los eventos con fecha igual o posterior. */
+export type LedgerSinceVerification =
+  | { status: 'valid'; head: SignedLedgerHead; events: readonly LedgerEvent[] }
+  | { status: 'invalid' };
+
+/**
+ * Verifica un tramo que debe contener todos los eventos con fecha `day` o posterior: la cabeza
+ * firmada con la llave fijada, el primer evento como vecino (fecha anterior a `day`, con su hash)
+ * o el génesis, la cadena con fechas no decrecientes y el último eslabón igual a la cabeza.
+ * Seguridad: como la cadena exige fechas no decrecientes, nada anterior al vecino puede tener
+ * fecha `day` o posterior; así basta con este tramo para buscar las aperturas o el evento de
+ * recepción sin descargar la bitácora desde el génesis. Que la parte anterior también cumpla la
+ * regla lo comprueban el anclaje (`npm run ledger:anchor`) y la página de verificación.
+ */
+export function evaluateSince(
+  day: string,
+  events: readonly LedgerEvent[],
+  head: SignedLedgerHead,
+  serverPublicKey: Uint8Array,
+): LedgerSinceVerification {
+  if (!verifyLedgerHead(head, serverPublicKey)) return { status: 'invalid' };
+  if (head.hash === LEDGER_GENESIS_HASH) {
+    return events.length === 0 ? { status: 'valid', head, events: [] } : { status: 'invalid' };
+  }
+  const first = events[0];
+  if (first === undefined) return { status: 'invalid' };
+  const isNeighbor = first.at < day && first.hash === computeEventHash(first);
+  const chain = isNeighbor ? verifyChain(events.slice(1), first) : verifyChain(events);
+  const last = events.at(-1);
+  const isComplete =
+    (isNeighbor || first.seq === 0) &&
+    chain.valid &&
+    last !== undefined &&
+    last.seq === head.seq &&
+    last.hash === head.hash;
+  if (!isComplete) return { status: 'invalid' };
+  return { status: 'valid', head, events: isNeighbor ? events.slice(1) : events };
+}
+
+/**
+ * Descarga desde el vecino anterior a `day` (`fetchSince`) hasta la cabeza de esa primera página
+ * y lo verifica con `evaluateSince`.
+ */
+export async function downloadAndVerifySince(
+  day: string,
+  fetchSince: (day: string, limit: number) => Promise<LedgerPage>,
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
+  serverPublicKey: Uint8Array,
+): Promise<LedgerSinceVerification> {
+  const first = await fetchSince(day, LEDGER_PAGE_SIZE);
+  const start = first.events[0]?.seq ?? 0;
+  const events = await downloadSegment(fetchPage, start, first.head, first.events);
+  return evaluateSince(day, events, first.head, serverPublicKey);
 }
 
 /** Resultado de comparar la bitácora descargada con un anclaje publicado. */

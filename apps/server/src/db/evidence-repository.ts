@@ -10,6 +10,12 @@ export interface EvidenceRecord extends EvidenceDescriptor {
   folio: string | null;
 }
 
+/** Prueba guardada de una denuncia sin atender, candidata a la retención o al desalojo. */
+export interface UnattendedEvidence {
+  evidenceId: string;
+  sizeBytes: number;
+}
+
 /** Operaciones sobre la tabla `evidence`. */
 export interface EvidenceRepository {
   insertPending(descriptor: EvidenceDescriptor, uploadedOn: string): void;
@@ -23,9 +29,14 @@ export interface EvidenceRepository {
   deletePending(evidenceId: string): boolean;
   /** Bytes de todas las pruebas cuyo archivo sigue guardado (pendientes o asociadas). */
   totalStoredBytes(): number;
-  /** Identificadores de las pruebas del folio cuyo archivo sigue guardado. */
-  listStoredByFolio(folio: string): string[];
-  /** Marca que el archivo de la prueba se borró por la política de retención. */
+  /** Bytes de las pruebas pendientes (sin denuncia) guardadas. */
+  pendingStoredBytes(): number;
+  /**
+   * Pruebas guardadas de denuncias que siguen en `received` (la autoridad no las ha atendido),
+   * de las recibidas antes primero; con `beforeDay`, solo de las recibidas antes de ese día.
+   */
+  listUnattendedStored(beforeDay: string | null, limit: number): UnattendedEvidence[];
+  /** Marca que el archivo de la prueba se borró por la retención o el desalojo. */
   markUnstored(evidenceId: string): void;
 }
 
@@ -58,8 +69,18 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
   const totalStatement = db.prepare(
     'SELECT COALESCE(SUM(size_bytes), 0) AS total FROM evidence WHERE is_stored = 1',
   );
-  const storedByFolioStatement = db.prepare(
-    'SELECT evidence_id FROM evidence WHERE folio = ? AND is_stored = 1 ORDER BY position',
+  const pendingTotalStatement = db.prepare(
+    `SELECT COALESCE(SUM(size_bytes), 0) AS total FROM evidence
+     WHERE folio IS NULL AND is_stored = 1`,
+  );
+  // Dentro de un mismo día se ordena por folio (aleatorio), nunca por llegada.
+  const unattendedStatement = db.prepare(
+    `SELECT evidence.evidence_id, evidence.size_bytes FROM evidence
+     JOIN complaints ON complaints.folio = evidence.folio
+     WHERE evidence.is_stored = 1 AND complaints.status = 'received'
+       AND complaints.received_on < ?
+     ORDER BY complaints.received_on, complaints.folio, evidence.position
+     LIMIT ?`,
   );
   const unstoreStatement = db.prepare('UPDATE evidence SET is_stored = 0 WHERE evidence_id = ?');
 
@@ -88,8 +109,16 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
       const row = totalStatement.get();
       return row === undefined ? 0 : readInteger(row, 'total');
     },
-    listStoredByFolio: (folio) =>
-      storedByFolioStatement.all(folio).map((row) => readText(row, 'evidence_id')),
+    pendingStoredBytes: () => {
+      const row = pendingTotalStatement.get();
+      return row === undefined ? 0 : readInteger(row, 'total');
+    },
+    listUnattendedStored: (beforeDay, limit) =>
+      // '~' es mayor que cualquier fecha AAAA-MM-DD: sin `beforeDay` entran todas.
+      unattendedStatement.all(beforeDay ?? '~', limit).map((row) => ({
+        evidenceId: readText(row, 'evidence_id'),
+        sizeBytes: readInteger(row, 'size_bytes'),
+      })),
     markUnstored: (evidenceId) => {
       unstoreStatement.run(evidenceId);
     },

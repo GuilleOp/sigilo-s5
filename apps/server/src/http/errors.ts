@@ -12,6 +12,7 @@ const STATUS_BY_CODE: Record<ApiErrorCode, ContentfulStatusCode> = {
   rate_limited: 429,
   proof_required: 428,
   storage_full: 507,
+  ledger_day_full: 503,
   internal: 500,
 };
 
@@ -25,6 +26,8 @@ const MESSAGE_BY_CODE: Record<ApiErrorCode, string> = {
   rate_limited: 'Demasiados intentos. Intenta más tarde.',
   proof_required: 'Falta una prueba de trabajo válida y vigente.',
   storage_full: 'No hay espacio para más pruebas por ahora. Intenta más tarde.',
+  ledger_day_full:
+    'El registro público alcanzó el máximo de eventos de hoy. Intenta de nuevo mañana.',
   internal: 'Error interno del servidor.',
 };
 

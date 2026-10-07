@@ -1,8 +1,22 @@
 // Pruebas de seguimiento: respuesta indistinguible ante fallos, límites separados (fallos por
 // folio, freno global y mensajes) y buzón con secuencia.
 import { describe, expect, it } from 'vitest';
-import { MailboxMessageSchema, ROUTES, TrackingViewSchema } from '@sigilo/contracts';
-import { generateFolio, sealMailboxMessage, toBase64Url, verifyReceiptEvent } from '@sigilo/core';
+import {
+  MailboxMessageSchema,
+  POW_HEADER,
+  PowChallengeSchema,
+  ROUTES,
+  TrackingViewSchema,
+} from '@sigilo/contracts';
+import type { PowPurpose } from '@sigilo/contracts';
+import {
+  formatPowHeader,
+  generateFolio,
+  sealMailboxMessage,
+  solvePow,
+  toBase64Url,
+  verifyReceiptEvent,
+} from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 import type { RateLimitConfig } from '../app.ts';
 import {
@@ -39,6 +53,26 @@ async function sealReporterMessage(
     reporter.signing.privateKey,
     { folio, from: 'reporter', sequence },
   );
+}
+
+async function powHeader(server: TestServer, purpose: PowPurpose): Promise<string> {
+  const { token, bits } = PowChallengeSchema.parse(
+    await (await server.app.request(`${ROUTES.powChallenge}?purpose=${purpose}`)).json(),
+  );
+  return formatPowHeader(token, solvePow(token, bits) ?? '0');
+}
+
+async function submitComplaintWithPow(server: TestServer, reporter: ReceiptKeys) {
+  const request = await buildComplaintRequest(server, { mode: 'anonymous', reporter });
+  const response = await server.app.request(ROUTES.complaints, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      [POW_HEADER]: await powHeader(server, 'complaint'),
+    },
+    body: JSON.stringify(request),
+  });
+  return (await response.json()) as { folio: string };
 }
 
 function wrongCredentials(folio: string) {
@@ -200,6 +234,39 @@ describe('POST tracking/messages', () => {
     expect(statuses).toEqual([201, 201, 429]);
     // Leer el seguimiento sigue permitido.
     expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(200);
+  });
+
+  it('cuenta solo los mensajes guardados y aplica el freno extremo global', async () => {
+    const { server, reporter, folio } = await setup({
+      reporterMessagesGlobal: { limit: 1, windowMs: 60 * 60 * 1000 },
+    });
+    const credentials = credentialsFor(folio, reporter);
+    const send = async (sequence: number) => {
+      const sealed = await sealReporterMessage(server, reporter, folio, sequence);
+      return (await postJson(server.app, ROUTES.trackingMessages, { ...credentials, ...sealed }))
+        .status;
+    };
+    // Una secuencia equivocada se rechaza sin gastar el freno.
+    expect(await send(5)).toBe(400);
+    expect(await send(0)).toBe(201);
+    expect(await send(1)).toBe(429);
+  });
+
+  it('exige la prueba de trabajo de propósito message', async () => {
+    const server = createTestServer({ powBits: 4 });
+    const reporter = createReporter();
+    const { folio } = await submitComplaintWithPow(server, reporter);
+    const sealed = await sealReporterMessage(server, reporter, folio);
+    const body = JSON.stringify({ ...credentialsFor(folio, reporter), ...sealed });
+    const post = (headers: Record<string, string>) =>
+      server.app.request(ROUTES.trackingMessages, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body,
+      });
+    expect((await post({})).status).toBe(428);
+    expect((await post({ [POW_HEADER]: await powHeader(server, 'complaint') })).status).toBe(428);
+    expect((await post({ [POW_HEADER]: await powHeader(server, 'message') })).status).toBe(201);
   });
 
   it('rechaza una firma inválida o de otra llave', async () => {

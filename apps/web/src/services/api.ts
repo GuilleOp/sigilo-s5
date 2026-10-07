@@ -38,6 +38,9 @@ import type { ApiClient } from './api-client.ts';
 
 const SummaryListSchema = ComplaintSummarySchema.array();
 
+/** Denuncias por página en el listado de la autoridad. */
+export const AUTHORITY_PAGE_SIZE = 100;
+
 /** API de SIGILO sobre un cliente HTTP. */
 export interface SigiloApi {
   getKeys(): Promise<PublicKeySet>;
@@ -52,8 +55,10 @@ export interface SigiloApi {
   /** Envía la denuncia; `proof` es el valor de `POW_HEADER` de un reto `complaint`. */
   submitComplaint(request: SubmitComplaintRequest, proof: string): Promise<SubmitComplaintResponse>;
   track(credentials: TrackingCredentials): Promise<TrackingView>;
-  sendReporterMessage(request: ReporterMessageRequest): Promise<MailboxMessage>;
-  listComplaints(token: string): Promise<ComplaintSummary[]>;
+  /** Envía la respuesta; `proof` es el valor de `POW_HEADER` de un reto `message`. */
+  sendReporterMessage(request: ReporterMessageRequest, proof: string): Promise<MailboxMessage>;
+  /** Página del listado de la autoridad (`offset` desde 0, `limit` hasta 500). */
+  listComplaints(token: string, offset?: number, limit?: number): Promise<ComplaintSummary[]>;
   getComplaint(token: string, folio: string): Promise<ComplaintDetail>;
   openIdentity(token: string, folio: string, legalBasis: string): Promise<OpenIdentityResponse>;
   updateStatus(token: string, folio: string, status: ComplaintStatus): Promise<ComplaintSummary>;
@@ -65,6 +70,8 @@ export interface SigiloApi {
   getEvidence(token: string, evidenceId: string): Promise<Blob>;
   getLedgerHead(): Promise<SignedLedgerHead>;
   getLedgerEvents(from: number, limit: number): Promise<LedgerPage>;
+  /** Página desde el último evento anterior a `day` (`AAAA-MM-DD`), su vecino. */
+  getLedgerSince(day: string, limit: number): Promise<LedgerPage>;
   getOpenDataCsv(): Promise<string>;
 }
 
@@ -86,10 +93,16 @@ export function createSigiloApi(client: ApiClient = createApiClient()): SigiloAp
         headers: { [POW_HEADER]: proof },
       }),
     track: (credentials) => client.json(ROUTES.tracking, TrackingViewSchema, { json: credentials }),
-    sendReporterMessage: (request) =>
-      client.json(ROUTES.trackingMessages, MailboxMessageSchema, { json: request }),
-    listComplaints: (token) =>
-      client.json(ROUTES.authorityComplaints, SummaryListSchema, { bearer: token }),
+    sendReporterMessage: (request, proof) =>
+      client.json(ROUTES.trackingMessages, MailboxMessageSchema, {
+        json: request,
+        headers: { [POW_HEADER]: proof },
+      }),
+    listComplaints: (token, offset = 0, limit = AUTHORITY_PAGE_SIZE) =>
+      client.json(ROUTES.authorityComplaints, SummaryListSchema, {
+        bearer: token,
+        query: { offset: String(offset), limit: String(limit) },
+      }),
     getComplaint: (token, folio) =>
       client.json(ROUTES.authorityComplaint(folio), ComplaintDetailSchema, { bearer: token }),
     openIdentity: (token, folio, legalBasis) =>
@@ -113,6 +126,10 @@ export function createSigiloApi(client: ApiClient = createApiClient()): SigiloAp
     getLedgerEvents: (from, limit) =>
       client.json(ROUTES.ledgerEvents, LedgerPageSchema, {
         query: { from: String(from), limit: String(limit) },
+      }),
+    getLedgerSince: (day, limit) =>
+      client.json(ROUTES.ledgerEvents, LedgerPageSchema, {
+        query: { since: day, limit: String(limit) },
       }),
     getOpenDataCsv: () => client.text(ROUTES.openDataCsv),
   };

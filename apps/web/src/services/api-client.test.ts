@@ -1,6 +1,7 @@
 // Pruebas del cliente HTTP: rutas permitidas, validación de respuestas y errores.
 import { describe, expect, it } from 'vitest';
-import { POW_HEADER, PublicKeySetSchema, ROUTES } from '@sigilo/contracts';
+import { HPKE_SUITE_V1, POW_HEADER, PublicKeySetSchema, ROUTES } from '@sigilo/contracts';
+import type { ReporterMessageRequest } from '@sigilo/contracts';
 import { ApiRequestError, buildApiUrl, createApiClient } from './api-client.ts';
 import type { FetchLike } from './api-client.ts';
 import { createSigiloApi } from './api.ts';
@@ -91,6 +92,31 @@ describe('createSigiloApi', () => {
     expect(call?.init.body).toBe('{"status":"routing"}');
   });
 
+  it('pagina el listado, pide la bitácora desde un día y envía la respuesta con su prueba', async () => {
+    const calls: { input: string; init: RequestInit }[] = [];
+    const listing = createSigiloApi(createApiClient(fakeFetch(Response.json([]), calls)));
+    await listing.listComplaints('token-de-prueba', 100, 50);
+    expect(calls[0]?.input).toBe(`${ROUTES.authorityComplaints}?offset=100&limit=50`);
+    await expect(listing.getLedgerSince('2026-10-20', 200)).rejects.toMatchObject({
+      code: 'invalid_response',
+    });
+    expect(calls[1]?.input).toBe(`${ROUTES.ledgerEvents}?since=2026-10-20&limit=200`);
+    const failing = createSigiloApi(
+      createApiClient(fakeFetch(new Response('sin cuerpo', { status: 400 }), calls)),
+    );
+    const request: ReporterMessageRequest = {
+      folio: 'AAAA-BBBB-CCCC',
+      authKey: 'a'.repeat(43),
+      sequence: 0,
+      envelope: { v: 1, suite: HPKE_SUITE_V1, keyId: '0'.repeat(16), enc: 'a', ct: 'b' },
+      signature: 's',
+    };
+    await expect(failing.sendReporterMessage(request, 'reto.m:9')).rejects.toMatchObject({
+      code: 'bad_request',
+    });
+    expect(new Headers(calls[2]?.init.headers).get(POW_HEADER)).toBe('reto.m:9');
+  });
+
   it('sube pruebas como binario con su tipo de contenido', async () => {
     const calls: { input: string; init: RequestInit }[] = [];
     const descriptor = {
@@ -115,6 +141,7 @@ describe('createSigiloApi', () => {
     expect(calls[0]?.input).toBe(`${ROUTES.powChallenge}?purpose=complaint`);
     for (const [status, code] of [
       [428, 'proof_required'],
+      [503, 'ledger_day_full'],
       [507, 'storage_full'],
     ] as const) {
       const failing = createSigiloApi(

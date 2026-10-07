@@ -10,7 +10,11 @@ import {
   loadConfig,
   MAX_TEST_CLOCK_OFFSET_MS,
 } from './config.ts';
-import { DEFAULT_EVIDENCE_QUOTA_BYTES } from './services/evidence-service.ts';
+import { DEFAULT_POW_MAX_BITS } from './security/proof-of-work.ts';
+import {
+  DEFAULT_EVIDENCE_QUOTA_BYTES,
+  DEFAULT_EVIDENCE_RETENTION_DAYS,
+} from './services/evidence-service.ts';
 
 const TOKEN = 'token-de-prueba-0123456789-abcdefghijkl';
 
@@ -26,8 +30,9 @@ describe('loadConfig', () => {
       hstsMaxAgeSeconds: null,
       testClockFile: null,
       powBits: DEFAULT_POW_BITS,
+      powMaxBits: DEFAULT_POW_MAX_BITS,
       evidenceQuotaBytes: DEFAULT_EVIDENCE_QUOTA_BYTES,
-      untrackedRetentionDays: 0,
+      evidenceRetentionDays: DEFAULT_EVIDENCE_RETENTION_DAYS,
       requestLogMode: 'aggregate',
     });
   });
@@ -37,17 +42,27 @@ describe('loadConfig', () => {
       SIGILO_AUTHORITY_TOKEN: TOKEN,
       SIGILO_POW_BITS: '0',
       SIGILO_EVIDENCE_QUOTA_BYTES: '1048576',
-      SIGILO_UNTRACKED_RETENTION_DAYS: '90',
+      SIGILO_EVIDENCE_RETENTION_DAYS: '90',
+      SIGILO_POW_MAX_BITS: '20',
       SIGILO_REQUEST_LOG: 'off',
     });
     expect(config).toMatchObject({
       powBits: 0,
+      powMaxBits: 20,
       evidenceQuotaBytes: 1_048_576,
-      untrackedRetentionDays: 90,
+      evidenceRetentionDays: 90,
       requestLogMode: 'off',
     });
     const env = { SIGILO_AUTHORITY_TOKEN: TOKEN };
     expect(() => loadConfig({ ...env, SIGILO_POW_BITS: '33' })).toThrow('SIGILO_POW_BITS');
+    expect(() => loadConfig({ ...env, SIGILO_POW_MAX_BITS: '10' })).toThrow('SIGILO_POW_MAX_BITS');
+    expect(() => loadConfig({ ...env, SIGILO_POW_MAX_BITS: '33' })).toThrow('SIGILO_POW_MAX_BITS');
+    expect(loadConfig({ ...env, SIGILO_EVIDENCE_RETENTION_DAYS: '0' }).evidenceRetentionDays).toBe(
+      0,
+    );
+    expect(() => loadConfig({ ...env, SIGILO_UNTRACKED_RETENTION_DAYS: '90' })).toThrow(
+      'SIGILO_EVIDENCE_RETENTION_DAYS',
+    );
     expect(() => loadConfig({ ...env, SIGILO_EVIDENCE_QUOTA_BYTES: '-1' })).toThrow('QUOTA');
     expect(() => loadConfig({ ...env, SIGILO_REQUEST_LOG: 'todo' })).toThrow('SIGILO_REQUEST_LOG');
     expect(loadConfig({ ...env, SIGILO_REQUEST_LOG: 'requests' }).requestLogMode).toBe('requests');

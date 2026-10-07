@@ -18,6 +18,17 @@ import { recordMessage } from '../services/mailbox-service.ts';
 import { buildComplaintDetail, toSummary } from '../services/views.ts';
 
 const EVIDENCE_ID_PATTERN = /^[0-9a-f]{32}$/;
+const COUNT_PATTERN = /^\d{1,9}$/;
+
+/** Tamaño de página del listado por omisión y máximo. */
+export const DEFAULT_COMPLAINTS_PAGE = 100;
+export const MAX_COMPLAINTS_PAGE = 500;
+
+function parseCount(value: string | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  if (!COUNT_PATTERN.test(value)) throw new ApiFailure('bad_request');
+  return Number(value);
+}
 const EXTENSION_BY_TYPE = { 'image/jpeg': 'jpg', 'image/png': 'png' } as const;
 
 function findComplaint(ctx: AppContext, c: Context): ComplaintRecord {
@@ -43,11 +54,20 @@ function serveEvidence(ctx: AppContext, c: Context): Response {
   return c.body(new Uint8Array(bytes));
 }
 
-/** Registra las rutas de la autoridad, todas protegidas con token bearer. */
+/**
+ * Registra las rutas de la autoridad, todas protegidas con token bearer. `GET authorityComplaints`
+ * acepta `offset` y `limit`.
+ */
 export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   app.use(`${API_PREFIX}/authority/*`, requireAuthority(ctx.deps.authorityToken));
 
-  app.get(ROUTES.authorityComplaints, (c) => c.json(ctx.complaints.listSummaries()));
+  // Paginación simple por desplazamiento: `offset` (0 por omisión) y `limit` (de 1 a 500).
+  app.get(ROUTES.authorityComplaints, (c) => {
+    const offset = parseCount(c.req.query('offset'), 0);
+    const limit = parseCount(c.req.query('limit'), DEFAULT_COMPLAINTS_PAGE);
+    if (limit < 1) throw new ApiFailure('bad_request');
+    return c.json(ctx.complaints.listSummaries(offset, Math.min(limit, MAX_COMPLAINTS_PAGE)));
+  });
 
   app.get(ROUTES.authorityComplaint(':folio'), (c) =>
     c.json(buildComplaintDetail(ctx, findComplaint(ctx, c))),

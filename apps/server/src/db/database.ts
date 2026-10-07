@@ -7,11 +7,15 @@ import { MIGRATIONS } from './schema.ts';
 export type Row = Record<string, SQLOutputValue>;
 
 /**
- * Abre la base en `path` (o `:memory:`), activa llaves foráneas y aplica las migraciones pendientes.
+ * Abre la base en `path` (o `:memory:`), activa llaves foráneas y el borrado seguro y aplica las
+ * migraciones pendientes.
  */
 export function openDatabase(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec('PRAGMA foreign_keys = ON;');
+  // Seguridad: lo borrado (pendientes ya encadenados, pruebas purgadas) se sobrescribe con ceros
+  // en lugar de quedar en páginas libres del archivo.
+  db.exec('PRAGMA secure_delete = ON;');
   // Otro proceso (por ejemplo, el anclaje) puede tener la base abierta un momento.
   db.exec('PRAGMA busy_timeout = 5000;');
   if (path !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
@@ -91,4 +95,13 @@ export function readInteger(row: Row, column: string): number {
     throw new Error(`Columna ${column} no es entera.`);
   }
   return value;
+}
+
+/**
+ * Vuelca el WAL a la base y lo trunca. Se llama después de publicar un día: el WAL guarda copias de
+ * páginas con los eventos pendientes en su orden de llegada hasta que se reescribe. No hace nada
+ * en una base en memoria y no espera si otro proceso está leyendo.
+ */
+export function checkpointWal(db: DatabaseSync): void {
+  db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
 }

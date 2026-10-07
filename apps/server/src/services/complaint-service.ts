@@ -19,6 +19,7 @@ import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import { withTransaction } from '../db/database.ts';
 import { ApiFailure } from '../http/errors.ts';
 import { hasIdentityShape, isKey32 } from './crypto-checks.ts';
+import { budgetOf } from './evidence-service.ts';
 
 const MAX_FOLIO_ATTEMPTS = 8;
 const SUBMISSIONS_KEY = 'global';
@@ -42,6 +43,9 @@ function assertRequestShape(ctx: AppContext, request: SubmitComplaintRequest): v
 function associateEvidence(ctx: AppContext, request: SubmitComplaintRequest, folio: string): void {
   const ids = request.evidence.map((item) => item.evidenceId);
   if (new Set(ids).size !== ids.length) throw new ApiFailure('bad_request');
+  // Seguridad: cada denuncia ocupa a lo más su parte de la cuota de pruebas.
+  const totalBytes = request.evidence.reduce((sum, item) => sum + item.sizeBytes, 0);
+  if (totalBytes > budgetOf(ctx).perComplaint) throw new ApiFailure('payload_too_large');
   request.evidence.forEach((item, position) => {
     const stored = ctx.evidence.find(item.evidenceId);
     const isMatch =
@@ -67,20 +71,25 @@ function newFolio(ctx: AppContext): string {
 /**
  * Valida y guarda la denuncia, asocia sus pruebas, registra `complaint.received` y firma el
  * comprobante, todo en una sola transacción.
- * Lanza `rate_limited` si se agotó la cuota global de envíos y `bad_request` si algo no
- * corresponde, en particular si otro recibo ya usa el mismo `authVerifier`.
+ * Lanza `bad_request` si algo no corresponde, en particular si otro recibo ya usa el mismo
+ * `authVerifier`; `payload_too_large` si sus pruebas exceden la parte de la cuota por denuncia;
+ * `ledger_day_full` si la bitácora alcanzó su tope del día, y `rate_limited` solo con el freno
+ * extremo de envíos.
+ * Seguridad: el freno extremo se descuenta solo cuando la transacción se confirma; un intento
+ * rechazado (por ejemplo, con un verificador repetido) no gasta la cuota de nadie. Contra el abuso
+ * actúa antes la dificultad adaptativa de la prueba de trabajo.
  */
 export function submitComplaint(
   ctx: AppContext,
   request: SubmitComplaintRequest,
 ): SubmitComplaintResponse {
   assertRequestShape(ctx, request);
-  if (!ctx.limiters.complaintSubmissions.consume(SUBMISSIONS_KEY)) {
+  if (ctx.limiters.complaintSubmissions.isLimited(SUBMISSIONS_KEY)) {
     throw new ApiFailure('rate_limited');
   }
   const submissionDigest = computeSubmissionDigest(request);
   const receivedOn = toDayDate(ctx.deps.now());
-  return withTransaction(ctx.deps.db, () => {
+  const response = withTransaction(ctx.deps.db, () => {
     // Seguridad: cada recibo pertenece a una sola denuncia. Reutilizar el verificador de otra es
     // el primer paso para trasplantar su sobre de identidad (el índice único también lo impide).
     if (ctx.complaints.hasAuthVerifier(request.authVerifier)) throw new ApiFailure('bad_request');
@@ -121,6 +130,8 @@ export function submitComplaint(
     ctx.statusHistory.insert(folio, 'received', receivedOn);
     return { folio, receipt };
   });
+  ctx.limiters.complaintSubmissions.consume(SUBMISSIONS_KEY);
+  return response;
 }
 
 /**

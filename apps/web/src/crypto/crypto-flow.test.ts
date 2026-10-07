@@ -11,6 +11,7 @@ import type {
 } from '@sigilo/contracts';
 import {
   buildEvent,
+  computeEventHash,
   computeSubmissionDigest,
   IDENTITY_PADDED_SIZE,
   identityOpenedPayload,
@@ -19,6 +20,7 @@ import {
   receivedPayloadDigest,
   sealedIdentityDigest,
   signLedgerHead,
+  submissionDigestFromDetail,
   signReceipt,
   toBase64Url,
 } from '@sigilo/core';
@@ -55,6 +57,7 @@ import {
   checkIdentityOpenings,
   checkPublishedEvent,
   decodeReporterThread,
+  loadTrackingLedger,
   sealReporterReply,
   startTrackingSession,
   verifyTrackingReceipt,
@@ -141,8 +144,11 @@ function signedReceiptFor(
   );
 }
 
-function receivedEventFor(receipt: SignedReceipt): LedgerEvent {
-  return buildEvent(null, {
+function receivedEventFor(
+  receipt: SignedReceipt,
+  previous: LedgerEvent | null = null,
+): LedgerEvent {
+  return buildEvent(previous, {
     type: 'complaint.received',
     folio: receipt.folio,
     at: receipt.receivedOn,
@@ -348,7 +354,7 @@ describe('envío y seguimiento', () => {
     });
   });
 
-  it('compara el evento de recepción con la bitácora pública', async () => {
+  it('compara el evento de recepción con el tramo verificado de la bitácora', async () => {
     const deployment = createTestDeployment();
     const receipt = createReceipt();
     const request = buildSubmitRequest(
@@ -364,31 +370,36 @@ describe('envío y seguimiento', () => {
     const genesis = headFor(deployment, 0, '0'.repeat(64));
     const publishedHead = headFor(deployment, 0, event.hash);
     const earlierHead = headFor(deployment, 0, 'b'.repeat(64), '2026-10-19');
+    const serve = (events: LedgerEvent[], head = publishedHead) => ({
+      fetchHead: async () => head,
+      fetchSince: async () => ({ events, head }),
+      fetchPage: async (from: number) => ({
+        events: events.filter((item) => item.seq >= from),
+        head,
+      }),
+    });
+    const check = async (current: TrackingView, events: LedgerEvent[], head = publishedHead) =>
+      checkPublishedEvent(
+        current,
+        await loadTrackingLedger(current, deployment.pinned, serve(events, head)),
+      );
     // Pendiente de publicar: la cabeza pública todavía no llega a su día.
-    expect(
-      await checkPublishedEvent(pendingView, async () => ({ events: [], head: genesis })),
-    ).toBe('pending');
-    expect(
-      await checkPublishedEvent(pendingView, async () => ({ events: [], head: earlierHead })),
-    ).toBe('pending');
+    expect(await check(pendingView, [], genesis)).toBe('pending');
+    expect(await check(pendingView, [], earlierHead)).toBe('pending');
     // El seguimiento dice pendiente, pero la cabeza pública ya publicó su día.
-    expect(
-      await checkPublishedEvent(pendingView, async () => ({ events: [], head: publishedHead })),
-    ).toBe('mismatch');
-    expect(
-      await checkPublishedEvent(view, async () => ({ events: [event], head: publishedHead })),
-    ).toBe('published');
-    const other = { ...event, payloadDigest: 'f'.repeat(64) };
-    expect(
-      await checkPublishedEvent(view, async () => ({ events: [other], head: publishedHead })),
-    ).toBe('mismatch');
+    expect(await check(pendingView, [], publishedHead)).toBe('mismatch');
+    expect(await check(view, [event])).toBe('published');
+    // Otro evento en su lugar no llega a la cabeza firmada.
+    expect(await check(view, [{ ...event, payloadDigest: 'f'.repeat(64) }])).toBe('mismatch');
     // El seguimiento dice que se publicó, pero la bitácora pública no lo tiene.
-    expect(await checkPublishedEvent(view, async () => ({ events: [], head: publishedHead }))).toBe(
-      'mismatch',
-    );
+    expect(await check(view, [])).toBe('mismatch');
+    // Un evento fabricado con su hash recalculado tampoco: el último eslabón no es la cabeza.
+    const unhashed = { ...event, actorRole: 'system' as const, payloadDigest: 'c'.repeat(64) };
+    const forged = { ...unhashed, hash: computeEventHash(unhashed) };
+    expect(await check({ ...view, receivedEvent: forged }, [forged])).toBe('mismatch');
   });
 
-  it('busca en toda la bitácora las aperturas con la etiqueta del recibo', async () => {
+  it('busca desde el día de recepción las aperturas con la etiqueta del recibo', async () => {
     const deployment = createTestDeployment();
     const receipt = createReceipt();
     const session = startTrackingSession(FOLIO, receipt.words);
@@ -423,43 +434,61 @@ describe('envío y seguimiento', () => {
         receiptTag: payload.receiptTag,
       });
     };
-    const view = { ...trackingViewFor(signed), identityAccess: [entry] };
+    // Un día anterior: el vecino que acota el tramo.
+    const neighbor = buildEvent(null, {
+      type: 'complaint.received',
+      folio: 'YYYY-YYYY-YYYY',
+      at: '2026-10-19',
+      actorRole: 'system',
+      payload: {},
+    });
+    const received = receivedEventFor(signed, neighbor);
+    const baseView = {
+      ...trackingViewFor(signed),
+      receivedEvent: received,
+      identityAccess: [entry],
+    };
     const serve = (events: LedgerEvent[]) => {
       const last = events.at(-1);
-      const head = headFor(deployment, last?.seq ?? 0, last?.hash ?? '0'.repeat(64));
+      const head = headFor(deployment, last?.seq ?? 0, last?.hash ?? '0'.repeat(64), last?.at);
       return {
         fetchHead: async () => head,
-        fetchPage: async (from: number) => ({ events: events.slice(from), head }),
+        fetchSince: async () => ({ events, head }),
+        fetchPage: async (from: number) => ({ events: events.filter((e) => e.seq >= from), head }),
       };
     };
-    const check = (events: LedgerEvent[], current: TrackingView = view) => {
-      const { fetchHead, fetchPage } = serve(events);
-      return checkIdentityOpenings(current, session, deployment.pinned, fetchHead, fetchPage);
-    };
+    const check = async (events: LedgerEvent[], current: TrackingView = baseView) =>
+      checkIdentityOpenings(
+        current,
+        session,
+        await loadTrackingLedger(current, deployment.pinned, serve(events)),
+      );
 
-    const own = openingEvent(FOLIO, entry.openingId, null);
-    const consistent = await check([own]);
+    const own = openingEvent(FOLIO, entry.openingId, received);
+    const consistent = await check([neighbor, received, own]);
     expect(consistent.status).toBe('consistent');
     if (consistent.status === 'consistent') {
       expect([...consistent.publishedOpeningIds]).toEqual([entry.openingId]);
     }
     // Una apertura registrada con otro folio, pero ligada al mismo recibo, se detecta.
     const hidden = openingEvent('ZZZZ-ZZZZ-ZZZZ', '2'.repeat(32), own);
-    expect(await check([own, hidden])).toEqual({ status: 'hidden', hiddenCount: 1 });
-    // Una apertura del seguimiento cuyo día ya se publicó debe estar en la bitácora.
-    const unrelated = buildEvent(null, {
-      type: 'complaint.received',
-      folio: 'ZZZZ-ZZZZ-ZZZZ',
-      at: RECEIVED_ON,
-      actorRole: 'system',
-      payload: {},
+    expect(await check([neighbor, received, own, hidden])).toEqual({
+      status: 'hidden',
+      hiddenCount: 1,
     });
-    expect(await check([unrelated])).toEqual({ status: 'unpublished', unpublished: [entry] });
-    // Con la bitácora vacía todavía está pendiente; con una cadena rota no se puede saber.
-    expect(await check([])).toMatchObject({ status: 'consistent' });
-    expect(await check([{ ...own, payloadDigest: 'f'.repeat(64) }])).toEqual({
+    // Una apertura del seguimiento cuyo día ya se publicó debe estar en la bitácora.
+    expect(await check([neighbor, received])).toEqual({
+      status: 'unpublished',
+      unpublished: [entry],
+    });
+    // Un tramo que empieza después del día (sin vecino ni génesis) o una cadena rota no sirven.
+    expect(await check([received, own])).toEqual({ status: 'unknown' });
+    expect(await check([neighbor, received, { ...own, payloadDigest: 'f'.repeat(64) }])).toEqual({
       status: 'unknown',
     });
+    // Sin evento de recepción y con su día aún sin publicar, no puede haber aperturas publicadas.
+    const unpublishedView = { ...trackingViewFor(signed, [], false), identityAccess: [entry] };
+    expect(await check([neighbor], unpublishedView)).toMatchObject({ status: 'consistent' });
   });
 
   it('normaliza la conducta a su clave principal antes de sellar y enviar', () => {
@@ -739,6 +768,63 @@ describe('llaves del buzón frente al registro público', () => {
     expect(
       await verifyReporterKeys(detail, async () => ({ events: [], head }), deployment.pinned),
     ).toBe('mismatch');
+  });
+
+  it('rechaza un evento fabricado con hash coherente frente a la cabeza real', async () => {
+    const deployment = createTestDeployment();
+    const receipt = createReceipt();
+    const request = buildSubmitRequest(
+      { mode: 'anonymous', facts: FACTS, evidence: EVIDENCE, protectionRequested: false },
+      receipt.keys,
+      undefined,
+    );
+    const event = receivedEventFor(signedReceiptFor(request, deployment));
+    const later = buildEvent(event, {
+      type: 'message.sent',
+      folio: FOLIO,
+      at: '2026-10-21',
+      actorRole: 'reporter',
+      payload: {},
+    });
+    const head = headFor(deployment, later.seq, later.hash, later.at);
+    const chain = [event, later];
+    const realPage = async (from: number) => ({
+      events: chain.filter((item) => item.seq >= from),
+      head,
+    });
+    const detail = { ...detailFor(request), receivedEventSeq: event.seq };
+    // El tramo completo hasta la cabeza verifica.
+    expect(await verifyReporterKeys(detail, realPage, deployment.pinned)).toBe('verified');
+    // El servidor sustituye las llaves y fabrica el evento de esa posición.
+    const other = createReceipt();
+    const forgedDetail = {
+      ...detail,
+      reporterKeys: {
+        boxPublicKey: toBase64Url(other.keys.box.publicKey),
+        signingPublicKey: toBase64Url(other.keys.signing.publicKey),
+      },
+    };
+    const unhashed = {
+      ...event,
+      payloadDigest: receivedPayloadDigest(FOLIO, submissionDigestFromDetail(forgedDetail)),
+    };
+    const forged = { ...unhashed, hash: computeEventHash(unhashed) };
+    const forgedPage = async (from: number) => ({
+      events: [forged, later].filter((item) => item.seq >= from),
+      head,
+    });
+    expect(await verifyReporterKeys(forgedDetail, forgedPage, deployment.pinned)).toBe('mismatch');
+    const onlyForged = async () => ({ events: [forged], head: headFor(deployment, 0, event.hash) });
+    expect(await verifyReporterKeys(forgedDetail, onlyForged, deployment.pinned)).toBe('mismatch');
+    // Un anclaje que no coincide con el tramo también lo rechaza.
+    const anchor = {
+      version: 1 as const,
+      anchoredOn: '2026-10-21',
+      head: headFor(deployment, 1, 'a'.repeat(64), '2026-10-21'),
+    };
+    expect(await verifyReporterKeys(detail, realPage, deployment.pinned, [anchor])).toBe(
+      'mismatch',
+    );
   });
 
   it('también en modo sellado, con el digesto del sobre', async () => {

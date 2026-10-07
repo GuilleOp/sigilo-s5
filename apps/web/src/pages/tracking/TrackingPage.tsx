@@ -5,10 +5,12 @@ import { isMailboxSequenceComplete, ReceiptPhraseError } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch, KeyMismatchError } from '../../crypto/key-pinning.ts';
+import { obtainProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
 import {
   checkIdentityOpenings,
   checkPublishedEvent,
   decodeReporterThread,
+  loadTrackingLedger,
   sealReporterReply,
   startTrackingSession,
   verifyTrackingReceipt,
@@ -164,24 +166,24 @@ export function TrackingPage() {
       publication: canCheck ? 'checking' : 'unknown',
       openings: isSealed ? 'checking' : null,
     });
-    const fetchPage = (from: number, limit: number) => api.getLedgerEvents(from, limit);
-    if (canCheck) {
-      void checkPublishedEvent(view, fetchPage).then(
-        (publication) => updateLoaded(view, { publication }),
-        () => updateLoaded(view, { publication: 'unknown' }),
-      );
-    }
-    if (isSealed) {
-      // Las aperturas se buscan en toda la bitácora pública, sin importar el folio.
-      void checkIdentityOpenings(
-        view,
-        session,
-        PINNED_KEYS,
-        () => api.getLedgerHead(),
-        fetchPage,
-      ).then(
-        (openings) => updateLoaded(view, { openings }),
-        () => updateLoaded(view, { openings: { status: 'unknown' } }),
+    if (canCheck || isSealed) {
+      // Un solo tramo verificado de la bitácora, desde el día de recepción, sirve a ambos controles.
+      const ledgerApi = {
+        fetchHead: () => api.getLedgerHead(),
+        fetchSince: (day: string, limit: number) => api.getLedgerSince(day, limit),
+        fetchPage: (from: number, limit: number) => api.getLedgerEvents(from, limit),
+      };
+      void loadTrackingLedger(view, PINNED_KEYS, ledgerApi).then(
+        (ledger) =>
+          updateLoaded(view, {
+            ...(canCheck ? { publication: checkPublishedEvent(view, ledger) } : {}),
+            ...(isSealed ? { openings: checkIdentityOpenings(view, session, ledger) } : {}),
+          }),
+        () =>
+          updateLoaded(view, {
+            ...(canCheck ? { publication: 'unknown' as const } : {}),
+            ...(isSealed ? { openings: { status: 'unknown' as const } } : {}),
+          }),
       );
     }
     return view;
@@ -230,8 +232,12 @@ export function TrackingPage() {
     session: TrackingSession,
     messages: readonly MailboxMessage[],
   ): Promise<MailboxMessage> {
-    const send = async (current: readonly MailboxMessage[]) =>
-      api.sendReporterMessage(await sealReporterReply(text, session, PINNED_KEYS, current));
+    // Cada intento lleva su propia prueba de trabajo (los retos son de un solo uso).
+    const send = async (current: readonly MailboxMessage[]) => {
+      const request = await sealReporterReply(text, session, PINNED_KEYS, current);
+      const proof = await obtainProof(api, 'message', workerPowSolver, setReplyStatus);
+      return api.sendReporterMessage(request, proof);
+    };
     try {
       return await send(messages);
     } catch (error) {

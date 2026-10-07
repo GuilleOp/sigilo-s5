@@ -19,6 +19,9 @@ interface ReviewStepProps {
   goToStep: (step: 'facts' | 'evidence', focusId: string) => void;
 }
 
+/** Limpieza manual, igual que en el aviso de cada campo: también quita las marcas sueltas. */
+const MANUAL_STRIP_OPTIONS = { shouldRemoveUncomposedMarks: true } as const;
+
 /** Título del semáforo: destino del foco cuando la acción se resuelve en este paso. */
 const RISK_TITLE_ID = 'risk-title';
 
@@ -39,8 +42,8 @@ function runAction(action: RiskAction, draft: ReportDraft, goToStep: ReviewStepP
       ...current,
       facts: {
         ...current.facts,
-        description: stripInvisibleCharacters(current.facts.description),
-        accused: stripInvisibleCharacters(current.facts.accused),
+        description: stripInvisibleCharacters(current.facts.description, MANUAL_STRIP_OPTIONS),
+        accused: stripInvisibleCharacters(current.facts.accused, MANUAL_STRIP_OPTIONS),
       },
     }));
   }

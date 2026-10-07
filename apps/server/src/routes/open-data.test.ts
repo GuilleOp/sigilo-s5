@@ -15,6 +15,9 @@ import type { TestServer } from '../test-support/harness.ts';
 
 const HEADER = 'entidad,conducta,mes_recepcion,estatus,denuncias';
 
+/** Ruido fijo que siempre redondea hacia abajo, para comparar el CSV exacto. */
+const ROUND_DOWN = { openDataNoise: () => 0.99 };
+
 async function submitMany(
   server: TestServer,
   count: number,
@@ -40,7 +43,7 @@ async function readCsv(server: TestServer): Promise<string> {
 
 describe('GET open-data CSV', () => {
   it('no publica el mes en curso', async () => {
-    const server = createTestServer();
+    const server = createTestServer(ROUND_DOWN);
     await submitMany(server, 7, '22');
     const response = await server.app.request(ROUTES.openDataCsv);
     expect(response.status).toBe(200);
@@ -49,24 +52,41 @@ describe('GET open-data CSV', () => {
   });
 
   it('publica meses completos con conteos redondeados y suprime las celdas menores que 5', async () => {
-    const server = createTestServer();
+    const server = createTestServer(ROUND_DOWN);
     await submitMany(server, 7, '22');
     await submitMany(server, 3, '09');
     server.setNow(NEXT_MONTH);
     // Lo recibido en el mes nuevo no aparece todavía.
     await submitMany(server, 6, '14');
     expect(await readCsv(server)).toBe(
-      [HEADER, '22,LGRA-52,2026-10,received,5', 'suprimidas,,,,5', ''].join('\r\n'),
+      [HEADER, '22,LGRA-52,2026-10,received,5', 'suprimidas,,,,0', ''].join('\r\n'),
     );
   });
 
-  it('incluye la fila de suprimidas con todas las columnas aunque no haya datos', async () => {
+  it('con el ruido real, el CSV de un mes congelado es estable entre descargas', async () => {
     const server = createTestServer();
+    const folios = await submitMany(server, 8, '22');
+    await submitMany(server, 2, '09');
+    server.setNow(NEXT_MONTH);
+    const first = await readCsv(server);
+    expect(first).toMatch(/^22,LGRA-52,2026-10,received,(5|10)$/mu);
+    await postJson(
+      server.app,
+      ROUTES.authorityStatus(folios[0] ?? ''),
+      { status: 'routing' },
+      TEST_TOKEN,
+    );
+    await submitMany(server, 3, '22');
+    expect(await readCsv(server)).toBe(first);
+  });
+
+  it('incluye la fila de suprimidas con todas las columnas aunque no haya datos', async () => {
+    const server = createTestServer(ROUND_DOWN);
     expect(await readCsv(server)).toBe(`${HEADER}\r\nsuprimidas,,,,0\r\n`);
   });
 
   it('agrega las claves equivalentes del CPF en la clave principal', async () => {
-    const server = createTestServer();
+    const server = createTestServer(ROUND_DOWN);
     await submitMany(server, 3, '22', 'LGRA-52');
     await submitMany(server, 3, '22', 'CPF-222');
     server.setNow(NEXT_MONTH);
@@ -76,7 +96,7 @@ describe('GET open-data CSV', () => {
   });
 
   it('congela cada mes al cerrarse: los cambios de estatus posteriores no lo alteran', async () => {
-    const server = createTestServer();
+    const server = createTestServer(ROUND_DOWN);
     const folios = await submitMany(server, 7, '22');
     server.setNow(NEXT_MONTH);
     const frozen = await readCsv(server);

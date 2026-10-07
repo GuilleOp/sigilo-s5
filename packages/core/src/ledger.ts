@@ -10,6 +10,7 @@ import {
 } from '@sigilo/contracts';
 import type {
   IdentityAccessEntry,
+  LedgerAnchor,
   LedgerEvent,
   LedgerEventType,
   SignedLedgerHead,
@@ -37,8 +38,11 @@ export interface LedgerEventInput {
  */
 export type PendingLedgerEvent = Omit<LedgerEvent, 'seq' | 'prevHash' | 'hash'>;
 
-/** Motivo de ruptura de la cadena. */
-export type ChainFailureReason = 'malformed' | 'sequence' | 'link' | 'hash';
+/**
+ * Motivo de ruptura de la cadena. `date`: la fecha de un evento es anterior a la del evento previo
+ * (cada día se encadena completo y en orden, así que `at` nunca retrocede).
+ */
+export type ChainFailureReason = 'malformed' | 'sequence' | 'link' | 'hash' | 'date';
 
 /** Resultado de verificar una cadena de eventos. */
 export type ChainVerification =
@@ -111,9 +115,13 @@ export function pendingEventFor(input: LedgerEventInput): PendingLedgerEvent {
 
 /**
  * Encadena un evento pendiente después de `previous` (o como el primero si es `null`).
- * Lanza error si el evento resultante no cumple el esquema.
+ * Lanza error si el evento resultante no cumple el esquema o si su fecha es anterior a la de
+ * `previous` (la cadena exige fechas no decrecientes, ver `verifyChain`).
  */
 export function chainEvent(previous: LedgerEvent | null, pending: PendingLedgerEvent): LedgerEvent {
+  if (previous !== null && pending.at < previous.at) {
+    throw new Error('La fecha del evento es anterior a la del último evento encadenado.');
+  }
   const unhashed = {
     seq: previous === null ? 0 : previous.seq + 1,
     type: pending.type,
@@ -136,8 +144,11 @@ export function buildEvent(previous: LedgerEvent | null, input: LedgerEventInput
 }
 
 /**
- * Verifica secuencia, enlaces y hashes de `events`. Por omisión la cadena debe empezar en el
- * génesis; con `previous` se verifica un tramo que continúa a ese evento ya confiable.
+ * Verifica secuencia, enlaces, hashes y fechas no decrecientes de `events`. Por omisión la cadena
+ * debe empezar en el génesis; con `previous` se verifica un tramo que continúa a ese evento ya
+ * confiable (y cuya fecha es la mínima del tramo).
+ * Seguridad: las fechas no decrecientes permiten a un cliente acotar dónde empieza un día y
+ * descargar solo desde ahí (ver `verifyEventInChain` y el seguimiento de aperturas).
  */
 export function verifyChain(
   events: readonly LedgerEvent[],
@@ -145,6 +156,7 @@ export function verifyChain(
 ): ChainVerification {
   let expectedSeq = previous === null ? 0 : previous.seq + 1;
   let expectedPrevHash = previous === null ? LEDGER_GENESIS_HASH : previous.hash;
+  let minimumAt = previous === null ? '' : previous.at;
   for (const candidate of events) {
     const parsed = LedgerEventSchema.safeParse(candidate);
     if (!parsed.success) return { valid: false, failedAtSeq: expectedSeq, reason: 'malformed' };
@@ -158,8 +170,10 @@ export function verifyChain(
     if (event.hash !== computeEventHash(event)) {
       return { valid: false, failedAtSeq: expectedSeq, reason: 'hash' };
     }
+    if (event.at < minimumAt) return { valid: false, failedAtSeq: expectedSeq, reason: 'date' };
     expectedSeq += 1;
     expectedPrevHash = event.hash;
+    minimumAt = event.at;
   }
   return { valid: true };
 }
@@ -190,6 +204,62 @@ export function verifyLedgerHead(head: SignedLedgerHead, publicKey: Uint8Array):
   } catch {
     return false;
   }
+}
+
+/** Motivo por el que un evento no queda probado dentro de la cadena publicada. */
+export type EventInChainFailure = 'head-signature' | 'event' | 'chain' | 'head-mismatch' | 'anchor';
+
+/** Resultado de `verifyEventInChain`. */
+export type EventInChainVerification =
+  { valid: true } | { valid: false; reason: EventInChainFailure };
+
+/** Opciones de `verifyEventInChain`. */
+export interface EventInChainOptions {
+  /**
+   * Anclajes conocidos (configurados o pegados). Los que caen dentro del tramo deben coincidir con
+   * su evento; uno posterior a la cabeza indica que la bitácora retrocedió. Los anteriores al
+   * evento no se pueden comparar con este tramo y se ignoran.
+   */
+  anchors?: readonly LedgerAnchor[];
+}
+
+/**
+ * Prueba que `event` pertenece a la bitácora cuya cabeza firmada es `head`: `chain` debe ser el
+ * tramo completo desde ese evento (idéntico, en la primera posición) hasta la cabeza, con hashes,
+ * enlaces, secuencia y fechas válidos, y su último eslabón debe ser exactamente el de la cabeza,
+ * firmada con `serverPublicKey`.
+ * Seguridad: un evento con un hash coherente consigo mismo no prueba nada; solo el encadenamiento
+ * hasta la cabeza firmada lo liga a la bitácora que ven todos (y a los anclajes publicados).
+ */
+export function verifyEventInChain(
+  event: LedgerEvent,
+  chain: readonly LedgerEvent[],
+  head: SignedLedgerHead,
+  serverPublicKey: Uint8Array,
+  options: EventInChainOptions = {},
+): EventInChainVerification {
+  if (!verifyLedgerHead(head, serverPublicKey)) return { valid: false, reason: 'head-signature' };
+  const first = chain[0];
+  const isSameEvent =
+    first !== undefined &&
+    LedgerEventSchema.safeParse(first).success &&
+    canonicalize(first) === canonicalize(event) &&
+    first.hash === computeEventHash(first);
+  if (first === undefined || !isSameEvent) return { valid: false, reason: 'event' };
+  if (!verifyChain(chain.slice(1), first).valid) return { valid: false, reason: 'chain' };
+  const last = chain.at(-1) ?? first;
+  if (last.seq !== head.seq || last.hash !== head.hash) {
+    return { valid: false, reason: 'head-mismatch' };
+  }
+  for (const anchor of options.anchors ?? []) {
+    if (!verifyLedgerHead(anchor.head, serverPublicKey)) return { valid: false, reason: 'anchor' };
+    if (anchor.head.hash === LEDGER_GENESIS_HASH || anchor.head.seq < first.seq) continue;
+    const anchored = chain[anchor.head.seq - first.seq];
+    if (anchored === undefined || anchored.hash !== anchor.head.hash) {
+      return { valid: false, reason: 'anchor' };
+    }
+  }
+  return { valid: true };
 }
 
 /**

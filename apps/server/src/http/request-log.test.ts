@@ -21,7 +21,7 @@ function serverWith(mode: RequestLogMode) {
 }
 
 describe('createRequestLog', () => {
-  it('en modo aggregate cuenta por hora, sin rutas de la persona denunciante ni orden', async () => {
+  it('en modo aggregate cuenta por hora, sin rutas de la persona denunciante, llaves ni bitácora', async () => {
     const { server, lines, requestLog, setNow } = serverWith('aggregate');
     const request = await buildComplaintRequest(server, {
       mode: 'anonymous',
@@ -29,28 +29,35 @@ describe('createRequestLog', () => {
     });
     await submitComplaint(server, request);
     await server.app.request(ROUTES.ledgerHead);
+    await server.app.request(`${ROUTES.ledgerEvents}?from=0`);
+    await server.app.request(ROUTES.keys);
     await getAsAuthority(server.app, ROUTES.authorityComplaints);
-    await server.app.request(ROUTES.ledgerHead);
+    await getAsAuthority(server.app, ROUTES.authorityComplaints);
+    await server.app.request(ROUTES.openDataCsv);
     await server.app.request(`${ROUTES.powChallenge}?purpose=complaint`);
     expect(lines).toEqual([]);
 
-    // La primera petición de la hora siguiente escribe el resumen de la anterior.
+    // La primera petición contada de la hora siguiente escribe el resumen de la anterior.
     setNow(new Date('2026-10-20T16:01:00Z'));
     await server.app.request(ROUTES.keys);
+    expect(lines).toEqual([]);
+    await server.app.request(ROUTES.openDataCsv);
     expect(lines).toEqual([
       {
         hour: '2026-10-20T15:00Z',
         counts: [
-          { method: 'GET', route: ROUTES.authorityComplaints, status: 200, count: 1 },
-          { method: 'GET', route: ROUTES.ledgerHead, status: 200, count: 2 },
+          { method: 'GET', route: ROUTES.authorityComplaints, status: 200, count: 2 },
+          { method: 'GET', route: ROUTES.openDataCsv, status: 200, count: 1 },
         ],
       },
     ]);
-    expect(JSON.stringify(lines)).not.toContain(ROUTES.complaints);
+    for (const route of [ROUTES.complaints, ROUTES.keys, ROUTES.ledgerHead, ROUTES.ledgerEvents]) {
+      expect(JSON.stringify(lines)).not.toContain(`"${route}"`);
+    }
     requestLog.flush();
     expect(lines.at(-1)).toEqual({
       hour: '2026-10-20T16:00Z',
-      counts: [{ method: 'GET', route: ROUTES.keys, status: 200, count: 1 }],
+      counts: [{ method: 'GET', route: ROUTES.openDataCsv, status: 200, count: 1 }],
     });
     requestLog.flush();
     expect(lines).toHaveLength(2);
@@ -67,7 +74,7 @@ describe('createRequestLog', () => {
 
   it('en modo off no escribe nada', async () => {
     const { server, lines, requestLog } = serverWith('off');
-    await server.app.request(ROUTES.keys);
+    await server.app.request(ROUTES.openDataCsv);
     requestLog.flush();
     expect(lines).toEqual([]);
   });

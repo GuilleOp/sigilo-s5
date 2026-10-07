@@ -18,6 +18,7 @@ import {
   reconcileIdentityOpenings,
   signLedgerHead,
   verifyChain,
+  verifyEventInChain,
   verifyLedgerHead,
   verifyReceiptEvent,
 } from './ledger.ts';
@@ -153,6 +154,135 @@ describe('verifyChain', () => {
       failedAtSeq: 0,
       reason: 'malformed',
     });
+  });
+
+  it('exige fechas no decrecientes, también respecto del evento confiable', () => {
+    const [first, second] = buildChain();
+    if (!first || !second) throw new Error('faltan eventos');
+    const earlier = buildEvent(second, {
+      type: 'message.sent',
+      folio: FOLIO,
+      at: '2026-10-07',
+      actorRole: 'reporter',
+      payload: 1,
+    });
+    // Se fabrica a mano un eslabón que retrocede un día (chainEvent lo impide).
+    const unhashed = { ...earlier, at: '2026-10-05' };
+    const backwards = { ...unhashed, hash: computeEventHash(unhashed) };
+    expect(verifyChain([first, second, backwards])).toEqual({
+      valid: false,
+      failedAtSeq: 2,
+      reason: 'date',
+    });
+    expect(verifyChain([backwards], second)).toEqual({
+      valid: false,
+      failedAtSeq: 2,
+      reason: 'date',
+    });
+  });
+});
+
+describe('chainEvent', () => {
+  it('rechaza encadenar un evento con fecha anterior a la del último', () => {
+    const [, second] = buildChain();
+    if (!second) throw new Error('falta evento');
+    const pending = pendingEventFor({
+      type: 'message.sent',
+      folio: FOLIO,
+      at: '2026-10-06',
+      actorRole: 'reporter',
+      payload: 2,
+    });
+    expect(() => chainEvent(second, pending)).toThrow('anterior');
+  });
+});
+
+describe('verifyEventInChain', () => {
+  const serverKeyId = keyIdFor(SERVER_PUBLIC);
+
+  function headOf(event: LedgerEvent) {
+    return signLedgerHead(
+      { seq: event.seq, hash: event.hash, at: event.at, serverKeyId },
+      SERVER_SECRET,
+    );
+  }
+
+  it('acepta un evento encadenado hasta la cabeza firmada', () => {
+    const chain = buildChain();
+    const [first, second, third] = chain;
+    if (!first || !second || !third) throw new Error('faltan eventos');
+    const head = headOf(third);
+    expect(verifyEventInChain(second, chain.slice(1), head, SERVER_PUBLIC)).toEqual({
+      valid: true,
+    });
+    expect(verifyEventInChain(third, [third], head, SERVER_PUBLIC)).toEqual({ valid: true });
+  });
+
+  it('rechaza un evento fabricado con hash coherente y la cabeza real', () => {
+    const chain = buildChain();
+    const [first, , third] = chain;
+    if (!first || !third) throw new Error('faltan eventos');
+    const unhashed = { ...first, payloadDigest: 'c'.repeat(64) };
+    const forged = { ...unhashed, hash: computeEventHash(unhashed) };
+    const head = headOf(third);
+    // Solo el evento: no llega a la cabeza.
+    expect(verifyEventInChain(forged, [forged], head, SERVER_PUBLIC)).toEqual({
+      valid: false,
+      reason: 'head-mismatch',
+    });
+    // Con el tramo real detrás: el enlace se rompe.
+    expect(verifyEventInChain(forged, [forged, ...chain.slice(1)], head, SERVER_PUBLIC)).toEqual({
+      valid: false,
+      reason: 'chain',
+    });
+    // Un tramo que no empieza con el evento pedido.
+    expect(verifyEventInChain(forged, chain, head, SERVER_PUBLIC)).toEqual({
+      valid: false,
+      reason: 'event',
+    });
+  });
+
+  it('rechaza una cabeza con otra firma y compara los anclajes del tramo', () => {
+    const chain = buildChain();
+    const [first, second, third] = chain;
+    if (!first || !second || !third) throw new Error('faltan eventos');
+    const head = headOf(third);
+    expect(verifyEventInChain(first, chain, head, generateSigningKeyPair().publicKey)).toEqual({
+      valid: false,
+      reason: 'head-signature',
+    });
+    const anchor = { version: 1 as const, anchoredOn: '2026-10-07', head: headOf(second) };
+    expect(verifyEventInChain(first, chain, head, SERVER_PUBLIC, { anchors: [anchor] })).toEqual({
+      valid: true,
+    });
+    const rewritten = {
+      ...anchor,
+      head: signLedgerHead(
+        { seq: 1, hash: 'd'.repeat(64), at: '2026-10-07', serverKeyId },
+        SERVER_SECRET,
+      ),
+    };
+    expect(verifyEventInChain(first, chain, head, SERVER_PUBLIC, { anchors: [rewritten] })).toEqual(
+      { valid: false, reason: 'anchor' },
+    );
+    // Un anclaje posterior a la cabeza: la bitácora retrocedió.
+    const ahead = {
+      ...anchor,
+      head: signLedgerHead(
+        { seq: 9, hash: 'e'.repeat(64), at: '2026-10-08', serverKeyId },
+        SERVER_SECRET,
+      ),
+    };
+    expect(verifyEventInChain(first, chain, head, SERVER_PUBLIC, { anchors: [ahead] })).toEqual({
+      valid: false,
+      reason: 'anchor',
+    });
+    // Un anclaje anterior al tramo no se puede comparar y se ignora.
+    expect(
+      verifyEventInChain(second, chain.slice(1), head, SERVER_PUBLIC, {
+        anchors: [{ ...anchor, head: headOf(first) }],
+      }),
+    ).toEqual({ valid: true });
   });
 });
 

@@ -2,6 +2,7 @@
 import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import type {
   IdentityAccessEntry,
+  LedgerEvent,
   LedgerPage,
   SignedLedgerHead,
   MailboxMessage,
@@ -18,12 +19,13 @@ import {
   reconcileIdentityOpenings,
   sealMailboxMessage,
   toBase64Url,
+  verifyLedgerHead,
   verifyReceipt,
   verifyReceiptEvent,
 } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
-import { downloadAndVerifyLedger } from './ledger-verification.ts';
+import { downloadAndVerifySince } from './ledger-verification.ts';
 
 /** Sesión de seguimiento en memoria: folio y llaves derivadas del recibo. */
 export interface TrackingSession {
@@ -88,22 +90,65 @@ export function isDayPublished(head: SignedLedgerHead, day: string): boolean {
 }
 
 /**
- * Busca el evento de recepción en la bitácora pública y lo compara con `view.receivedEvent`.
- * Seguridad: si el seguimiento dice que sigue pendiente pero la cabeza pública ya publicó su día,
- * o si la bitácora pública muestra otro evento, el servidor está mostrando algo distinto a cada
- * quien.
+ * Bitácora que necesita el seguimiento: el tramo verificado desde el día de recepción hasta la
+ * cabeza (`valid`), solo la cabeza firmada cuando el evento de recepción aún no se entrega
+ * (`unpublished`) o un tramo que no se pudo verificar (`invalid`).
  */
-export async function checkPublishedEvent(
+export type TrackingLedger =
+  | { status: 'valid'; head: SignedLedgerHead; events: readonly LedgerEvent[] }
+  | { status: 'unpublished'; head: SignedLedgerHead }
+  | { status: 'invalid' };
+
+/** Funciones de la API pública de la bitácora que usa el seguimiento. */
+export interface TrackingLedgerApi {
+  fetchHead: () => Promise<SignedLedgerHead>;
+  fetchSince: (day: string, limit: number) => Promise<LedgerPage>;
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>;
+}
+
+/**
+ * Descarga y verifica, una sola vez para ambos controles, el tramo de la bitácora desde el vecino
+ * anterior al día de recepción hasta la cabeza firmada con la llave fijada.
+ * Seguridad: las aperturas ligadas al recibo y el evento de recepción tienen fecha igual o
+ * posterior al día de recepción, y la cadena exige fechas no decrecientes: este tramo los contiene
+ * a todos, así el celular no descarga la bitácora desde el génesis. Se eligió esto en lugar de una
+ * ruta filtrada por `receiptTag` porque una lista filtrada no prueba que no falte ninguna.
+ */
+export async function loadTrackingLedger(
   view: TrackingView,
-  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
-): Promise<PublicationStatus> {
+  pinned: PinnedKeys,
+  ledgerApi: TrackingLedgerApi,
+): Promise<TrackingLedger> {
+  if (view.receivedEvent === undefined) {
+    const head = await ledgerApi.fetchHead();
+    if (!verifyLedgerHead(head, pinned.serverSigningPublicKey)) return { status: 'invalid' };
+    return { status: 'unpublished', head };
+  }
+  const result = await downloadAndVerifySince(
+    view.receipt.receivedOn,
+    ledgerApi.fetchSince,
+    ledgerApi.fetchPage,
+    pinned.serverSigningPublicKey,
+  );
+  return result.status === 'valid'
+    ? { status: 'valid', head: result.head, events: result.events }
+    : { status: 'invalid' };
+}
+
+/**
+ * Compara el evento de recepción del seguimiento con el tramo verificado de la bitácora pública.
+ * Seguridad: si el seguimiento dice que sigue pendiente pero la cabeza pública ya publicó su día,
+ * o si la cadena muestra otro evento en esa posición (o ninguno), el servidor está mostrando algo
+ * distinto a cada quien. El evento solo cuenta si está encadenado hasta la cabeza firmada.
+ */
+export function checkPublishedEvent(view: TrackingView, ledger: TrackingLedger): PublicationStatus {
+  if (ledger.status === 'invalid') return 'mismatch';
   const received = view.receivedEvent;
   if (received === undefined) {
-    const { head } = await fetchPage(0, 1);
-    return isDayPublished(head, view.receipt.receivedOn) ? 'mismatch' : 'pending';
+    return isDayPublished(ledger.head, view.receipt.receivedOn) ? 'mismatch' : 'pending';
   }
-  const page = await fetchPage(received.seq, 1);
-  const published = page.events[0];
+  if (ledger.status === 'unpublished') return 'mismatch';
+  const published = ledger.events.find((event) => event.seq === received.seq);
   if (published === undefined) return 'mismatch';
   return canonicalize(published) === canonicalize(received) ? 'published' : 'mismatch';
 }
@@ -121,26 +166,27 @@ export type IdentityOpeningsCheck =
   | { status: 'unknown' };
 
 /**
- * Descarga y verifica toda la bitácora pública con la llave fijada y busca, sin importar el folio,
- * las aperturas con la etiqueta del recibo (`receiptTag`), para contrastarlas con
- * `view.identityAccess`.
+ * Busca en el tramo verificado, sin importar el folio, las aperturas con la etiqueta del recibo
+ * (`receiptTag`) y las contrasta con `view.identityAccess`.
  * Seguridad: el servidor podría registrar una apertura con otro folio u ocultarla en el
  * seguimiento; la etiqueta depende del recibo, que solo conoce la persona denunciante.
  */
-export async function checkIdentityOpenings(
+export function checkIdentityOpenings(
   view: TrackingView,
   session: TrackingSession,
-  pinned: PinnedKeys,
-  fetchHead: () => Promise<SignedLedgerHead>,
-  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
-): Promise<IdentityOpeningsCheck> {
-  const ledger = await downloadAndVerifyLedger(fetchHead, fetchPage, pinned.serverSigningPublicKey);
-  if (ledger.status !== 'valid') return { status: 'unknown' };
-  const isGenesis = ledger.head.hash === LEDGER_GENESIS_HASH;
+  ledger: TrackingLedger,
+): IdentityOpeningsCheck {
+  if (ledger.status === 'invalid') return { status: 'unknown' };
+  if (ledger.status === 'unpublished') {
+    // Si el día de recepción ya se publicó, falta el evento: no se puede contrastar nada.
+    if (isDayPublished(ledger.head, view.receipt.receivedOn)) return { status: 'unknown' };
+    // Ninguna apertura puede ser anterior a la recepción: aún no se publica ninguna.
+    return { status: 'consistent', publishedOpeningIds: new Set() };
+  }
   const result = reconcileIdentityOpenings(ledger.events, view.identityAccess, {
     folio: view.folio,
     authVerifier: session.keys.authVerifier,
-    publishedThrough: isGenesis ? null : ledger.head.at,
+    publishedThrough: ledger.head.at,
   });
   if (result.unlisted.length > 0) return { status: 'hidden', hiddenCount: result.unlisted.length };
   if (result.unpublished.length > 0) {

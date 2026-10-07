@@ -57,13 +57,14 @@ export function OpenDataPage() {
       </p>
       <Alert tone="info" title="Cómo protegemos a quienes denuncian">
         <p>
-          Una fila con menos de {OPEN_DATA_MIN_CELL} denuncias podría señalar a una persona (por
-          ejemplo, la única denuncia de un municipio en un mes). Por eso esas filas no se publican:
-          solo decimos cuántas denuncias quedaron fuera en total.
+          Los números están redondeados de {OPEN_DATA_ROUNDING} en {OPEN_DATA_ROUNDING}, a veces
+          hacia arriba y a veces hacia abajo, al azar. Por ejemplo, 7 denuncias pueden aparecer como
+          5 o como 10. Así nadie puede saber si en una fila hay una denuncia más o una menos.
         </p>
         <p>
-          Los números están redondeados de {OPEN_DATA_ROUNDING} en {OPEN_DATA_ROUNDING}. Por
-          ejemplo, 7 denuncias aparecen como 5 y 8 aparecen como 10.
+          Las filas que quedan en 0 no se publican: una fila con menos de {OPEN_DATA_MIN_CELL}{' '}
+          denuncias podría señalar a una persona. Solo decimos cuántas denuncias quedaron fuera en
+          total.
         </p>
         <p>
           Solo publicamos meses completos. Las denuncias de este mes aparecerán cuando termine el

@@ -1,12 +1,19 @@
 // Pruebas de recepción de denuncias: modos, catálogos, recibo único, cuota de envíos, asociación
 // de pruebas y comprobante firmado.
 import { describe, expect, it } from 'vitest';
-import { ROUTES, SubmitComplaintResponseSchema } from '@sigilo/contracts';
+import {
+  POW_HEADER,
+  PowChallengeSchema,
+  ROUTES,
+  SubmitComplaintResponseSchema,
+} from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
 import {
   computeSubmissionDigest,
+  formatPowHeader,
   isFolio,
   receivedPayloadDigest,
+  solvePow,
   verifyReceipt,
 } from '@sigilo/core';
 import {
@@ -150,6 +157,58 @@ describe('POST complaints', () => {
       statuses.push((await postJson(server.app, ROUTES.complaints, request)).status);
     }
     expect(statuses).toEqual([201, 201, 429]);
+  });
+
+  it('los intentos rechazados no gastan la cuota: el freno extremo solo cuenta los confirmados', async () => {
+    const server = createTestServer({
+      rateLimits: { complaintSubmissions: { limit: 2, windowMs: 60 * 60 * 1000 } },
+    });
+    const attacker = createReporter();
+    const repeated = await buildComplaintRequest(server, { mode: 'anonymous', reporter: attacker });
+    await submitComplaint(server, repeated);
+    for (let index = 0; index < 20; index += 1) {
+      expect((await postJson(server.app, ROUTES.complaints, repeated)).status).toBe(400);
+    }
+    const legit = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+    });
+    expect((await postJson(server.app, ROUTES.complaints, legit)).status).toBe(201);
+  });
+
+  it('bajo abuso con prueba de trabajo, la denuncia legítima pasa con más dificultad', async () => {
+    const server = createTestServer({
+      powBits: 2,
+      powMaxBits: 6,
+      powLoadThresholds: { complaint: 4 },
+    });
+    const send = async (request: unknown) => {
+      const challenge = PowChallengeSchema.parse(
+        await (await server.app.request(`${ROUTES.powChallenge}?purpose=complaint`)).json(),
+      );
+      const counter = solvePow(challenge.token, challenge.bits) ?? '0';
+      const response = await server.app.request(ROUTES.complaints, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          [POW_HEADER]: formatPowHeader(challenge.token, counter),
+        },
+        body: JSON.stringify(request),
+      });
+      return { status: response.status, bits: challenge.bits };
+    };
+    const attacker = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+    });
+    const seen: number[] = [];
+    for (let index = 0; index < 40; index += 1) seen.push((await send(attacker)).bits);
+    expect(seen[0]).toBe(2);
+    expect(Math.max(...seen)).toBe(6);
+    const legit = await send(
+      await buildComplaintRequest(server, { mode: 'anonymous', reporter: createReporter() }),
+    );
+    expect(legit).toEqual({ status: 201, bits: 6 });
   });
 
   it('rechaza solicitudes que no cumplen el esquema o no son JSON', async () => {

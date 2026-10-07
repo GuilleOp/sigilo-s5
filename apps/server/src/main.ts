@@ -12,10 +12,10 @@ import { createLedgerRepository } from './db/ledger-repository.ts';
 import { createOpenDataRepository } from './db/open-data-repository.ts';
 import { createRequestLog } from './http/request-log.ts';
 import { createLedgerService } from './ledger-service.ts';
-import { acquireServerLock } from './server-lock.ts';
+import { acquireServerLock, refreshServerLock } from './server-lock.ts';
 import {
   intervalScheduler,
-  purgeUntrackedEvidence,
+  purgeUnattendedEvidence,
   startEvidencePurge,
 } from './services/evidence-service.ts';
 import { freezeClosedMonths } from './services/open-data.ts';
@@ -55,18 +55,19 @@ function start(): void {
     now,
   });
   const openData = createOpenDataRepository(db);
-  // Tarea programada con el mismo reloj inyectado: cierra los días de la bitácora aunque nadie la
-  // consulte, congela los meses completos, aplica la retención y vacía los contadores por hora.
+  // Tarea programada con el mismo reloj inyectado: renueva el bloqueo, cierra los días de la
+  // bitácora aunque nadie la consulte, congela los meses completos, aplica la retención de pruebas
+  // de denuncias sin atender y vacía los contadores por hora.
   const runDailyTasks = (): void => {
     try {
+      refreshServerLock(config.dataDir);
       ledger.publishClosedDays();
       freezeClosedMonths({ db, complaints, openData, now });
-      purgeUntrackedEvidence({
-        complaints,
+      purgeUnattendedEvidence({
         evidence,
         evidenceStore,
         now,
-        retentionDays: config.untrackedRetentionDays,
+        retentionDays: config.evidenceRetentionDays,
       });
       requestLog.flush();
     } catch {
@@ -86,6 +87,7 @@ function start(): void {
     ...(config.hstsMaxAgeSeconds === null ? {} : { hstsMaxAgeSeconds: config.hstsMaxAgeSeconds }),
     requestLog,
     powBits: config.powBits,
+    powMaxBits: config.powMaxBits,
     evidenceQuotaBytes: config.evidenceQuotaBytes,
   });
   const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {

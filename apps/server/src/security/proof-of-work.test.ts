@@ -10,7 +10,14 @@ import {
   samplePng,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
-import { createPowGuard } from './proof-of-work.ts';
+import {
+  createPowGuard,
+  createSlidingCounter,
+  loadExtraBits,
+  MIN_POW_TTL_MS,
+  POW_TTL_MS,
+  spentPressure,
+} from './proof-of-work.ts';
 
 const BITS = 8;
 
@@ -63,11 +70,74 @@ describe('createPowGuard', () => {
     expect(() => createPowGuard({ bits: 33, now: () => new Date() })).toThrow('dificultad');
   });
 
-  it('se niega a aceptar más retos cuando la lista de gastados está llena', () => {
-    const guard = createPowGuard({ bits: 1, now: () => new Date(), maxSpent: 2 });
+  it('con la lista de gastados llena no rechaza: sube la dificultad, acorta la vigencia y olvida los más viejos', () => {
+    let now = new Date('2026-10-20T10:00:00Z');
+    const guard = createPowGuard({ bits: 1, now: () => now, maxSpent: 4 });
+    const first = solved(guard, 'complaint');
+    guard.verify(first, 'complaint');
+    guard.verify(solved(guard, 'complaint'), 'complaint');
+    // Mitad llena: un bit más.
+    expect(guard.currentBits('complaint')).toBe(2);
     guard.verify(solved(guard, 'complaint'), 'complaint');
     guard.verify(solved(guard, 'complaint'), 'complaint');
-    expectRejected(() => guard.verify(solved(guard, 'complaint'), 'complaint'));
+    expect(guard.currentBits('complaint')).toBe(4);
+    // Llena: la siguiente se acepta igual.
+    const late = solved(guard, 'complaint');
+    guard.verify(late, 'complaint');
+    expectRejected(() => guard.verify(late, 'complaint'));
+    // La vigencia de un reto nuevo es más corta que los 10 minutos normales.
+    const short = solved(guard, 'evidence');
+    now = new Date(now.getTime() + MIN_POW_TTL_MS + 1000);
+    expectRejected(() => guard.verify(short, 'evidence'));
+  });
+});
+
+describe('dificultad adaptativa', () => {
+  it('suma un bit por cada duplicación de la carga sobre el umbral y vuelve a bajar', () => {
+    let now = new Date('2026-10-20T10:00:00Z');
+    const guard = createPowGuard({
+      bits: 2,
+      maxBits: 4,
+      now: () => now,
+      loadThresholds: { complaint: 2 },
+    });
+    expect(guard.currentBits('complaint')).toBe(2);
+    for (let index = 0; index < 3; index += 1)
+      guard.verify(solved(guard, 'complaint'), 'complaint');
+    expect(guard.currentBits('complaint')).toBe(3);
+    expect(guard.issue('complaint').bits).toBe(3);
+    // Otro propósito no se ve afectado.
+    expect(guard.currentBits('evidence')).toBe(2);
+    for (let index = 0; index < 10; index += 1)
+      guard.verify(solved(guard, 'complaint'), 'complaint');
+    // 13 soluciones: 2 → 4 → 8 → 16 serían 3 bits, pero el máximo es 4.
+    expect(guard.currentBits('complaint')).toBe(4);
+    now = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    expect(guard.currentBits('complaint')).toBe(2);
+  });
+
+  it('calcula los bits de la carga y la presión de la lista de gastados', () => {
+    expect([0, 60, 61, 120, 121, 240, 241].map((load) => loadExtraBits(load, 60))).toEqual([
+      0, 0, 1, 1, 2, 2, 3,
+    ]);
+    expect(spentPressure(0, 100, POW_TTL_MS)).toEqual({ extraBits: 0, ttlMs: POW_TTL_MS });
+    expect(spentPressure(75, 100, POW_TTL_MS)).toEqual({
+      extraBits: 2,
+      ttlMs: POW_TTL_MS / 2,
+    });
+    expect(spentPressure(100, 100, POW_TTL_MS)).toEqual({ extraBits: 3, ttlMs: MIN_POW_TTL_MS });
+  });
+
+  it('el contador deslizante olvida lo que sale de la ventana', () => {
+    let now = new Date('2026-10-20T10:00:00Z');
+    const counter = createSlidingCounter(60_000, () => now);
+    counter.record();
+    counter.record();
+    now = new Date(now.getTime() + 30_000);
+    counter.record();
+    expect(counter.count()).toBe(3);
+    now = new Date(now.getTime() + 35_000);
+    expect(counter.count()).toBe(1);
   });
 });
 

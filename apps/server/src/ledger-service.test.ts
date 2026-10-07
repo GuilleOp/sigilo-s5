@@ -5,14 +5,19 @@ import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import { generateSigningKeyPair, keyIdFor, verifyChain, verifyLedgerHead } from '@sigilo/core';
 import { openDatabase, withTransaction } from './db/database.ts';
 import { createLedgerRepository } from './db/ledger-repository.ts';
-import type { StoredPendingEvent } from './db/ledger-repository.ts';
+import type { LedgerRepository } from './db/ledger-repository.ts';
 import { createLedgerService } from './ledger-service.ts';
+import type { LedgerServiceDeps } from './ledger-service.ts';
 
 const FOLIO = '0123-4567-89AB';
 
-function setup(shuffleDay?: (events: readonly StoredPendingEvent[]) => StoredPendingEvent[]) {
+function setup(
+  shuffleDay?: (ids: readonly string[]) => string[],
+  extra: Partial<LedgerServiceDeps> = {},
+  wrapRepository: (repository: LedgerRepository) => LedgerRepository = (repository) => repository,
+) {
   const db = openDatabase(':memory:');
-  const repository = createLedgerRepository(db);
+  const repository = wrapRepository(createLedgerRepository(db));
   const keys = generateSigningKeyPair();
   let now = new Date('2026-10-20T10:00:00Z');
   const ledger = createLedgerService({
@@ -22,6 +27,7 @@ function setup(shuffleDay?: (events: readonly StoredPendingEvent[]) => StoredPen
     serverSigningPrivateKey: keys.privateKey,
     now: () => now,
     ...(shuffleDay === undefined ? {} : { shuffleDay }),
+    ...extra,
   });
   const record = (index: number) =>
     withTransaction(db, () =>
@@ -54,7 +60,7 @@ describe('createLedgerService', () => {
 
   it('encadena cada día completo, en orden de días, con el orden del barajado', () => {
     // Barajado determinista para la prueba: invierte el orden de cada día.
-    const { ledger, record, setNow } = setup((events) => [...events].reverse());
+    const { ledger, record, setNow } = setup((ids) => [...ids].reverse());
     const day1 = [record(0), record(1), record(2)];
     setNow(new Date('2026-10-21T12:00:00Z'));
     const day2 = [record(3), record(4)];
@@ -89,10 +95,10 @@ describe('createLedgerService', () => {
     expect(published).not.toEqual(arrivals);
   });
 
-  it('cierra el día en una sola transacción: si algo falla no publica nada', () => {
-    const { ledger, record, repository, setNow } = setup((events) => {
-      if (events.length > 1) throw new Error('falla sintética');
-      return [...events];
+  it('si el barajado falla no publica nada del día', () => {
+    const { ledger, record, repository, setNow } = setup((ids) => {
+      if (ids.length > 1) throw new Error('falla sintética');
+      return [...ids];
     });
     record(0);
     record(1);
@@ -100,6 +106,73 @@ describe('createLedgerService', () => {
     expect(() => ledger.publishClosedDays()).toThrow('falla sintética');
     expect(repository.last()).toBeNull();
     expect(repository.listPendingBefore('2026-10-21')).toHaveLength(2);
+  });
+
+  it('encadena por lotes y no publica un día interrumpido hasta terminarlo', () => {
+    let insertsBeforeFailure = Number.POSITIVE_INFINITY;
+    const { ledger, record, repository, setNow, keys } = setup(
+      undefined,
+      { batchSize: 2, publishOnRead: false },
+      (base) => ({
+        ...base,
+        insert: (event, payloadJson) => {
+          insertsBeforeFailure -= 1;
+          if (insertsBeforeFailure < 0) throw new Error('corte sintético');
+          base.insert(event, payloadJson);
+        },
+      }),
+    );
+    const day1 = [record(0), record(1)];
+    setNow(new Date('2026-10-21T10:00:00Z'));
+    const day2 = [record(2), record(3), record(4), record(5), record(6)];
+    setNow(new Date('2026-10-22T10:00:00Z'));
+    // Se cae a la mitad del segundo día: primer día completo y un lote del segundo.
+    insertsBeforeFailure = 4;
+    expect(() => ledger.publishClosedDays()).toThrow('corte sintético');
+    expect(repository.listPendingBefore('2026-10-22')).toHaveLength(3);
+    const partial = ledger.page(0, 10);
+    // La cabeza se queda en el primer día y la página no muestra el día a medias.
+    expect(partial.head.at).toBe('2026-10-20');
+    expect(partial.events).toHaveLength(2);
+    expect(verifyLedgerHead(partial.head, keys.publicKey)).toBe(true);
+
+    insertsBeforeFailure = Number.POSITIVE_INFINITY;
+    expect(ledger.publishClosedDays()).toBe(3);
+    const events = ledger.page(0, 10).events;
+    expect(verifyChain(events)).toEqual({ valid: true });
+    expect(new Set(events.map((event) => event.payloadDigest))).toEqual(
+      new Set([...day1, ...day2].map((event) => event.payloadDigest)),
+    );
+    expect(ledger.head()).toMatchObject({ seq: 6, at: '2026-10-21' });
+  });
+
+  it('rechaza con ledger_day_full al llegar al tope de pendientes del día', () => {
+    const { record, setNow } = setup(undefined, { maxPendingPerDay: 2 });
+    record(0);
+    record(1);
+    expect(() => record(2)).toThrow(expect.objectContaining({ code: 'ledger_day_full' }));
+    // Un evento revertido no gasta el tope: se recuenta antes de rechazar.
+    setNow(new Date('2026-10-21T10:00:00Z'));
+    record(3);
+  });
+
+  it('entrega la página desde el vecino anterior a un día y guarda la firma de la cabeza', () => {
+    const { ledger, record, setNow } = setup();
+    record(0);
+    setNow(new Date('2026-10-21T10:00:00Z'));
+    record(1);
+    record(2);
+    setNow(new Date('2026-10-22T10:00:00Z'));
+    const since = ledger.pageSince('2026-10-21', 10);
+    expect(since.events.map((event) => event.at)).toEqual([
+      '2026-10-20',
+      '2026-10-21',
+      '2026-10-21',
+    ]);
+    expect(ledger.pageSince('2026-10-20', 10).events[0]?.seq).toBe(0);
+    expect(ledger.pageSince('2026-10-25', 10).events.map((event) => event.seq)).toEqual([2]);
+    // La misma cabeza se sirve con el mismo objeto firmado hasta que cambia.
+    expect(ledger.head()).toBe(ledger.head());
   });
 
   it('con la publicación perezosa desactivada solo muestra lo ya encadenado', () => {

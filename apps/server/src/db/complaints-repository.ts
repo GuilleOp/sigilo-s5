@@ -60,19 +60,16 @@ export interface ComplaintsRepository {
   findAuthVerifier(folio: string): string | null;
   insert(record: ComplaintRecord): void;
   find(folio: string): ComplaintRecord | null;
-  listSummaries(): ComplaintSummary[];
+  /** Resúmenes de los más recientes a los más antiguos, desde `offset`, a lo más `limit`. */
+  listSummaries(offset: number, limit: number): ComplaintSummary[];
   updateStatus(folio: string, status: ComplaintStatus): void;
   /** Conteos por celda del mes de recepción `month` (`AAAA-MM`), con la clave principal. */
   countCellsOfMonth(month: string): OpenDataCell[];
-  /** Meses de recepción (`AAAA-MM`) anteriores a `beforeMonth` que tienen denuncias, en orden. */
-  listMonthsBefore(beforeMonth: string): string[];
-  /** Marca que la persona denunciante entró al seguimiento al menos una vez (sin fecha). */
-  markTracked(folio: string): void;
   /**
-   * Folios recibidos antes del día `beforeDay` que nunca tuvieron seguimiento y siguen en estatus
-   * `received` (la autoridad no los ha atendido). Ver la política de retención.
+   * Meses de recepción (`AAAA-MM`) anteriores a `beforeMonth` que tienen denuncias, en orden.
+   * Usa el índice del mes saltando de un mes al siguiente: no recorre las denuncias.
    */
-  listUntrackedBefore(beforeDay: string): string[];
+  listMonthsBefore(beforeMonth: string): string[];
 }
 
 const SUMMARY_COLUMNS =
@@ -136,27 +133,26 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
   const findStatement = db.prepare('SELECT * FROM complaints WHERE folio = ?');
   // Dentro del mismo día se ordena por folio (aleatorio) para no revelar el orden de llegada.
   const listStatement = db.prepare(
-    `SELECT ${SUMMARY_COLUMNS} FROM complaints ORDER BY received_on DESC, folio`,
+    `SELECT ${SUMMARY_COLUMNS} FROM complaints ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
   );
   const updateStatusStatement = db.prepare('UPDATE complaints SET status = ? WHERE folio = ?');
   const cellsStatement = db.prepare(
-    `SELECT state_code, offense_code, substr(received_on, 1, 7) AS month, status,
-       COUNT(*) AS total
+    `SELECT state_code, offense_code, received_month AS month, status, COUNT(*) AS total
      FROM complaints
-     WHERE substr(received_on, 1, 7) = ?
+     WHERE received_month = ?
      GROUP BY state_code, offense_code, month, status
      ORDER BY state_code, offense_code, month, status`,
   );
+  // Recorrido por saltos sobre el índice del mes: una búsqueda por mes distinto.
   const monthsStatement = db.prepare(
-    `SELECT DISTINCT substr(received_on, 1, 7) AS month FROM complaints
-     WHERE substr(received_on, 1, 7) < ? ORDER BY month`,
-  );
-  const trackedStatement = db.prepare(
-    'UPDATE complaints SET has_been_tracked = 1 WHERE folio = ? AND has_been_tracked = 0',
-  );
-  const untrackedStatement = db.prepare(
-    `SELECT folio FROM complaints
-     WHERE has_been_tracked = 0 AND status = 'received' AND received_on < ? ORDER BY folio`,
+    `WITH RECURSIVE months(month) AS (
+       SELECT MIN(received_month) FROM complaints WHERE received_month < ?1
+       UNION ALL
+       SELECT (SELECT MIN(received_month) FROM complaints
+               WHERE received_month > months.month AND received_month < ?1)
+       FROM months WHERE months.month IS NOT NULL
+     )
+     SELECT month FROM months WHERE month IS NOT NULL`,
   );
 
   return {
@@ -188,17 +184,12 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
       const row = findStatement.get(folio);
       return row === undefined ? null : toRecord(row);
     },
-    listSummaries: () => listStatement.all().map(toSummary),
+    listSummaries: (offset, limit) => listStatement.all(limit, offset).map(toSummary),
     updateStatus: (folio, status) => {
       updateStatusStatement.run(status, folio);
     },
     countCellsOfMonth: (month) => cellsStatement.all(month).map(toCell),
     listMonthsBefore: (beforeMonth) =>
       monthsStatement.all(beforeMonth).map((row) => readText(row, 'month')),
-    markTracked: (folio) => {
-      trackedStatement.run(folio);
-    },
-    listUntrackedBefore: (beforeDay) =>
-      untrackedStatement.all(beforeDay).map((row) => readText(row, 'folio')),
   };
 }

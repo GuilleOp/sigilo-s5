@@ -1,5 +1,5 @@
 // Pruebas de subida de pruebas: tipo real por bytes mágicos, tamaño máximo, descriptor devuelto,
-// cuotas de subidas y de almacenamiento, purga de pendientes vencidas y retención sin seguimiento.
+// freno de subidas, reparto y desalojo de la cuota, purga de pendientes y retención sin atención.
 import { describe, expect, it } from 'vitest';
 import {
   ApiErrorSchema,
@@ -9,12 +9,11 @@ import {
 } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
 import { sha256Hex } from '@sigilo/core';
-import { createComplaintsRepository } from '../db/complaints-repository.ts';
 import { createEvidenceRepository } from '../db/evidence-repository.ts';
 import {
   EVIDENCE_PURGE_INTERVAL_MS,
   purgeStalePendingEvidence,
-  purgeUntrackedEvidence,
+  purgeUnattendedEvidence,
   startEvidencePurge,
 } from '../services/evidence-service.ts';
 import type { Scheduler } from '../services/evidence-service.ts';
@@ -82,7 +81,7 @@ describe('POST evidence', () => {
 });
 
 describe('cuota de subidas', () => {
-  it('responde 429 al agotar la cuota de la ventana y la reinicia después', async () => {
+  it('responde 429 con el freno extremo agotado (solo cuentan las confirmadas) y lo reinicia', async () => {
     const server = createTestServer({
       rateLimits: { evidenceUploads: { limit: 2, windowMs: 60 * 60 * 1000 } },
     });
@@ -97,17 +96,68 @@ describe('cuota de subidas', () => {
 });
 
 describe('cuota de almacenamiento', () => {
-  it('responde 507 si la prueba excedería la cuota total y libera al purgar', async () => {
-    const server = createTestServer({ evidenceQuotaBytes: 200 });
-    expect((await uploadEvidence(server.app, samplePng(120), 'image/png')).status).toBe(201);
-    const full = await uploadEvidence(server.app, samplePng(120), 'image/png');
+  it('limita las pendientes a su parte de la cuota y responde 507 al excederla', async () => {
+    // Cuota 400: las pendientes pueden ocupar 100.
+    const server = createTestServer({ evidenceQuotaBytes: 400 });
+    expect((await uploadEvidence(server.app, samplePng(60), 'image/png')).status).toBe(201);
+    const full = await uploadEvidence(server.app, samplePng(60), 'image/png');
     expect(full.status).toBe(507);
     expect(ApiErrorSchema.parse(await full.json()).error.code).toBe('storage_full');
-    expect((await uploadEvidence(server.app, samplePng(80), 'image/png')).status).toBe(201);
+    expect((await uploadEvidence(server.app, samplePng(40), 'image/png')).status).toBe(201);
+  });
+
+  it('desaloja primero las pruebas de las denuncias sin atender más antiguas', async () => {
+    const server = createTestServer({ evidenceQuotaBytes: 1000 });
+    const attach = async (size: number, day: Date) => {
+      server.setNow(day);
+      const evidence = EvidenceUploadResponseSchema.parse(
+        await (await uploadEvidence(server.app, samplePng(size), 'image/png')).json(),
+      );
+      const { folio } = await submitComplaint(
+        server,
+        await buildComplaintRequest(server, {
+          mode: 'anonymous',
+          reporter: createReporter(),
+          evidence: [evidence],
+        }),
+      );
+      return { evidence, folio };
+    };
+    const oldest = await attach(240, new Date('2026-10-20T10:00:00Z'));
+    const attended = await attach(240, new Date('2026-10-20T11:00:00Z'));
+    const recent = await attach(240, new Date('2026-10-21T10:00:00Z'));
+    await postJson(
+      server.app,
+      ROUTES.authorityStatus(attended.folio),
+      { status: 'routing' },
+      TEST_TOKEN,
+    );
+    // 720 guardados + 240 superan el 90 % (900): se desaloja la más antigua sin atender.
+    expect((await uploadEvidence(server.app, samplePng(240), 'image/png')).status).toBe(201);
+    expect(server.evidenceStore.read(oldest.evidence.evidenceId)).toBeNull();
+    expect(server.evidenceStore.read(attended.evidence.evidenceId)).not.toBeNull();
+    expect(server.evidenceStore.read(recent.evidence.evidenceId)).not.toBeNull();
+  });
+
+  it('rechaza una denuncia cuyas pruebas exceden su parte de la cuota', async () => {
+    // Cuota pequeña: la parte por denuncia es una prueba de tamaño máximo.
+    const server = createTestServer({ evidenceQuotaBytes: 1000 });
+    const evidence = EvidenceUploadResponseSchema.parse(
+      await (await uploadEvidence(server.app, samplePng(100), 'image/png')).json(),
+    );
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+      evidence: [{ ...evidence, sizeBytes: MAX_EVIDENCE_BYTES }, evidence].map((item, index) =>
+        index === 0 ? { ...item, evidenceId: 'f'.repeat(32) } : item,
+      ),
+    });
+    const response = await postJson(server.app, ROUTES.complaints, request);
+    expect(response.status).toBe(413);
   });
 });
 
-describe('retención de pruebas sin seguimiento', () => {
+describe('retención de pruebas sin atender', () => {
   async function scenario() {
     const server = createTestServer();
     const upload = async () =>
@@ -115,9 +165,9 @@ describe('retención de pruebas sin seguimiento', () => {
         await (await uploadEvidence(server.app, samplePng(), 'image/png')).json(),
       );
     const tracked = createReporter();
-    const untracked = createReporter();
+    const other = createReporter();
     const trackedEvidence = await upload();
-    const untrackedEvidence = await upload();
+    const otherEvidence = await upload();
     const first = await submitComplaint(
       server,
       await buildComplaintRequest(server, {
@@ -130,17 +180,16 @@ describe('retención de pruebas sin seguimiento', () => {
       server,
       await buildComplaintRequest(server, {
         mode: 'anonymous',
-        reporter: untracked,
-        evidence: [untrackedEvidence],
+        reporter: other,
+        evidence: [otherEvidence],
       }),
     );
     await postJson(server.app, ROUTES.tracking, credentialsFor(first.folio, tracked));
-    return { server, trackedEvidence, untrackedEvidence, folios: [first.folio, second.folio] };
+    return { server, trackedEvidence, otherEvidence, folios: [first.folio, second.folio] };
   }
 
   function purge(server: TestServer, now: Date, retentionDays: number) {
-    return purgeUntrackedEvidence({
-      complaints: createComplaintsRepository(server.db),
+    return purgeUnattendedEvidence({
       evidence: createEvidenceRepository(server.db),
       evidenceStore: server.evidenceStore,
       now: () => now,
@@ -148,35 +197,35 @@ describe('retención de pruebas sin seguimiento', () => {
     });
   }
 
-  it('borra solo los archivos de denuncias sin seguimiento ni atención tras el plazo', async () => {
-    const { server, trackedEvidence, untrackedEvidence } = await scenario();
+  it('borra tras el plazo los archivos de denuncias sin atender, aunque tengan seguimiento', async () => {
+    const { server, trackedEvidence, otherEvidence } = await scenario();
     const later = new Date('2026-12-01T00:00:00Z');
     expect(purge(server, later, 0)).toBe(0);
     expect(purge(server, new Date('2026-10-25T00:00:00Z'), 30)).toBe(0);
-    expect(purge(server, later, 30)).toBe(1);
-    expect(server.evidenceStore.read(untrackedEvidence.evidenceId)).toBeNull();
-    expect(server.evidenceStore.read(trackedEvidence.evidenceId)).not.toBeNull();
+    expect(purge(server, later, 30)).toBe(2);
+    expect(server.evidenceStore.read(otherEvidence.evidenceId)).toBeNull();
+    expect(server.evidenceStore.read(trackedEvidence.evidenceId)).toBeNull();
     expect(purge(server, later, 30)).toBe(0);
     // El descriptor se conserva (para recalcular digestos); el archivo ya no se entrega.
     const download = await getAsAuthority(
       server.app,
-      ROUTES.authorityEvidence(untrackedEvidence.evidenceId),
+      ROUTES.authorityEvidence(otherEvidence.evidenceId),
     );
     expect(download.status).toBe(404);
-    expect(createEvidenceRepository(server.db).totalStoredBytes()).toBe(trackedEvidence.sizeBytes);
+    expect(createEvidenceRepository(server.db).totalStoredBytes()).toBe(0);
   });
 
   it('respeta las denuncias que la autoridad ya atendió', async () => {
-    const { server, untrackedEvidence, folios } = await scenario();
-    const [, untrackedFolio] = folios;
+    const { server, otherEvidence, folios } = await scenario();
+    const [, otherFolio] = folios;
     await postJson(
       server.app,
-      ROUTES.authorityStatus(untrackedFolio ?? ''),
+      ROUTES.authorityStatus(otherFolio ?? ''),
       { status: 'routing' },
       TEST_TOKEN,
     );
-    expect(purge(server, new Date('2026-12-01T00:00:00Z'), 30)).toBe(0);
-    expect(server.evidenceStore.read(untrackedEvidence.evidenceId)).not.toBeNull();
+    expect(purge(server, new Date('2026-12-01T00:00:00Z'), 30)).toBe(1);
+    expect(server.evidenceStore.read(otherEvidence.evidenceId)).not.toBeNull();
   });
 });
 

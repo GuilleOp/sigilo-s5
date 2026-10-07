@@ -1,5 +1,5 @@
 // Servicio de bitácora: registra los eventos del día como pendientes y, al cerrar cada día, los
-// encadena en orden barajado y publica la cabeza firmada.
+// encadena en orden barajado, por lotes acotados, y publica la cabeza firmada.
 import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import type { LedgerEvent, LedgerPage, SignedLedgerHead } from '@sigilo/contracts';
 import {
@@ -14,28 +14,42 @@ import {
 } from '@sigilo/core';
 import type { LedgerEventInput, PendingLedgerEvent } from '@sigilo/core';
 import type { DatabaseSync } from 'node:sqlite';
-import { withTransaction } from './db/database.ts';
-import type { LedgerRepository, StoredPendingEvent } from './db/ledger-repository.ts';
+import { checkpointWal, withTransaction } from './db/database.ts';
+import type { LedgerRepository } from './db/ledger-repository.ts';
+import { ApiFailure } from './http/errors.ts';
 
 /** Máximo de eventos por página de la bitácora pública. */
 export const MAX_LEDGER_PAGE = 500;
+
+/** Eventos que se encadenan por transacción al cerrar un día. */
+export const PUBLISH_BATCH_SIZE = 5000;
+
+/** Tope de eventos pendientes por día; al alcanzarlo, las escrituras reciben `ledger_day_full`. */
+export const MAX_PENDING_EVENTS_PER_DAY = 200_000;
 
 /** Operaciones de la bitácora. */
 export interface LedgerService {
   /**
    * Registra un evento como pendiente (sin secuencia) y devuelve su parte pública. Debe llamarse
-   * dentro de una transacción junto con los demás escritos.
+   * dentro de una transacción junto con los demás escritos. Lanza `ledger_day_full` si el día ya
+   * tiene el máximo de pendientes.
    */
   record(input: LedgerEventInput): PendingLedgerEvent;
   /**
-   * Encadena, en su propia transacción, los pendientes de los días ya cerrados (UTC), cada día en
-   * orden barajado. Devuelve cuántos encadenó. No debe llamarse dentro de otra transacción.
+   * Encadena los pendientes de los días ya cerrados (UTC), cada día en orden barajado y por lotes
+   * de a lo más `PUBLISH_BATCH_SIZE` eventos, cada lote en su transacción. Devuelve cuántos
+   * encadenó. No debe llamarse dentro de otra transacción.
    */
   publishClosedDays(): number;
-  /** Cabeza pública: la del último evento encadenado (o el génesis firmado). */
+  /** Cabeza pública: la del último evento de un día publicado completo (o el génesis firmado). */
   head(): SignedLedgerHead;
-  /** Página de eventos publicados desde `fromSeq`. */
+  /** Página de eventos publicados desde `fromSeq`, nunca más allá de la cabeza. */
   page(fromSeq: number, limit: number): LedgerPage;
+  /**
+   * Página que empieza en el último evento publicado anterior a `day` (el vecino que acota el
+   * tramo) o, si no hay ninguno, en el génesis.
+   */
+  pageSince(day: string, limit: number): LedgerPage;
 }
 
 /** Dependencias del servicio de bitácora. */
@@ -45,8 +59,12 @@ export interface LedgerServiceDeps {
   serverKeyId: string;
   serverSigningPrivateKey: Uint8Array;
   now: () => Date;
-  /** Barajado de los eventos de un día; por omisión, Fisher-Yates criptográfico. */
-  shuffleDay?: (events: readonly StoredPendingEvent[]) => StoredPendingEvent[];
+  /** Barajado de los identificadores de un día; por omisión, Fisher-Yates criptográfico. */
+  shuffleDay?: (pendingIds: readonly string[]) => string[];
+  /** Eventos por transacción al cerrar un día (`PUBLISH_BATCH_SIZE`). */
+  batchSize?: number;
+  /** Tope de pendientes por día (`MAX_PENDING_EVENTS_PER_DAY`). */
+  maxPendingPerDay?: number;
   /**
    * Si las consultas públicas cierran los días pendientes (por omisión, sí). El anclaje desde una
    * base abierta en solo lectura lo desactiva y ancla solo lo ya publicado.
@@ -54,28 +72,25 @@ export interface LedgerServiceDeps {
   publishOnRead?: boolean;
 }
 
-function groupByDay(events: readonly StoredPendingEvent[]): StoredPendingEvent[][] {
-  const days = new Map<string, StoredPendingEvent[]>();
-  for (const stored of events) {
-    const day = days.get(stored.event.at) ?? [];
-    day.push(stored);
-    days.set(stored.event.at, day);
-  }
-  // Los días ya vienen en orden ascendente desde la consulta.
-  return [...days.values()];
-}
-
 /**
  * Crea el servicio de bitácora.
  * Seguridad: los eventos llevan solo el día, pero si recibieran su secuencia y se encadenaran al
  * llegar, el orden dentro del día y la cabeza en tiempo real revelarían la hora de cada denuncia,
  * mensaje o apertura. Por eso quedan pendientes y sin `seq` hasta que el día cierra; entonces se
- * encadenan barajados con aleatoriedad criptográfica, y la cabeza cambia a lo más una vez al día.
+ * barajan con aleatoriedad criptográfica los identificadores del día completo y se encadenan en
+ * ese orden por lotes. Si el cierre se interrumpe entre lotes, lo encadenado queda (cada lote es
+ * atómico) y lo pendiente del día se vuelve a barajar en la siguiente corrida: una permutación
+ * uniforme del resto sigue dando un orden uniforme del día. Mientras un día tiene pendientes, la
+ * cabeza no avanza a él: cada día se publica completo y la cabeza cambia a lo más una vez al día.
  */
 export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
   const { db, repository, serverKeyId, serverSigningPrivateKey, now } = deps;
-  const shuffleDay = deps.shuffleDay ?? ((events) => shuffle(events));
+  const shuffleDay = deps.shuffleDay ?? ((ids) => shuffle(ids));
+  const batchSize = deps.batchSize ?? PUBLISH_BATCH_SIZE;
+  const maxPendingPerDay = deps.maxPendingPerDay ?? MAX_PENDING_EVENTS_PER_DAY;
   const publishOnRead = deps.publishOnRead ?? true;
+  let cachedHead: SignedLedgerHead | null = null;
+  let pendingCount: { day: string; count: number } | null = null;
 
   function headFor(last: LedgerEvent | null): SignedLedgerHead {
     // Sin eventos publicados se firma el génesis: seq 0, hash de ceros y la fecha del día.
@@ -83,32 +98,85 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
       last === null
         ? { seq: 0, hash: LEDGER_GENESIS_HASH, at: toDayDate(now()), serverKeyId }
         : { seq: last.seq, hash: last.hash, at: last.at, serverKeyId };
-    return signLedgerHead(unsigned, serverSigningPrivateKey);
+    // La firma se guarda hasta que la cabeza cambia.
+    const cached = cachedHead;
+    const isCached =
+      cached !== null &&
+      cached.seq === unsigned.seq &&
+      cached.hash === unsigned.hash &&
+      cached.at === unsigned.at;
+    if (cached !== null && isCached) return cached;
+    const signed = signLedgerHead(unsigned, serverSigningPrivateKey);
+    cachedHead = signed;
+    return signed;
+  }
+
+  // Último evento de un día publicado completo: si el cierre de un día quedó a medias, la cabeza
+  // se queda en el día anterior hasta terminarlo.
+  function publishedLast(): LedgerEvent | null {
+    const last = repository.last();
+    const incompleteDay = repository.firstPendingDay();
+    if (last === null || incompleteDay === null || last.at < incompleteDay) return last;
+    return repository.lastBefore(incompleteDay);
+  }
+
+  function chainBatch(ids: readonly string[]): number {
+    return withTransaction(db, () => {
+      let previous = repository.last();
+      let chained = 0;
+      for (const pendingId of ids) {
+        // Se vuelve a leer dentro de la transacción por si otro proceso ya lo encadenó.
+        const stored = repository.findPending(pendingId);
+        if (stored === null) continue;
+        const event = chainEvent(previous, stored.event);
+        repository.insert(event, stored.payloadJson);
+        repository.deletePending(stored.pendingId);
+        previous = event;
+        chained += 1;
+      }
+      return chained;
+    });
   }
 
   function publishClosedDays(): number {
     const today = toDayDate(now());
-    // Consulta ligera fuera de la transacción: casi siempre no hay nada que cerrar.
+    // Consulta ligera: casi siempre no hay nada que cerrar.
     if (!repository.hasPendingBefore(today)) return 0;
-    return withTransaction(db, () => {
-      // Se vuelve a leer dentro de la transacción por si otro proceso ya cerró el día.
-      const pending = repository.listPendingBefore(today);
-      let previous = repository.last();
-      for (const day of groupByDay(pending)) {
-        for (const stored of shuffleDay(day)) {
-          const event = chainEvent(previous, stored.event);
-          repository.insert(event, stored.payloadJson);
-          repository.deletePending(stored.pendingId);
-          previous = event;
-        }
+    let published = 0;
+    for (const day of repository.listPendingDaysBefore(today)) {
+      // Solo los identificadores del día completo están en memoria a la vez.
+      const order = shuffleDay(repository.listPendingIdsOn(day));
+      for (let start = 0; start < order.length; start += batchSize) {
+        published += chainBatch(order.slice(start, start + batchSize));
       }
-      return pending.length;
-    });
+    }
+    // Seguridad: el WAL conserva páginas con los pendientes en su orden de llegada.
+    if (published > 0) checkpointWal(db);
+    return published;
+  }
+
+  function assertDayCapacity(day: string): void {
+    if (pendingCount?.day !== day) pendingCount = { day, count: repository.countPendingOn(day) };
+    if (pendingCount.count >= maxPendingPerDay) {
+      // El contador en memoria puede sobrar si alguna transacción se revirtió: se confirma.
+      pendingCount.count = repository.countPendingOn(day);
+      if (pendingCount.count >= maxPendingPerDay) throw new ApiFailure('ledger_day_full');
+    }
+    pendingCount.count += 1;
+  }
+
+  function pageFrom(fromSeq: number, limit: number): LedgerPage {
+    // Se lee una sola vez para que la página y su cabeza correspondan al mismo corte.
+    const last = publishedLast();
+    const size = Math.min(limit, MAX_LEDGER_PAGE);
+    const events = last === null ? [] : repository.page(fromSeq, size, last.seq);
+    return { events, head: headFor(last) };
   }
 
   return {
     record: (input) => {
       const event = pendingEventFor(input);
+      assertDayCapacity(event.at);
       // El identificador es aleatorio: no conserva el orden de llegada.
       repository.insertPending(toHex(randomBytes(16)), event, canonicalize(input.payload));
       return event;
@@ -116,15 +184,16 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
     publishClosedDays,
     head: () => {
       if (publishOnRead) publishClosedDays();
-      return headFor(repository.last());
+      return headFor(publishedLast());
     },
     page: (fromSeq, limit) => {
       if (publishOnRead) publishClosedDays();
-      // Se lee una sola vez para que la página y su cabeza correspondan al mismo corte.
-      const last = repository.last();
-      const size = Math.min(limit, MAX_LEDGER_PAGE);
-      const events = last === null ? [] : repository.page(fromSeq, size);
-      return { events, head: headFor(last) };
+      return pageFrom(fromSeq, limit);
+    },
+    pageSince: (day, limit) => {
+      if (publishOnRead) publishClosedDays();
+      const neighbor = repository.lastBefore(day);
+      return pageFrom(neighbor === null ? 0 : neighbor.seq, limit);
     },
   };
 }
