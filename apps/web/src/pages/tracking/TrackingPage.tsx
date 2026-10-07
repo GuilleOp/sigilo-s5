@@ -138,7 +138,9 @@ function ReceiptStatus({ loaded }: { loaded: Loaded }) {
 /** Resultado de comparar el tramo del seguimiento con los anclajes pegados, en lectura fácil. */
 function anchorsMessage(ledger: TrackingLedger): string {
   if (ledger.status === 'valid') {
-    return 'El registro público coincide con los anclajes que pegaste.';
+    return ledger.anchors === 'not-comparable'
+      ? 'No pudimos comparar los anclajes que pegaste: no logramos descargar la parte del registro público donde están. No sabemos si coinciden.'
+      : 'El registro público coincide con los anclajes que pegaste.';
   }
   if (ledger.status === 'unpublished') {
     return 'Tu anotación todavía no se publica. Compara los anclajes cuando aparezca en el registro público.';
@@ -364,7 +366,9 @@ export function TrackingPage() {
             <h3 id="tracking-anchors-title">Comparar con anclajes publicados (opcional)</h3>
             <p>
               Si tienes anclajes del registro público publicados fuera del sistema, pégalos aquí.
-              Comprobaremos que el registro donde aparece tu denuncia no se reescribió.
+              Comprobaremos que el registro donde aparece tu denuncia no se reescribió. Para eso
+              descargamos el registro desde tu anclaje más antiguo. Si no podemos compararlo, te lo
+              decimos: nunca lo damos por bueno sin comparar.
             </p>
             <AnchorsField
               id="tracking-anchors"

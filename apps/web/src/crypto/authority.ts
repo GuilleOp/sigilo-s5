@@ -23,10 +23,13 @@ import {
   receivedPayloadDigest,
   sealMailboxMessage,
   submissionDigestFromDetail,
-  verifyEventInChain,
 } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
-import { downloadSegment, LEDGER_PAGE_SIZE } from './ledger-verification.ts';
+import {
+  downloadSegment,
+  LEDGER_PAGE_SIZE,
+  verifyEventWithAnchors,
+} from './ledger-verification.ts';
 
 /** Llaves de la autoridad, en memoria y decodificadas. */
 export interface AuthorityKeys {
@@ -106,16 +109,20 @@ export function openSealedIdentity(
 /**
  * Estado de las llaves de la persona denunciante frente al registro público: `verified` si el
  * digesto del envío recalculado desde el detalle coincide con el evento `complaint.received`
- * publicado, `pending` mientras ese evento no se publica y `mismatch` si no coincide.
+ * publicado, `anchors-not-comparable` si coincide pero algún anclaje dado no se pudo comparar,
+ * `pending` mientras ese evento no se publica y `mismatch` si no coincide.
  */
-export type ReporterKeysVerification = 'verified' | 'pending' | 'mismatch';
+export type ReporterKeysVerification =
+  'verified' | 'anchors-not-comparable' | 'pending' | 'mismatch';
 
 /**
  * Recalcula `submissionDigest` desde el detalle (`submissionDigestFromDetail`) y lo compara con el
  * `payloadDigest` del evento `complaint.received` publicado en la bitácora. El evento debe quedar
  * probado dentro de la cadena (`verifyEventInChain`): se descarga el tramo desde su secuencia
  * hasta la cabeza, firmada por la llave FIJADA del servidor, y el último eslabón debe ser el de la
- * cabeza. Si se dan anclajes (configurados o pegados), los del tramo deben coincidir.
+ * cabeza. Si se dan anclajes (configurados o pegados), deben coincidir; los anteriores al evento
+ * se comparan descargando desde su secuencia (`verifyEventWithAnchors`) y, si no se puede, el
+ * resultado es `anchors-not-comparable`, nunca `verified`.
  * Seguridad: un evento fabricado con un hash coherente consigo mismo no basta; el servidor tendría
  * que reescribir la cadena hasta la cabeza firmada que ven todos. El evento lo verificó la persona
  * denunciante contra su comprobante; si coincide, las llaves del buzón, los hechos y las pruebas
@@ -134,17 +141,24 @@ export async function verifyReporterKeys(
   const folio = detail.summary.folio;
   if (event === undefined || event.seq !== seq || first.head.seq < seq) return 'mismatch';
   const chain = await downloadSegment(fetchPage, seq, first.head, first.events);
-  const inChain = verifyEventInChain(event, chain, first.head, pinned.serverSigningPublicKey, {
+  const inChain = await verifyEventWithAnchors(
+    event,
+    chain,
+    first.head,
+    pinned.serverSigningPublicKey,
     anchors,
-  });
+    fetchPage,
+  );
+  const isNotComparable = !inChain.valid && inChain.reason === 'anchor-not-comparable';
   const isAuthentic =
-    inChain.valid &&
+    (inChain.valid || isNotComparable) &&
     event.type === 'complaint.received' &&
     event.at === detail.summary.receivedOn &&
     event.folioDigest === folioDigest(folio);
   if (!isAuthentic) return 'mismatch';
   const expected = receivedPayloadDigest(folio, submissionDigestFromDetail(detail));
-  return event.payloadDigest === expected ? 'verified' : 'mismatch';
+  if (event.payloadDigest !== expected) return 'mismatch';
+  return isNotComparable ? 'anchors-not-comparable' : 'verified';
 }
 
 /** Mensaje del buzón visto por la autoridad. */

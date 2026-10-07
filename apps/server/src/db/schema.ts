@@ -407,6 +407,27 @@ const LEDGER_EVENTS_BY_DAY = `
 CREATE INDEX ledger_events_by_day ON ledger_events (at, seq);
 `;
 
+// Migración 6: registro de solo agregar de los descartes de pruebas por la autoridad, que la
+// persona denunciante ve en su seguimiento. El índice de estatus y día ya sirve a la retención de
+// `received` y `archived`.
+const EVIDENCE_DISCARDS = `
+CREATE TABLE evidence_discards (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  discarded_on TEXT NOT NULL,
+  evidence_count INTEGER NOT NULL CHECK (evidence_count > 0),
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER evidence_discards_no_update BEFORE UPDATE ON evidence_discards
+BEGIN
+  SELECT RAISE(ABORT, 'El registro de descartes es de solo agregar.');
+END;
+CREATE TRIGGER evidence_discards_no_delete BEFORE DELETE ON evidence_discards
+BEGIN
+  SELECT RAISE(ABORT, 'El registro de descartes es de solo agregar.');
+END;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -414,6 +435,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 3, sql: DAILY_SHUFFLED_LEDGER, precheck: assertNoLegacyData },
   { version: 4, sql: RANDOM_ORDER_STORAGE, precheck: assertNoRowidData },
   { version: 5, sql: LEDGER_EVENTS_BY_DAY },
+  { version: 6, sql: EVIDENCE_DISCARDS },
 ];
 
 /** Versión más reciente del esquema. */

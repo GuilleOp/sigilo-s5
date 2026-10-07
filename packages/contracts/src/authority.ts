@@ -52,10 +52,12 @@ export const ComplaintDetailSchema = z
     /** Secuencia del evento `complaint.received` una vez publicado; falta mientras está pendiente. */
     receivedEventSeq: z.number().int().nonnegative().optional(),
     /**
-     * Día (UTC) en que la retención borrará los archivos de las pruebas si la denuncia sigue sin
-     * atender; solo mientras está en `received`, tiene pruebas guardadas y hay retención.
+     * Día (UTC) en que la retención borrará los archivos de las pruebas: solo mientras la denuncia
+     * está en `received` (sin atender) o `archived`, tiene pruebas guardadas y hay retención.
      */
     evidenceDeletionOn: DayDateSchema.optional(),
+    /** Pruebas cuyo archivo sigue guardado (las borradas por retención o descarte no cuentan). */
+    storedEvidenceCount: z.number().int().nonnegative().max(MAX_EVIDENCE_ITEMS).optional(),
     messages: z.array(MailboxMessageSchema),
     identityOpenedCount: z.number().int().nonnegative(),
   })
@@ -97,6 +99,12 @@ export const UpdateStatusRequestSchema = z.object({
   status: ComplaintStatusSchema,
 });
 export type UpdateStatusRequest = z.infer<typeof UpdateStatusRequestSchema>;
+
+/** Resultado de descartar las pruebas de una denuncia: cuántos archivos se borraron. */
+export const DiscardEvidenceResponseSchema = z.object({
+  discarded: z.number().int().nonnegative().max(MAX_EVIDENCE_ITEMS),
+});
+export type DiscardEvidenceResponse = z.infer<typeof DiscardEvidenceResponseSchema>;
 
 export const AuthorityMessageRequestSchema = z.object({
   sequence: MailboxSequenceSchema,

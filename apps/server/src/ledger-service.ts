@@ -24,7 +24,9 @@ export const MAX_LEDGER_PAGE = 500;
 
 /**
  * Eventos que se encadenan por transacción al cerrar un día. Entre lotes el cierre cede el event
- * loop, así que es también la mayor espera que impone a una petición concurrente (decenas de ms).
+ * loop, así que un lote es también la mayor espera que impone a una petición concurrente: medida,
+ * unos 250 ms por lote de 1000 (hashes, firmas de esquema y escrituras en SQLite), no decenas de
+ * ms. Un cierre de 200 000 eventos suma cerca de un minuto repartido en esos lotes.
  */
 export const PUBLISH_BATCH_SIZE = 1000;
 
@@ -40,10 +42,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export interface LedgerService {
   /**
    * Registra un evento como pendiente (sin secuencia) y devuelve su parte pública. Su fecha es la
-   * mayor entre `input.at`, el día siguiente al último encadenado y el último día con pendientes:
-   * si el reloj retrocede, el evento no cae en un día ya publicado ni antes de otro pendiente, y
-   * la cadena sigue en orden de fechas. Quien guarde la fecha junto al evento debe usar la del
-   * resultado. Debe llamarse dentro de una transacción junto con los demás escritos. Lanza
+   * mayor entre `input.at` y el día siguiente al último encadenado: si el reloj retrocede, el
+   * evento no cae en un día ya publicado y la cadena sigue en orden de fechas (los días se
+   * encadenan completos y en orden). Un pendiente con fecha futura, por un salto del reloj hacia
+   * adelante, no arrastra a los eventos nuevos: se publica cuando llegue su día. Quien guarde la
+   * fecha junto al evento debe usar la del resultado. Debe llamarse dentro de una transacción junto con los demás escritos. Lanza
    * `ledger_day_full` si el día ya tiene el máximo de pendientes, salvo para la autoridad.
    */
   record(input: LedgerEventInput): PendingLedgerEvent;
@@ -78,10 +81,16 @@ export interface LedgerServiceDeps {
   batchSize?: number;
   /** Tope de pendientes por día (`MAX_PENDING_EVENTS_PER_DAY`). */
   maxPendingPerDay?: number;
+  /** Aviso para el operador (por omisión, `console.warn`); nunca recibe datos de eventos. */
+  warn?: (message: string) => void;
 }
 
 function nextDay(day: string): string {
   return toDayDate(new Date(Date.parse(`${day}T00:00:00Z`) + DAY_MS));
+}
+
+function previousDay(day: string): string {
+  return toDayDate(new Date(Date.parse(`${day}T00:00:00Z`) - DAY_MS));
 }
 
 function laterDay(a: string, b: string | null): string {
@@ -113,6 +122,8 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
   let cachedHead: SignedLedgerHead | null = null;
   let pendingCount: { day: string; count: number } | null = null;
   let closing: Promise<number> | null = null;
+  const warn = deps.warn ?? ((message: string) => console.warn(message));
+  let warnedFutureDay: string | null = null;
 
   function headFor(last: LedgerEvent | null): SignedLedgerHead {
     // Sin eventos publicados se firma el génesis: seq 0, hash de ceros y la fecha del día.
@@ -160,8 +171,21 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
     });
   }
 
+  // Un pendiente fechado más de un día después de hoy delata un reloj que saltó hacia adelante;
+  // se avisa una vez por día futuro para que el operador revise la sincronización.
+  function warnIfFuturePending(today: string): void {
+    const lastPending = repository.lastPendingDay();
+    if (lastPending === null || previousDay(lastPending) <= today) return;
+    if (warnedFutureDay === lastPending) return;
+    warnedFutureDay = lastPending;
+    warn(
+      `Atención: hay eventos pendientes de la bitácora con fecha ${lastPending}, posterior a hoy (${today}). Revisa el reloj del servidor; se publicarán cuando llegue esa fecha.`,
+    );
+  }
+
   async function closeDays(): Promise<number> {
     const today = toDayDate(now());
+    warnIfFuturePending(today);
     // Consulta ligera: casi siempre no hay nada que cerrar.
     if (!repository.hasPendingBefore(today)) return 0;
     let published = 0;
@@ -187,14 +211,13 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
     return closing;
   }
 
-  // Fecha mínima de un evento nuevo: nunca un día ya encadenado ni anterior a otro pendiente.
+  // Fecha mínima de un evento nuevo: nunca un día ya encadenado. No se sube al último día con
+  // pendientes: tras un salto del reloj hacia adelante, eso dejaría todo fechado en el futuro, la
+  // cabeza sin avanzar y el tope diario compartido entre varios días reales. El orden de la
+  // cadena no depende de ello, porque cada cierre encadena los días completos de menor a mayor.
   function eventDay(requested: string): string {
     const last = repository.last();
-    const floor = laterDay(
-      last === null ? requested : nextDay(last.at),
-      repository.lastPendingDay(),
-    );
-    return laterDay(requested, floor);
+    return last === null ? requested : laterDay(requested, nextDay(last.at));
   }
 
   function assertDayCapacity(day: string): void {

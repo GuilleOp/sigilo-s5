@@ -102,7 +102,8 @@ Antes de un despliegue real:
 1. **Medir.** Ejecutar `solvePow` en los dispositivos más lentos que se quieran atender (por ejemplo,
    el celular de gama baja más común en la región) y anotar los hashes por segundo.
 2. **Ajustar la dificultad.** Con `SIGILO_POW_BITS` (base, 18) y `SIGILO_POW_MAX_BITS` (máximo
-   adaptativo, 20). Cada bit duplica el tiempo esperado. Si los dispositivos medidos son más lentos
+   adaptativo, 20). Cada bit duplica el tiempo esperado. El máximo no puede superar la base más 2
+   bits: el servidor no arranca si se configura más (ver `docs/interfaces.md`). Si los dispositivos medidos son más lentos
    que 50 mil hashes por segundo, bajar los bits; `SIGILO_POW_BITS=0` desactiva la exigencia.
 3. **Ajustar la suposición.** Si la medición difiere mucho, cambiar `SLOW_DEVICE_HASHES_PER_SECOND`
    en `packages/core/src/pow.ts` y volver a construir la web y el servidor: la constante alimenta

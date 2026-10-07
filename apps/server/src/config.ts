@@ -31,7 +31,10 @@ export interface ServerConfig {
   testClockFile: string | null;
   /** Dificultad base de la prueba de trabajo (`SIGILO_POW_BITS`); 0 la desactiva. */
   powBits: number;
-  /** Dificultad máxima adaptativa (`SIGILO_POW_MAX_BITS`); nunca menor que `powBits`. */
+  /**
+   * Dificultad máxima adaptativa (`SIGILO_POW_MAX_BITS`); entre `powBits` y `powBits +
+   * MAX_POW_ADAPTIVE_SPAN_BITS` cuando hay exigencia.
+   */
   powMaxBits: number;
   /** Cuota total de almacenamiento de pruebas (`SIGILO_EVIDENCE_QUOTA_BYTES`). */
   evidenceQuotaBytes: number;
@@ -79,11 +82,26 @@ function parsePowBits(value: string | undefined): number {
   return bits;
 }
 
+/**
+ * Máximo de bits que la dificultad adaptativa puede sumar a la base. El guardián acepta retos a lo
+ * más un bit por debajo de la dificultad vigente y el cliente renueva el reto una sola vez: con
+ * una separación mayor, un atacante que sube la carga invalida en cadena los retos en curso de una
+ * persona legítima y su envío falla (`proof_required`) aunque haya resuelto dos retos.
+ */
+export const MAX_POW_ADAPTIVE_SPAN_BITS = 2;
+
 function parsePowMaxBits(value: string | undefined, powBits: number): number {
-  const fallback = Math.max(powBits, DEFAULT_POW_MAX_BITS);
+  // Sin exigencia (`powBits` 0) el máximo no se usa; con base, el omiso respeta la separación.
+  const span = powBits === 0 ? MAX_POW_BITS : MAX_POW_ADAPTIVE_SPAN_BITS;
+  const fallback = Math.max(powBits, Math.min(DEFAULT_POW_MAX_BITS, powBits + span));
   const bits = parseInteger('SIGILO_POW_MAX_BITS', value, fallback) ?? fallback;
   if (bits < powBits || bits > MAX_POW_BITS) {
     throw new Error(`SIGILO_POW_MAX_BITS debe estar entre SIGILO_POW_BITS y ${MAX_POW_BITS}.`);
+  }
+  if (powBits > 0 && bits > powBits + MAX_POW_ADAPTIVE_SPAN_BITS) {
+    throw new Error(
+      `SIGILO_POW_MAX_BITS no puede superar SIGILO_POW_BITS + ${MAX_POW_ADAPTIVE_SPAN_BITS}: con más separación, la carga de un atacante invalida los retos en curso de las personas legítimas.`,
+    );
   }
   return bits;
 }
@@ -171,7 +189,7 @@ export function createOffsetClock(file: string, realNow: () => number = Date.now
 /**
  * Construye la configuración a partir de las variables de entorno.
  * Lanza error si `SIGILO_AUTHORITY_TOKEN` falta o mide menos de 32 caracteres, si algún número no
- * es válido, si se usa la variable retirada `SIGILO_UNTRACKED_RETENTION_DAYS`, si `SIGILO_TEST_CLOCK_FILE` se define fuera de un entorno de pruebas
+ * es válido, si `SIGILO_POW_MAX_BITS` excede la base más `MAX_POW_ADAPTIVE_SPAN_BITS`, si se usa la variable retirada `SIGILO_UNTRACKED_RETENTION_DAYS`, si `SIGILO_TEST_CLOCK_FILE` se define fuera de un entorno de pruebas
  * (`SIGILO_E2E=1` o `NODE_ENV=test`) o con un archivo inseguro, o si `SIGILO_REQUEST_LOG` no es
  * válido para el entorno.
  * Seguridad: CORS queda desactivado salvo que `SIGILO_ALLOWED_ORIGIN` lo configure; la web se

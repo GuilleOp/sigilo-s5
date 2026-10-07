@@ -63,6 +63,15 @@ function KeysStatus({ status }: { status: ReporterKeysVerification | 'checking' 
       </p>
     );
   }
+  if (status === 'anchors-not-comparable') {
+    return (
+      <p className="alert alert--warning" data-testid="reporter-keys-anchors-not-comparable">
+        Las llaves de la persona coinciden con el registro público, pero no pudimos comparar los
+        anclajes que pegaste: no logramos descargar la parte del registro donde están. No sabemos si
+        coinciden.
+      </p>
+    );
+  }
   if (status === 'mismatch') {
     return (
       <Alert tone="danger" title="Las llaves no coinciden" testId="reporter-keys-mismatch">
@@ -203,7 +212,9 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
         <summary>Comparar también con anclajes publicados (opcional)</summary>
         <p>
           Si pegas anclajes de la bitácora publicados fuera del sistema, la verificación de las
-          llaves exige que el tramo del registro público también coincida con ellos.
+          llaves exige que el registro público también coincida con ellos. Solo damos por buena la
+          comparación si descargamos el registro desde el anclaje más antiguo; si no podemos, te lo
+          decimos.
         </p>
         <AnchorsField
           id="authority-anchors"

@@ -207,6 +207,20 @@ describe('POST tracking/messages', () => {
     expect(view.messages).toEqual([message]);
   });
 
+  it('fecha el mensaje igual que su evento si el reloj retrocede tras publicar', async () => {
+    const { server, reporter, folio } = await setup();
+    // El día 20 ya se publicó; el reloj vuelve al 19 y el evento se fecha el 21.
+    await server.advanceTo(new Date('2026-10-21T09:00:00Z'));
+    server.setNow(new Date('2026-10-19T08:00:00Z'));
+    const sealed = await sealReporterMessage(server, reporter, folio);
+    const response = await postJson(server.app, ROUTES.trackingMessages, {
+      ...credentialsFor(folio, reporter),
+      ...sealed,
+    });
+    expect(response.status).toBe(201);
+    expect(MailboxMessageSchema.parse(await response.json()).sentOn).toBe('2026-10-21T00:00Z');
+  });
+
   it('rechaza repetir un mensaje o saltar la secuencia', async () => {
     const { server, reporter, folio } = await setup();
     const credentials = credentialsFor(folio, reporter);

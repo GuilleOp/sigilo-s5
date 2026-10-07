@@ -39,6 +39,7 @@ import {
   downloadAndVerifyLedger,
   evaluateLedger,
   parseLedgerAnchors,
+  verifyEventWithAnchors,
 } from './ledger-verification.ts';
 import {
   buildIdentityBlock,
@@ -411,6 +412,62 @@ describe('envío y seguimiento', () => {
       status: 'invalid',
       isAnchorMismatch: true,
     });
+  });
+
+  it('compara los anclajes anteriores al tramo descargando desde ellos, nunca los da por buenos', async () => {
+    const deployment = createTestDeployment();
+    const chain: LedgerEvent[] = [];
+    for (let index = 0; index < 4; index += 1) {
+      chain.push(
+        buildEvent(chain.at(-1) ?? null, {
+          type: 'message.sent',
+          folio: FOLIO,
+          at: index < 2 ? '2026-10-19' : RECEIVED_ON,
+          actorRole: 'reporter',
+          payload: { index },
+        }),
+      );
+    }
+    const [first, second, third] = chain;
+    const last = chain.at(-1);
+    if (!first || !second || !third || !last) throw new Error('faltan eventos');
+    const head = headFor(deployment, last.seq, last.hash, last.at);
+    const anchorAt = (event: LedgerEvent, hash = event.hash) => ({
+      version: 1 as const,
+      anchoredOn: event.at,
+      head: headFor(deployment, event.seq, hash, event.at),
+    });
+    const page = async (from: number) => ({
+      events: chain.filter((item) => item.seq >= from),
+      head,
+    });
+    const tramo = chain.slice(2);
+    const key = deployment.pinned.serverSigningPublicKey;
+    const check = (anchors: ReturnType<typeof anchorAt>[], fetchPage = page) =>
+      verifyEventWithAnchors(third, tramo, head, key, anchors, fetchPage);
+    // Un anclaje anterior al tramo que coincide: se descarga desde él y se compara.
+    expect(await check([anchorAt(first)])).toEqual({ valid: true });
+    // Uno firmado que contradice la cadena (prueba de una bifurcación) ya no pasa en silencio.
+    expect(await check([anchorAt(second, 'f'.repeat(64))])).toEqual({
+      valid: false,
+      reason: 'anchor',
+    });
+    // Si el servidor no entrega la parte anterior, el resultado es «no comparable».
+    const refusing = async (from: number) => ({
+      events: from < third.seq ? [] : chain.filter((item) => item.seq >= from),
+      head,
+    });
+    expect(await check([anchorAt(first)], refusing)).toEqual({
+      valid: false,
+      reason: 'anchor-not-comparable',
+    });
+    const failing = async () => Promise.reject(new Error('sin red'));
+    expect(await check([anchorAt(first)], failing)).toEqual({
+      valid: false,
+      reason: 'anchor-not-comparable',
+    });
+    // Sin anclajes anteriores no se descarga nada más.
+    expect(await check([anchorAt(last)], failing)).toEqual({ valid: true });
   });
 
   it('busca desde el día de recepción las aperturas con la etiqueta del recibo', async () => {
@@ -838,6 +895,37 @@ describe('llaves del buzón frente al registro público', () => {
     };
     expect(await verifyReporterKeys(detail, realPage, deployment.pinned, [anchor])).toBe(
       'mismatch',
+    );
+    // Un anclaje anterior al evento cuyo tramo no se puede descargar: las llaves coinciden, pero
+    // la comparación con los anclajes se reporta como no hecha, nunca como verificada.
+    const before = buildEvent(null, {
+      type: 'message.sent',
+      folio: FOLIO,
+      at: '2026-10-19',
+      actorRole: 'reporter',
+      payload: {},
+    });
+    const shiftedEvent = receivedEventFor(signedReceiptFor(request, deployment), before);
+    const shiftedHead = headFor(deployment, shiftedEvent.seq, shiftedEvent.hash);
+    const shifted = { ...detail, receivedEventSeq: shiftedEvent.seq };
+    const earlier = {
+      version: 1 as const,
+      anchoredOn: '2026-10-19',
+      head: headFor(deployment, before.seq, before.hash, '2026-10-19'),
+    };
+    const withoutPrefix = async (from: number) => {
+      if (from < shiftedEvent.seq) throw new Error('sin red');
+      return { events: [shiftedEvent], head: shiftedHead };
+    };
+    expect(await verifyReporterKeys(shifted, withoutPrefix, deployment.pinned, [earlier])).toBe(
+      'anchors-not-comparable',
+    );
+    const withPrefix = async (from: number) => ({
+      events: [before, shiftedEvent].filter((item) => item.seq >= from),
+      head: shiftedHead,
+    });
+    expect(await verifyReporterKeys(shifted, withPrefix, deployment.pinned, [earlier])).toBe(
+      'verified',
     );
   });
 

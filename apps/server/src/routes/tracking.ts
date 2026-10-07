@@ -1,6 +1,11 @@
 // Seguimiento de la persona denunciante: consulta y respuesta por el buzón.
 import type { Hono } from 'hono';
-import { ReporterMessageRequestSchema, ROUTES, TrackingCredentialsSchema } from '@sigilo/contracts';
+import {
+  POW_HEADER,
+  ReporterMessageRequestSchema,
+  ROUTES,
+  TrackingCredentialsSchema,
+} from '@sigilo/contracts';
 import { folioDigest } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import { ApiFailure } from '../http/errors.ts';
@@ -29,6 +34,8 @@ export function registerTrackingRoutes(app: Hono, ctx: AppContext): void {
         c,
         ReporterMessageRequestSchema,
       );
+      // Seguridad: el reto se gasta solo con un cuerpo válido.
+      ctx.pow.verify(c.req.header(POW_HEADER), 'message');
       const complaint = await ctx.reporterAuth.authenticate({ folio, authKey });
       // El límite de mensajes es aparte del de autenticación: escribir no gasta intentos de
       // acceso. Es por folio y se descuenta solo cuando el mensaje queda guardado; no hay tope

@@ -1,5 +1,6 @@
 // Denuncia anónima completa: revisor de texto, caracteres invisibles, limpieza de foto y PDF,
-// rechazo de Office, semáforo, vista de la autoridad, envío y confirmación del recibo.
+// rechazo de Office, semáforo, vista de la autoridad, envío, confirmación del recibo y descarte de
+// las pruebas por la autoridad, visible en el seguimiento.
 import { readFileSync } from 'node:fs';
 import exifr from 'exifr';
 import { downloadEvidence, fetchComplaintDetail } from './support/api.ts';
@@ -14,6 +15,7 @@ import {
   submitAndKeepReceipt,
 } from './support/report-wizard.ts';
 import { FIXTURE_FILES } from './support/synthetic-files.ts';
+import { openTracking } from './support/tracking.ts';
 
 const REVEALING_DESCRIPTION =
   'Soy la única auxiliar contable del área y vi cómo se aprobó el pago. ' +
@@ -103,6 +105,19 @@ test('una denuncia anónima limpia sus pruebas, revisa el texto y entrega un rec
   await loginAsAuthority(page);
   await openComplaint(page, folio);
   await expect(page.getByTestId('evidence-deletion-warning')).toContainText(
-    `Las pruebas se borrarán el ${detail.evidenceDeletionOn ?? ''} si no se atiende.`,
+    `Los archivos de las pruebas se borrarán el ${detail.evidenceDeletionOn ?? ''}.`,
+  );
+
+  // Descartar pruebas exige confirmar; la persona lo ve de inmediato en su seguimiento.
+  const discard = page.getByTestId('discard-evidence');
+  await expect(discard).toBeDisabled();
+  await page.getByTestId('confirm-discard-evidence').check();
+  await discard.click();
+  await expect(page.getByTestId('discard-evidence-status')).toHaveText('Se descartaron 2 pruebas.');
+  await expect(page.getByTestId('evidence-deletion-warning')).toHaveCount(0);
+  expect((await fetchComplaintDetail(request, folio)).storedEvidenceCount).toBe(0);
+  await openTracking(page, folio, words);
+  await expect(page.getByTestId('tracking-evidence-discard')).toContainText(
+    'La autoridad descartó 2 pruebas el',
   );
 });

@@ -57,6 +57,10 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...env, SIGILO_POW_BITS: '33' })).toThrow('SIGILO_POW_BITS');
     expect(() => loadConfig({ ...env, SIGILO_POW_MAX_BITS: '10' })).toThrow('SIGILO_POW_MAX_BITS');
     expect(() => loadConfig({ ...env, SIGILO_POW_MAX_BITS: '33' })).toThrow('SIGILO_POW_MAX_BITS');
+    // La separación entre base y máximo no excede 2 bits (el cliente renueva el reto una vez).
+    expect(() => loadConfig({ ...env, SIGILO_POW_MAX_BITS: '21' })).toThrow('SIGILO_POW_BITS + 2');
+    expect(loadConfig({ ...env, SIGILO_POW_BITS: '8' }).powMaxBits).toBe(10);
+    expect(loadConfig({ ...env, SIGILO_POW_BITS: '24' }).powMaxBits).toBe(24);
     expect(loadConfig({ ...env, SIGILO_EVIDENCE_RETENTION_DAYS: '0' }).evidenceRetentionDays).toBe(
       0,
     );

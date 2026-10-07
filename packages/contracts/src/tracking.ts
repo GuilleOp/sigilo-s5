@@ -35,12 +35,24 @@ export const IdentityAccessEntrySchema = z.object({
 });
 export type IdentityAccessEntry = z.infer<typeof IdentityAccessEntrySchema>;
 
+/**
+ * Descarte de pruebas por la autoridad, visible para la persona denunciante de inmediato aunque su
+ * evento `evidence.discarded` se publique hasta que cierre el día.
+ */
+export const EvidenceDiscardEntrySchema = z.object({
+  on: DayDateSchema,
+  count: z.number().int().positive(),
+});
+export type EvidenceDiscardEntry = z.infer<typeof EvidenceDiscardEntrySchema>;
+
 export const TrackingViewSchema = z.object({
   folio: FolioSchema,
   mode: ComplaintModeSchema,
   status: ComplaintStatusSchema,
   timeline: z.array(TimelineEntrySchema),
   identityAccess: z.array(IdentityAccessEntrySchema),
+  /** Descartes de pruebas por la autoridad, en el orden en que ocurrieron. */
+  evidenceDiscards: z.array(EvidenceDiscardEntrySchema).optional(),
   messages: z.array(MailboxMessageSchema),
   receipt: SignedReceiptSchema,
   /**

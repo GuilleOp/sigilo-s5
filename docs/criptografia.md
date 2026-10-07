@@ -164,19 +164,25 @@ contra el registro público (ver «Comprobante firmado»).
   | `complaint.status_changed` | `{ folio, status, changeId }`                  |
   | `identity.opened`          | `{ folio, openingId, legalBasis, receiptTag }` |
   | `message.sent`             | `{ folio, messageId, from, envelopeDigest }`   |
+  | `evidence.discarded`       | `{ folio, count, discardId }`                  |
 
-  `changeId` y `openingId` son aleatorios, para que dos eventos con los mismos datos tengan
-  digestos distintos.
+  `changeId`, `openingId` y `discardId` son aleatorios, para que dos eventos con los mismos datos
+  tengan digestos distintos. `evidence.discarded` lo registra la autoridad al descartar las pruebas
+  de una denuncia; `count` es el número de archivos borrados.
 
 - `hash = sha256Hex(canonicalize(evento sin el campo hash))`; `receiptTag` se omite si no existe.
 - El primer evento usa `prevHash = LEDGER_GENESIS_HASH` (64 ceros); cada evento siguiente usa el
   `hash` del anterior, `seq` consecutivo y una fecha `at` no decreciente.
 - **Cierre diario.** Un evento nuevo queda pendiente, sin `seq` ni `prevHash` (`pendingEventFor`) y
-  con un identificador aleatorio. Su fecha es la mayor entre hoy, el día siguiente al último
-  evento encadenado y el último día con pendientes, para que las fechas no decrezcan aunque el reloj
-  retroceda. Una tarea programada (cada 10 minutos; las lecturas no publican) baraja los pendientes
+  con un identificador aleatorio. Su fecha es la mayor entre hoy y el día siguiente al último
+  evento encadenado, para que las fechas no decrezcan aunque el reloj retroceda: cada cierre
+  encadena los días completos de menor a mayor, así que un evento fechado antes que otro pendiente no
+  rompe el orden. El último día con pendientes no sube la fecha, para que un salto del reloj hacia
+  adelante no deje todo fechado en el futuro; si un pendiente tiene fecha de más de un día después
+  de hoy, la tarea de cierre avisa al operador. La hora de un mensaje del buzón (`sentOn`) sigue la
+  fecha de su evento. Una tarea programada (cada 10 minutos; las lecturas no publican) baraja los pendientes
   de cada día cerrado (UTC) con Fisher-Yates criptográfico (`shuffle`) y los encadena en ese orden
-  (`chainEvent`), en lotes de 1000 por transacción. Si el cierre se interrumpe, lo que queda del día
+  (`chainEvent`), en lotes de 1000 por transacción (unos 250 ms medidos cada uno). Si el cierre se interrumpe, lo que queda del día
   se vuelve a barajar al reanudar. El orden dentro del día no revela el de llegada.
 - Tope: un día admite a lo más 200 000 eventos pendientes; al alcanzarlo, las escrituras de la
   persona denunciante reciben `503 ledger_day_full`. Los eventos de la autoridad están exentos.
@@ -190,8 +196,12 @@ contra el registro público (ver «Comprobante firmado»).
   confiable. Además se verifica la firma de la cabeza y que el último evento coincida con ella.
 - `verifyEventInChain(event, chain, head, serverPublicKey, { anchors })` prueba que un evento
   pertenece a la bitácora: el tramo debe empezar en ese evento y llegar sin huecos hasta la cabeza
-  firmada, y los anclajes que caen dentro del tramo deben coincidir. Un evento con un hash coherente
-  consigo mismo no prueba nada por sí solo.
+  firmada, y los anclajes que caen dentro del tramo deben coincidir. Un anclaje anterior al tramo no
+  se puede comparar con él: el resultado es `anchor-not-comparable`, nunca `valid` (antes se
+  ignoraba, y un anclaje firmado que contradecía la cadena, es decir, la prueba de una bifurcación,
+  pasaba como «coincide»). Los clientes (`verifyEventWithAnchors`) descargan entonces desde la
+  secuencia del anclaje más antiguo y verifican el tramo extendido; si no lo consiguen, muestran
+  «no pudimos comparar». Un evento con un hash coherente consigo mismo no prueba nada por sí solo.
 - Seguimiento: la persona recibe su evento `complaint.received` (ausente mientras su día no cierra)
   y comprueba con `verifyReceiptEvent` que `at`, `folioDigest` y `payloadDigest` correspondan a su
   comprobante; no compara `seq`. Después descarga el tramo desde el último evento anterior a su día
@@ -212,7 +222,11 @@ contra el registro público (ver «Comprobante firmado»).
   servidor firma el token con HMAC-SHA256 (llave aleatoria por proceso). Cualquier otro propósito
   responde `400 bad_request`.
 - Usos: un reto `message` sirve para un mensaje; un reto `complaint` sirve para las hasta 10
-  subidas de pruebas de una denuncia y después para la denuncia, que lo cierra.
+  subidas de pruebas de una denuncia y después para la denuncia, que lo cierra. El servidor
+  comprueba la cabecera antes de leer el cuerpo (`check`), pero gasta el uso (`verify`) solo cuando
+  el cuerpo es válido.
+- Pendientes por reto: el servidor recuerda en memoria qué pruebas subió cada reto y, si vence sin
+  denuncia, las purga al vencer más 30 minutos; la purga diaria (24 a 48 h) queda de respaldo.
 - Solución: un contador decimal tal que `SHA-256(token + ":" + contador)` empieza con `bits` bits en
   cero (`isPowSolution`; en promedio 2^bits intentos). El navegador lo busca en un Web Worker
   (`solvePow`).
@@ -222,9 +236,11 @@ contra el registro público (ver «Comprobante firmado»).
   agotó sus usos o su dificultad es menor que `max(base, actual - 1)`.
 - **Dificultad adaptativa.** La base es `SIGILO_POW_BITS` (18; 0 desactiva la exigencia). Por cada
   duplicación de los retos usados en la última hora sobre el umbral de su propósito (60 denuncias,
-  300 mensajes; un reto `complaint` cuenta una vez aunque cubra pruebas), la dificultad de ese
-  propósito sube un bit, hasta `SIGILO_POW_MAX_BITS` (20 por omisión). Cuando la carga sale de la
-  ventana, vuelve a bajar.
+  300 mensajes; cada subida de pruebas cuenta como un uso más), la dificultad de ese propósito sube
+  un bit, hasta `SIGILO_POW_MAX_BITS` (20 por omisión). Cuando la carga sale de la ventana, vuelve a
+  bajar. El máximo no puede superar la base más 2 (el servidor no arranca): `verify` tolera un bit
+  y el cliente renueva una vez, así que con más separación la carga de un atacante invalida en
+  cadena los retos en curso de una persona legítima.
 - **Vigencia.** `margen + 4 · p95`, donde `p95 = ln(20) · 2^bits / 50 000` segundos es el percentil
   95 del tiempo de resolución en un celular básico (`powSolveSeconds`, con
   `SLOW_DEVICE_HASHES_PER_SECOND` = 50 000). El margen es de 5 minutos. A 18 bits, `4 · p95` son unos 63 s y
@@ -236,8 +252,10 @@ contra el registro público (ver «Comprobante firmado»).
 - No hay frenos globales de escrituras: un tope global sin identidad lo podría agotar un atacante
   para todas las personas.
 - Residuales: quien acumule retos emitidos mientras hay poca carga puede usarlos, con su dificultad
-  de emisión, durante su vigencia; y un atacante con GPU resuelve SHA-256 miles de veces más rápido
-  que un celular básico, así que la prueba de trabajo encarece el abuso pero no lo iguala.
+  de emisión, durante su vigencia; un atacante con GPU resuelve SHA-256 miles de veces más rápido
+  que un celular básico, así que la prueba de trabajo encarece el abuso pero no lo iguala, y puede
+  alcanzar el tope diario de la bitácora; y un atacante sostenido mantiene la dificultad en el
+  máximo, de modo que las personas legítimas esperan lo que tarda un reto de 20 bits.
 
 ## Llaves fijadas
 
@@ -283,8 +301,12 @@ con el AAD anterior ya no abren.
 - Retos acumulados: los retos emitidos con poca carga sirven, a su dificultad, durante su vigencia.
 - Asimetría de la prueba de trabajo: una GPU resuelve miles de veces más rápido que un celular
   básico.
-- Fechas futuras: un reloj del servidor adelantado fija fechas futuras en los eventos, y la regla
-  de fechas monótonas obliga a los siguientes a no ser anteriores.
+- Fechas futuras: mientras el reloj del servidor está adelantado, los eventos se fechan en el
+  futuro y se publican hasta ese día; al corregirse el reloj, los eventos nuevos vuelven al día
+  real y el operador recibe un aviso.
+- Anclajes no comparables: si el servidor no entrega la parte de la bitácora donde está un
+  anclaje pegado, el cliente no puede compararlo y lo dice; sin anclajes, la vista dividida no se
+  detecta.
 
 ## Trabajo futuro
 

@@ -25,6 +25,8 @@ import { createPowGuard } from './security/proof-of-work.ts';
 import type { PowGuard } from './security/proof-of-work.ts';
 import { createReporterAuthenticator } from './security/reporter-auth.ts';
 import type { ReporterAuthenticator } from './security/reporter-auth.ts';
+import { createChallengeUploads } from './services/evidence-service.ts';
+import type { ChallengeUploads } from './services/evidence-service.ts';
 import type { NoiseUnit } from './services/open-data.ts';
 import type { EvidenceStore } from './storage/evidence-store.ts';
 
@@ -108,6 +110,8 @@ export interface AppContext {
   reporterAuth: ReporterAuthenticator;
   limiters: AppLimiters;
   pow: PowGuard;
+  /** Pruebas subidas por cada reto, en memoria, para purgarlas si el reto vence sin denuncia. */
+  challengeUploads: ChallengeUploads;
 }
 
 const MINUTE_MS = 60 * 1000;
@@ -168,5 +172,6 @@ export function createContext(deps: AppDeps): AppContext {
       ...(deps.powLoadThresholds === undefined ? {} : { loadThresholds: deps.powLoadThresholds }),
       ...(deps.powSecret === undefined ? {} : { secret: deps.powSecret }),
     }),
+    challengeUploads: createChallengeUploads(),
   };
 }

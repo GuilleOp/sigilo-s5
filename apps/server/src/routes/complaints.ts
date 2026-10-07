@@ -1,6 +1,6 @@
 // Recepción de denuncias.
 import type { Hono } from 'hono';
-import { ROUTES, SubmitComplaintRequestSchema } from '@sigilo/contracts';
+import { POW_HEADER, ROUTES, SubmitComplaintRequestSchema } from '@sigilo/contracts';
 import type { AppContext } from '../context.ts';
 import { jsonBodyLimit, readJson } from '../http/request.ts';
 import { requireProofOfWork } from '../security/proof-of-work.ts';
@@ -14,6 +14,8 @@ export function registerComplaintRoutes(app: Hono, ctx: AppContext): void {
     jsonBodyLimit,
     async (c) => {
       const request = await readJson(c, SubmitComplaintRequestSchema);
+      // Seguridad: el reto se gasta solo con un cuerpo válido.
+      ctx.pow.verify(c.req.header(POW_HEADER), 'complaint');
       return c.json(submitComplaint(ctx, request), 201);
     },
   );

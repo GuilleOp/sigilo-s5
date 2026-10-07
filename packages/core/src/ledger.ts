@@ -207,7 +207,8 @@ export function verifyLedgerHead(head: SignedLedgerHead, publicKey: Uint8Array):
 }
 
 /** Motivo por el que un evento no queda probado dentro de la cadena publicada. */
-export type EventInChainFailure = 'head-signature' | 'event' | 'chain' | 'head-mismatch' | 'anchor';
+export type EventInChainFailure =
+  'head-signature' | 'event' | 'chain' | 'head-mismatch' | 'anchor' | 'anchor-not-comparable';
 
 /** Resultado de `verifyEventInChain`. */
 export type EventInChainVerification =
@@ -217,8 +218,9 @@ export type EventInChainVerification =
 export interface EventInChainOptions {
   /**
    * Anclajes conocidos (configurados o pegados). Los que caen dentro del tramo deben coincidir con
-   * su evento; uno posterior a la cabeza indica que la bitácora retrocedió. Los anteriores al
-   * evento no se pueden comparar con este tramo y se ignoran.
+   * su evento; uno posterior a la cabeza indica que la bitácora retrocedió. Uno anterior al evento
+   * no se puede comparar con este tramo: el resultado es `anchor-not-comparable` (para compararlo
+   * hay que verificar un tramo que empiece en él).
    */
   anchors?: readonly LedgerAnchor[];
 }
@@ -253,7 +255,10 @@ export function verifyEventInChain(
   }
   for (const anchor of options.anchors ?? []) {
     if (!verifyLedgerHead(anchor.head, serverPublicKey)) return { valid: false, reason: 'anchor' };
-    if (anchor.head.hash === LEDGER_GENESIS_HASH || anchor.head.seq < first.seq) continue;
+    if (anchor.head.hash === LEDGER_GENESIS_HASH) continue;
+    // Seguridad: ignorarlo daría por buena una comparación que no se hizo; un anclaje anterior
+    // que contradiga la cadena prueba una bifurcación y solo se ve con el tramo que lo contiene.
+    if (anchor.head.seq < first.seq) return { valid: false, reason: 'anchor-not-comparable' };
     const anchored = chain[anchor.head.seq - first.seq];
     if (anchored === undefined || anchored.hash !== anchor.head.hash) {
       return { valid: false, reason: 'anchor' };

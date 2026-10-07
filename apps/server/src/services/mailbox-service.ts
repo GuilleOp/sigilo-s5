@@ -43,6 +43,15 @@ function signerPublicKey(
 }
 
 /**
+ * Hora del mensaje coherente con la fecha monótona de su evento: si la bitácora lo fechó otro día
+ * (el reloj retrocedió), se usa el inicio de ese día en lugar de la hora del reloj.
+ */
+function sentOnFor(now: Date, eventDay: string): string {
+  const hour = toHourDate(now);
+  return hour.startsWith(eventDay) ? hour : `${eventDay}T00:00Z`;
+}
+
+/**
  * Guarda un mensaje del buzón y registra `message.sent` en la misma transacción.
  * Lanza `bad_request` si el sobre no va dirigido a la contraparte, si no mide el tamaño fijo, si
  * la firma del remitente no es válida o si `sequence` no es la siguiente esperada para el
@@ -66,32 +75,33 @@ export function recordMessage(
   );
   if (!isSigned) throw new ApiFailure('bad_request');
   const now = ctx.deps.now();
-  const message: MailboxMessage = {
-    messageId: toHex(randomBytes(16)),
-    from,
-    sequence,
-    sentOn: toHourDate(now),
-    envelope,
-    signature,
-  };
+  const messageId = toHex(randomBytes(16));
   return withTransaction(ctx.deps.db, () => {
     // Dentro de la transacción, para que dos envíos simultáneos no tomen la misma secuencia.
     if (sequence !== ctx.messages.nextSequence(complaint.folio, from)) {
       throw new ApiFailure('bad_request');
     }
-    ctx.ledger.record({
+    const event = ctx.ledger.record({
       type: 'message.sent',
       folio: complaint.folio,
       at: toDayDate(now),
       actorRole: from,
       payload: {
         folio: complaint.folio,
-        messageId: message.messageId,
+        messageId,
         from,
         sequence,
         envelopeDigest: sha256Hex(canonicalize(envelope)),
       },
     });
+    const message: MailboxMessage = {
+      messageId,
+      from,
+      sequence,
+      sentOn: sentOnFor(now, event.at),
+      envelope,
+      signature,
+    };
     ctx.messages.insert(complaint.folio, message);
     return message;
   });

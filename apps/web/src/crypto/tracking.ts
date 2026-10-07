@@ -20,14 +20,13 @@ import {
   reconcileIdentityOpenings,
   sealMailboxMessage,
   toBase64Url,
-  verifyEventInChain,
   verifyLedgerHead,
   verifyReceipt,
   verifyReceiptEvent,
 } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
-import { downloadAndVerifySince } from './ledger-verification.ts';
+import { downloadAndVerifySince, verifyEventWithAnchors } from './ledger-verification.ts';
 
 /** Sesión de seguimiento en memoria: folio y llaves derivadas del recibo. */
 export interface TrackingSession {
@@ -93,12 +92,18 @@ export function isDayPublished(head: SignedLedgerHead, day: string): boolean {
 
 /**
  * Bitácora que necesita el seguimiento: el tramo verificado desde el día de recepción hasta la
- * cabeza (`valid`), solo la cabeza firmada cuando el evento de recepción aún no se entrega
- * (`unpublished`) o un tramo que no se pudo verificar (`invalid`; con `isAnchorMismatch` si la
- * cadena es válida pero no contiene un anclaje pegado por la persona).
+ * cabeza (`valid`; con `anchors` si la persona pegó anclajes: `compared` si todos coinciden y
+ * `not-comparable` si alguno no se pudo comparar), solo la cabeza firmada cuando el evento de
+ * recepción aún no se entrega (`unpublished`) o un tramo que no se pudo verificar (`invalid`; con
+ * `isAnchorMismatch` si la cadena es válida pero contradice un anclaje pegado por la persona).
  */
 export type TrackingLedger =
-  | { status: 'valid'; head: SignedLedgerHead; events: readonly LedgerEvent[] }
+  | {
+      status: 'valid';
+      head: SignedLedgerHead;
+      events: readonly LedgerEvent[];
+      anchors?: 'compared' | 'not-comparable';
+    }
   | { status: 'unpublished'; head: SignedLedgerHead }
   | { status: 'invalid'; isAnchorMismatch?: boolean };
 
@@ -116,8 +121,9 @@ export interface TrackingLedgerApi {
  * posterior al día de recepción, y la cadena exige fechas no decrecientes: este tramo los contiene
  * a todos, así el celular no descarga la bitácora desde el génesis. Se eligió esto en lugar de una
  * ruta filtrada por `receiptTag` porque una lista filtrada no prueba que no falte ninguna. Los
- * `anchors` pegados por la persona deben estar firmados y, si caen dentro del tramo, coincidir con
- * él (los anteriores al tramo no se pueden comparar aquí; para eso está /verificar).
+ * `anchors` pegados por la persona deben estar firmados y coincidir con la cadena: si alguno es
+ * anterior al tramo, se descarga además desde su secuencia (`verifyEventWithAnchors`); si eso no
+ * se puede, el resultado lo dice (`not-comparable`) en lugar de darlo por bueno.
  */
 export async function loadTrackingLedger(
   view: TrackingView,
@@ -137,20 +143,20 @@ export async function loadTrackingLedger(
     pinned.serverSigningPublicKey,
   );
   if (result.status !== 'valid') return { status: 'invalid' };
+  const verified = { status: 'valid' as const, head: result.head, events: result.events };
   const first = result.events[0];
-  if (anchors.length > 0 && first !== undefined) {
-    const inChain = verifyEventInChain(
-      first,
-      result.events,
-      result.head,
-      pinned.serverSigningPublicKey,
-      {
-        anchors,
-      },
-    );
-    if (!inChain.valid) return { status: 'invalid', isAnchorMismatch: true };
-  }
-  return { status: 'valid', head: result.head, events: result.events };
+  if (anchors.length === 0 || first === undefined) return verified;
+  const inChain = await verifyEventWithAnchors(
+    first,
+    result.events,
+    result.head,
+    pinned.serverSigningPublicKey,
+    anchors,
+    ledgerApi.fetchPage,
+  );
+  if (inChain.valid) return { ...verified, anchors: 'compared' };
+  if (inChain.reason === 'anchor-not-comparable') return { ...verified, anchors: 'not-comparable' };
+  return { status: 'invalid', isAnchorMismatch: inChain.reason === 'anchor' };
 }
 
 /**

@@ -30,7 +30,8 @@ function publishedReceivedEvent(ctx: AppContext, complaint: ComplaintRecord) {
  * Vista de seguimiento: estatus, línea de tiempo, accesos a la identidad, mensajes, comprobante y,
  * si ya se publicó, el evento `complaint.received` para que el cliente lo verifique contra su
  * comprobante. Solo muestra lo ya publicado: los días los cierra la tarea programada.
- * Seguridad: las aperturas de identidad se muestran de inmediato, aunque su evento siga pendiente.
+ * Seguridad: las aperturas de identidad y los descartes de pruebas se muestran de inmediato, aunque
+ * su evento siga pendiente.
  */
 export function buildTrackingView(ctx: AppContext, complaint: ComplaintRecord): TrackingView {
   const receivedEvent = publishedReceivedEvent(ctx, complaint);
@@ -40,17 +41,17 @@ export function buildTrackingView(ctx: AppContext, complaint: ComplaintRecord): 
     status: complaint.status,
     timeline: ctx.statusHistory.listByFolio(complaint.folio),
     identityAccess: ctx.identityOpenings.listByFolio(complaint.folio),
+    evidenceDiscards: ctx.evidence.listDiscardsByFolio(complaint.folio),
     messages: ctx.messages.listByFolio(complaint.folio),
     receipt: complaint.receipt,
     ...(receivedEvent === null ? {} : { receivedEvent }),
   };
 }
 
-/** Fecha de borrado de las pruebas por la retención, si la denuncia sigue sin atender. */
+/** Fecha de borrado de las pruebas por la retención, si la denuncia sigue sin atender o archivada. */
 function evidenceDeletionOn(ctx: AppContext, complaint: ComplaintRecord): string | null {
-  if (complaint.status !== 'received' || !ctx.evidence.hasStoredForFolio(complaint.folio)) {
-    return null;
-  }
+  const isRetained = complaint.status === 'received' || complaint.status === 'archived';
+  if (!isRetained || !ctx.evidence.hasStoredForFolio(complaint.folio)) return null;
   const retentionDays = ctx.deps.evidenceRetentionDays ?? DEFAULT_EVIDENCE_RETENTION_DAYS;
   return evidenceDeletionDay(complaint.receivedOn, retentionDays);
 }
@@ -58,7 +59,8 @@ function evidenceDeletionOn(ctx: AppContext, complaint: ComplaintRecord): string
 /**
  * Detalle para la autoridad, con lo necesario para recalcular el contexto de la identidad y el
  * digesto del envío (incluido el digesto del sobre y, si ya se publicó, la secuencia de su
- * evento `complaint.received`) y, si sigue sin atender, el día en que se borrarán sus pruebas.
+ * evento `complaint.received`), cuántas pruebas siguen guardadas y, si sigue sin atender o está
+ * archivada, el día en que se borrarán.
  * Seguridad: nunca incluye el sobre de identidad.
  */
 export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord): ComplaintDetail {
@@ -76,6 +78,7 @@ export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord
       : { sealedIdentityDigest: sealedIdentityDigest(complaint.sealedIdentity) }),
     ...(receivedEvent === null ? {} : { receivedEventSeq: receivedEvent.seq }),
     ...(deletionOn === null ? {} : { evidenceDeletionOn: deletionOn }),
+    storedEvidenceCount: ctx.evidence.listStoredIdsForFolio(complaint.folio).length,
     messages: ctx.messages.listByFolio(complaint.folio),
     identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
   };

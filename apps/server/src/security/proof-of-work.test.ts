@@ -181,6 +181,28 @@ describe('dificultad adaptativa', () => {
     guard.verify(header, 'message');
   });
 
+  it('cada subida de pruebas cuenta como carga, no solo el primer uso del reto', () => {
+    const now = () => new Date('2026-10-20T10:00:00Z');
+    const guard = createPowGuard({ bits: 2, maxBits: 4, now, loadThresholds: { complaint: 2 } });
+    const header = solved(guard, 'complaint');
+    for (let index = 0; index < 3; index += 1) guard.verify(header, 'evidence');
+    // Tres usos de un mismo reto superan el umbral de 2: un bit más.
+    expect(guard.currentBits('complaint')).toBe(3);
+  });
+
+  it('check comprueba sin gastar y verify devuelve el reto aceptado', () => {
+    const now = () => new Date('2026-10-20T10:00:00Z');
+    const guard = createPowGuard({ bits: BITS, now });
+    const header = solved(guard, 'message');
+    for (let index = 0; index < 3; index += 1) guard.check(header, 'message');
+    expectRejected(() => guard.check(header, 'complaint'));
+    const receipt = guard.verify(header, 'message');
+    expect(receipt?.challengeId).toMatch(/^[0-9a-f]{32}$/);
+    expect(receipt?.expiresAt).toBeGreaterThan(now().getTime());
+    expectRejected(() => guard.check(header, 'message'));
+    expect(createPowGuard({ bits: 0, now }).verify(undefined, 'message')).toBeNull();
+  });
+
   it('el contador deslizante olvida lo que sale de la ventana', () => {
     let now = new Date('2026-10-20T10:00:00Z');
     const counter = createSlidingCounter(60_000, () => now);
@@ -240,5 +262,31 @@ describe('rutas con prueba de trabajo', () => {
     expect((await upload({ [POW_HEADER]: shared })).status).toBe(201);
     expect((await post({ [POW_HEADER]: shared })).status).toBe(201);
     expect((await upload({ [POW_HEADER]: shared })).status).toBe(428);
+  });
+
+  it('un cuerpo inválido no gasta el reto', async () => {
+    const server = createTestServer({ powBits: BITS });
+    const shared = await header(server, 'complaint');
+    const send = (path: string, contentType: string, body: string | Uint8Array) =>
+      server.app.request(path, {
+        method: 'POST',
+        headers: { 'Content-Type': contentType, [POW_HEADER]: shared },
+        body,
+      });
+    // Pruebas que no son imágenes y una denuncia mal formada: ninguna consume usos.
+    for (let index = 0; index < MAX_EVIDENCE_ITEMS + 2; index += 1) {
+      expect((await send(ROUTES.evidenceUpload, 'image/png', new Uint8Array(32))).status).toBe(415);
+    }
+    expect((await send(ROUTES.complaints, 'application/json', '{"version":1}')).status).toBe(400);
+    for (let index = 0; index < MAX_EVIDENCE_ITEMS; index += 1) {
+      expect((await send(ROUTES.evidenceUpload, 'image/png', samplePng())).status).toBe(201);
+    }
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+    });
+    expect(
+      (await send(ROUTES.complaints, 'application/json', JSON.stringify(request))).status,
+    ).toBe(201);
   });
 });

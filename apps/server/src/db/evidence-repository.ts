@@ -1,7 +1,8 @@
-// Repositorio de pruebas: registro de cada imagen subida y su asociación a una denuncia.
+// Repositorio de pruebas: registro de cada imagen subida, su asociación a una denuncia y los
+// descartes de la autoridad.
 import type { DatabaseSync } from 'node:sqlite';
 import { EvidenceMediaTypeSchema } from '@sigilo/contracts';
-import type { EvidenceDescriptor } from '@sigilo/contracts';
+import type { EvidenceDescriptor, EvidenceDiscardEntry } from '@sigilo/contracts';
 import { readInteger, readOptionalText, readText } from './database.ts';
 import type { Row } from './database.ts';
 
@@ -10,7 +11,7 @@ export interface EvidenceRecord extends EvidenceDescriptor {
   folio: string | null;
 }
 
-/** Prueba guardada de una denuncia sin atender, candidata a la retención. */
+/** Prueba guardada de una denuncia sin atender o archivada, candidata a la retención. */
 export interface UnattendedEvidence {
   evidenceId: string;
   sizeBytes: number;
@@ -32,14 +33,20 @@ export interface EvidenceRepository {
   /** Bytes de las pruebas pendientes (sin denuncia) guardadas. */
   pendingStoredBytes(): number;
   /**
-   * Pruebas guardadas de denuncias que siguen en `received` (la autoridad no las ha atendido) y
-   * se recibieron antes de `beforeDay`, de las recibidas antes primero.
+   * Pruebas guardadas de denuncias en `received` (la autoridad no las ha atendido) o `archived`
+   * que se recibieron antes de `beforeDay`, de las recibidas antes primero.
    */
   listUnattendedStored(beforeDay: string, limit: number): UnattendedEvidence[];
   /** Indica si la denuncia tiene alguna prueba cuyo archivo sigue guardado. */
   hasStoredForFolio(folio: string): boolean;
-  /** Marca que el archivo de la prueba se borró por la retención. */
+  /** Identificadores de las pruebas de la denuncia cuyo archivo sigue guardado. */
+  listStoredIdsForFolio(folio: string): string[];
+  /** Marca que el archivo de la prueba se borró (por la retención o por un descarte). */
   markUnstored(evidenceId: string): void;
+  /** Registra un descarte de `count` pruebas de la denuncia el día `discardedOn`. */
+  insertDiscard(folio: string, discardedOn: string, count: number): void;
+  /** Descartes de la denuncia en el orden en que ocurrieron. */
+  listDiscardsByFolio(folio: string): EvidenceDiscardEntry[];
 }
 
 function toDescriptor(row: Row): EvidenceDescriptor {
@@ -79,7 +86,7 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
   const unattendedStatement = db.prepare(
     `SELECT evidence.evidence_id, evidence.size_bytes FROM evidence
      JOIN complaints ON complaints.folio = evidence.folio
-     WHERE evidence.is_stored = 1 AND complaints.status = 'received'
+     WHERE evidence.is_stored = 1 AND complaints.status IN ('received', 'archived')
        AND complaints.received_on < ?
      ORDER BY complaints.received_on, complaints.folio, evidence.position
      LIMIT ?`,
@@ -87,6 +94,17 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
   const unstoreStatement = db.prepare('UPDATE evidence SET is_stored = 0 WHERE evidence_id = ?');
   const storedForFolioStatement = db.prepare(
     'SELECT 1 AS found FROM evidence WHERE folio = ? AND is_stored = 1 LIMIT 1',
+  );
+  const storedIdsForFolioStatement = db.prepare(
+    'SELECT evidence_id FROM evidence WHERE folio = ? AND is_stored = 1 ORDER BY position',
+  );
+  const insertDiscardStatement = db.prepare(
+    `INSERT INTO evidence_discards (folio, position, discarded_on, evidence_count)
+     VALUES (?, (SELECT COALESCE(MAX(position) + 1, 0) FROM evidence_discards WHERE folio = ?),
+       ?, ?)`,
+  );
+  const listDiscardsStatement = db.prepare(
+    'SELECT * FROM evidence_discards WHERE folio = ? ORDER BY position',
   );
 
   return {
@@ -124,8 +142,18 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
         sizeBytes: readInteger(row, 'size_bytes'),
       })),
     hasStoredForFolio: (folio) => storedForFolioStatement.get(folio) !== undefined,
+    listStoredIdsForFolio: (folio) =>
+      storedIdsForFolioStatement.all(folio).map((row) => readText(row, 'evidence_id')),
     markUnstored: (evidenceId) => {
       unstoreStatement.run(evidenceId);
     },
+    insertDiscard: (folio, discardedOn, count) => {
+      insertDiscardStatement.run(folio, folio, discardedOn, count);
+    },
+    listDiscardsByFolio: (folio) =>
+      listDiscardsStatement.all(folio).map((row) => ({
+        on: readText(row, 'discarded_on'),
+        count: readInteger(row, 'evidence_count'),
+      })),
   };
 }

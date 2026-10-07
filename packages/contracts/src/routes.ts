@@ -15,6 +15,9 @@ export const ROUTES = {
   authorityIdentity: (folio: string) => `${API_PREFIX}/authority/complaints/${folio}/identity`,
   authorityStatus: (folio: string) => `${API_PREFIX}/authority/complaints/${folio}/status`,
   authorityMessages: (folio: string) => `${API_PREFIX}/authority/complaints/${folio}/messages`,
+  /** `POST`: la autoridad descarta los archivos de las pruebas de la denuncia (queda en la bitácora). */
+  authorityEvidenceDiscard: (folio: string) =>
+    `${API_PREFIX}/authority/complaints/${folio}/evidence/discard`,
   authorityEvidence: (evidenceId: string) => `${API_PREFIX}/authority/evidence/${evidenceId}`,
   ledgerHead: `${API_PREFIX}/ledger/head`,
   /**

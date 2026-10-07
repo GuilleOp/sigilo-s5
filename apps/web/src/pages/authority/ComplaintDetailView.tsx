@@ -1,4 +1,4 @@
-// Detalle de una denuncia en el panel: hechos, pruebas, identidad, estatus y buzón.
+// Detalle de una denuncia en el panel: hechos, pruebas y su descarte, identidad, estatus y buzón.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
 import type { ComplaintDetail } from '@sigilo/contracts';
@@ -9,6 +9,7 @@ import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
 import { AuthorityMailbox } from './AuthorityMailbox.tsx';
+import { DiscardEvidencePanel } from './DiscardEvidencePanel.tsx';
 import { EvidenceGallery } from './EvidenceGallery.tsx';
 import { OpenIdentityPanel } from './OpenIdentityPanel.tsx';
 import { StatusPanel } from './StatusPanel.tsx';
@@ -110,15 +111,32 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
       </dl>
       <h3>Pruebas</h3>
       {detail.evidenceDeletionOn !== undefined && (
-        <Alert tone="warning" title="Denuncia sin atender" testId="evidence-deletion-warning">
+        <Alert
+          tone="warning"
+          title={summary.status === 'archived' ? 'Denuncia archivada' : 'Denuncia sin atender'}
+          testId="evidence-deletion-warning"
+        >
           <p>
-            Las pruebas se borrarán el {detail.evidenceDeletionOn} si no se atiende. Para
-            conservarlas, cambia el estatus de la denuncia (por ejemplo, a «Buscando a la autoridad
-            que debe atenderla»).
+            Los archivos de las pruebas se borrarán el {detail.evidenceDeletionOn}. Se borran así
+            los de toda denuncia sin atender o archivada, para que el espacio no se llene.
+          </p>
+          <p>
+            Si la denuncia merece atención, cámbiala a un estatus de trámite (por ejemplo, «Buscando
+            a la autoridad que debe atenderla»): sus pruebas se guardan mientras siga en trámite. Si
+            después la archivas, se borrarán en la fecha de retención o de inmediato si ya pasó. Si
+            es spam, descarta sus pruebas para liberar el espacio ahora.
           </p>
         </Alert>
       )}
       <EvidenceGallery token={session.token} evidence={detail.evidence} />
+      {detail.evidence.length > 0 && detail.storedEvidenceCount !== undefined && (
+        <DiscardEvidencePanel
+          token={session.token}
+          folio={folio}
+          storedCount={detail.storedEvidenceCount}
+          onDiscarded={() => void reload()}
+        />
+      )}
       <StatusPanel
         key={summary.status}
         token={session.token}

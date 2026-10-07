@@ -50,8 +50,9 @@ export const DEFAULT_POW_MAX_BITS = 20;
 export const POW_LOAD_WINDOW_MS = 60 * 60 * 1000;
 
 /**
- * Retos usados por ventana a partir de los cuales cada duplicación de la carga suma un bit (el
- * doble de trabajo esperado por envío). Un reto `complaint` cuenta una vez aunque cubra pruebas.
+ * Usos por ventana a partir de los cuales cada duplicación de la carga suma un bit (el doble de
+ * trabajo esperado por envío). Cada subida de pruebas cuenta como un uso, igual que la denuncia:
+ * así llenar el almacenamiento con un solo reto también mueve la dificultad.
  */
 export const DEFAULT_POW_LOAD_THRESHOLDS: Readonly<Record<PowPurpose, number>> = {
   complaint: 60,
@@ -68,6 +69,12 @@ export function powTtlMs(bits: number, marginMs: number = POW_TTL_MS): number {
   return marginMs + Math.ceil(POW_TTL_SOLVE_FACTOR * powSolveSeconds(bits) * 1000);
 }
 
+/** Reto aceptado por `verify`: identificador opaco y vencimiento (milisegundos de época). */
+export interface PowReceipt {
+  challengeId: string;
+  expiresAt: number;
+}
+
 /** Emisión y verificación de retos. */
 export interface PowGuard {
   /** Dificultad base; 0 desactiva la exigencia. */
@@ -76,13 +83,19 @@ export interface PowGuard {
   currentBits(purpose: PowPurpose): number;
   issue(purpose: PowPurpose): PowChallenge;
   /**
-   * Comprueba la cabecera `POW_HEADER` para la escritura, registra el uso y, en el primero, lo
-   * cuenta como carga. Un reto `message` sirve una vez; uno `complaint`, para hasta
-   * `MAX_EVIDENCE_ITEMS` subidas de pruebas y después para una denuncia, que lo cierra.
-   * Lanza `proof_required` si falta, no es válida, es de otro propósito, venció, ya agotó sus usos
-   * o su dificultad quedó más de un bit por debajo de la vigente. Con `bits = 0` no exige nada.
+   * Comprueba la cabecera como `verify`, pero sin registrar el uso: permite rechazar barato antes
+   * de leer el cuerpo y consumir el reto solo cuando el cuerpo ya es válido.
    */
-  verify(header: string | undefined, use: PowUse): void;
+  check(header: string | undefined, use: PowUse): void;
+  /**
+   * Comprueba la cabecera `POW_HEADER` para la escritura, registra el uso y lo cuenta como carga.
+   * Un reto `message` sirve una vez; uno `complaint`, para hasta `MAX_EVIDENCE_ITEMS` subidas de
+   * pruebas y después para una denuncia, que lo cierra. Devuelve el reto aceptado, o `null` con
+   * `bits = 0` (no exige nada). Lanza `proof_required` si falta, no es válida, es de otro
+   * propósito, venció, ya agotó sus usos o su dificultad quedó más de un bit por debajo de la
+   * vigente.
+   */
+  verify(header: string | undefined, use: PowUse): PowReceipt | null;
 }
 
 /** Opciones del guardián. */
@@ -180,6 +193,10 @@ interface SpentChallenge {
   isClosed: boolean;
 }
 
+function purposeOf(use: PowUse): PowPurpose {
+  return use === 'message' ? 'message' : 'complaint';
+}
+
 function canUse(entry: SpentChallenge | undefined, use: PowUse): boolean {
   if (entry === undefined) return true;
   if (entry.isClosed) return false;
@@ -262,6 +279,25 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
     }
   }
 
+  // Valida la solución y que al reto le queden usos para `use`; no modifica el estado.
+  function validPayload(
+    header: string | undefined,
+    use: PowUse,
+  ): z.infer<typeof ChallengePayloadSchema> {
+    const purpose = purposeOf(use);
+    const solution = header === undefined ? null : parsePowHeader(header);
+    const payload = solution === null ? null : readPayload(solution.token);
+    const isValid =
+      solution !== null &&
+      payload !== null &&
+      payload.purpose === purpose &&
+      payload.expiresAt > now().getTime() &&
+      payload.bits >= Math.max(bits, currentBits(purpose) - 1) &&
+      isPowSolution(solution.token, solution.counter, payload.bits);
+    if (!isValid || !canUse(spent.get(payload.nonce), use)) throw new ApiFailure('proof_required');
+    return payload;
+  }
+
   return {
     bits,
     currentBits,
@@ -278,40 +314,37 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
       const body = toBase64Url(utf8Encode(JSON.stringify(payload)));
       return { token: `${body}.${toBase64Url(mac(body))}`, bits: challengeBits };
     },
-    verify: (header, use) => {
+    check: (header, use) => {
       if (bits === 0) return;
-      const purpose: PowPurpose = use === 'message' ? 'message' : 'complaint';
-      const solution = header === undefined ? null : parsePowHeader(header);
-      const payload = solution === null ? null : readPayload(solution.token);
-      const time = now().getTime();
-      const isValid =
-        solution !== null &&
-        payload !== null &&
-        payload.purpose === purpose &&
-        payload.expiresAt > time &&
-        payload.bits >= Math.max(bits, currentBits(purpose) - 1) &&
-        isPowSolution(solution.token, solution.counter, payload.bits);
-      if (!isValid) throw new ApiFailure('proof_required');
-      const existing = spent.get(payload.nonce);
-      if (!canUse(existing, use)) throw new ApiFailure('proof_required');
-      let entry = existing;
+      validPayload(header, use);
+    },
+    verify: (header, use) => {
+      if (bits === 0) return null;
+      const payload = validPayload(header, use);
+      const purpose = purposeOf(use);
+      let entry = spent.get(payload.nonce);
       if (entry === undefined) {
-        sweep(time);
+        sweep(now().getTime());
         if (spent.size >= maxSpent) forgetOldest();
         entry = { expiresAt: payload.expiresAt, evidenceUses: 0, isClosed: false };
         spent.set(payload.nonce, entry);
-        load[purpose].record();
       }
+      load[purpose].record();
       if (use === 'evidence') entry.evidenceUses += 1;
       else entry.isClosed = true;
+      return { challengeId: payload.nonce, expiresAt: payload.expiresAt };
     },
   };
 }
 
-/** Middleware que exige la prueba de trabajo de la escritura antes de leer el cuerpo. */
+/**
+ * Middleware que comprueba la prueba de trabajo de la escritura antes de leer el cuerpo, sin
+ * gastarla: la ruta la consume con `PowGuard.verify` cuando el cuerpo ya es válido, para que
+ * una petición mal formada no agote el reto de la persona.
+ */
 export function requireProofOfWork(guard: PowGuard, use: PowUse): MiddlewareHandler {
   return async (c, next) => {
-    guard.verify(c.req.header(POW_HEADER), use);
+    guard.check(c.req.header(POW_HEADER), use);
     await next();
   };
 }

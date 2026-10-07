@@ -2,8 +2,8 @@
 // tiene, contra un anclaje publicado fuera del servidor (`anchors/AAAA-MM-DD.json`).
 import { LEDGER_GENESIS_HASH, LedgerAnchorSchema } from '@sigilo/contracts';
 import type { LedgerAnchor, LedgerEvent, LedgerPage, SignedLedgerHead } from '@sigilo/contracts';
-import { computeEventHash, verifyChain, verifyLedgerHead } from '@sigilo/core';
-import type { ChainFailureReason } from '@sigilo/core';
+import { computeEventHash, verifyChain, verifyEventInChain, verifyLedgerHead } from '@sigilo/core';
+import type { ChainFailureReason, EventInChainVerification } from '@sigilo/core';
 
 /** Resultado de la verificación, listo para explicarse en lenguaje claro. */
 export type LedgerVerification =
@@ -79,26 +79,65 @@ export async function downloadAndVerifyLedger(
 }
 
 /**
- * Descarga el tramo de la bitácora desde `fromSeq` hasta `head.seq` (incluidos), por páginas.
- * Devuelve lo que el servidor entregó; la verificación es aparte (`verifyEventInChain` o
- * `evaluateSince`). Se detiene si una página no avanza.
+ * Descarga el tramo de la bitácora desde `fromSeq` hasta `lastSeq` (por omisión `head.seq`;
+ * incluidos), por páginas. Devuelve lo que el servidor entregó; la verificación es aparte
+ * (`verifyEventInChain` o `evaluateSince`). Se detiene si una página no avanza.
  */
 export async function downloadSegment(
   fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
   fromSeq: number,
   head: SignedLedgerHead,
   initial: readonly LedgerEvent[] = [],
+  lastSeq: number = head.seq,
 ): Promise<LedgerEvent[]> {
-  const events = initial.filter((event) => event.seq <= head.seq);
+  const last = Math.min(lastSeq, head.seq);
+  const events = initial.filter((event) => event.seq <= last);
   let next = (events.at(-1)?.seq ?? fromSeq - 1) + 1;
-  while (next <= head.seq) {
+  while (next <= last) {
     const page = await fetchPage(next, LEDGER_PAGE_SIZE);
-    const fresh = page.events.filter((event) => event.seq >= next && event.seq <= head.seq);
+    const fresh = page.events.filter((event) => event.seq >= next && event.seq <= last);
     if (fresh.length === 0) break;
     events.push(...fresh);
     next = (fresh.at(-1)?.seq ?? next) + 1;
   }
   return events;
+}
+
+/**
+ * Prueba `event` dentro de `chain` hasta la cabeza firmada (`verifyEventInChain`) y compara los
+ * `anchors`. Si alguno es anterior al tramo, descarga desde la secuencia del más antiguo hasta
+ * justo antes del evento y verifica el tramo extendido, que empieza en ese anclaje.
+ * Seguridad: un anclaje fuera del tramo nunca cuenta como coincidencia. Si el tramo anterior no
+ * se puede descargar completo, el resultado es `anchor-not-comparable`, no `valid`.
+ */
+export async function verifyEventWithAnchors(
+  event: LedgerEvent,
+  chain: readonly LedgerEvent[],
+  head: SignedLedgerHead,
+  serverPublicKey: Uint8Array,
+  anchors: readonly LedgerAnchor[],
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
+): Promise<EventInChainVerification> {
+  const base = verifyEventInChain(event, chain, head, serverPublicKey);
+  if (!base.valid || anchors.length === 0) return base;
+  const earlier = anchors
+    .filter((anchor) => anchor.head.hash !== LEDGER_GENESIS_HASH && anchor.head.seq < event.seq)
+    .map((anchor) => anchor.head.seq);
+  if (earlier.length === 0) {
+    return verifyEventInChain(event, chain, head, serverPublicKey, { anchors });
+  }
+  const oldest = Math.min(...earlier);
+  let prefix: LedgerEvent[];
+  try {
+    prefix = await downloadSegment(fetchPage, oldest, head, [], event.seq - 1);
+  } catch {
+    return { valid: false, reason: 'anchor-not-comparable' };
+  }
+  const start = prefix[0];
+  if (start === undefined || start.seq !== oldest || prefix.length !== event.seq - oldest) {
+    return { valid: false, reason: 'anchor-not-comparable' };
+  }
+  return verifyEventInChain(start, [...prefix, ...chain], head, serverPublicKey, { anchors });
 }
 
 /** Tramo verificado de la bitácora desde un día: todos los eventos con fecha igual o posterior. */

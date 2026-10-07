@@ -277,9 +277,15 @@ describe('verifyEventInChain', () => {
       valid: false,
       reason: 'anchor',
     });
-    // Un anclaje anterior al tramo no se puede comparar y se ignora.
+    // Un anclaje anterior al tramo no se puede comparar: el resultado lo dice, no se ignora.
     expect(
       verifyEventInChain(second, chain.slice(1), head, SERVER_PUBLIC, {
+        anchors: [{ ...anchor, head: headOf(first) }],
+      }),
+    ).toEqual({ valid: false, reason: 'anchor-not-comparable' });
+    // Con el tramo que empieza en el anclaje, sí se compara.
+    expect(
+      verifyEventInChain(first, chain, head, SERVER_PUBLIC, {
         anchors: [{ ...anchor, head: headOf(first) }],
       }),
     ).toEqual({ valid: true });

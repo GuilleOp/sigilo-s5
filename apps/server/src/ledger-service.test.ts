@@ -1,6 +1,6 @@
 // Pruebas del servicio de bitácora: eventos pendientes sin secuencia, cierre de días con barajado
-// criptográfico, por lotes atómicos que ceden el event loop, fechas ante un reloj que retrocede y
-// tope diario del que la autoridad está exenta.
+// criptográfico, por lotes atómicos que ceden el event loop, fechas ante un reloj que retrocede o
+// salta hacia adelante y tope diario del que la autoridad está exenta.
 import { describe, expect, it } from 'vitest';
 import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import { generateSigningKeyPair, keyIdFor, verifyChain, verifyLedgerHead } from '@sigilo/core';
@@ -180,7 +180,7 @@ describe('createLedgerService', () => {
     // El reloj vuelve al 19: el evento no puede caer en un día ya publicado.
     setNow(new Date('2026-10-19T23:59:00Z'));
     expect(record(1).at).toBe('2026-10-21');
-    // Otro evento nunca queda antes de uno pendiente.
+    // Más atrás todavía: sigue sin caer en un día publicado.
     setNow(new Date('2026-10-18T08:00:00Z'));
     expect(record(2).at).toBe('2026-10-21');
     setNow(new Date('2026-10-22T10:05:00Z'));
@@ -188,6 +188,36 @@ describe('createLedgerService', () => {
     const events = ledger.page(0, 10).events;
     expect(verifyChain(events)).toEqual({ valid: true });
     expect(events.map((event) => event.at)).toEqual(['2026-10-20', '2026-10-21', '2026-10-21']);
+  });
+
+  it('un salto del reloj hacia adelante no arrastra a los eventos nuevos y avisa al operador', async () => {
+    const warnings: string[] = [];
+    const { ledger, record, setNow } = setup(undefined, {
+      maxPendingPerDay: 3,
+      warn: (message) => warnings.push(message),
+    });
+    // El reloj salta 16 días unos minutos y vuelve.
+    setNow(new Date('2026-11-05T10:00:00Z'));
+    expect(record(0).at).toBe('2026-11-05');
+    setNow(new Date('2026-10-20T12:00:00Z'));
+    expect(record(1).at).toBe('2026-10-20');
+    expect(await ledger.publishClosedDays()).toBe(0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('2026-11-05');
+    // Cada día real cierra el anterior; la cabeza avanza y el tope diario no se comparte.
+    for (const [index, day] of ['2026-10-21', '2026-10-22', '2026-10-23'].entries()) {
+      setNow(new Date(`${day}T12:00:00Z`));
+      expect(await ledger.publishClosedDays()).toBe(index === 0 ? 1 : 3);
+      for (let count = 0; count < 3; count += 1) expect(record(10 * index + count).at).toBe(day);
+    }
+    expect(ledger.head().at).toBe('2026-10-22');
+    // Un solo aviso por día futuro.
+    expect(warnings).toHaveLength(1);
+    setNow(new Date('2026-11-06T00:10:00Z'));
+    await ledger.publishClosedDays();
+    const events = ledger.page(0, 50).events;
+    expect(verifyChain(events)).toEqual({ valid: true });
+    expect(events.at(-1)?.at).toBe('2026-11-05');
   });
 
   it('cede el event loop entre lotes y comparte el cierre en curso', async () => {

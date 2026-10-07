@@ -2,6 +2,7 @@
 import {
   ComplaintDetailSchema,
   ComplaintSummarySchema,
+  DiscardEvidenceResponseSchema,
   EvidenceUploadResponseSchema,
   LedgerPageSchema,
   MailboxMessageSchema,
@@ -19,6 +20,7 @@ import type {
   ComplaintDetail,
   ComplaintStatus,
   ComplaintSummary,
+  DiscardEvidenceResponse,
   EvidenceDescriptor,
   LedgerPage,
   MailboxMessage,
@@ -71,6 +73,8 @@ export interface SigiloApi {
     message: AuthorityMessageRequest,
   ): Promise<MailboxMessage>;
   getEvidence(token: string, evidenceId: string): Promise<Blob>;
+  /** Descarta los archivos de las pruebas de la denuncia; queda en la bitácora y en el seguimiento. */
+  discardEvidence(token: string, folio: string): Promise<DiscardEvidenceResponse>;
   getLedgerHead(): Promise<SignedLedgerHead>;
   getLedgerEvents(from: number, limit: number): Promise<LedgerPage>;
   /** Página desde el último evento anterior a `day` (`AAAA-MM-DD`), su vecino. */
@@ -125,6 +129,11 @@ export function createSigiloApi(client: ApiClient = createApiClient()): SigiloAp
       }),
     getEvidence: (token, evidenceId) =>
       client.blob(ROUTES.authorityEvidence(evidenceId), { bearer: token }),
+    discardEvidence: (token, folio) =>
+      client.json(ROUTES.authorityEvidenceDiscard(folio), DiscardEvidenceResponseSchema, {
+        bearer: token,
+        method: 'POST',
+      }),
     getLedgerHead: () => client.json(ROUTES.ledgerHead, SignedLedgerHeadSchema),
     getLedgerEvents: (from, limit) =>
       client.json(ROUTES.ledgerEvents, LedgerPageSchema, {

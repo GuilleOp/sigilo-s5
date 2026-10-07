@@ -1,12 +1,14 @@
 // Recepción de pruebas: verificación del tipo real por bytes mágicos, reparto de la cuota de
-// almacenamiento (pendientes y por denuncia), retención de las pruebas de denuncias sin atender y
-// purga de las pendientes que nunca se asociaron.
+// almacenamiento (pendientes y por denuncia), retención de las pruebas de denuncias sin atender o
+// archivadas, descarte por la autoridad y purga de las pendientes que nunca se asociaron.
 import type { EvidenceDescriptor, EvidenceMediaType } from '@sigilo/contracts';
 import { MAX_EVIDENCE_BYTES } from '@sigilo/contracts';
 import { randomBytes, sha256Hex, toDayDate, toHex } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
+import { withTransaction } from '../db/database.ts';
 import type { EvidenceRepository } from '../db/evidence-repository.ts';
 import { ApiFailure } from '../http/errors.ts';
+import type { PowReceipt } from '../security/proof-of-work.ts';
 import type { EvidenceStore } from '../storage/evidence-store.ts';
 
 const MAGIC_BYTES: Record<EvidenceMediaType, readonly number[]> = {
@@ -34,6 +36,81 @@ export const PENDING_EVIDENCE_SHARE = 0.25;
 
 /** Divisor de la cuota por denuncia: cada una puede ocupar a lo más 1/100 de la cuota. */
 export const COMPLAINT_EVIDENCE_DIVISOR = 100;
+
+/**
+ * Margen tras el vencimiento de un reto para purgar las pruebas que subió y siguen sin denuncia:
+ * cubre la renovación del reto y el reintento del envío, que reutiliza los descriptores.
+ */
+export const CHALLENGE_UPLOADS_GRACE_MS = 30 * 60 * 1000;
+
+/** Máximo de retos cuyas subidas se recuerdan; al llenarse se olvidan los más viejos. */
+export const MAX_TRACKED_CHALLENGES = 100_000;
+
+const CHALLENGE_SWEEP_INTERVAL_MS = 60 * 1000;
+
+/**
+ * Pruebas que subió cada reto, solo en memoria y hasta que el reto vence más el margen.
+ * Seguridad: no se guarda nada en disco que ligue pruebas entre sí; reiniciar el proceso las
+ * olvida y entonces solo queda la purga diaria de pendientes como respaldo.
+ */
+export interface ChallengeUploads {
+  record(receipt: PowReceipt, evidenceId: string): void;
+  /**
+   * Saca y devuelve las pruebas de los retos vencidos hace más del margen. Barre a lo más una vez
+   * por minuto.
+   */
+  takeExpired(time: number): string[];
+}
+
+/** Crea el registro en memoria de las pruebas por reto. */
+export function createChallengeUploads(
+  graceMs: number = CHALLENGE_UPLOADS_GRACE_MS,
+  maxChallenges: number = MAX_TRACKED_CHALLENGES,
+): ChallengeUploads {
+  const byChallenge = new Map<string, { purgeAt: number; evidenceIds: string[] }>();
+  let lastSweepAt = Number.NEGATIVE_INFINITY;
+  return {
+    record: (receipt, evidenceId) => {
+      let entry = byChallenge.get(receipt.challengeId);
+      if (entry === undefined) {
+        // El mapa conserva el orden de inserción: se olvida primero el reto más viejo.
+        if (byChallenge.size >= maxChallenges) {
+          const oldest = byChallenge.keys().next();
+          if (oldest.done !== true) byChallenge.delete(oldest.value);
+        }
+        entry = { purgeAt: receipt.expiresAt + graceMs, evidenceIds: [] };
+        byChallenge.set(receipt.challengeId, entry);
+      }
+      entry.evidenceIds.push(evidenceId);
+    },
+    takeExpired: (time) => {
+      if (time - lastSweepAt < CHALLENGE_SWEEP_INTERVAL_MS) return [];
+      lastSweepAt = time;
+      const expired: string[] = [];
+      for (const [challengeId, entry] of byChallenge) {
+        if (entry.purgeAt > time) continue;
+        byChallenge.delete(challengeId);
+        expired.push(...entry.evidenceIds);
+      }
+      return expired;
+    },
+  };
+}
+
+/**
+ * Purga las pruebas pendientes de los retos que vencieron sin denuncia (más el margen) y devuelve
+ * cuántas borró. Las que ya se asociaron a una denuncia no se tocan.
+ */
+export function purgeExpiredChallengeUploads(ctx: AppContext): number {
+  let purged = 0;
+  for (const evidenceId of ctx.challengeUploads.takeExpired(ctx.deps.now().getTime())) {
+    if (ctx.evidence.deletePending(evidenceId)) {
+      ctx.deps.evidenceStore.remove(evidenceId);
+      purged += 1;
+    }
+  }
+  return purged;
+}
 
 /** Reparto de la cuota de pruebas en bytes. */
 export interface EvidenceBudget {
@@ -71,19 +148,24 @@ export interface EvidenceRetentionStoreDeps {
 }
 
 /**
- * Guarda una prueba pendiente (sin denuncia asociada) y devuelve su descriptor.
+ * Guarda una prueba pendiente (sin denuncia asociada) y devuelve su descriptor. `consumeProof`
+ * gasta el uso del reto solo cuando la prueba ya es válida y cabe; si devuelve un reto, la prueba
+ * se anota en `challengeUploads` para purgarla si el reto vence sin denuncia.
  * Seguridad: el tipo declarado debe coincidir con los bytes reales; así el visor de la autoridad
  * solo recibe imágenes. Nunca se borran pruebas ya asociadas a una denuncia para hacer sitio: si
  * no cabe, se rechaza la subida, porque no aceptar más es preferible a perder pruebas de
- * corrupción. Lanza `unsupported_media_type` si el tipo no coincide y `storage_full` si las
- * pendientes ya ocupan su parte o si la cuota total se excedería.
+ * corrupción. Antes de medir la cuota se purgan las pendientes de retos vencidos. Lanza
+ * `unsupported_media_type` si el tipo no coincide y `storage_full` si las pendientes ya ocupan su
+ * parte o si la cuota total se excedería.
  */
 export function storeEvidence(
   ctx: AppContext,
   bytes: Uint8Array,
   mediaType: EvidenceMediaType,
+  consumeProof: () => PowReceipt | null = () => null,
 ): EvidenceDescriptor {
   if (!hasMagicBytes(bytes, mediaType)) throw new ApiFailure('unsupported_media_type');
+  purgeExpiredChallengeUploads(ctx);
   const budget = budgetOf(ctx);
   if (ctx.evidence.pendingStoredBytes() + bytes.length > budget.pendingMax) {
     throw new ApiFailure('storage_full');
@@ -91,6 +173,7 @@ export function storeEvidence(
   if (ctx.evidence.totalStoredBytes() + bytes.length > budget.quota) {
     throw new ApiFailure('storage_full');
   }
+  const receipt = consumeProof();
   const descriptor: EvidenceDescriptor = {
     evidenceId: toHex(randomBytes(16)),
     mediaType,
@@ -104,6 +187,7 @@ export function storeEvidence(
     ctx.deps.evidenceStore.remove(descriptor.evidenceId);
     throw error;
   }
+  if (receipt !== null) ctx.challengeUploads.record(receipt, descriptor.evidenceId);
   return descriptor;
 }
 
@@ -141,13 +225,15 @@ export interface UnattendedRetentionDeps extends EvidenceRetentionStoreDeps {
 
 /**
  * Política de retención: borra los archivos de las pruebas de denuncias recibidas hace más de
- * `retentionDays` días que la autoridad no ha atendido (siguen en `received`). Devuelve cuántos
- * archivos borró. Con `retentionDays = 0` no hace nada.
+ * `retentionDays` días que la autoridad no ha atendido (siguen en `received`) o que archivó
+ * (`archived`). Devuelve cuántos archivos borró. Con `retentionDays = 0` no hace nada.
  * Seguridad: protege el almacenamiento de envíos masivos que nadie atiende. Que la persona
  * denunciante consulte su seguimiento ya no exime, porque un atacante puede consultar las suyas.
- * Para conservar las pruebas, la autoridad debe atender la denuncia o moverla a `routing`. No
- * toca la denuncia, sus descriptores (con los que se recalculan los digestos) ni la bitácora: el
- * registro queda marcado como no guardado y la autoridad recibe `not_found` al pedir el archivo.
+ * Archivar el spam tampoco exime: si lo hiciera, la cuota quedaría ocupada para siempre. Las
+ * pruebas se conservan mientras la denuncia está en trámite (`routing` en adelante, salvo
+ * `archived`); para liberar el espacio antes, la autoridad usa `discardEvidence`. No toca la
+ * denuncia, sus descriptores (con los que se recalculan los digestos) ni la bitácora: el registro
+ * queda marcado como no guardado y la autoridad recibe `not_found` al pedir el archivo.
  */
 export function purgeUnattendedEvidence(deps: UnattendedRetentionDeps): number {
   if (deps.retentionDays <= 0) return 0;
@@ -162,6 +248,37 @@ export function purgeUnattendedEvidence(deps: UnattendedRetentionDeps): number {
       purged += 1;
     }
   }
+}
+
+/**
+ * Descarta los archivos de las pruebas guardadas de una denuncia (acción de la autoridad, por
+ * ejemplo ante spam) y devuelve cuántos borró; si no queda ninguno, devuelve 0 sin registrar nada.
+ * En una sola transacción marca las pruebas como no guardadas, registra `evidence.discarded` en la
+ * bitácora con el folio y la cantidad, y anota el descarte para el seguimiento; los archivos se
+ * borran después de confirmarla.
+ * Seguridad: los descriptores se conservan (los digestos siguen verificables) y el descarte queda
+ * a la vista de la persona denunciante y en la bitácora pública: la autoridad no puede borrar
+ * pruebas en silencio.
+ */
+export function discardEvidence(ctx: AppContext, folio: string): number {
+  const discarded = withTransaction(ctx.deps.db, () => {
+    const evidenceIds = ctx.evidence.listStoredIdsForFolio(folio);
+    if (evidenceIds.length === 0) return evidenceIds;
+    const { at: discardedOn } = ctx.ledger.record({
+      type: 'evidence.discarded',
+      folio,
+      at: toDayDate(ctx.deps.now()),
+      actorRole: 'authority',
+      // Seguridad: como en los cambios de estatus, un identificador aleatorio hace único el
+      // digesto y el folio impide adivinarlo probando cantidades.
+      payload: { folio, count: evidenceIds.length, discardId: toHex(randomBytes(16)) },
+    });
+    for (const evidenceId of evidenceIds) ctx.evidence.markUnstored(evidenceId);
+    ctx.evidence.insertDiscard(folio, discardedOn, evidenceIds.length);
+    return evidenceIds;
+  });
+  for (const evidenceId of discarded) ctx.deps.evidenceStore.remove(evidenceId);
+  return discarded.length;
 }
 
 /**

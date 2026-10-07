@@ -161,8 +161,8 @@ autoridad y una copia de la base puede descifrar sin pasar por la ruta.
 
 ## Bitácora
 
-- Cada evento (`complaint.received`, `complaint.status_changed`, `identity.opened`, `message.sent`)
-  se encadena con el hash del anterior. Triggers de SQLite impiden modificar o borrar eventos.
+- Cada evento (`complaint.received`, `complaint.status_changed`, `identity.opened`, `message.sent`,
+  `evidence.discarded`) se encadena con el hash del anterior. Triggers de SQLite impiden modificar o borrar eventos.
 - **Cierre diario barajado.** Un evento nuevo queda pendiente, sin `seq`, con una fecha que nunca
   es anterior a la del último evento. Una tarea programada (cada 10 minutos; las lecturas no
   publican) baraja los pendientes de cada día cerrado (UTC) con aleatoriedad criptográfica y los
@@ -194,8 +194,9 @@ Ver [criptografia.md](criptografia.md).
   reto por denuncia con sus pruebas y otro por mensaje. Límites en memoria con tope LRU (fallos de
   autenticación y mensajes por folio), sin frenos globales de escrituras. Cuota total de pruebas con
   tope por denuncia (`SIGILO_EVIDENCE_QUOTA_BYTES`; si no cabe, `507 storage_full`, sin borrar
-  pruebas asociadas), retención de pruebas de denuncias sin atender
-  (`SIGILO_EVIDENCE_RETENTION_DAYS`) y tope de pendientes por día en la bitácora, del que están
+  pruebas asociadas), retención de pruebas de denuncias sin atender o archivadas
+  (`SIGILO_EVIDENCE_RETENTION_DAYS`), descarte de pruebas por la autoridad (queda en la bitácora y
+  en el seguimiento), purga de las pendientes de retos vencidos y tope de pendientes por día en la bitácora, del que están
   exentos los eventos de la autoridad.
 - **Almacenamiento.** Tablas privadas `WITHOUT ROWID`, `secure_delete` y checkpoint del WAL tras cada
   cierre diario, para que una copia de la base no conserve el orden de llegada.

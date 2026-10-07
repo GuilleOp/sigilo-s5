@@ -67,7 +67,7 @@ describe('migraciones', () => {
       .all()
       .map((row) => readInteger(row, 'version'));
     expect(versions).toEqual(MIGRATIONS.map((migration) => migration.version));
-    expect(versions).toEqual([1, 2, 3, 4, 5]);
+    expect(versions).toEqual([1, 2, 3, 4, 5, 6]);
     expect(schemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
     expect(schemaVersion(new DatabaseSync(':memory:'))).toBe(0);
   });
@@ -106,6 +106,7 @@ describe('migraciones', () => {
       'messages',
       'identity_openings',
       'evidence',
+      'evidence_discards',
       'ledger_pending',
     ]) {
       expect(() => db.prepare(`SELECT rowid FROM ${table}`).all(), table).toThrow(/rowid/);
@@ -126,7 +127,7 @@ describe('migraciones', () => {
     expect(() => insertMessage(db, 'm2', 1, 0)).toThrow(/UNIQUE/);
   });
 
-  it('mantiene de solo agregar la bitácora, el buzón, las aperturas, el estatus y los meses', () => {
+  it('mantiene de solo agregar la bitácora, el buzón, las aperturas, los descartes, el estatus y los meses', () => {
     const db = openDatabase(':memory:');
     insertComplaint(db, 'AAAA-AAAA-AAAA', 'verificador');
     insertEvent(db, 0);
@@ -134,6 +135,10 @@ describe('migraciones', () => {
     db.prepare(
       `INSERT INTO identity_openings (opening_id, folio, position, opened_on, legal_basis)
        VALUES ('o1', 'AAAA-AAAA-AAAA', 0, '2026-10-20', 'fundamento sintético')`,
+    ).run();
+    db.prepare(
+      `INSERT INTO evidence_discards (folio, position, discarded_on, evidence_count)
+       VALUES ('AAAA-AAAA-AAAA', 0, '2026-10-20', 2)`,
     ).run();
     db.prepare(
       `INSERT INTO status_changes (folio, position, status, changed_on)
@@ -154,6 +159,8 @@ describe('migraciones', () => {
       'DELETE FROM messages',
       "UPDATE identity_openings SET legal_basis = 'otro'",
       'DELETE FROM identity_openings',
+      'UPDATE evidence_discards SET evidence_count = 1',
+      'DELETE FROM evidence_discards',
       "UPDATE status_changes SET status = 'routed'",
       'DELETE FROM status_changes',
       "UPDATE open_data_months SET cells_json = '[1]'",

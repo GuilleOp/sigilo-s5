@@ -1,4 +1,5 @@
-// Panel de la autoridad: listado, detalle, apertura de identidad, estatus, buzón y pruebas.
+// Panel de la autoridad: listado, detalle, apertura de identidad, estatus, buzón, pruebas y su
+// descarte.
 import type { Context, Hono } from 'hono';
 import {
   API_PREFIX,
@@ -14,6 +15,7 @@ import { ApiFailure } from '../http/errors.ts';
 import { jsonBodyLimit, readJson } from '../http/request.ts';
 import { requireAuthority } from '../security/authority-auth.ts';
 import { changeStatus, openIdentity } from '../services/complaint-service.ts';
+import { discardEvidence } from '../services/evidence-service.ts';
 import { recordMessage } from '../services/mailbox-service.ts';
 import { buildComplaintDetail, toSummary } from '../services/views.ts';
 
@@ -95,6 +97,12 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
       signature,
     });
     return c.json(message, 201);
+  });
+
+  // Sin cuerpo: la acción solo depende del folio.
+  app.post(ROUTES.authorityEvidenceDiscard(':folio'), (c) => {
+    const complaint = findComplaint(ctx, c);
+    return c.json({ discarded: discardEvidence(ctx, complaint.folio) });
   });
 
   app.get(ROUTES.authorityEvidence(':evidenceId'), (c) => serveEvidence(ctx, c));

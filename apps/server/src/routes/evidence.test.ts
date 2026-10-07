@@ -1,17 +1,24 @@
 // Pruebas de subida de pruebas: tipo real por bytes mágicos, tamaño máximo, descriptor devuelto,
-// reparto de la cuota (sin desalojo), purga de pendientes y retención sin atención.
+// reparto de la cuota (sin desalojo), purga de pendientes (diaria y por reto vencido), retención
+// sin atención o archivadas y descarte por la autoridad.
 import { describe, expect, it } from 'vitest';
 import {
   ApiErrorSchema,
+  DiscardEvidenceResponseSchema,
   EvidenceUploadResponseSchema,
+  LedgerPageSchema,
   MAX_EVIDENCE_BYTES,
+  POW_HEADER,
+  PowChallengeSchema,
   ROUTES,
+  TrackingViewSchema,
 } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
 import { ComplaintDetailSchema } from '@sigilo/contracts';
-import { sha256Hex } from '@sigilo/core';
+import { formatPowHeader, sha256Hex, solvePow } from '@sigilo/core';
 import { createEvidenceRepository } from '../db/evidence-repository.ts';
 import {
+  CHALLENGE_UPLOADS_GRACE_MS,
   EVIDENCE_PURGE_INTERVAL_MS,
   evidenceDeletionDay,
   purgeStalePendingEvidence,
@@ -232,6 +239,19 @@ describe('retención de pruebas sin atender', () => {
     expect(withoutRetention.evidenceDeletionOn).toBeUndefined();
   });
 
+  it('también borra las de denuncias archivadas: archivar el spam no bloquea la cuota', async () => {
+    const { server, folios } = await scenario();
+    for (const folio of folios) {
+      await postJson(server.app, ROUTES.authorityStatus(folio), { status: 'archived' }, TEST_TOKEN);
+    }
+    const detail = ComplaintDetailSchema.parse(
+      await (await getAsAuthority(server.app, ROUTES.authorityComplaint(folios[0] ?? ''))).json(),
+    );
+    expect(detail.evidenceDeletionOn).toBe('2026-11-20');
+    expect(purge(server, new Date('2026-12-01T00:00:00Z'), 30)).toBe(2);
+    expect(createEvidenceRepository(server.db).totalStoredBytes()).toBe(0);
+  });
+
   it('respeta las denuncias que la autoridad ya atendió', async () => {
     const { server, otherEvidence, folios } = await scenario();
     const [, otherFolio] = folios;
@@ -313,5 +333,129 @@ describe('purga de pruebas pendientes', () => {
     now = new Date('2026-10-24T00:00:00Z');
     tasks[0]?.task();
     expect(repository.find(second.evidenceId)).toBeNull();
+  });
+});
+
+describe('descarte de pruebas por la autoridad', () => {
+  async function complaintWithEvidence(server: TestServer, count: number) {
+    const evidence: EvidenceDescriptor[] = [];
+    for (let index = 0; index < count; index += 1) {
+      evidence.push(
+        EvidenceUploadResponseSchema.parse(
+          await (await uploadEvidence(server.app, samplePng(), 'image/png')).json(),
+        ),
+      );
+    }
+    const reporter = createReporter();
+    const { folio } = await submitComplaint(
+      server,
+      await buildComplaintRequest(server, { mode: 'anonymous', reporter, evidence }),
+    );
+    return { folio, reporter, evidence };
+  }
+
+  it('borra los archivos, libera la cuota, queda en la bitácora y en el seguimiento', async () => {
+    const server = createTestServer();
+    const { folio, reporter, evidence } = await complaintWithEvidence(server, 2);
+    const discard = (token?: string) =>
+      postJson(server.app, ROUTES.authorityEvidenceDiscard(folio), {}, token);
+    expect((await discard()).status).toBe(401);
+    expect(
+      (
+        await postJson(
+          server.app,
+          ROUTES.authorityEvidenceDiscard('ZZZZ-ZZZZ-ZZZZ'),
+          {},
+          TEST_TOKEN,
+        )
+      ).status,
+    ).toBe(404);
+
+    const response = await discard(TEST_TOKEN);
+    expect(response.status).toBe(200);
+    expect(DiscardEvidenceResponseSchema.parse(await response.json())).toEqual({ discarded: 2 });
+    for (const item of evidence) expect(server.evidenceStore.read(item.evidenceId)).toBeNull();
+    expect(createEvidenceRepository(server.db).totalStoredBytes()).toBe(0);
+    const detail = ComplaintDetailSchema.parse(
+      await (await getAsAuthority(server.app, ROUTES.authorityComplaint(folio))).json(),
+    );
+    // Los descriptores siguen (los digestos son verificables); los archivos ya no.
+    expect(detail.evidence).toHaveLength(2);
+    expect(detail.storedEvidenceCount).toBe(0);
+    expect(detail.evidenceDeletionOn).toBeUndefined();
+
+    // Sin archivos guardados, otro descarte no registra nada.
+    expect(DiscardEvidenceResponseSchema.parse(await (await discard(TEST_TOKEN)).json())).toEqual({
+      discarded: 0,
+    });
+    const view = TrackingViewSchema.parse(
+      await (await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter))).json(),
+    );
+    expect(view.evidenceDiscards).toEqual([{ on: '2026-10-20', count: 2 }]);
+
+    await server.advanceTo(new Date('2026-10-21T09:00:00Z'));
+    const page = LedgerPageSchema.parse(
+      await (await server.app.request(`${ROUTES.ledgerEvents}?from=0&limit=10`)).json(),
+    );
+    const discarded = page.events.filter((event) => event.type === 'evidence.discarded');
+    expect(discarded).toHaveLength(1);
+    expect(discarded[0]).toMatchObject({ actorRole: 'authority', at: '2026-10-20' });
+  });
+});
+
+describe('purga de pendientes por reto vencido', () => {
+  const BITS = 4;
+
+  async function proof(server: TestServer): Promise<string> {
+    const { token, bits } = PowChallengeSchema.parse(
+      await (await server.app.request(`${ROUTES.powChallenge}?purpose=complaint`)).json(),
+    );
+    return formatPowHeader(token, solvePow(token, bits) ?? '0');
+  }
+
+  function upload(server: TestServer, header: string, size = 1000) {
+    return server.app.request(ROUTES.evidenceUpload, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/png', [POW_HEADER]: header },
+      body: samplePng(size),
+    });
+  }
+
+  it('libera las pendientes de un reto que venció sin denuncia, sin esperar la purga diaria', async () => {
+    // Cuota de 40 000 B: las pendientes caben hasta 10 000 B.
+    const server = createTestServer({ powBits: BITS, evidenceQuotaBytes: 40_000 });
+    const start = new Date('2026-10-20T10:00:00Z');
+    server.setNow(start);
+    const repository = createEvidenceRepository(server.db);
+
+    // Un reto que sí termina en denuncia: sus pruebas asociadas no se tocan.
+    const kept = await proof(server);
+    const keptEvidence = EvidenceUploadResponseSchema.parse(
+      await (await upload(server, kept, 500)).json(),
+    );
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+      evidence: [keptEvidence],
+    });
+    const created = await server.app.request(ROUTES.complaints, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', [POW_HEADER]: kept },
+      body: JSON.stringify(request),
+    });
+    expect(created.status).toBe(201);
+
+    // Un atacante llena las pendientes con un reto que nunca cierra.
+    const hoard = await proof(server);
+    for (let index = 0; index < 9; index += 1)
+      expect((await upload(server, hoard)).status).toBe(201);
+    expect((await upload(server, await proof(server), 2000)).status).toBe(507);
+
+    // Al vencer el reto más el margen, la siguiente subida legítima cabe.
+    server.setNow(new Date(start.getTime() + 10 * 60 * 1000 + CHALLENGE_UPLOADS_GRACE_MS));
+    expect((await upload(server, await proof(server), 2000)).status).toBe(201);
+    expect(repository.pendingStoredBytes()).toBe(2000);
+    expect(repository.find(keptEvidence.evidenceId)?.folio).not.toBeNull();
+    expect(server.evidenceStore.read(keptEvidence.evidenceId)).not.toBeNull();
   });
 });

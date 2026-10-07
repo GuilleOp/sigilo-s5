@@ -63,7 +63,7 @@ function start(): void {
   const openData = createOpenDataRepository(db);
   // Tarea programada con el mismo reloj inyectado: renueva el bloqueo, cierra los días de la
   // bitácora (la única vía: las lecturas solo muestran lo publicado), congela los meses completos,
-  // aplica la retención de pruebas de denuncias sin atender y vacía los contadores por hora. Cada
+  // aplica la retención de pruebas de denuncias sin atender o archivadas y vacía los contadores por hora. Cada
   // tarea va en su propio `try`, para que el fallo de una no impida las demás.
   const runTask = async (name: string, task: () => unknown): Promise<void> => {
     try {

@@ -61,6 +61,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Huella Cero: dígitos de cualquier sistema a ASCII, aviso de letras modificadoras en contexto
   latino, «ꞓ», «ǃ» y «∙», «ː» según el contexto y heurística del saltillo
   (`hasIndigenousFeatures`).
+- Acción «Descartar pruebas» de la autoridad: `POST authority/complaints/:folio/evidence/discard`
+  (`ROUTES.authorityEvidenceDiscard`, `DiscardEvidenceResponse`), evento `evidence.discarded`
+  (`{ folio, count, discardId }`), `TrackingView.evidenceDiscards`,
+  `ComplaintDetail.storedEvidenceCount` y panel con confirmación accesible.
+- Migración 6: registro de solo agregar `evidence_discards`.
+- Purga de las pruebas pendientes de un reto que vence sin denuncia (al vencer más 30 minutos,
+  `CHALLENGE_UPLOADS_GRACE_MS`), con registro en memoria por reto (`createChallengeUploads`).
+- `PowGuard.check` (comprueba sin gastar) y `PowReceipt` devuelto por `verify`.
+- Motivo `anchor-not-comparable` en `verifyEventInChain`, `verifyEventWithAnchors` en la web y
+  estado `anchors-not-comparable` en `verifyReporterKeys`.
+- `MAX_POW_ADAPTIVE_SPAN_BITS` (2) y aviso al operador ante pendientes de la bitácora con fecha
+  futura.
+- `docs/historial-de-seguridad.md`: resumen de las rondas de revisión para la presentación.
 
 ### Cambiado
 
@@ -118,6 +131,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   mensajes y de fallos de autenticación.
 - Sin reserva ni desalojo de pruebas: si no caben, `507 storage_full`; se conserva la retención de
   30 días.
+- La retención de 30 días aplica también a las denuncias `archived`.
+- Cada subida de pruebas cuenta como carga para la dificultad adaptativa.
+- El uso de un reto se gasta solo después de validar el cuerpo de la petición.
+- La fecha mínima de un evento de la bitácora es el día siguiente al último encadenado, sin el
+  último día con pendientes; `MailboxMessage.sentOn` sigue la fecha del evento.
+- `SIGILO_POW_MAX_BITS` no puede superar `SIGILO_POW_BITS + 2`; sin definir, es `min(20, base + 2)`.
 - Los eventos de la autoridad quedan exentos de `ledger_day_full`.
 - Las lecturas ya no publican la bitácora: una tarea programada cada 10 minutos (cada segundo con el
   reloj de pruebas) cierra los días en lotes de 1000, cediendo el event loop entre lotes.
@@ -137,6 +156,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - La verificación de la copia limpia ya no cuenta como metadato el perfil sRGB genérico de Chromium.
 - Carrera en el cambio de estatus; fugas de URL de objeto y respuestas tardías en el panel.
 - El inicio rápido del README funciona en un clon nuevo.
+- El aviso de retención del panel ya no sugiere que cambiar el estatus «conserva» las pruebas sin
+  explicar qué pasa al archivar.
+- El comentario de `PUBLISH_BATCH_SIZE` refleja la latencia medida (unos 250 ms por lote).
 
 ### Seguridad
 
@@ -169,3 +191,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Las pruebas asociadas a una denuncia nunca se borran para hacer sitio.
 - La autoridad puede escribir aunque el día de la bitácora esté lleno.
 - Un reto de baja dificultad ya no sirve después de que la carga sube dos bits o más.
+- La cuota de pruebas ya no queda bloqueada para siempre por spam archivado; la autoridad puede
+  liberarla descartando pruebas, y el descarte queda a la vista.
+- Llenar las pendientes ya no bloquea las subidas de 24 a 48 h.
+- El seguimiento y el buzón ya no dicen que la bitácora coincide con un ancla que no compararon.
+- Un salto del reloj del servidor hacia adelante ya no deja la bitácora detenida.
+- Una petición mal formada ya no gasta el reto de la persona.

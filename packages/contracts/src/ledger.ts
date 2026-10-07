@@ -7,6 +7,7 @@ export const LedgerEventTypeSchema = z.enum([
   'complaint.status_changed',
   'identity.opened',
   'message.sent',
+  'evidence.discarded',
 ]);
 export type LedgerEventType = z.infer<typeof LedgerEventTypeSchema>;
 
