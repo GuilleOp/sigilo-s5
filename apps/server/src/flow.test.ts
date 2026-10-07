@@ -52,7 +52,7 @@ describe('flujo completo', () => {
     expect(verifyReceipt(receipt, server.serverPublicKey)).toBe(true);
 
     // La persona denunciante escribe a la autoridad.
-    server.setNow(new Date('2026-10-21T10:30:00Z'));
+    await server.advanceTo(new Date('2026-10-21T10:30:00Z'));
     const toAuthority = await sealMailboxMessage(
       'Complemento sintético.',
       authorityRecipient(server),
@@ -99,7 +99,7 @@ describe('flujo completo', () => {
       identityContextFromDetail(detail),
     );
     expect(identity).toEqual(SYNTHETIC_IDENTITY);
-    server.setNow(new Date('2026-10-25T12:00:00Z'));
+    await server.advanceTo(new Date('2026-10-25T12:00:00Z'));
     await postJson(
       server.app,
       ROUTES.authorityStatus(folio),
@@ -124,7 +124,7 @@ describe('flujo completo', () => {
     expect(verifyReceiptEvent(view.receivedEvent, view.receipt)).toBe(true);
 
     // Al día siguiente, la bitácora pública es una cadena íntegra con cabeza firmada.
-    server.setNow(new Date('2026-10-26T00:00:01Z'));
+    await server.advanceTo(new Date('2026-10-26T00:00:01Z'));
     const page = LedgerPageSchema.parse(
       await (await server.app.request(ROUTES.ledgerEvents)).json(),
     );

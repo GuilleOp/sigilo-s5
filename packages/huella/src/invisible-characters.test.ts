@@ -57,8 +57,9 @@ describe('findInvisibleCharacters', () => {
   });
 
   it('también reporta homoglifos en palabras sin letras latinas', () => {
-    // Decisión: el mapa se aplica a todo token, así que una palabra rusa genuina se reporta.
+    // Decisión: una palabra rusa genuina se reporta, pero la limpieza automática la conserva.
     expect(kindsOf('Москва')).toEqual(['confusable', 'confusable', 'confusable', 'confusable']);
+    expect(stripInvisibleCharacters('Москва')).toBe('Москва');
   });
 });
 
@@ -488,7 +489,7 @@ describe('trampa del canario: puntuación de otros sistemas', () => {
   });
 
   it('los mapas de puntuación no tocan el saltillo, la vocal larga ni la barra de fracción', () => {
-    for (const codePoint of [0x02bc, 0xa78c, 0xa78b, 0x02d0, 0x2044]) {
+    for (const codePoint of [0x02bc, 0xa78c, 0xa78b, 0x02d0, 0x2044, 0x02c9, 0x02ca, 0x02cb]) {
       const character = String.fromCodePoint(codePoint);
       expect(PUNCTUATION_CONFUSABLES.has(character)).toBe(false);
       expect(TYPOGRAPHIC_VARIANTS.has(character)).toBe(false);
@@ -650,5 +651,180 @@ describe('texto largo en español con ordinales, superíndices y fracciones', ()
     expect(stripInvisibleCharacters(TEXT)).toBe(TEXT);
     expect(stripInvisibleCharacters(TEXT.normalize('NFD'))).toBe(TEXT);
     expect(stripInvisibleCharacters(TEXT, { shouldRemoveUncomposedMarks: true })).toBe(TEXT);
+  });
+});
+
+// Cuarta revisión: canales que pasaban sin aviso y falsos positivos de la limpieza automática.
+describe('trampa del canario: dígitos de otros sistemas', () => {
+  const CASES: readonly { marked: string; codePoint: number }[] = [
+    { marked: 'folio 1०5', codePoint: 0x0966 },
+    { marked: 'folio 1০5', codePoint: 0x09e6 },
+    { marked: 'folio 1๐5', codePoint: 0x0e50 },
+    { marked: 'folio 1〇5', codePoint: 0x3007 },
+  ];
+
+  for (const { marked, codePoint } of CASES) {
+    it(`avisa ${hex(codePoint)} como homoglifo y lo lleva al dígito ASCII`, () => {
+      expect(findInvisibleCharacters(marked).items).toEqual([
+        { index: 7, codePoint, kind: 'confusable' },
+      ]);
+      expect(findInvisibleCharacters(marked, { shouldNormalizeTypography: false }).count).toBe(1);
+      const cleaned = stripInvisibleCharacters(marked);
+      expect(cleaned).toBe('folio 105');
+      expect(findInvisibleCharacters(cleaned).count).toBe(0);
+    });
+  }
+
+  it('calcula el valor de cada dígito de la racha', () => {
+    expect(stripInvisibleCharacters('०१२३९')).toBe('01239');
+    expect(stripInvisibleCharacters('٠٥')).toBe('05');
+  });
+});
+
+describe('trampa del canario: letras modificadoras', () => {
+  it('avisa las modificadoras dentro de una palabra latina, sin cambiarlas', () => {
+    expect(findInvisibleCharacters('pᵃgo').items).toEqual([
+      { index: 1, codePoint: 0x1d43, kind: 'confusable' },
+    ]);
+    expect(kindsOf('caˢa')).toEqual(['confusable']);
+    expect(stripInvisibleCharacters('pᵃgo caˢa')).toBe('pᵃgo caˢa');
+  });
+
+  it('no avisa una modificadora suelta ni las que no son de los rangos revisados', () => {
+    expect(findInvisibleCharacters('ʰ dugumi⁵ ⁿ').count).toBe(0);
+  });
+
+  it('conserva y no avisa los tonos ˉ, ˊ y ˋ', () => {
+    const text = 'jmeiˉ jnɨˊ caˋ';
+    expect(findInvisibleCharacters(text).count).toBe(0);
+    expect(stripInvisibleCharacters(text)).toBe(text);
+  });
+});
+
+describe('trampa del canario: ꞓ, ǃ, ː y ∙', () => {
+  it('lleva «ꞓ» a «c»', () => {
+    expect(kindsOf('ꞓontrato')).toEqual(['confusable']);
+    expect(stripInvisibleCharacters('ꞓontrato Ꞓ')).toBe('contrato C');
+  });
+
+  it('lleva el clic «ǃ» a «!» y el operador «∙» a «·»', () => {
+    expect(kindsOf('¡Alto ǃ a∙b')).toEqual(['typographic_variant', 'typographic_variant']);
+    expect(stripInvisibleCharacters('¡Alto ǃ a∙b')).toBe('¡Alto ! a·b');
+  });
+
+  it('avisa «ː» y solo la cambia por «:» cuando no sigue a una letra', () => {
+    expect(findInvisibleCharacters('a las 10ː30').items).toEqual([
+      { index: 8, codePoint: 0x02d0, kind: 'confusable' },
+    ]);
+    expect(stripInvisibleCharacters('a las 10ː30')).toBe('a las 10:30');
+    // Tras una vocal puede marcar vocal larga: se avisa, pero no cambia.
+    expect(kindsOf('kaːn')).toEqual(['confusable']);
+    expect(stripInvisibleCharacters('kaːn')).toBe('kaːn');
+  });
+});
+
+describe('trampa del canario: ordinales y superíndices fuera de lugar', () => {
+  it('avisa «º» y «ª» entre letras y los cambia por «o» y «a»', () => {
+    expect(findInvisibleCharacters('cºntrato pªgo').items).toEqual([
+      { index: 1, codePoint: 0xba, kind: 'confusable' },
+      { index: 10, codePoint: 0xaa, kind: 'confusable' },
+    ]);
+    expect(stripInvisibleCharacters('cºntrato pªgo')).toBe('contrato pago');
+  });
+
+  it('avisa un superíndice dentro de una cifra y lo cambia por el dígito', () => {
+    expect(findInvisibleCharacters('folio ¹05').items).toEqual([
+      { index: 6, codePoint: 0xb9, kind: 'confusable' },
+    ]);
+    expect(stripInvisibleCharacters('folio ¹05')).toBe('folio 105');
+  });
+
+  it('no toca los ordinales, las potencias ni los tonos en superíndice', () => {
+    const text = '3º piso, 1ª vez, n.º 45, Nº 5, 25 m², 10³, ni³ chah²³ a³²';
+    expect(findInvisibleCharacters(text).count).toBe(0);
+    expect(stripInvisibleCharacters(text)).toBe(text);
+  });
+});
+
+describe('trampa del canario: marcas legítimas apiladas', () => {
+  it('avisa una segunda marca legítima distinta sobre la misma vocal', () => {
+    expect(findInvisibleCharacters('pa̰̲go').items).toEqual([
+      { index: 3, codePoint: 0x0332, kind: 'uncomposed_mark' },
+    ]);
+    expect(kindsOf('pa̱̰̲̣go')).toEqual(Array(3).fill('uncomposed_mark'));
+    // La limpieza automática las conserva; la manual deja solo la primera.
+    expect(stripInvisibleCharacters('pa̰̲go')).toBe('pa̰̲go');
+    expect(stripInvisibleCharacters('pa̰̲go', { shouldRemoveUncomposedMarks: true })).toBe('pa̰go');
+  });
+
+  it('no avisa una sola marca legítima ni las que se componen con ella', () => {
+    expect(findInvisibleCharacters('pa̱go ā́ ì̱ ä̱').count).toBe(0);
+  });
+});
+
+describe('trampa del canario: tabuladores y saltos de línea repetidos', () => {
+  it('avisa y colapsa los tabuladores internos repetidos', () => {
+    expect(findInvisibleCharacters('pago\t\tindebido').items).toEqual([
+      { index: 5, codePoint: 0x09, kind: 'typographic_variant' },
+    ]);
+    expect(stripInvisibleCharacters('pago\t\t\tindebido')).toBe('pago\tindebido');
+    expect(stripInvisibleCharacters('Concepto\tMonto\nCemento\t$5,000')).toBe(
+      'Concepto\tMonto\nCemento\t$5,000',
+    );
+  });
+
+  it('avisa y colapsa más de dos saltos de línea seguidos', () => {
+    expect(findInvisibleCharacters('a\n\n\nb').items).toEqual([
+      { index: 3, codePoint: 0x0a, kind: 'typographic_variant' },
+    ]);
+    expect(stripInvisibleCharacters('a\n\n\n\nb')).toBe('a\n\nb');
+    expect(stripInvisibleCharacters('a\n \n\t\nb')).toBe('a\n\nb');
+    expect(stripInvisibleCharacters('a\r\n\r\n\r\nb')).toBe('a\n\nb');
+    expect(kindsOf('a\n\nb')).toEqual([]);
+  });
+
+  it('sin normalización tipográfica no los toca', () => {
+    const options = { shouldNormalizeTypography: false };
+    expect(findInvisibleCharacters('a\t\tb\n\n\nc', options).count).toBe(0);
+    expect(stripInvisibleCharacters('a\t\tb\n\n\nc', options)).toBe('a\t\tb\n\n\nc');
+  });
+});
+
+describe('trampa del canario: saltillo en un texto sin ortografía indígena', () => {
+  it('lo avisa, pero no lo cambia', () => {
+    expect(findInvisibleCharacters('Oʼ Higgins').items).toEqual([
+      { index: 1, codePoint: 0x02bc, kind: 'confusable' },
+    ]);
+    expect(kindsOf('Oꞌ Higgins')).toEqual(['confusable']);
+    expect(stripInvisibleCharacters('Oʼ Higgins')).toBe('Oʼ Higgins');
+    // «m²» es del español, no un tono.
+    expect(kindsOf('Oʼ Higgins, 25 m²')).toEqual(['confusable']);
+  });
+
+  it('no lo avisa cuando el texto tiene rasgos de ortografía indígena', () => {
+    for (const text of ['ñuʼu, ñuꞌu, kòò, sa̱', 'Jñatjo: a̱, ʼ', 'jnɨʼ', 'ni³ ʼa', 'kõʼo']) {
+      expect(findInvisibleCharacters(text).count).toBe(0);
+    }
+  });
+});
+
+describe('la limpieza automática no translitera palabras de otro alfabeto', () => {
+  it('conserva un nombre de empresa en cirílico, aunque lo avisa', () => {
+    const text = 'El proveedor «ООО Ромашка» facturó';
+    expect(new Set(kindsOf(text))).toEqual(new Set(['confusable']));
+    expect(stripInvisibleCharacters(text)).toBe(text);
+  });
+
+  it('conserva una letra griega si el texto usa griego o si está en una fórmula', () => {
+    for (const text of ['coeficiente α y β, Δt, 5 Ω, π', 'sea α = 0.05 el nivel', 'el ángulo 2α']) {
+      expect(kindsOf(text)).toContain('confusable');
+      expect(stripInvisibleCharacters(text)).toBe(text);
+    }
+  });
+
+  it('sigue convirtiendo homoglifos en palabras latinas y letras sueltas entre ellas', () => {
+    expect(stripInvisibleCharacters('Secretаría, Juan а Pedro, el coeficiente α del')).toBe(
+      'Secretaría, Juan a Pedro, el coeficiente a del',
+    );
   });
 });

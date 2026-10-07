@@ -4,7 +4,7 @@ import { PowPurposeSchema, ROUTES } from '@sigilo/contracts';
 import type { AppContext } from '../context.ts';
 import { ApiFailure } from '../http/errors.ts';
 
-/** Registra `GET powChallenge?purpose=complaint|evidence`. */
+/** Registra `GET powChallenge?purpose=complaint|message`. */
 export function registerPowRoutes(app: Hono, ctx: AppContext): void {
   app.get(ROUTES.powChallenge, (c) => {
     const purpose = PowPurposeSchema.safeParse(c.req.query('purpose'));

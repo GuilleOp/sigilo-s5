@@ -177,7 +177,7 @@ describe('listado y detalle', () => {
       const { server, folio } = await setup(mode);
       const sameDay = await fetchDetail(server, folio);
       expect(sameDay.receivedEventSeq).toBeUndefined();
-      server.setNow(NEXT_DAY);
+      await server.advanceTo(NEXT_DAY);
       const detail = await fetchDetail(server, folio);
       const seq = detail.receivedEventSeq;
       if (seq === undefined) throw new Error('Falta la secuencia publicada.');
@@ -212,7 +212,7 @@ describe('apertura de identidad', () => {
   it('registra el fundamento, entrega el sobre y lo hace visible en el seguimiento', async () => {
     const scenario = await setup();
     const { server, folio } = scenario;
-    server.setNow(new Date('2026-10-22T09:15:00Z'));
+    await server.advanceTo(new Date('2026-10-22T09:15:00Z'));
     const detail = await fetchDetail(server, folio);
     const opened = await requestIdentity(server, folio);
     expect(opened).not.toHaveProperty('authVerifier');
@@ -241,7 +241,7 @@ describe('apertura de identidad', () => {
     expect(sameDay.events.some((event) => event.type === 'identity.opened')).toBe(false);
 
     // Al día siguiente, el evento público lleva la etiqueta del recibo y concilia con el seguimiento.
-    server.setNow(new Date('2026-10-23T09:00:00Z'));
+    await server.advanceTo(new Date('2026-10-23T09:00:00Z'));
     const page = LedgerPageSchema.parse(
       await (await server.app.request(ROUTES.ledgerEvents)).json(),
     );
@@ -350,7 +350,7 @@ describe('cambio de estatus', () => {
   it('agrega el cambio a la línea de tiempo y rechaza repetir el estatus actual', async () => {
     const scenario = await setup();
     const { server, folio } = scenario;
-    server.setNow(new Date('2026-10-23T23:59:59Z'));
+    await server.advanceTo(new Date('2026-10-23T23:59:59Z'));
     const response = await postJson(
       server.app,
       ROUTES.authorityStatus(folio),

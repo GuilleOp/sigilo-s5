@@ -75,6 +75,7 @@ const EXPECTED_FUNCTIONS = [
   'solvePow',
   'formatPowHeader',
   'parsePowHeader',
+  'powSolveSeconds',
 ];
 
 describe('@sigilo/core', () => {
@@ -87,6 +88,7 @@ describe('@sigilo/core', () => {
     expect(core.IDENTITY_PADDED_SIZE).toBe(4096);
     expect(core.MAILBOX_PADDED_SIZE).toBe(4096);
     expect(core.MAX_MAILBOX_TEXT_LENGTH).toBe(1000);
+    expect(core.SLOW_DEVICE_HASHES_PER_SECOND).toBe(50_000);
     expect(new core.ReceiptPhraseError('x', 1)).toBeInstanceOf(Error);
   });
 });

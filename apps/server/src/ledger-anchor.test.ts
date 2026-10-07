@@ -65,7 +65,7 @@ async function submitSome(server: TestServer, count: number): Promise<void> {
 
 /** El servidor publica los días cerrados en su primera consulta pública del día. */
 async function publishAt(server: TestServer, date: Date): Promise<void> {
-  server.setNow(date);
+  await server.advanceTo(date);
   await server.app.request(ROUTES.ledgerHead);
 }
 
@@ -98,7 +98,7 @@ describe('anchorLedger', () => {
     const again = await anchorOn(deployment, new Date('2026-10-21T20:00:00Z'));
     expect(again.created).toBe(false);
 
-    deployment.server.setNow(new Date('2026-10-21T09:00:00Z'));
+    await deployment.server.advanceTo(new Date('2026-10-21T09:00:00Z'));
     await submitSome(deployment.server, 1);
     const next = await anchorOn(deployment, new Date('2026-10-22T08:00:00Z'));
     expect(next.anchor.head.seq).toBe(2);
@@ -142,7 +142,7 @@ describe('anchorLedger', () => {
     const { server } = deployment;
     await submitSome(server, 2);
     await anchorOn(deployment, new Date('2026-10-21T08:00:00Z'));
-    server.setNow(new Date('2026-10-22T08:00:00Z'));
+    await server.advanceTo(new Date('2026-10-22T08:00:00Z'));
     const fetcher: typeof fetch = async (input) => server.app.request(String(input));
     const result = await anchorOn(
       deployment,
@@ -157,7 +157,7 @@ describe('anchorLedger', () => {
     const deployment = deploy();
     await submitSome(deployment.server, 1);
     await anchorOn(deployment, new Date('2026-10-21T08:00:00Z'));
-    deployment.server.setNow(new Date('2026-10-21T09:00:00Z'));
+    await deployment.server.advanceTo(new Date('2026-10-21T09:00:00Z'));
     await submitSome(deployment.server, 2);
     await publishAt(deployment.server, new Date('2026-10-22T08:00:00Z'));
     // Se cambia el contenido del último evento, conservando su hash almacenado (el de la cabeza).

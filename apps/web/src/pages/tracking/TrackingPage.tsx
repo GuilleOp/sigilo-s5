@@ -1,11 +1,13 @@
 // Pantalla /seguimiento: acceso con folio y recibo, estatus, identidad, comprobante y buzón.
 import { useEffect, useRef, useState } from 'react';
-import type { MailboxMessage, TrackingView } from '@sigilo/contracts';
+import type { LedgerAnchor, MailboxMessage, TrackingView } from '@sigilo/contracts';
 import { isMailboxSequenceComplete, ReceiptPhraseError } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
+import { AnchorsField } from '../../components/AnchorsField.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch, KeyMismatchError } from '../../crypto/key-pinning.ts';
-import { obtainProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
+import { parseLedgerAnchors } from '../../crypto/ledger-verification.ts';
+import { createProofProvider, sendWithProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
 import {
   checkIdentityOpenings,
   checkPublishedEvent,
@@ -20,6 +22,7 @@ import type {
   DecodedMessage,
   IdentityOpeningsCheck,
   PublicationStatus,
+  TrackingLedger,
   TrackingReceiptCheck,
   TrackingSession,
 } from '../../crypto/tracking.ts';
@@ -132,6 +135,19 @@ function ReceiptStatus({ loaded }: { loaded: Loaded }) {
   );
 }
 
+/** Resultado de comparar el tramo del seguimiento con los anclajes pegados, en lectura fácil. */
+function anchorsMessage(ledger: TrackingLedger): string {
+  if (ledger.status === 'valid') {
+    return 'El registro público coincide con los anclajes que pegaste.';
+  }
+  if (ledger.status === 'unpublished') {
+    return 'Tu anotación todavía no se publica. Compara los anclajes cuando aparezca en el registro público.';
+  }
+  return ledger.isAnchorMismatch === true
+    ? 'Atención: el registro público no coincide con los anclajes que pegaste. Alguien lo reescribió después de publicarlos.'
+    : 'Por ahora no pudimos comprobar el registro público.';
+}
+
 /** Seguimiento de la denuncia. Todo vive en memoria y se borra al salir. */
 export function TrackingPage() {
   useDocumentTitle('Dar seguimiento');
@@ -142,6 +158,9 @@ export function TrackingPage() {
   const [failure, setFailure] = useState<LoginFailure | null>(null);
   const [replyStatus, setReplyStatus] = useState('');
   const [sentTexts, setSentTexts] = useState<Record<string, string>>({});
+  const [anchorText, setAnchorText] = useState('');
+  const [anchorError, setAnchorError] = useState('');
+  const [anchorStatus, setAnchorStatus] = useState('');
 
   useEffect(() => {
     isMounted.current = true;
@@ -166,27 +185,64 @@ export function TrackingPage() {
       publication: canCheck ? 'checking' : 'unknown',
       openings: isSealed ? 'checking' : null,
     });
-    if (canCheck || isSealed) {
-      // Un solo tramo verificado de la bitácora, desde el día de recepción, sirve a ambos controles.
-      const ledgerApi = {
-        fetchHead: () => api.getLedgerHead(),
-        fetchSince: (day: string, limit: number) => api.getLedgerSince(day, limit),
-        fetchPage: (from: number, limit: number) => api.getLedgerEvents(from, limit),
-      };
-      void loadTrackingLedger(view, PINNED_KEYS, ledgerApi).then(
-        (ledger) =>
-          updateLoaded(view, {
-            ...(canCheck ? { publication: checkPublishedEvent(view, ledger) } : {}),
-            ...(isSealed ? { openings: checkIdentityOpenings(view, session, ledger) } : {}),
-          }),
-        () =>
-          updateLoaded(view, {
-            ...(canCheck ? { publication: 'unknown' as const } : {}),
-            ...(isSealed ? { openings: { status: 'unknown' as const } } : {}),
-          }),
-      );
-    }
+    if (canCheck || isSealed) void checkLedger(view, session, canCheck);
     return view;
+  }
+
+  /**
+   * Un solo tramo verificado de la bitácora, desde el día de recepción, sirve a ambos controles y,
+   * si la persona pegó anclajes, también a la comparación con ellos.
+   */
+  async function checkLedger(
+    view: TrackingView,
+    session: TrackingSession,
+    canCheck: boolean,
+    anchors: readonly LedgerAnchor[] = [],
+  ): Promise<TrackingLedger | null> {
+    const isSealed = view.mode === 'sealed';
+    const ledgerApi = {
+      fetchHead: () => api.getLedgerHead(),
+      fetchSince: (day: string, limit: number) => api.getLedgerSince(day, limit),
+      fetchPage: (from: number, limit: number) => api.getLedgerEvents(from, limit),
+    };
+    try {
+      const ledger = await loadTrackingLedger(view, PINNED_KEYS, ledgerApi, anchors);
+      updateLoaded(view, {
+        ...(canCheck ? { publication: checkPublishedEvent(view, ledger) } : {}),
+        ...(isSealed ? { openings: checkIdentityOpenings(view, session, ledger) } : {}),
+      });
+      return ledger;
+    } catch {
+      updateLoaded(view, {
+        ...(canCheck ? { publication: 'unknown' as const } : {}),
+        ...(isSealed ? { openings: { status: 'unknown' as const } } : {}),
+      });
+      return null;
+    }
+  }
+
+  /** Vuelve a comprobar el tramo del seguimiento contra los anclajes pegados. */
+  async function compareAnchors(): Promise<void> {
+    const session = sessionRef.current;
+    if (loaded === null || session === null) return;
+    const anchors = parseLedgerAnchors(anchorText);
+    if (anchors === null) {
+      setAnchorError('El texto pegado no es un anclaje válido.');
+      setAnchorStatus('');
+      return;
+    }
+    setAnchorError('');
+    setAnchorStatus('Comparando con los anclajes.');
+    const { view, check } = loaded;
+    const canCheck = check.isReceiptValid && check.event !== 'invalid';
+    const ledger = await checkLedger(view, session, canCheck, anchors);
+    if (!isMounted.current) return;
+    const message =
+      ledger === null
+        ? 'Por ahora no pudimos consultar el registro público.'
+        : anchorsMessage(ledger);
+    setAnchorStatus(message);
+    announce(message);
   }
 
   function updateLoaded(
@@ -232,11 +288,12 @@ export function TrackingPage() {
     session: TrackingSession,
     messages: readonly MailboxMessage[],
   ): Promise<MailboxMessage> {
-    // Cada intento lleva su propia prueba de trabajo (los retos son de un solo uso).
+    // Cada intento lleva su propia prueba de trabajo (los retos `message` son de un solo uso); si
+    // el reto venció o la dificultad subió, se resuelve otro una vez.
     const send = async (current: readonly MailboxMessage[]) => {
       const request = await sealReporterReply(text, session, PINNED_KEYS, current);
-      const proof = await obtainProof(api, 'message', workerPowSolver, setReplyStatus);
-      return api.sendReporterMessage(request, proof);
+      const proofs = createProofProvider(api, 'message', workerPowSolver, setReplyStatus);
+      return sendWithProof(proofs, (proof) => api.sendReporterMessage(request, proof));
     };
     try {
       return await send(messages);
@@ -279,6 +336,9 @@ export function TrackingPage() {
     sessionRef.current = null;
     setLoaded(null);
     setSentTexts({});
+    setAnchorText('');
+    setAnchorError('');
+    setAnchorStatus('');
     setReplyStatus('');
     focusAfterRender(() => document.querySelector<HTMLElement>('#contenido h1'));
     announce('Cerraste tu seguimiento. Borramos tus datos de esta pantalla.');
@@ -300,6 +360,31 @@ export function TrackingPage() {
             Tu denuncia con folio <span className="mono folio">{loaded.view.folio}</span>
           </h2>
           <ReceiptStatus loaded={loaded} />
+          <section className="card" aria-labelledby="tracking-anchors-title">
+            <h3 id="tracking-anchors-title">Comparar con anclajes publicados (opcional)</h3>
+            <p>
+              Si tienes anclajes del registro público publicados fuera del sistema, pégalos aquí.
+              Comprobaremos que el registro donde aparece tu denuncia no se reescribió.
+            </p>
+            <AnchorsField
+              id="tracking-anchors"
+              value={anchorText}
+              onChange={setAnchorText}
+              error={anchorError}
+              testId="tracking-anchor-input"
+            />
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => void compareAnchors()}
+              data-testid="tracking-compare-anchors"
+            >
+              Comparar con los anclajes
+            </button>
+            <p role="status" data-testid="tracking-anchors-status">
+              {anchorStatus}
+            </p>
+          </section>
           <StatusTimeline view={loaded.view} />
           <IdentityStatus view={loaded.view} openings={loaded.openings} />
           {!isMailboxSequenceComplete(loaded.view.messages) && (

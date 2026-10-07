@@ -1,5 +1,6 @@
 // Servicio de bitácora: registra los eventos del día como pendientes y, al cerrar cada día, los
-// encadena en orden barajado, por lotes acotados, y publica la cabeza firmada.
+// encadena en orden barajado, por lotes acotados que ceden el event loop, y publica la cabeza
+// firmada.
 import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import type { LedgerEvent, LedgerPage, SignedLedgerHead } from '@sigilo/contracts';
 import {
@@ -21,26 +22,38 @@ import { ApiFailure } from './http/errors.ts';
 /** Máximo de eventos por página de la bitácora pública. */
 export const MAX_LEDGER_PAGE = 500;
 
-/** Eventos que se encadenan por transacción al cerrar un día. */
-export const PUBLISH_BATCH_SIZE = 5000;
+/**
+ * Eventos que se encadenan por transacción al cerrar un día. Entre lotes el cierre cede el event
+ * loop, así que es también la mayor espera que impone a una petición concurrente (decenas de ms).
+ */
+export const PUBLISH_BATCH_SIZE = 1000;
 
-/** Tope de eventos pendientes por día; al alcanzarlo, las escrituras reciben `ledger_day_full`. */
+/**
+ * Tope de eventos pendientes por día; al alcanzarlo, las escrituras reciben `ledger_day_full`.
+ * Los eventos de la autoridad (estatus, aperturas y sus mensajes) están exentos.
+ */
 export const MAX_PENDING_EVENTS_PER_DAY = 200_000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Operaciones de la bitácora. */
 export interface LedgerService {
   /**
-   * Registra un evento como pendiente (sin secuencia) y devuelve su parte pública. Debe llamarse
-   * dentro de una transacción junto con los demás escritos. Lanza `ledger_day_full` si el día ya
-   * tiene el máximo de pendientes.
+   * Registra un evento como pendiente (sin secuencia) y devuelve su parte pública. Su fecha es la
+   * mayor entre `input.at`, el día siguiente al último encadenado y el último día con pendientes:
+   * si el reloj retrocede, el evento no cae en un día ya publicado ni antes de otro pendiente, y
+   * la cadena sigue en orden de fechas. Quien guarde la fecha junto al evento debe usar la del
+   * resultado. Debe llamarse dentro de una transacción junto con los demás escritos. Lanza
+   * `ledger_day_full` si el día ya tiene el máximo de pendientes, salvo para la autoridad.
    */
   record(input: LedgerEventInput): PendingLedgerEvent;
   /**
    * Encadena los pendientes de los días ya cerrados (UTC), cada día en orden barajado y por lotes
-   * de a lo más `PUBLISH_BATCH_SIZE` eventos, cada lote en su transacción. Devuelve cuántos
-   * encadenó. No debe llamarse dentro de otra transacción.
+   * de a lo más `PUBLISH_BATCH_SIZE` eventos, cada lote en su transacción, cediendo el event loop
+   * entre lotes. Devuelve cuántos encadenó. Si ya hay un cierre en curso, devuelve ese mismo. Solo
+   * lo llama la tarea programada; las lecturas muestran lo ya publicado.
    */
-  publishClosedDays(): number;
+  publishClosedDays(): Promise<number>;
   /** Cabeza pública: la del último evento de un día publicado completo (o el génesis firmado). */
   head(): SignedLedgerHead;
   /** Página de eventos publicados desde `fromSeq`, nunca más allá de la cabeza. */
@@ -65,11 +78,18 @@ export interface LedgerServiceDeps {
   batchSize?: number;
   /** Tope de pendientes por día (`MAX_PENDING_EVENTS_PER_DAY`). */
   maxPendingPerDay?: number;
-  /**
-   * Si las consultas públicas cierran los días pendientes (por omisión, sí). El anclaje desde una
-   * base abierta en solo lectura lo desactiva y ancla solo lo ya publicado.
-   */
-  publishOnRead?: boolean;
+}
+
+function nextDay(day: string): string {
+  return toDayDate(new Date(Date.parse(`${day}T00:00:00Z`) + DAY_MS));
+}
+
+function laterDay(a: string, b: string | null): string {
+  return b !== null && b > a ? b : a;
+}
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 /**
@@ -82,15 +102,17 @@ export interface LedgerServiceDeps {
  * atómico) y lo pendiente del día se vuelve a barajar en la siguiente corrida: una permutación
  * uniforme del resto sigue dando un orden uniforme del día. Mientras un día tiene pendientes, la
  * cabeza no avanza a él: cada día se publica completo y la cabeza cambia a lo más una vez al día.
+ * Las lecturas nunca cierran días: un cierre de 200 000 eventos tarda segundos y bloquearía a
+ * quien lo disparara; lo hace la tarea programada, cediendo el event loop entre lotes.
  */
 export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
   const { db, repository, serverKeyId, serverSigningPrivateKey, now } = deps;
   const shuffleDay = deps.shuffleDay ?? ((ids) => shuffle(ids));
   const batchSize = deps.batchSize ?? PUBLISH_BATCH_SIZE;
   const maxPendingPerDay = deps.maxPendingPerDay ?? MAX_PENDING_EVENTS_PER_DAY;
-  const publishOnRead = deps.publishOnRead ?? true;
   let cachedHead: SignedLedgerHead | null = null;
   let pendingCount: { day: string; count: number } | null = null;
+  let closing: Promise<number> | null = null;
 
   function headFor(last: LedgerEvent | null): SignedLedgerHead {
     // Sin eventos publicados se firma el génesis: seq 0, hash de ceros y la fecha del día.
@@ -138,21 +160,41 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
     });
   }
 
-  function publishClosedDays(): number {
+  async function closeDays(): Promise<number> {
     const today = toDayDate(now());
     // Consulta ligera: casi siempre no hay nada que cerrar.
     if (!repository.hasPendingBefore(today)) return 0;
     let published = 0;
+    let isFirstBatch = true;
     for (const day of repository.listPendingDaysBefore(today)) {
       // Solo los identificadores del día completo están en memoria a la vez.
       const order = shuffleDay(repository.listPendingIdsOn(day));
       for (let start = 0; start < order.length; start += batchSize) {
+        if (!isFirstBatch) await yieldToEventLoop();
+        isFirstBatch = false;
         published += chainBatch(order.slice(start, start + batchSize));
       }
     }
     // Seguridad: el WAL conserva páginas con los pendientes en su orden de llegada.
     if (published > 0) checkpointWal(db);
     return published;
+  }
+
+  function publishClosedDays(): Promise<number> {
+    closing ??= closeDays().finally(() => {
+      closing = null;
+    });
+    return closing;
+  }
+
+  // Fecha mínima de un evento nuevo: nunca un día ya encadenado ni anterior a otro pendiente.
+  function eventDay(requested: string): string {
+    const last = repository.last();
+    const floor = laterDay(
+      last === null ? requested : nextDay(last.at),
+      repository.lastPendingDay(),
+    );
+    return laterDay(requested, floor);
   }
 
   function assertDayCapacity(day: string): void {
@@ -175,23 +217,18 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
 
   return {
     record: (input) => {
-      const event = pendingEventFor(input);
-      assertDayCapacity(event.at);
+      const event = pendingEventFor({ ...input, at: eventDay(input.at) });
+      // La autoridad no compite con el volumen anónimo: sus eventos no cuentan para el tope.
+      if (input.actorRole !== 'authority') assertDayCapacity(event.at);
       // El identificador es aleatorio: no conserva el orden de llegada.
       repository.insertPending(toHex(randomBytes(16)), event, canonicalize(input.payload));
       return event;
     },
     publishClosedDays,
-    head: () => {
-      if (publishOnRead) publishClosedDays();
-      return headFor(publishedLast());
-    },
-    page: (fromSeq, limit) => {
-      if (publishOnRead) publishClosedDays();
-      return pageFrom(fromSeq, limit);
-    },
+    head: () => headFor(publishedLast()),
+    page: (fromSeq, limit) => pageFrom(fromSeq, limit),
     pageSince: (day, limit) => {
-      if (publishOnRead) publishClosedDays();
+      // Consultas por índice (`ledger_events_by_day` y la secuencia): costo acotado.
       const neighbor = repository.lastBefore(day);
       return pageFrom(neighbor === null ? 0 : neighbor.seq, limit);
     },

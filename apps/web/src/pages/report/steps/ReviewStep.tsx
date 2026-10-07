@@ -1,10 +1,11 @@
 // Paso 4: revisión con la vista de la autoridad y el semáforo de riesgo con acciones. Cada acción
 // lleva el foco al lugar exacto que corrige y anuncia el resultado en una frase.
 import { useMemo } from 'react';
-import { assessRisk, stripInvisibleCharacters } from '@sigilo/huella';
+import { assessRisk } from '@sigilo/huella';
 import { RiskMeter, riskSummary } from '../../../components/RiskMeter.tsx';
 import { announce } from '../../../lib/announce.ts';
 import { focusAfterRender } from '../../../lib/focus.ts';
+import { summarizeSuspiciousCharacters } from '../../../lib/suspicious-characters.ts';
 import { reportDraftStore, setFact } from '../../../state/report-draft.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
 import { buildRiskActions, buildRiskSignals } from '../../../state/report-risk.ts';
@@ -18,9 +19,6 @@ interface ReviewStepProps {
   /** Cambia de paso y enfoca el elemento con ese identificador (en lugar del encabezado). */
   goToStep: (step: 'facts' | 'evidence', focusId: string) => void;
 }
-
-/** Limpieza manual, igual que en el aviso de cada campo: también quita las marcas sueltas. */
-const MANUAL_STRIP_OPTIONS = { shouldRemoveUncomposedMarks: true } as const;
 
 /** Título del semáforo: destino del foco cuando la acción se resuelve en este paso. */
 const RISK_TITLE_ID = 'risk-title';
@@ -36,22 +34,26 @@ function runAction(action: RiskAction, draft: ReportDraft, goToStep: ReviewStepP
     goToStep('facts', 'description-title');
     return;
   }
+  let done = 'Quitamos el municipio.';
   if (action.kind === 'remove-municipality') setFact('municipalityCode', '');
   if (action.kind === 'strip-invisible') {
-    reportDraftStore.set((current) => ({
-      ...current,
-      facts: {
-        ...current.facts,
-        description: stripInvisibleCharacters(current.facts.description, MANUAL_STRIP_OPTIONS),
-        accused: stripInvisibleCharacters(current.facts.accused, MANUAL_STRIP_OPTIONS),
-      },
+    // La misma limpieza que el aviso de cada campo; el anuncio dice solo lo que de verdad se quitó.
+    const current = reportDraftStore.get();
+    const description = summarizeSuspiciousCharacters(current.facts.description);
+    const accused = summarizeSuspiciousCharacters(current.facts.accused);
+    reportDraftStore.set((latest) => ({
+      ...latest,
+      facts: { ...latest.facts, description: description.stripped, accused: accused.stripped },
     }));
+    const removed = description.removable + accused.removable;
+    const remaining = description.remaining + accused.remaining;
+    done = removed > 0 ? 'Quitamos los caracteres invisibles.' : 'No había caracteres que quitar.';
+    if (remaining > 0) {
+      done +=
+        ' Quedan letras de otro alfabeto o poco comunes: revísalas y escríbelas de nuevo si no las pusiste tú.';
+    }
   }
   // El botón pulsado desaparece: el foco va al título del semáforo y se anuncia el nuevo nivel.
-  const done =
-    action.kind === 'remove-municipality'
-      ? 'Quitamos el municipio.'
-      : 'Quitamos los caracteres invisibles.';
   const updated = assessRisk(buildRiskSignals(reportDraftStore.get()));
   focusAfterRender(RISK_TITLE_ID);
   announce(`${done} Ahora: ${riskSummary(updated)}`);

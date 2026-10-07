@@ -9,8 +9,6 @@ import { requireProofOfWork } from '../security/proof-of-work.ts';
 import { recordMessage } from '../services/mailbox-service.ts';
 import { buildTrackingView } from '../services/views.ts';
 
-const MESSAGES_KEY = 'global';
-
 /**
  * Registra `POST tracking` y `POST trackingMessages`; este último exige la prueba de trabajo de
  * propósito `message`, con la misma dificultad adaptativa que los envíos.
@@ -33,12 +31,11 @@ export function registerTrackingRoutes(app: Hono, ctx: AppContext): void {
       );
       const complaint = await ctx.reporterAuth.authenticate({ folio, authKey });
       // El límite de mensajes es aparte del de autenticación: escribir no gasta intentos de
-      // acceso. Los límites se descuentan solo cuando el mensaje queda guardado.
+      // acceso. Es por folio y se descuenta solo cuando el mensaje queda guardado; no hay tope
+      // global (la carga solo sube la dificultad de la prueba de trabajo).
       const folioKey = folioDigest(folio);
-      const { reporterMessages, reporterMessagesGlobal } = ctx.limiters;
-      if (reporterMessages.isLimited(folioKey) || reporterMessagesGlobal.isLimited(MESSAGES_KEY)) {
-        throw new ApiFailure('rate_limited');
-      }
+      const { reporterMessages } = ctx.limiters;
+      if (reporterMessages.isLimited(folioKey)) throw new ApiFailure('rate_limited');
       const message = recordMessage(ctx, complaint, {
         from: 'reporter',
         sequence,
@@ -46,7 +43,6 @@ export function registerTrackingRoutes(app: Hono, ctx: AppContext): void {
         signature,
       });
       reporterMessages.consume(folioKey);
-      reporterMessagesGlobal.consume(MESSAGES_KEY);
       return c.json(message, 201);
     },
   );

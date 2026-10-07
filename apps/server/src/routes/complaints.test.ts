@@ -144,38 +144,6 @@ describe('POST complaints', () => {
     }
   });
 
-  it('aplica la cuota global de envíos de denuncias', async () => {
-    const server = createTestServer({
-      rateLimits: { complaintSubmissions: { limit: 2, windowMs: 60 * 60 * 1000 } },
-    });
-    const statuses: number[] = [];
-    for (let index = 0; index < 3; index += 1) {
-      const request = await buildComplaintRequest(server, {
-        mode: 'anonymous',
-        reporter: createReporter(),
-      });
-      statuses.push((await postJson(server.app, ROUTES.complaints, request)).status);
-    }
-    expect(statuses).toEqual([201, 201, 429]);
-  });
-
-  it('los intentos rechazados no gastan la cuota: el freno extremo solo cuenta los confirmados', async () => {
-    const server = createTestServer({
-      rateLimits: { complaintSubmissions: { limit: 2, windowMs: 60 * 60 * 1000 } },
-    });
-    const attacker = createReporter();
-    const repeated = await buildComplaintRequest(server, { mode: 'anonymous', reporter: attacker });
-    await submitComplaint(server, repeated);
-    for (let index = 0; index < 20; index += 1) {
-      expect((await postJson(server.app, ROUTES.complaints, repeated)).status).toBe(400);
-    }
-    const legit = await buildComplaintRequest(server, {
-      mode: 'anonymous',
-      reporter: createReporter(),
-    });
-    expect((await postJson(server.app, ROUTES.complaints, legit)).status).toBe(201);
-  });
-
   it('bajo abuso con prueba de trabajo, la denuncia legítima pasa con más dificultad', async () => {
     const server = createTestServer({
       powBits: 2,

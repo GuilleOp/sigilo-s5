@@ -158,7 +158,7 @@ describe('submitReport', () => {
     ]);
   });
 
-  it('resuelve una prueba de trabajo distinta para cada subida y para el envío', async () => {
+  it('resuelve un solo reto para las pruebas y el envío, y lo renueva una vez si vence', async () => {
     const deployment = createTestDeployment();
     const { api, proofs, sigilo } = fakeApi(deployment);
     const progress: string[] = [];
@@ -167,12 +167,9 @@ describe('submitReport', () => {
       solver: inlinePowSolver,
       uploads: new WeakMap(),
     });
-    expect(api.getPowChallenge.mock.calls.map(([purpose]) => purpose)).toEqual([
-      'evidence',
-      'evidence',
-      'complaint',
-    ]);
-    expect(new Set(proofs).size).toBe(3);
+    expect(api.getPowChallenge.mock.calls.map(([purpose]) => purpose)).toEqual(['complaint']);
+    expect(proofs).toHaveLength(3);
+    expect(new Set(proofs).size).toBe(1);
     for (const proof of proofs) {
       const parsed = parsePowHeader(proof);
       expect(parsed !== null && isPowSolution(parsed.token, parsed.counter, POW_BITS)).toBe(true);
@@ -180,6 +177,18 @@ describe('submitReport', () => {
     expect(progress).toContain(
       'Protegiendo tu envío contra envíos automáticos. Puede tardar unos segundos.',
     );
+
+    // Si el servidor rechaza el reto (venció), se resuelve otro una vez y se sigue.
+    const second = fakeApi(deployment);
+    second.api.submitComplaint.mockRejectedValueOnce(new ApiRequestError('proof_required', 428));
+    const result = await submitReport(filledDraft(), second.sigilo, noProgress, {
+      pinned: deployment.pinned,
+      solver: inlinePowSolver,
+      uploads: new WeakMap(),
+    });
+    expect(result.folio).toBe('ABCD-EFGH-JKMN');
+    expect(second.api.getPowChallenge).toHaveBeenCalledTimes(2);
+    expect(second.api.submitComplaint).toHaveBeenCalledTimes(2);
   });
 
   it('aborta si el descriptor devuelto no corresponde a la copia limpia', async () => {

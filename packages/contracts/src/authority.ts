@@ -51,6 +51,11 @@ export const ComplaintDetailSchema = z
     sealedIdentityDigest: Sha256HexSchema.optional(),
     /** Secuencia del evento `complaint.received` una vez publicado; falta mientras está pendiente. */
     receivedEventSeq: z.number().int().nonnegative().optional(),
+    /**
+     * Día (UTC) en que la retención borrará los archivos de las pruebas si la denuncia sigue sin
+     * atender; solo mientras está en `received`, tiene pruebas guardadas y hay retención.
+     */
+    evidenceDeletionOn: DayDateSchema.optional(),
     messages: z.array(MailboxMessageSchema),
     identityOpenedCount: z.number().int().nonnegative(),
   })

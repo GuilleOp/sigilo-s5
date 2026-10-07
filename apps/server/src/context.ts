@@ -31,11 +31,13 @@ import type { EvidenceStore } from './storage/evidence-store.ts';
 export type { RequestLogEntry } from './http/request-log.ts';
 
 /**
- * Límites del servidor. Sin direcciones IP (no se registran), los límites son por folio o
- * globales. Contra el abuso de las escrituras actúa primero la dificultad adaptativa de la prueba
- * de trabajo; los límites globales de escritura son solo un freno extremo (muy por encima de la
- * carga legítima) y se descuentan únicamente cuando la escritura se confirma, así los intentos
- * rechazados no agotan la cuota de nadie. El de seguimiento solo frena.
+ * Límites del servidor. Sin direcciones IP (no se registran), los límites son por folio; el de
+ * fallos de autenticación en total solo frena.
+ * Seguridad: no hay rechazos globales de escrituras. Un tope global lo alcanza un atacante y deja
+ * fuera a todas las personas; contra el abuso, la carga solo sube la dificultad de la prueba de
+ * trabajo. Los únicos límites duros son físicos: la cuota de almacenamiento de pruebas
+ * (`storage_full`) y el tope diario de la bitácora (`ledger_day_full`, del que la autoridad está
+ * exenta).
  */
 export interface RateLimitConfig {
   /** Fallos de autenticación por folio; al agotarse, el folio responde 429 hasta que vence. */
@@ -44,12 +46,6 @@ export interface RateLimitConfig {
   authFailuresGlobal: ThrottleRule;
   /** Mensajes confirmados de la persona denunciante por folio. */
   reporterMessagesPerFolio: RateLimitRule;
-  /** Freno extremo: mensajes confirmados de personas denunciantes en total. */
-  reporterMessagesGlobal: RateLimitRule;
-  /** Freno extremo: subidas de pruebas confirmadas en total. */
-  evidenceUploads: RateLimitRule;
-  /** Freno extremo: denuncias confirmadas en total. */
-  complaintSubmissions: RateLimitRule;
 }
 
 /** Dependencias externas de la aplicación; se inyectan para poder probarla. */
@@ -82,6 +78,11 @@ export interface AppDeps {
   powSecret?: Uint8Array;
   /** Cuota total de almacenamiento de pruebas en bytes (`DEFAULT_EVIDENCE_QUOTA_BYTES`). */
   evidenceQuotaBytes?: number;
+  /**
+   * Días de retención de las pruebas de denuncias sin atender (`DEFAULT_EVIDENCE_RETENTION_DAYS`);
+   * 0 la desactiva. Solo informa al panel la fecha de borrado: la purga la programa `main.ts`.
+   */
+  evidenceRetentionDays?: number;
   /** Tope de eventos pendientes por día en la bitácora (`MAX_PENDING_EVENTS_PER_DAY`). */
   maxPendingEventsPerDay?: number;
   /** Solo pruebas: ruido determinista de los datos abiertos (por omisión, `hmacNoiseUnit`). */
@@ -91,9 +92,6 @@ export interface AppDeps {
 /** Limitadores compartidos por las rutas. */
 export interface AppLimiters {
   reporterMessages: RateLimiter;
-  reporterMessagesGlobal: RateLimiter;
-  evidenceUploads: RateLimiter;
-  complaintSubmissions: RateLimiter;
 }
 
 /** Servicios compartidos por las rutas. */
@@ -118,17 +116,12 @@ const HOUR_MS = 60 * MINUTE_MS;
 /**
  * Límites por omisión. Los accesos legítimos al seguimiento no cuentan; 10 fallos por folio por
  * hora; más de 600 fallos por minuto en total frenan hasta 2 s cada intento; 30 mensajes de la
- * persona denunciante por folio por hora. Frenos extremos por hora, solo de escrituras
- * confirmadas: 3000 denuncias, 10 000 subidas de pruebas y 6000 mensajes. Para llegar a ellos un
- * atacante tiene que resolver retos con la dificultad máxima o casi.
+ * persona denunciante por folio por hora.
  */
 export const DEFAULT_RATE_LIMITS: RateLimitConfig = {
   authFailuresPerFolio: { limit: 10, windowMs: HOUR_MS },
   authFailuresGlobal: { limit: 600, windowMs: MINUTE_MS, stepMs: 10, maxDelayMs: 2000 },
   reporterMessagesPerFolio: { limit: 30, windowMs: HOUR_MS },
-  reporterMessagesGlobal: { limit: 6000, windowMs: HOUR_MS },
-  evidenceUploads: { limit: 10_000, windowMs: HOUR_MS },
-  complaintSubmissions: { limit: 3000, windowMs: HOUR_MS },
 };
 
 function defaultSleep(ms: number): Promise<void> {
@@ -167,9 +160,6 @@ export function createContext(deps: AppDeps): AppContext {
     }),
     limiters: {
       reporterMessages: createRateLimiter(limits.reporterMessagesPerFolio, deps.now),
-      reporterMessagesGlobal: createRateLimiter(limits.reporterMessagesGlobal, deps.now),
-      evidenceUploads: createRateLimiter(limits.evidenceUploads, deps.now),
-      complaintSubmissions: createRateLimiter(limits.complaintSubmissions, deps.now),
     },
     pow: createPowGuard({
       bits: deps.powBits ?? 0,

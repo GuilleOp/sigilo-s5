@@ -109,6 +109,15 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <dd className="review-text">{facts.description}</dd>
       </dl>
       <h3>Pruebas</h3>
+      {detail.evidenceDeletionOn !== undefined && (
+        <Alert tone="warning" title="Denuncia sin atender" testId="evidence-deletion-warning">
+          <p>
+            Las pruebas se borrarán el {detail.evidenceDeletionOn} si no se atiende. Para
+            conservarlas, cambia el estatus de la denuncia (por ejemplo, a «Buscando a la autoridad
+            que debe atenderla»).
+          </p>
+        </Alert>
+      )}
       <EvidenceGallery token={session.token} evidence={detail.evidence} />
       <StatusPanel
         key={summary.status}

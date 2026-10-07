@@ -1,5 +1,5 @@
 // Pruebas de subida de pruebas: tipo real por bytes mágicos, tamaño máximo, descriptor devuelto,
-// freno de subidas, reparto y desalojo de la cuota, purga de pendientes y retención sin atención.
+// reparto de la cuota (sin desalojo), purga de pendientes y retención sin atención.
 import { describe, expect, it } from 'vitest';
 import {
   ApiErrorSchema,
@@ -8,10 +8,12 @@ import {
   ROUTES,
 } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
+import { ComplaintDetailSchema } from '@sigilo/contracts';
 import { sha256Hex } from '@sigilo/core';
 import { createEvidenceRepository } from '../db/evidence-repository.ts';
 import {
   EVIDENCE_PURGE_INTERVAL_MS,
+  evidenceDeletionDay,
   purgeStalePendingEvidence,
   purgeUnattendedEvidence,
   startEvidencePurge,
@@ -80,21 +82,6 @@ describe('POST evidence', () => {
   });
 });
 
-describe('cuota de subidas', () => {
-  it('responde 429 con el freno extremo agotado (solo cuentan las confirmadas) y lo reinicia', async () => {
-    const server = createTestServer({
-      rateLimits: { evidenceUploads: { limit: 2, windowMs: 60 * 60 * 1000 } },
-    });
-    const statuses: number[] = [];
-    for (let index = 0; index < 3; index += 1) {
-      statuses.push((await uploadEvidence(server.app, samplePng(), 'image/png')).status);
-    }
-    expect(statuses).toEqual([201, 201, 429]);
-    server.setNow(new Date('2026-10-20T17:00:00Z'));
-    expect((await uploadEvidence(server.app, samplePng(), 'image/png')).status).toBe(201);
-  });
-});
-
 describe('cuota de almacenamiento', () => {
   it('limita las pendientes a su parte de la cuota y responde 507 al excederla', async () => {
     // Cuota 400: las pendientes pueden ocupar 100.
@@ -106,14 +93,13 @@ describe('cuota de almacenamiento', () => {
     expect((await uploadEvidence(server.app, samplePng(40), 'image/png')).status).toBe(201);
   });
 
-  it('desaloja primero las pruebas de las denuncias sin atender más antiguas', async () => {
+  it('nunca borra pruebas asociadas para hacer sitio: sin espacio responde storage_full', async () => {
     const server = createTestServer({ evidenceQuotaBytes: 1000 });
-    const attach = async (size: number, day: Date) => {
-      server.setNow(day);
+    const attach = async (size: number) => {
       const evidence = EvidenceUploadResponseSchema.parse(
         await (await uploadEvidence(server.app, samplePng(size), 'image/png')).json(),
       );
-      const { folio } = await submitComplaint(
+      await submitComplaint(
         server,
         await buildComplaintRequest(server, {
           mode: 'anonymous',
@@ -121,22 +107,17 @@ describe('cuota de almacenamiento', () => {
           evidence: [evidence],
         }),
       );
-      return { evidence, folio };
+      return evidence;
     };
-    const oldest = await attach(240, new Date('2026-10-20T10:00:00Z'));
-    const attended = await attach(240, new Date('2026-10-20T11:00:00Z'));
-    const recent = await attach(240, new Date('2026-10-21T10:00:00Z'));
-    await postJson(
-      server.app,
-      ROUTES.authorityStatus(attended.folio),
-      { status: 'routing' },
-      TEST_TOKEN,
-    );
-    // 720 guardados + 240 superan el 90 % (900): se desaloja la más antigua sin atender.
-    expect((await uploadEvidence(server.app, samplePng(240), 'image/png')).status).toBe(201);
-    expect(server.evidenceStore.read(oldest.evidence.evidenceId)).toBeNull();
-    expect(server.evidenceStore.read(attended.evidence.evidenceId)).not.toBeNull();
-    expect(server.evidenceStore.read(recent.evidence.evidenceId)).not.toBeNull();
+    const kept = [await attach(240), await attach(240), await attach(240), await attach(240)];
+    // 960 guardados + 60 superan la cuota de 1000: se rechaza en lugar de desalojar.
+    const full = await uploadEvidence(server.app, samplePng(60), 'image/png');
+    expect(full.status).toBe(507);
+    expect(ApiErrorSchema.parse(await full.json()).error.code).toBe('storage_full');
+    for (const evidence of kept) {
+      expect(server.evidenceStore.read(evidence.evidenceId)).not.toBeNull();
+    }
+    expect((await uploadEvidence(server.app, samplePng(40), 'image/png')).status).toBe(201);
   });
 
   it('rechaza una denuncia cuyas pruebas exceden su parte de la cuota', async () => {
@@ -213,6 +194,42 @@ describe('retención de pruebas sin atender', () => {
     );
     expect(download.status).toBe(404);
     expect(createEvidenceRepository(server.db).totalStoredBytes()).toBe(0);
+  });
+
+  it('el detalle avisa el día en que se borrarán las pruebas si la denuncia sigue sin atender', async () => {
+    const { server, folios } = await scenario();
+    const [first = '', second = ''] = folios;
+    const detail = async (folio: string) =>
+      ComplaintDetailSchema.parse(
+        await (await getAsAuthority(server.app, ROUTES.authorityComplaint(folio))).json(),
+      );
+    // Recibida el 2026-10-20 con 30 días de retención: la purga la borra a partir del 2026-11-20.
+    expect(evidenceDeletionDay('2026-10-20', 30)).toBe('2026-11-20');
+    expect(evidenceDeletionDay('2026-10-20', 0)).toBeNull();
+    expect((await detail(first)).evidenceDeletionOn).toBe('2026-11-20');
+    expect(purge(server, new Date('2026-11-19T23:59:00Z'), 30)).toBe(0);
+    await postJson(server.app, ROUTES.authorityStatus(second), { status: 'routing' }, TEST_TOKEN);
+    expect((await detail(second)).evidenceDeletionOn).toBeUndefined();
+    expect(purge(server, new Date('2026-11-20T00:01:00Z'), 30)).toBe(1);
+    // Ya sin archivos guardados, no hay nada que avisar.
+    expect((await detail(first)).evidenceDeletionOn).toBeUndefined();
+    const disabled = createTestServer({ evidenceRetentionDays: 0 });
+    const { folio } = await submitComplaint(
+      disabled,
+      await buildComplaintRequest(disabled, {
+        mode: 'anonymous',
+        reporter: createReporter(),
+        evidence: [
+          EvidenceUploadResponseSchema.parse(
+            await (await uploadEvidence(disabled.app, samplePng(), 'image/png')).json(),
+          ),
+        ],
+      }),
+    );
+    const withoutRetention = ComplaintDetailSchema.parse(
+      await (await getAsAuthority(disabled.app, ROUTES.authorityComplaint(folio))).json(),
+    );
+    expect(withoutRetention.evidenceDeletionOn).toBeUndefined();
   });
 
   it('respeta las denuncias que la autoridad ya atendió', async () => {

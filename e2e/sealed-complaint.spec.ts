@@ -82,7 +82,7 @@ test.describe.serial('denuncia con identidad sellada', () => {
 
     // Al día siguiente se publica el día: la autoridad verifica las llaves contra el registro
     // público y la persona encuentra la apertura por la etiqueta de su recibo.
-    advanceServerClockToNextDay();
+    await advanceServerClockToNextDay();
     await authority.getByRole('button', { name: 'Volver al listado' }).click();
     await openComplaint(authority, receipt.folio);
     await expect(authority.getByTestId('reporter-keys-verified')).toBeVisible();

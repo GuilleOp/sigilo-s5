@@ -1,6 +1,6 @@
-// Recepción de pruebas: verificación del tipo real por bytes mágicos, freno extremo de subidas,
-// reparto de la cuota de almacenamiento (reserva, pendientes y por denuncia), desalojo y retención
-// de las pruebas de denuncias sin atender y purga de las pendientes que nunca se asociaron.
+// Recepción de pruebas: verificación del tipo real por bytes mágicos, reparto de la cuota de
+// almacenamiento (pendientes y por denuncia), retención de las pruebas de denuncias sin atender y
+// purga de las pendientes que nunca se asociaron.
 import type { EvidenceDescriptor, EvidenceMediaType } from '@sigilo/contracts';
 import { MAX_EVIDENCE_BYTES } from '@sigilo/contracts';
 import { randomBytes, sha256Hex, toDayDate, toHex } from '@sigilo/core';
@@ -14,9 +14,8 @@ const MAGIC_BYTES: Record<EvidenceMediaType, readonly number[]> = {
   'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
 };
 
-const UPLOADS_KEY = 'global';
 const DAY_MS = 24 * 60 * 60 * 1000;
-const EVICTION_BATCH = 100;
+const RETENTION_BATCH = 100;
 
 /** Antigüedad mínima de una prueba pendiente para purgarla. */
 export const PENDING_EVIDENCE_TTL_MS = DAY_MS;
@@ -30,9 +29,6 @@ export const DEFAULT_EVIDENCE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024;
 /** Días que se conservan las pruebas de una denuncia que la autoridad no ha atendido. */
 export const DEFAULT_EVIDENCE_RETENTION_DAYS = 30;
 
-/** Parte de la cuota que se mantiene libre desalojando pruebas de denuncias sin atender. */
-export const EVIDENCE_RESERVE_RATIO = 0.1;
-
 /** Parte de la cuota que pueden ocupar las pruebas pendientes (subidas sin denuncia). */
 export const PENDING_EVIDENCE_SHARE = 0.25;
 
@@ -42,8 +38,6 @@ export const COMPLAINT_EVIDENCE_DIVISOR = 100;
 /** Reparto de la cuota de pruebas en bytes. */
 export interface EvidenceBudget {
   quota: number;
-  /** Uso a partir del cual se desaloja: `quota` menos la reserva. */
-  evictAbove: number;
   /** Máximo de bytes pendientes en total. */
   pendingMax: number;
   /** Máximo de bytes por denuncia (nunca menos que una prueba de tamaño máximo). */
@@ -54,7 +48,6 @@ export interface EvidenceBudget {
 export function evidenceBudget(quota: number): EvidenceBudget {
   return {
     quota,
-    evictAbove: Math.floor(quota * (1 - EVIDENCE_RESERVE_RATIO)),
     pendingMax: Math.floor(quota * PENDING_EVIDENCE_SHARE),
     perComplaint: Math.max(MAX_EVIDENCE_BYTES, Math.floor(quota / COMPLAINT_EVIDENCE_DIVISOR)),
   };
@@ -71,42 +64,19 @@ export function hasMagicBytes(bytes: Uint8Array, mediaType: EvidenceMediaType): 
   return bytes.length > magic.length && magic.every((byte, index) => bytes[index] === byte);
 }
 
-/** Dependencias del desalojo y de la retención. */
-export interface EvidenceEvictionDeps {
+/** Dependencias de la retención. */
+export interface EvidenceRetentionStoreDeps {
   evidence: EvidenceRepository;
   evidenceStore: EvidenceStore;
 }
 
 /**
- * Borra los archivos de las pruebas de denuncias sin atender (estatus `received`), de las
- * recibidas antes primero, hasta liberar `bytesNeeded` o agotar las candidatas. Devuelve los bytes
- * liberados.
- * Seguridad: la autoridad conserva las pruebas de una denuncia atendiéndola, es decir, moviéndola
- * de `received` a otro estatus (por ejemplo, `routing`). Las pruebas de las denuncias sin atender
- * son las únicas que un atacante puede acumular sin intervención de la autoridad.
- */
-export function evictUnattendedEvidence(deps: EvidenceEvictionDeps, bytesNeeded: number): number {
-  let freed = 0;
-  while (freed < bytesNeeded) {
-    const batch = deps.evidence.listUnattendedStored(null, EVICTION_BATCH);
-    if (batch.length === 0) break;
-    for (const item of batch) {
-      deps.evidence.markUnstored(item.evidenceId);
-      deps.evidenceStore.remove(item.evidenceId);
-      freed += item.sizeBytes;
-      if (freed >= bytesNeeded) break;
-    }
-  }
-  return freed;
-}
-
-/**
  * Guarda una prueba pendiente (sin denuncia asociada) y devuelve su descriptor.
  * Seguridad: el tipo declarado debe coincidir con los bytes reales; así el visor de la autoridad
- * solo recibe imágenes. Si la prueba invadiría la reserva de la cuota, primero se desalojan
- * pruebas de las denuncias sin atender más antiguas. Lanza `unsupported_media_type` si el tipo no
- * coincide, `storage_full` si las pendientes ya ocupan su parte o si ni desalojando cabe, y
- * `rate_limited` solo con el freno extremo de subidas, que cuenta las confirmadas.
+ * solo recibe imágenes. Nunca se borran pruebas ya asociadas a una denuncia para hacer sitio: si
+ * no cabe, se rechaza la subida, porque no aceptar más es preferible a perder pruebas de
+ * corrupción. Lanza `unsupported_media_type` si el tipo no coincide y `storage_full` si las
+ * pendientes ya ocupan su parte o si la cuota total se excedería.
  */
 export function storeEvidence(
   ctx: AppContext,
@@ -114,17 +84,9 @@ export function storeEvidence(
   mediaType: EvidenceMediaType,
 ): EvidenceDescriptor {
   if (!hasMagicBytes(bytes, mediaType)) throw new ApiFailure('unsupported_media_type');
-  if (ctx.limiters.evidenceUploads.isLimited(UPLOADS_KEY)) throw new ApiFailure('rate_limited');
   const budget = budgetOf(ctx);
   if (ctx.evidence.pendingStoredBytes() + bytes.length > budget.pendingMax) {
     throw new ApiFailure('storage_full');
-  }
-  const overflow = ctx.evidence.totalStoredBytes() + bytes.length - budget.evictAbove;
-  if (overflow > 0) {
-    evictUnattendedEvidence(
-      { evidence: ctx.evidence, evidenceStore: ctx.deps.evidenceStore },
-      overflow,
-    );
   }
   if (ctx.evidence.totalStoredBytes() + bytes.length > budget.quota) {
     throw new ApiFailure('storage_full');
@@ -142,7 +104,6 @@ export function storeEvidence(
     ctx.deps.evidenceStore.remove(descriptor.evidenceId);
     throw error;
   }
-  ctx.limiters.evidenceUploads.consume(UPLOADS_KEY);
   return descriptor;
 }
 
@@ -172,7 +133,7 @@ export function purgeStalePendingEvidence(deps: EvidencePurgeDeps): number {
 }
 
 /** Dependencias de la retención de pruebas de denuncias sin atender. */
-export interface UnattendedRetentionDeps extends EvidenceEvictionDeps {
+export interface UnattendedRetentionDeps extends EvidenceRetentionStoreDeps {
   now: () => Date;
   /** Días tras la recepción (`DEFAULT_EVIDENCE_RETENTION_DAYS`); 0 desactiva la retención. */
   retentionDays: number;
@@ -193,7 +154,7 @@ export function purgeUnattendedEvidence(deps: UnattendedRetentionDeps): number {
   const cutoffDay = toDayDate(new Date(deps.now().getTime() - deps.retentionDays * DAY_MS));
   let purged = 0;
   for (;;) {
-    const batch = deps.evidence.listUnattendedStored(cutoffDay, EVICTION_BATCH);
+    const batch = deps.evidence.listUnattendedStored(cutoffDay, RETENTION_BATCH);
     if (batch.length === 0) return purged;
     for (const item of batch) {
       deps.evidence.markUnstored(item.evidenceId);
@@ -201,6 +162,16 @@ export function purgeUnattendedEvidence(deps: UnattendedRetentionDeps): number {
       purged += 1;
     }
   }
+}
+
+/**
+ * Día en que la retención borra las pruebas de una denuncia recibida el `receivedOn` si sigue sin
+ * atender: la purga borra las recibidas antes de hoy menos `retentionDays`, es decir, a partir de
+ * `receivedOn + retentionDays + 1`. Devuelve `null` con la retención desactivada.
+ */
+export function evidenceDeletionDay(receivedOn: string, retentionDays: number): string | null {
+  if (retentionDays <= 0) return null;
+  return toDayDate(new Date(Date.parse(`${receivedOn}T00:00:00Z`) + (retentionDays + 1) * DAY_MS));
 }
 
 /** Programador de tareas periódicas; se inyecta para probar sin esperar. */

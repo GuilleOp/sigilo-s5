@@ -1,5 +1,13 @@
 // Pruebas del bloqueo del servidor: un solo servidor por directorio, bloqueos obsoletos y puerto.
-import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -7,6 +15,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   acquireServerLock,
+  INVALID_LOCK_GRACE_MS,
   isPortInUse,
   LOCK_FILE,
   LOCK_STALE_MS,
@@ -81,6 +90,28 @@ describe('acquireServerLock', () => {
     expect(warnings.at(-1)).toContain('anterior al último arranque del sistema');
     expect(readFileSync(path, 'utf8')).toBe(`${process.pid}\n`);
     release();
+  });
+
+  it('crea el bloqueo ya completo y no deja archivos temporales', () => {
+    const dataDir = temporaryDir();
+    const release = acquireServerLock(dataDir);
+    expect(readFileSync(join(dataDir, LOCK_FILE), 'utf8')).toBe(`${process.pid}\n`);
+    expect(readdirSync(dataDir)).toEqual([LOCK_FILE]);
+    release();
+    expect(readdirSync(dataDir)).toEqual([]);
+  });
+
+  it('no aparta un bloqueo con contenido inválido de menos de 10 s; uno más viejo, sí', () => {
+    const dataDir = temporaryDir();
+    const path = join(dataDir, LOCK_FILE);
+    writeFileSync(path, '');
+    expect(() => acquireServerLock(dataDir)).toThrow('se está escribiendo');
+    expect(existsSync(path)).toBe(true);
+    const old = new Date(Date.now() - INVALID_LOCK_GRACE_MS - 1000);
+    utimesSync(path, old, old);
+    const warnings: string[] = [];
+    acquireServerLock(dataDir, process.pid, { warn: (message) => warnings.push(message) })();
+    expect(warnings.at(-1)).toContain('su contenido no es un PID válido');
   });
 
   it('renueva la fecha del bloqueo para que no parezca abandonado', () => {

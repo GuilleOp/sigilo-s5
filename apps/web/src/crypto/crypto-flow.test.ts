@@ -397,6 +397,20 @@ describe('envío y seguimiento', () => {
     const unhashed = { ...event, actorRole: 'system' as const, payloadDigest: 'c'.repeat(64) };
     const forged = { ...unhashed, hash: computeEventHash(unhashed) };
     expect(await check({ ...view, receivedEvent: forged }, [forged])).toBe('mismatch');
+
+    // Anclajes pegados: uno que coincide con el tramo se acepta; uno distinto lo marca.
+    const anchorFor = (hash: string) => ({
+      version: 1 as const,
+      anchoredOn: RECEIVED_ON,
+      head: headFor(deployment, 0, hash),
+    });
+    const withAnchors = (hash: string) =>
+      loadTrackingLedger(view, deployment.pinned, serve([event]), [anchorFor(hash)]);
+    expect((await withAnchors(event.hash)).status).toBe('valid');
+    expect(await withAnchors('a'.repeat(64))).toEqual({
+      status: 'invalid',
+      isAnchorMismatch: true,
+    });
   });
 
   it('busca desde el día de recepción las aperturas con la etiqueta del recibo', async () => {

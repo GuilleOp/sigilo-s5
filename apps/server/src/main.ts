@@ -24,6 +24,12 @@ import { createFileEvidenceStore } from './storage/evidence-store.ts';
 /** Cada cuánto se cierran los días de la bitácora, se congelan los meses y se vacía el registro. */
 const DAILY_TASKS_INTERVAL_MS = 10 * 60 * 1000;
 
+/**
+ * Con el reloj de pruebas las tareas corren cada segundo: las lecturas ya no cierran días, así que
+ * las pruebas E2E esperan a esta tarea después de adelantar el reloj.
+ */
+const TEST_CLOCK_TASKS_INTERVAL_MS = 1000;
+
 function writeLog(line: RequestLogLine): void {
   process.stdout.write(`${JSON.stringify(line)}\n`);
 }
@@ -56,26 +62,44 @@ function start(): void {
   });
   const openData = createOpenDataRepository(db);
   // Tarea programada con el mismo reloj inyectado: renueva el bloqueo, cierra los días de la
-  // bitácora aunque nadie la consulte, congela los meses completos, aplica la retención de pruebas
-  // de denuncias sin atender y vacía los contadores por hora.
-  const runDailyTasks = (): void => {
+  // bitácora (la única vía: las lecturas solo muestran lo publicado), congela los meses completos,
+  // aplica la retención de pruebas de denuncias sin atender y vacía los contadores por hora. Cada
+  // tarea va en su propio `try`, para que el fallo de una no impida las demás.
+  const runTask = async (name: string, task: () => unknown): Promise<void> => {
     try {
-      refreshServerLock(config.dataDir);
-      ledger.publishClosedDays();
-      freezeClosedMonths({ db, complaints, openData, now });
-      purgeUnattendedEvidence({
-        evidence,
-        evidenceStore,
-        now,
-        retentionDays: config.evidenceRetentionDays,
-      });
-      requestLog.flush();
+      await task();
     } catch {
-      console.error('No se pudieron ejecutar las tareas periódicas.');
+      console.error(`No se pudo ejecutar la tarea periódica: ${name}.`);
     }
   };
-  runDailyTasks();
-  const stopDailyTasks = intervalScheduler.every(DAILY_TASKS_INTERVAL_MS, runDailyTasks);
+  let isRunningTasks = false;
+  const runDailyTasks = async (): Promise<void> => {
+    if (isRunningTasks) return;
+    isRunningTasks = true;
+    try {
+      await runTask('renovar el bloqueo', () => refreshServerLock(config.dataDir));
+      await runTask('cerrar los días de la bitácora', () => ledger.publishClosedDays());
+      await runTask('congelar los meses de datos abiertos', () =>
+        freezeClosedMonths({ db, complaints, openData, now }),
+      );
+      await runTask('aplicar la retención de pruebas', () =>
+        purgeUnattendedEvidence({
+          evidence,
+          evidenceStore,
+          now,
+          retentionDays: config.evidenceRetentionDays,
+        }),
+      );
+      await runTask('vaciar el registro de peticiones', () => requestLog.flush());
+    } finally {
+      isRunningTasks = false;
+    }
+  };
+  void runDailyTasks();
+  const stopDailyTasks = intervalScheduler.every(
+    config.testClockFile === null ? DAILY_TASKS_INTERVAL_MS : TEST_CLOCK_TASKS_INTERVAL_MS,
+    () => void runDailyTasks(),
+  );
   const app = createApp({
     db,
     keys,
@@ -89,6 +113,7 @@ function start(): void {
     powBits: config.powBits,
     powMaxBits: config.powMaxBits,
     evidenceQuotaBytes: config.evidenceQuotaBytes,
+    evidenceRetentionDays: config.evidenceRetentionDays,
   });
   const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
     process.stdout.write(`SIGILO escuchando en http://${config.host}:${info.port}\n`);

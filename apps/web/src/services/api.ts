@@ -46,7 +46,10 @@ export interface SigiloApi {
   getKeys(): Promise<PublicKeySet>;
   /** Reto de prueba de trabajo de un solo uso para `purpose`. */
   getPowChallenge(purpose: PowPurpose): Promise<PowChallenge>;
-  /** Sube una prueba limpia; `proof` es el valor de `POW_HEADER` de un reto `evidence`. */
+  /**
+   * Sube una prueba limpia; `proof` es el valor de `POW_HEADER` del reto `complaint` de la
+   * denuncia (el mismo sirve para sus pruebas y para el envío).
+   */
   uploadEvidence(
     image: Blob,
     mediaType: 'image/jpeg' | 'image/png',

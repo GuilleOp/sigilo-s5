@@ -26,6 +26,8 @@ import type { KeyPair, ReceiptKeys } from '@sigilo/core';
 import { createApp } from '../app.ts';
 import type { AppDeps, RequestLogEntry } from '../app.ts';
 import { openDatabase } from '../db/database.ts';
+import { createLedgerRepository } from '../db/ledger-repository.ts';
+import { createLedgerService } from '../ledger-service.ts';
 import { createRequestLog } from '../http/request-log.ts';
 import type { ServerKeys } from '../keys-file.ts';
 import { createMemoryEvidenceStore } from '../storage/evidence-store.ts';
@@ -45,6 +47,13 @@ export interface TestServer {
   authoritySigning: KeyPair;
   logs: RequestLogEntry[];
   setNow(date: Date): void;
+  /**
+   * Cierra los días de la bitácora como la tarea programada de `main.ts` (las lecturas ya no lo
+   * hacen) y devuelve cuántos eventos encadenó.
+   */
+  closeDays(): Promise<number>;
+  /** Cambia el reloj y después cierra los días, como si hubiera corrido la tarea programada. */
+  advanceTo(date: Date): Promise<number>;
   /** Esperas que pidió el freno global, en milisegundos (no se espera de verdad). */
   sleeps: number[];
 }
@@ -100,6 +109,16 @@ export function createTestServer(overrides: Partial<AppDeps> = {}): TestServer {
     }),
     ...overrides,
   });
+  const ledger = createLedgerService({
+    db,
+    repository: createLedgerRepository(db),
+    serverKeyId: keys.publicKeySet.server.keyId,
+    serverSigningPrivateKey: keys.serverSigningPrivateKey,
+    now: () => now,
+    ...(overrides.maxPendingEventsPerDay === undefined
+      ? {}
+      : { maxPendingPerDay: overrides.maxPendingEventsPerDay }),
+  });
   return {
     app,
     db,
@@ -112,6 +131,11 @@ export function createTestServer(overrides: Partial<AppDeps> = {}): TestServer {
     logs,
     setNow: (date) => {
       now = date;
+    },
+    closeDays: () => ledger.publishClosedDays(),
+    advanceTo: (date) => {
+      now = date;
+      return ledger.publishClosedDays();
     },
   };
 }

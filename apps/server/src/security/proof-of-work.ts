@@ -1,13 +1,14 @@
-// Prueba de trabajo autoalojada: retos firmados con HMAC, con vencimiento y de un solo uso, que se
+// Prueba de trabajo autoalojada: retos firmados con HMAC, con vencimiento y de uso acotado, que se
 // exigen antes de aceptar denuncias, pruebas y respuestas del buzón. La dificultad es adaptativa.
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { MiddlewareHandler } from 'hono';
-import { MAX_POW_BITS, POW_HEADER, PowPurposeSchema } from '@sigilo/contracts';
+import { MAX_EVIDENCE_ITEMS, MAX_POW_BITS, POW_HEADER, PowPurposeSchema } from '@sigilo/contracts';
 import type { PowChallenge, PowPurpose } from '@sigilo/contracts';
 import {
   fromBase64Url,
   isPowSolution,
   parsePowHeader,
+  powSolveSeconds,
   randomBytes,
   toBase64Url,
   toHex,
@@ -17,30 +18,55 @@ import {
 import { z } from 'zod';
 import { ApiFailure } from '../http/errors.ts';
 
-/** Vigencia de un reto con poca presión sobre la lista de gastados. */
-export const POW_TTL_MS = 10 * 60 * 1000;
+/**
+ * Escritura que presenta una solución. Una subida de pruebas (`evidence`) usa el reto `complaint`
+ * de su denuncia: así una denuncia con sus pruebas resuelve un solo reto.
+ */
+export type PowUse = PowPurpose | 'evidence';
 
-/** Vigencia mínima: la lista de gastados llena la acorta hasta aquí, nunca menos. */
-export const MIN_POW_TTL_MS = 2 * 60 * 1000;
+/**
+ * Margen fijo de la vigencia con poca presión sobre la lista de gastados: cubre la red y la
+ * subida de hasta `MAX_EVIDENCE_ITEMS` pruebas con una conexión lenta.
+ */
+export const POW_TTL_MS = 5 * 60 * 1000;
+
+/** Margen mínimo: la lista de gastados llena lo acorta hasta aquí, nunca menos. */
+export const MIN_POW_TTL_MS = 60 * 1000;
+
+/** Veces el percentil 95 de un celular lento que se suman a la vigencia de cada reto. */
+export const POW_TTL_SOLVE_FACTOR = 4;
 
 /** Máximo de retos usados que se recuerdan a la vez (hasta que vencen). */
 export const MAX_SPENT_CHALLENGES = 200_000;
 
-/** Dificultad máxima por omisión de la dificultad adaptativa (unos 16 millones de hashes). */
-export const DEFAULT_POW_MAX_BITS = 24;
+/**
+ * Dificultad máxima por omisión de la dificultad adaptativa: 20 bits, un millón de hashes en
+ * promedio; un celular básico (50 mil hashes por segundo) lo resuelve en unos 21 s y en menos de
+ * 63 s el 95 % de las veces.
+ */
+export const DEFAULT_POW_MAX_BITS = 20;
 
 /** Ventana de la carga reciente que mueve la dificultad. */
 export const POW_LOAD_WINDOW_MS = 60 * 60 * 1000;
 
 /**
- * Soluciones aceptadas por ventana a partir de las cuales cada duplicación de la carga suma un bit
- * (el doble de trabajo esperado por envío).
+ * Retos usados por ventana a partir de los cuales cada duplicación de la carga suma un bit (el
+ * doble de trabajo esperado por envío). Un reto `complaint` cuenta una vez aunque cubra pruebas.
  */
 export const DEFAULT_POW_LOAD_THRESHOLDS: Readonly<Record<PowPurpose, number>> = {
   complaint: 60,
-  evidence: 300,
   message: 300,
 };
+
+/**
+ * Vigencia de un reto de `bits`: el margen más `POW_TTL_SOLVE_FACTOR` veces el percentil 95 de
+ * un celular lento (`powSolveSeconds`, 50 mil hashes por segundo). Es proporcional a 2^bits y
+ * nunca menor que ese percentil: a 18 bits, unos 63 s más el margen; a 20, unos 4.2 min más el
+ * margen.
+ */
+export function powTtlMs(bits: number, marginMs: number = POW_TTL_MS): number {
+  return marginMs + Math.ceil(POW_TTL_SOLVE_FACTOR * powSolveSeconds(bits) * 1000);
+}
 
 /** Emisión y verificación de retos. */
 export interface PowGuard {
@@ -50,11 +76,13 @@ export interface PowGuard {
   currentBits(purpose: PowPurpose): number;
   issue(purpose: PowPurpose): PowChallenge;
   /**
-   * Comprueba la cabecera `POW_HEADER` para el propósito, gasta el reto y lo cuenta como carga.
-   * Lanza `proof_required` si falta, no es válida, es de otro propósito, venció o ya se usó.
-   * Con `bits = 0` no exige nada.
+   * Comprueba la cabecera `POW_HEADER` para la escritura, registra el uso y, en el primero, lo
+   * cuenta como carga. Un reto `message` sirve una vez; uno `complaint`, para hasta
+   * `MAX_EVIDENCE_ITEMS` subidas de pruebas y después para una denuncia, que lo cierra.
+   * Lanza `proof_required` si falta, no es válida, es de otro propósito, venció, ya agotó sus usos
+   * o su dificultad quedó más de un bit por debajo de la vigente. Con `bits = 0` no exige nada.
    */
-  verify(header: string | undefined, purpose: PowPurpose): void;
+  verify(header: string | undefined, use: PowUse): void;
 }
 
 /** Opciones del guardián. */
@@ -65,6 +93,7 @@ export interface PowGuardOptions {
   maxBits?: number;
   /** Llave HMAC; por omisión, 32 bytes aleatorios por proceso (reiniciar invalida los retos). */
   secret?: Uint8Array;
+  /** Margen fijo de la vigencia (`POW_TTL_MS`); ver `powTtlMs`. */
   ttlMs?: number;
   maxSpent?: number;
   /** Ventana de la carga reciente (`POW_LOAD_WINDOW_MS`). */
@@ -123,7 +152,7 @@ export function loadExtraBits(load: number, threshold: number): number {
   return extra;
 }
 
-/** Bits extra y vigencia de los retos nuevos según qué tan llena está la lista de gastados. */
+/** Bits extra y margen de vigencia de los retos nuevos según qué tan llena está la lista de gastados. */
 export function spentPressure(
   size: number,
   maxSpent: number,
@@ -144,16 +173,30 @@ const ChallengePayloadSchema = z.object({
   bits: z.number().int().min(0).max(MAX_POW_BITS),
 });
 
+/** Usos registrados de un reto resuelto, hasta que vence. */
+interface SpentChallenge {
+  expiresAt: number;
+  evidenceUses: number;
+  isClosed: boolean;
+}
+
+function canUse(entry: SpentChallenge | undefined, use: PowUse): boolean {
+  if (entry === undefined) return true;
+  if (entry.isClosed) return false;
+  return use !== 'evidence' || entry.evidenceUses < MAX_EVIDENCE_ITEMS;
+}
+
 /**
  * Crea el guardián de la prueba de trabajo.
  * Seguridad: en lugar de rechazar a todos cuando hay abuso, la dificultad de cada propósito sube
- * un bit por cada duplicación de las soluciones aceptadas en la última hora sobre su umbral (hasta
+ * un bit por cada duplicación de los retos usados en la última hora sobre su umbral (hasta
  * `maxBits`) y vuelve a bajar cuando la carga sale de la ventana: el costo de un ataque crece más
- * rápido que su volumen y una persona legítima solo espera más. El servidor no guarda los retos
- * emitidos (van firmados), solo los gastados y hasta que vencen. Si esa lista se acerca a su tope,
- * los retos nuevos son más difíciles y vencen antes; si aun así se llena, se olvidan primero los
- * gastados más antiguos (los más próximos a vencer) en vez de rechazar. Riesgo residual: quien
- * acumule retos emitidos con poca carga puede usarlos, a su dificultad, durante su vigencia.
+ * rápido que su volumen y una persona legítima solo espera más. Un reto solo se acepta si su
+ * dificultad es a lo más un bit menor que la vigente al usarlo: los retos acaparados con poca
+ * carga dejan de servir en cuanto la carga sube. El servidor no guarda los retos emitidos (van
+ * firmados), solo los usados y hasta que vencen. Si esa lista se acerca a su tope, los retos
+ * nuevos son más difíciles y su margen de vigencia se acorta; si aun así se llena, se olvidan
+ * primero los usados más antiguos (los más próximos a vencer) en vez de rechazar.
  */
 export function createPowGuard(options: PowGuardOptions): PowGuard {
   const { bits, now } = options;
@@ -171,10 +214,9 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
   const thresholds = { ...DEFAULT_POW_LOAD_THRESHOLDS, ...options.loadThresholds };
   const load: Record<PowPurpose, SlidingCounter> = {
     complaint: createSlidingCounter(loadWindowMs, now),
-    evidence: createSlidingCounter(loadWindowMs, now),
     message: createSlidingCounter(loadWindowMs, now),
   };
-  const spent = new Map<string, number>();
+  const spent = new Map<string, SpentChallenge>();
   let lastSweepAt = Number.NEGATIVE_INFINITY;
 
   function mac(body: string): Uint8Array {
@@ -185,8 +227,8 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
     // Amortizado: a lo más un barrido por minuto, salvo que la lista esté llena.
     if (time - lastSweepAt < 60_000 && spent.size < maxSpent) return;
     lastSweepAt = time;
-    for (const [nonce, expiresAt] of spent) {
-      if (expiresAt <= time) spent.delete(nonce);
+    for (const [nonce, entry] of spent) {
+      if (entry.expiresAt <= time) spent.delete(nonce);
     }
   }
 
@@ -230,14 +272,15 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
         v: 1 as const,
         purpose,
         nonce: toHex(randomBytes(16)),
-        expiresAt: now().getTime() + pressure.ttlMs,
+        expiresAt: now().getTime() + powTtlMs(challengeBits, pressure.ttlMs),
         bits: challengeBits,
       };
       const body = toBase64Url(utf8Encode(JSON.stringify(payload)));
       return { token: `${body}.${toBase64Url(mac(body))}`, bits: challengeBits };
     },
-    verify: (header, purpose) => {
+    verify: (header, use) => {
       if (bits === 0) return;
+      const purpose: PowPurpose = use === 'message' ? 'message' : 'complaint';
       const solution = header === undefined ? null : parsePowHeader(header);
       const payload = solution === null ? null : readPayload(solution.token);
       const time = now().getTime();
@@ -246,21 +289,29 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
         payload !== null &&
         payload.purpose === purpose &&
         payload.expiresAt > time &&
-        payload.bits >= bits &&
+        payload.bits >= Math.max(bits, currentBits(purpose) - 1) &&
         isPowSolution(solution.token, solution.counter, payload.bits);
-      if (!isValid || spent.has(payload.nonce)) throw new ApiFailure('proof_required');
-      sweep(time);
-      if (spent.size >= maxSpent) forgetOldest();
-      spent.set(payload.nonce, payload.expiresAt);
-      load[purpose].record();
+      if (!isValid) throw new ApiFailure('proof_required');
+      const existing = spent.get(payload.nonce);
+      if (!canUse(existing, use)) throw new ApiFailure('proof_required');
+      let entry = existing;
+      if (entry === undefined) {
+        sweep(time);
+        if (spent.size >= maxSpent) forgetOldest();
+        entry = { expiresAt: payload.expiresAt, evidenceUses: 0, isClosed: false };
+        spent.set(payload.nonce, entry);
+        load[purpose].record();
+      }
+      if (use === 'evidence') entry.evidenceUses += 1;
+      else entry.isClosed = true;
     },
   };
 }
 
-/** Middleware que exige la prueba de trabajo del propósito antes de leer el cuerpo. */
-export function requireProofOfWork(guard: PowGuard, purpose: PowPurpose): MiddlewareHandler {
+/** Middleware que exige la prueba de trabajo de la escritura antes de leer el cuerpo. */
+export function requireProofOfWork(guard: PowGuard, use: PowUse): MiddlewareHandler {
   return async (c, next) => {
-    guard.verify(c.req.header(POW_HEADER), purpose);
+    guard.verify(c.req.header(POW_HEADER), use);
     await next();
   };
 }

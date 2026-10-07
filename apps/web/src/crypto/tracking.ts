@@ -2,6 +2,7 @@
 import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import type {
   IdentityAccessEntry,
+  LedgerAnchor,
   LedgerEvent,
   LedgerPage,
   SignedLedgerHead,
@@ -19,6 +20,7 @@ import {
   reconcileIdentityOpenings,
   sealMailboxMessage,
   toBase64Url,
+  verifyEventInChain,
   verifyLedgerHead,
   verifyReceipt,
   verifyReceiptEvent,
@@ -92,12 +94,13 @@ export function isDayPublished(head: SignedLedgerHead, day: string): boolean {
 /**
  * Bitácora que necesita el seguimiento: el tramo verificado desde el día de recepción hasta la
  * cabeza (`valid`), solo la cabeza firmada cuando el evento de recepción aún no se entrega
- * (`unpublished`) o un tramo que no se pudo verificar (`invalid`).
+ * (`unpublished`) o un tramo que no se pudo verificar (`invalid`; con `isAnchorMismatch` si la
+ * cadena es válida pero no contiene un anclaje pegado por la persona).
  */
 export type TrackingLedger =
   | { status: 'valid'; head: SignedLedgerHead; events: readonly LedgerEvent[] }
   | { status: 'unpublished'; head: SignedLedgerHead }
-  | { status: 'invalid' };
+  | { status: 'invalid'; isAnchorMismatch?: boolean };
 
 /** Funciones de la API pública de la bitácora que usa el seguimiento. */
 export interface TrackingLedgerApi {
@@ -112,12 +115,15 @@ export interface TrackingLedgerApi {
  * Seguridad: las aperturas ligadas al recibo y el evento de recepción tienen fecha igual o
  * posterior al día de recepción, y la cadena exige fechas no decrecientes: este tramo los contiene
  * a todos, así el celular no descarga la bitácora desde el génesis. Se eligió esto en lugar de una
- * ruta filtrada por `receiptTag` porque una lista filtrada no prueba que no falte ninguna.
+ * ruta filtrada por `receiptTag` porque una lista filtrada no prueba que no falte ninguna. Los
+ * `anchors` pegados por la persona deben estar firmados y, si caen dentro del tramo, coincidir con
+ * él (los anteriores al tramo no se pueden comparar aquí; para eso está /verificar).
  */
 export async function loadTrackingLedger(
   view: TrackingView,
   pinned: PinnedKeys,
   ledgerApi: TrackingLedgerApi,
+  anchors: readonly LedgerAnchor[] = [],
 ): Promise<TrackingLedger> {
   if (view.receivedEvent === undefined) {
     const head = await ledgerApi.fetchHead();
@@ -130,9 +136,21 @@ export async function loadTrackingLedger(
     ledgerApi.fetchPage,
     pinned.serverSigningPublicKey,
   );
-  return result.status === 'valid'
-    ? { status: 'valid', head: result.head, events: result.events }
-    : { status: 'invalid' };
+  if (result.status !== 'valid') return { status: 'invalid' };
+  const first = result.events[0];
+  if (anchors.length > 0 && first !== undefined) {
+    const inChain = verifyEventInChain(
+      first,
+      result.events,
+      result.head,
+      pinned.serverSigningPublicKey,
+      {
+        anchors,
+      },
+    );
+    if (!inChain.valid) return { status: 'invalid', isAnchorMismatch: true };
+  }
+  return { status: 'valid', head: result.head, events: result.events };
 }
 
 /**

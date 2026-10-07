@@ -34,7 +34,7 @@ test('el evento de recepción queda pendiente de publicar y al día siguiente co
     'Tu anotación está pendiente de publicar: el registro público se actualiza una vez al día, cuando el día termina.',
   );
 
-  advanceServerClockToNextDay();
+  await advanceServerClockToNextDay();
   await page.getByTestId('tracking-logout').click();
   await openTracking(page, folio, words);
   await expect(page.getByTestId('receipt-verified')).toContainText(
@@ -50,7 +50,7 @@ test('si el seguimiento dice pendiente pero el día ya se publicó, se señala',
   request,
 }) => {
   const { folio, words } = await seedAnonymousComplaint(request);
-  advanceServerClockToNextDay();
+  await advanceServerClockToNextDay();
   // El servidor oculta el evento ya publicado en la vista de seguimiento.
   await page.route(`**${ROUTES.tracking}`, async (route) => {
     const response = await route.fetch();
@@ -68,7 +68,7 @@ test('un evento de recepción que no corresponde al comprobante se señala', asy
 }) => {
   const { folio, words } = await seedAnonymousComplaint(request);
   // Un día después, el seguimiento ya trae el evento publicado; el servidor lo altera.
-  advanceServerClockToNextDay();
+  await advanceServerClockToNextDay();
   await page.route(`**${ROUTES.tracking}`, async (route) => {
     const response = await route.fetch();
     const view = TrackingViewSchema.parse(await response.json());

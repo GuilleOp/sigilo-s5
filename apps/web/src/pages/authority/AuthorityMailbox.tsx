@@ -1,8 +1,9 @@
 // Buzón de la autoridad: respuestas descifradas y envío de preguntas cifradas a la persona.
 import { useEffect, useRef, useState } from 'react';
-import type { ComplaintDetail, MailboxMessage } from '@sigilo/contracts';
+import type { ComplaintDetail, LedgerAnchor, MailboxMessage } from '@sigilo/contracts';
 import { isMailboxSequenceComplete, MAX_MAILBOX_TEXT_LENGTH } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
+import { AnchorsField } from '../../components/AnchorsField.tsx';
 import { TextAreaField } from '../../components/Field.tsx';
 import { MessageThread } from '../../components/MessageThread.tsx';
 import type { ThreadItem } from '../../components/MessageThread.tsx';
@@ -13,6 +14,7 @@ import {
   verifyReporterKeys,
 } from '../../crypto/authority.ts';
 import type { ReporterKeysVerification } from '../../crypto/authority.ts';
+import { parseLedgerAnchors } from '../../crypto/ledger-verification.ts';
 import { mailboxCountText, prepareMailboxText } from '../../lib/mailbox-text.ts';
 import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
@@ -91,6 +93,10 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
   const [keysStatus, setKeysStatus] = useState<ReporterKeysVerification | 'checking' | 'unknown'>(
     'checking',
   );
+  const [anchorText, setAnchorText] = useState('');
+  const [anchorError, setAnchorError] = useState('');
+  /** Anclajes pegados ya validados; cambiar la lista vuelve a verificar las llaves con ellos. */
+  const [anchors, setAnchors] = useState<readonly LedgerAnchor[]>([]);
 
   useEffect(() => {
     let isActive = true;
@@ -98,6 +104,7 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
       detail,
       (from, limit) => api.getLedgerEvents(from, limit),
       PINNED_KEYS,
+      anchors,
     ).then(
       (status) => {
         if (isActive) setKeysStatus(status);
@@ -109,7 +116,18 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
     return () => {
       isActive = false;
     };
-  }, [detail]);
+  }, [detail, anchors]);
+
+  function applyAnchors(): void {
+    const parsed = parseLedgerAnchors(anchorText);
+    if (parsed === null) {
+      setAnchorError('El texto pegado no es un anclaje válido.');
+      return;
+    }
+    setAnchorError('');
+    setKeysStatus('checking');
+    setAnchors(parsed);
+  }
 
   useEffect(() => {
     isMounted.current = true;
@@ -181,6 +199,35 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
     >
       <h3 id="authority-mailbox-title">Mensajes con la persona denunciante</h3>
       <KeysStatus status={keysStatus} />
+      <details>
+        <summary>Comparar también con anclajes publicados (opcional)</summary>
+        <p>
+          Si pegas anclajes de la bitácora publicados fuera del sistema, la verificación de las
+          llaves exige que el tramo del registro público también coincida con ellos.
+        </p>
+        <AnchorsField
+          id="authority-anchors"
+          value={anchorText}
+          onChange={setAnchorText}
+          error={anchorError}
+          testId="authority-anchor-input"
+        />
+        <button
+          type="button"
+          className="button button--secondary"
+          onClick={applyAnchors}
+          data-testid="authority-compare-anchors"
+        >
+          Verificar con los anclajes
+        </button>
+        {anchors.length > 0 && (
+          <p className="field__hint" data-testid="authority-anchors-applied">
+            {anchors.length === 1
+              ? 'La verificación usa 1 anclaje.'
+              : `La verificación usa ${anchors.length} anclajes.`}
+          </p>
+        )}
+      </details>
       {!isComplete && (
         <Alert tone="danger" title="La conversación está incompleta" testId="mailbox-incomplete">
           <p>

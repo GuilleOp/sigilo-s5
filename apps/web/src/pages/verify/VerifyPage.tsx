@@ -3,7 +3,7 @@
 // contiene todos.
 import { useState } from 'react';
 import { Alert } from '../../components/Alert.tsx';
-import { TextAreaField } from '../../components/Field.tsx';
+import { AnchorsField } from '../../components/AnchorsField.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { compareWithAnchors, downloadAndVerifyLedger } from '../../crypto/ledger-verification.ts';
 import type {
@@ -260,15 +260,11 @@ export function VerifyPage() {
           esos registros, no se reescribió hasta ese punto. Si pegas anclajes, al verificar los
           comparamos todos.
         </p>
-        <TextAreaField
+        <AnchorsField
           id="anchor-json"
-          label="Contenido de los anclajes"
-          hint="Abre cada archivo de anclaje, copia todo su contenido y pégalo aquí, uno tras otro."
-          rows={6}
-          className="mono"
           value={anchorText}
-          onChange={(event) => setAnchorText(event.target.value)}
-          data-testid="anchor-input"
+          onChange={setAnchorText}
+          testId="anchor-input"
         />
         <button
           type="button"

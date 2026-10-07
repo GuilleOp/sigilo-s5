@@ -95,7 +95,7 @@ describe('POST tracking', () => {
     });
     // El mismo día el evento sigue pendiente de publicar: no se entrega.
     expect(view.receivedEvent).toBeUndefined();
-    server.setNow(NEXT_DAY);
+    await server.advanceTo(NEXT_DAY);
     const nextDay = TrackingViewSchema.parse(
       await (await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter))).json(),
     );
@@ -164,7 +164,7 @@ describe('POST tracking', () => {
     }
     const limited = await postJson(server.app, ROUTES.tracking, wrongCredentials(unknownFolio));
     expect(limited.status).toBe(429);
-    server.setNow(new Date('2026-10-20T17:00:00Z'));
+    await server.advanceTo(new Date('2026-10-20T17:00:00Z'));
     expect((await postJson(server.app, ROUTES.tracking, wrongCredentials(folio))).status).toBe(404);
   });
 
@@ -236,9 +236,9 @@ describe('POST tracking/messages', () => {
     expect((await postJson(server.app, ROUTES.tracking, credentials)).status).toBe(200);
   });
 
-  it('cuenta solo los mensajes guardados y aplica el freno extremo global', async () => {
+  it('cuenta solo los mensajes guardados y no tiene tope global', async () => {
     const { server, reporter, folio } = await setup({
-      reporterMessagesGlobal: { limit: 1, windowMs: 60 * 60 * 1000 },
+      reporterMessagesPerFolio: { limit: 1, windowMs: 60 * 60 * 1000 },
     });
     const credentials = credentialsFor(folio, reporter);
     const send = async (sequence: number) => {
@@ -246,7 +246,7 @@ describe('POST tracking/messages', () => {
       return (await postJson(server.app, ROUTES.trackingMessages, { ...credentials, ...sealed }))
         .status;
     };
-    // Una secuencia equivocada se rechaza sin gastar el freno.
+    // Una secuencia equivocada se rechaza sin gastar el límite del folio.
     expect(await send(5)).toBe(400);
     expect(await send(0)).toBe(201);
     expect(await send(1)).toBe(429);

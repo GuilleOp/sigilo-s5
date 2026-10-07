@@ -51,8 +51,8 @@ export const MISSING_DATABASE_MESSAGE =
 
 /**
  * Lee la cabeza pública directamente de la base del servidor (en solo lectura) y la firma con la
- * llave de `keys.json`, igual que la ruta `ledgerHead`. Solo ve lo ya publicado: no cierra días
- * pendientes (para eso, usar la API con `apiAnchorSource`).
+ * llave de `keys.json`, igual que la ruta `ledgerHead`. Como la API, solo ve lo ya publicado: los
+ * días los cierra la tarea programada del servidor.
  * Lanza error con un mensaje claro si la base no existe o no tiene el esquema vigente.
  */
 export function databaseAnchorSource(dataDir: string, now: () => Date): AnchorSource {
@@ -73,7 +73,6 @@ export function databaseAnchorSource(dataDir: string, now: () => Date): AnchorSo
     serverKeyId: keys.publicKeySet.server.keyId,
     serverSigningPrivateKey: keys.serverSigningPrivateKey,
     now,
-    publishOnRead: false,
   });
   return {
     head: async () => ledger.head(),

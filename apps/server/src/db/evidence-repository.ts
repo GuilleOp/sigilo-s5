@@ -10,7 +10,7 @@ export interface EvidenceRecord extends EvidenceDescriptor {
   folio: string | null;
 }
 
-/** Prueba guardada de una denuncia sin atender, candidata a la retención o al desalojo. */
+/** Prueba guardada de una denuncia sin atender, candidata a la retención. */
 export interface UnattendedEvidence {
   evidenceId: string;
   sizeBytes: number;
@@ -32,11 +32,13 @@ export interface EvidenceRepository {
   /** Bytes de las pruebas pendientes (sin denuncia) guardadas. */
   pendingStoredBytes(): number;
   /**
-   * Pruebas guardadas de denuncias que siguen en `received` (la autoridad no las ha atendido),
-   * de las recibidas antes primero; con `beforeDay`, solo de las recibidas antes de ese día.
+   * Pruebas guardadas de denuncias que siguen en `received` (la autoridad no las ha atendido) y
+   * se recibieron antes de `beforeDay`, de las recibidas antes primero.
    */
-  listUnattendedStored(beforeDay: string | null, limit: number): UnattendedEvidence[];
-  /** Marca que el archivo de la prueba se borró por la retención o el desalojo. */
+  listUnattendedStored(beforeDay: string, limit: number): UnattendedEvidence[];
+  /** Indica si la denuncia tiene alguna prueba cuyo archivo sigue guardado. */
+  hasStoredForFolio(folio: string): boolean;
+  /** Marca que el archivo de la prueba se borró por la retención. */
   markUnstored(evidenceId: string): void;
 }
 
@@ -83,6 +85,9 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
      LIMIT ?`,
   );
   const unstoreStatement = db.prepare('UPDATE evidence SET is_stored = 0 WHERE evidence_id = ?');
+  const storedForFolioStatement = db.prepare(
+    'SELECT 1 AS found FROM evidence WHERE folio = ? AND is_stored = 1 LIMIT 1',
+  );
 
   return {
     insertPending: (descriptor, uploadedOn) => {
@@ -114,11 +119,11 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
       return row === undefined ? 0 : readInteger(row, 'total');
     },
     listUnattendedStored: (beforeDay, limit) =>
-      // '~' es mayor que cualquier fecha AAAA-MM-DD: sin `beforeDay` entran todas.
-      unattendedStatement.all(beforeDay ?? '~', limit).map((row) => ({
+      unattendedStatement.all(beforeDay, limit).map((row) => ({
         evidenceId: readText(row, 'evidence_id'),
         sizeBytes: readInteger(row, 'size_bytes'),
       })),
+    hasStoredForFolio: (folio) => storedForFolioStatement.get(folio) !== undefined,
     markUnstored: (evidenceId) => {
       unstoreStatement.run(evidenceId);
     },

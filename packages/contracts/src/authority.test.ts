@@ -58,6 +58,12 @@ describe('ComplaintDetailSchema', () => {
     delete withoutDigest.sealedIdentityDigest;
     expect(ComplaintDetailSchema.safeParse(withoutDigest).success).toBe(false);
     expect(ComplaintDetailSchema.safeParse({ ...DETAIL, receivedEventSeq: 3 }).success).toBe(true);
+    expect(
+      ComplaintDetailSchema.safeParse({ ...DETAIL, evidenceDeletionOn: '2026-11-20' }).success,
+    ).toBe(true);
+    expect(
+      ComplaintDetailSchema.safeParse({ ...DETAIL, evidenceDeletionOn: '20-11-2026' }).success,
+    ).toBe(false);
   });
 
   it('rechaza identidad o protección en modo anonymous', () => {

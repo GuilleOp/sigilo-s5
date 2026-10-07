@@ -51,17 +51,17 @@ describe('bitácora', () => {
     const sameDay = await readHead(server);
     expect(sameDay).toMatchObject({ seq: 0, hash: LEDGER_GENESIS_HASH });
     expect((await readPage(server)).events).toEqual([]);
-    server.setNow(new Date('2026-10-20T23:59:59Z'));
+    await server.advanceTo(new Date('2026-10-20T23:59:59Z'));
     expect(await readHead(server)).toEqual(sameDay);
 
-    server.setNow(NEXT_DAY);
+    await server.advanceTo(NEXT_DAY);
     await submitAnonymous(server);
     const published = await readPage(server);
     expect(published.events.map((event) => [event.seq, event.at])).toEqual([[0, '2026-10-20']]);
     expect(published.head).toMatchObject({ seq: 0, hash: published.events[0]?.hash });
     // La denuncia del día en curso no aparece hasta el día siguiente.
     expect((await readPage(server, '?from=1')).events).toEqual([]);
-    server.setNow(new Date('2026-10-22T00:00:00Z'));
+    await server.advanceTo(new Date('2026-10-22T00:00:00Z'));
     expect((await readPage(server)).events.map((event) => event.seq)).toEqual([0, 1]);
   });
 
@@ -74,9 +74,9 @@ describe('bitácora', () => {
     }
     const [first] = folios;
     if (!first) throw new Error('Falta el folio.');
-    server.setNow(new Date('2026-10-21T08:00:00Z'));
+    await server.advanceTo(new Date('2026-10-21T08:00:00Z'));
     await postJson(server.app, ROUTES.authorityStatus(first), { status: 'routing' }, TEST_TOKEN);
-    server.setNow(new Date('2026-10-22T08:00:00Z'));
+    await server.advanceTo(new Date('2026-10-22T08:00:00Z'));
 
     const response = await server.app.request(`${ROUTES.ledgerEvents}?from=0&limit=500`);
     const raw = await response.text();
@@ -99,7 +99,7 @@ describe('bitácora', () => {
   it('pagina desde un evento y verifica el tramo contra el anterior', async () => {
     const server = createTestServer();
     for (let index = 0; index < 3; index += 1) await submitAnonymous(server);
-    server.setNow(NEXT_DAY);
+    await server.advanceTo(NEXT_DAY);
     const all = await readPage(server);
     const tail = await readPage(server, '?from=1&limit=1');
     expect(tail.events.map((event) => event.seq)).toEqual([1]);
@@ -123,10 +123,10 @@ describe('bitácora', () => {
   it('con since entrega la página desde el vecino anterior a ese día', async () => {
     const server = createTestServer();
     await submitAnonymous(server);
-    server.setNow(NEXT_DAY);
+    await server.advanceTo(NEXT_DAY);
     await submitAnonymous(server);
     await submitAnonymous(server);
-    server.setNow(new Date('2026-10-22T09:00:00Z'));
+    await server.advanceTo(new Date('2026-10-22T09:00:00Z'));
     const page = await readPage(server, '?since=2026-10-21');
     expect(page.events.map((event) => [event.seq, event.at])).toEqual([
       [0, '2026-10-20'],

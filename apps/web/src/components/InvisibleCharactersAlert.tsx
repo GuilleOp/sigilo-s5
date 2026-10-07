@@ -1,7 +1,7 @@
 // Aviso de caracteres invisibles o letras de otro alfabeto, con el botón "Eliminar".
-import { findInvisibleCharacters, stripInvisibleCharacters } from '@sigilo/huella';
 import { announce } from '../lib/announce.ts';
 import { focusAfterRender } from '../lib/focus.ts';
+import { summarizeSuspiciousCharacters } from '../lib/suspicious-characters.ts';
 
 interface InvisibleCharactersAlertProps {
   text: string;
@@ -11,18 +11,19 @@ interface InvisibleCharactersAlertProps {
   fieldId: string;
 }
 
-/** Limpieza manual: además de lo invisible, quita las marcas que no se componen con su letra. */
-const MANUAL_STRIP_OPTIONS = { shouldRemoveUncomposedMarks: true } as const;
-
 function plural(count: number, singular: string, pluralForm: string): string {
   return count === 1 ? `1 ${singular}` : `${count} ${pluralForm}`;
 }
 
+/** Aviso en lectura fácil de lo que queda para revisión manual. */
+const REMAINING_NOTICE =
+  'Estas letras parecen normales pero vienen de otro alfabeto o son poco comunes. Revísalas y escríbelas de nuevo si no las pusiste tú.';
+
 /**
  * Muestra el aviso solo cuando hay caracteres sospechosos. Las variantes tipográficas (comillas y
- * rayas automáticas del teclado) no lo disparan; al eliminar, también se normalizan. Las letras de
- * otro alfabeto (`mixed_script`) se señalan pero no se borran solas: podrían ser parte de un
- * nombre, así que la persona debe revisarlas y escribirlas de nuevo.
+ * rayas automáticas del teclado) no lo disparan; al eliminar, también se normalizan. Solo se
+ * ofrece quitar lo que la limpieza de verdad quita; lo que queda (letras de otro alfabeto o poco
+ * comunes, que pueden ser parte de un nombre) se señala aparte para que la persona lo revise.
  */
 export function InvisibleCharactersAlert({
   text,
@@ -30,20 +31,19 @@ export function InvisibleCharactersAlert({
   fieldLabel,
   fieldId,
 }: InvisibleCharactersAlertProps) {
-  const report = findInvisibleCharacters(text, { shouldNormalizeTypography: false });
-  if (report.count === 0) return null;
-  const foreignLetters = report.items.filter((item) => item.kind === 'mixed_script').length;
-  const removable = report.count - foreignLetters;
+  const summary = summarizeSuspiciousCharacters(text);
+  if (summary.count === 0) return null;
+  const { removable, remaining } = summary;
 
   function strip(): void {
-    onChange(stripInvisibleCharacters(text, MANUAL_STRIP_OPTIONS));
+    onChange(summary.stripped);
     // El botón desaparece: el foco vuelve al campo y se dice qué pasó.
     focusAfterRender(fieldId);
     const removed = `Quitamos ${plural(removable, 'marca escondida', 'marcas escondidas')} de «${fieldLabel}».`;
     announce(
-      foreignLetters === 0
+      remaining === 0
         ? removed
-        : `${removed} Quedan letras de otro alfabeto: revísalas y escríbelas de nuevo.`,
+        : `${removed} Quedan ${plural(remaining, 'letra para revisar', 'letras para revisar')}: escríbelas de nuevo si no las pusiste tú.`,
     );
   }
 
@@ -51,7 +51,7 @@ export function InvisibleCharactersAlert({
     <div className="alert alert--warning" role="alert" data-testid="invisible-characters-alert">
       <p className="alert__title">
         {`Encontramos ${plural(
-          report.count,
+          summary.count,
           'carácter invisible o de otro alfabeto',
           'caracteres invisibles o de otro alfabeto',
         )} en «${fieldLabel}»`}
@@ -62,13 +62,9 @@ export function InvisibleCharactersAlert({
           texto de un oficio o correo, quítalas.
         </p>
       )}
-      {foreignLetters > 0 && (
+      {remaining > 0 && (
         <p data-testid="foreign-letters-notice">
-          {foreignLetters === 1
-            ? 'Hay 1 letra de otro alfabeto que se ve igual a una de las nuestras. '
-            : `Hay ${foreignLetters} letras de otro alfabeto que se ven iguales a las nuestras. `}
-          No las borramos solas, porque pueden ser parte de un nombre. Revisa el texto y escribe
-          esas palabras de nuevo con tu teclado.
+          {`${plural(remaining, 'letra queda', 'letras quedan')} para que la revises. ${REMAINING_NOTICE}`}
         </p>
       )}
       {removable > 0 && (

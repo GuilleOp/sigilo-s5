@@ -31,6 +31,8 @@ export interface LedgerRepository {
   listPendingDaysBefore(day: string): string[];
   /** Fecha más antigua con pendientes, o `null` si no hay ninguno. */
   firstPendingDay(): string | null;
+  /** Fecha más reciente con pendientes, o `null` si no hay ninguno. */
+  lastPendingDay(): string | null;
   /** Identificadores de los pendientes del día, sin ningún orden significativo. */
   listPendingIdsOn(day: string): string[];
   /** Pendiente por su identificador, o `null` si ya no existe. */
@@ -116,6 +118,7 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
     'SELECT DISTINCT at FROM ledger_pending WHERE at < ? ORDER BY at',
   );
   const firstPendingDayStatement = db.prepare('SELECT MIN(at) AS day FROM ledger_pending');
+  const lastPendingDayStatement = db.prepare('SELECT MAX(at) AS day FROM ledger_pending');
   const pendingIdsStatement = db.prepare('SELECT pending_id FROM ledger_pending WHERE at = ?');
   const findPendingStatement = db.prepare('SELECT * FROM ledger_pending WHERE pending_id = ?');
   const countPendingStatement = db.prepare(
@@ -159,6 +162,7 @@ export function createLedgerRepository(db: DatabaseSync): LedgerRepository {
     hasPendingBefore: (day) => hasPendingStatement.get(day) !== undefined,
     listPendingDaysBefore: (day) => pendingDaysStatement.all(day).map((row) => readText(row, 'at')),
     firstPendingDay: () => readOptionalText(firstPendingDayStatement.get() ?? {}, 'day'),
+    lastPendingDay: () => readOptionalText(lastPendingDayStatement.get() ?? {}, 'day'),
     listPendingIdsOn: (day) =>
       pendingIdsStatement.all(day).map((row) => readText(row, 'pending_id')),
     findPending: (pendingId) => {

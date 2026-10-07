@@ -67,7 +67,7 @@ describe('migraciones', () => {
       .all()
       .map((row) => readInteger(row, 'version'));
     expect(versions).toEqual(MIGRATIONS.map((migration) => migration.version));
-    expect(versions).toEqual([1, 2, 3, 4]);
+    expect(versions).toEqual([1, 2, 3, 4, 5]);
     expect(schemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
     expect(schemaVersion(new DatabaseSync(':memory:'))).toBe(0);
   });

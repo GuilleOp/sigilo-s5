@@ -19,7 +19,8 @@
  * - Latín extendido y fonético (IPA): las entradas de UTS #39 con prototipo de una letra latina
  *   («ɑ», «ɡ», «ı», «ʋ», «ꭇ», etc.) y las versalitas (U+1D00 «ᴀ», U+0299 «ʙ», U+0280 «ʀ», etc.).
  *   Las versalitas sin entrada en UTS #39 («ʀ», «ʟ», «ᴅ», «ᴇ», «ɢ», «ꜰ», «ᴊ», «ꞯ») se agregan aquí
- *   porque se leen como la minúscula correspondiente y sirven igual de canal.
+ *   porque se leen como la minúscula correspondiente y sirven igual de canal. También «ꞓ»/«Ꞓ»
+ *   (c con barra), que UTS #39 no lista.
  * - No incluye las formas que `MARKING_COMPATIBILITY_RANGES` ya resuelve con NFKC (ancho
  *   completo, letras matemáticas, formas encerradas). Cada clave es estable bajo NFC, porque el
  *   mapa se aplica después de NFC (lo verifica una prueba).
@@ -274,6 +275,9 @@ export const CONFUSABLES: ReadonlyMap<string, string> = new Map(
       [0x1d20, 'v'],
       [0x1d21, 'w'],
       [0x1d22, 'z'],
+      // «ꞓ» y «Ꞓ» (c con barra): ninguna ortografía de México las usa y se leen como «c».
+      [0xa793, 'c'],
+      [0xa792, 'C'],
     ] as const
   ).map(([codePoint, latin]) => [String.fromCodePoint(codePoint), latin]),
 );
@@ -325,9 +329,11 @@ export const TYPOGRAPHIC_VARIANTS: ReadonlyMap<string, string> = new Map(
  * agregan la raya doble y triple (U+2E3A, U+2E3B), «‥» (U+2025) y la comilla CJK de cierre
  * (U+301F). Las comillas «‹ ›» van a `'` por su función de comilla simple, no a `<`/`>`.
  *
- * Exclusiones deliberadas: «ʼ» U+02BC y «ꞌ»/«Ꞌ» (saltillo), «ː» U+02D0 (marca de vocal larga en
- * transcripciones de lenguas indígenas), «⁄» U+2044 (barra de fracción) y las letras de
- * escrituras índicas, árabe y hebrea que UTS #39 lista como puntuación.
+ * Exclusiones deliberadas: «ʼ» U+02BC y «ꞌ»/«Ꞌ» (saltillo), «ˊ» U+02CA, «ˋ» U+02CB y «ˉ» U+02C9
+ * (tonos de algunas ortografías de México, como el chinanteco), «ː» U+02D0 (marca de vocal larga
+ * en transcripciones de lenguas indígenas; `invisible-characters.ts` la resuelve según el
+ * contexto), «⁄» U+2044 (barra de fracción) y las letras de escrituras índicas, árabe y hebrea
+ * que UTS #39 lista como puntuación. Se agregan el clic «ǃ» (U+01C3) y el operador «∙» (U+2219).
  */
 export const PUNCTUATION_CONFUSABLES: ReadonlyMap<string, string> = new Map(
   (
@@ -375,8 +381,6 @@ export const PUNCTUATION_CONFUSABLES: ReadonlyMap<string, string> = new Map(
       [0x02bd, "'"],
       [0x02be, "'"],
       [0x02c8, "'"],
-      [0x02ca, "'"],
-      [0x02cb, "'"],
       [0x02f4, "'"],
       [0x0384, "'"],
       [0x055a, "'"],
@@ -409,6 +413,9 @@ export const PUNCTUATION_CONFUSABLES: ReadonlyMap<string, string> = new Map(
       // Barras.
       [0x2215, '/'],
       [0x29f8, '/'],
+      // Clic alveolar «ǃ» (de lenguas del sur de África) y operador «∙»: se ven como «!» y «·».
+      [0x01c3, '!'],
+      [0x2219, '·'],
     ] as const
   ).map(([codePoint, simple]) => [String.fromCodePoint(codePoint), simple]),
 );

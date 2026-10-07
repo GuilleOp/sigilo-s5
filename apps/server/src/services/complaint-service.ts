@@ -22,7 +22,6 @@ import { hasIdentityShape, isKey32 } from './crypto-checks.ts';
 import { budgetOf } from './evidence-service.ts';
 
 const MAX_FOLIO_ATTEMPTS = 8;
-const SUBMISSIONS_KEY = 'global';
 
 function assertRequestShape(ctx: AppContext, request: SubmitComplaintRequest): void {
   const { reporterKeys, authVerifier, sealedIdentity } = request;
@@ -73,23 +72,18 @@ function newFolio(ctx: AppContext): string {
  * comprobante, todo en una sola transacción.
  * Lanza `bad_request` si algo no corresponde, en particular si otro recibo ya usa el mismo
  * `authVerifier`; `payload_too_large` si sus pruebas exceden la parte de la cuota por denuncia;
- * `ledger_day_full` si la bitácora alcanzó su tope del día, y `rate_limited` solo con el freno
- * extremo de envíos.
- * Seguridad: el freno extremo se descuenta solo cuando la transacción se confirma; un intento
- * rechazado (por ejemplo, con un verificador repetido) no gasta la cuota de nadie. Contra el abuso
- * actúa antes la dificultad adaptativa de la prueba de trabajo.
+ * y `ledger_day_full` si la bitácora alcanzó su tope del día.
+ * Seguridad: no hay tope global de envíos; contra el abuso actúa la dificultad adaptativa de la
+ * prueba de trabajo. La fecha de recepción es la del evento registrado (ver `LedgerService`), así
+ * el comprobante y la bitácora coinciden aunque el reloj retroceda.
  */
 export function submitComplaint(
   ctx: AppContext,
   request: SubmitComplaintRequest,
 ): SubmitComplaintResponse {
   assertRequestShape(ctx, request);
-  if (ctx.limiters.complaintSubmissions.isLimited(SUBMISSIONS_KEY)) {
-    throw new ApiFailure('rate_limited');
-  }
   const submissionDigest = computeSubmissionDigest(request);
-  const receivedOn = toDayDate(ctx.deps.now());
-  const response = withTransaction(ctx.deps.db, () => {
+  return withTransaction(ctx.deps.db, () => {
     // Seguridad: cada recibo pertenece a una sola denuncia. Reutilizar el verificador de otra es
     // el primer paso para trasplantar su sobre de identidad (el índice único también lo impide).
     if (ctx.complaints.hasAuthVerifier(request.authVerifier)) throw new ApiFailure('bad_request');
@@ -100,10 +94,11 @@ export function submitComplaint(
     const event = ctx.ledger.record({
       type: 'complaint.received',
       folio,
-      at: receivedOn,
+      at: toDayDate(ctx.deps.now()),
       actorRole: 'system',
       payload: { folio, submissionDigest },
     });
+    const receivedOn = event.at;
     const receipt = signReceipt(
       {
         folio,
@@ -130,8 +125,6 @@ export function submitComplaint(
     ctx.statusHistory.insert(folio, 'received', receivedOn);
     return { folio, receipt };
   });
-  ctx.limiters.complaintSubmissions.consume(SUBMISSIONS_KEY);
-  return response;
 }
 
 /**
@@ -149,11 +142,10 @@ export function changeStatus(
     const current = ctx.complaints.find(folio);
     if (current === null) throw new ApiFailure('not_found');
     if (current.status === status) throw new ApiFailure('bad_request');
-    const changedOn = toDayDate(ctx.deps.now());
-    ctx.ledger.record({
+    const { at: changedOn } = ctx.ledger.record({
       type: 'complaint.status_changed',
       folio,
-      at: changedOn,
+      at: toDayDate(ctx.deps.now()),
       actorRole: 'authority',
       // Seguridad: un identificador aleatorio hace único el digesto aunque el estatus se repita,
       // y el folio impide adivinarlo probando estatus.
@@ -180,7 +172,6 @@ export function openIdentity(
 ): OpenIdentityResponse {
   const sealedIdentity = complaint.sealedIdentity;
   if (complaint.mode !== 'sealed' || sealedIdentity === null) throw new ApiFailure('not_found');
-  const openedOn = toDayDate(ctx.deps.now());
   const openingId = toHex(randomBytes(16));
   const payload = identityOpenedPayload({
     folio: complaint.folio,
@@ -189,10 +180,10 @@ export function openIdentity(
     authVerifier: complaint.authVerifier,
   });
   withTransaction(ctx.deps.db, () => {
-    ctx.ledger.record({
+    const { at: openedOn } = ctx.ledger.record({
       type: 'identity.opened',
       folio: complaint.folio,
-      at: openedOn,
+      at: toDayDate(ctx.deps.now()),
       actorRole: 'authority',
       payload,
       receiptTag: payload.receiptTag,

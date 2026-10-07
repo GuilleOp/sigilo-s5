@@ -77,6 +77,31 @@ export function solvePow(
   return null;
 }
 
+/**
+ * Velocidad supuesta de un celular básico resolviendo en el navegador (SHA-256 en JavaScript, un
+ * solo núcleo): 50 mil hashes por segundo. Es la base de la vigencia de los retos y del estimado
+ * de espera que se muestra a la persona.
+ */
+export const SLOW_DEVICE_HASHES_PER_SECOND = 50_000;
+
+/**
+ * Segundos en que un dispositivo de `hashesPerSecond` resuelve un reto de `bits` con probabilidad
+ * `quantile`. Cada contador acierta con probabilidad p = 2^-bits, así que los intentos siguen una
+ * geométrica: P(intentos <= n) ≈ 1 - e^(-n·p), y el cuantil q requiere n = -ln(1 - q) · 2^bits
+ * (el percentil 95 es unas 3 veces el promedio). Lanza error si `bits` o `quantile` no son válidos.
+ */
+export function powSolveSeconds(
+  bits: number,
+  quantile = 0.95,
+  hashesPerSecond = SLOW_DEVICE_HASHES_PER_SECOND,
+): number {
+  assertBits(bits);
+  if (!(quantile > 0 && quantile < 1) || !(hashesPerSecond > 0)) {
+    throw new Error('El cuantil debe estar entre 0 y 1 y la velocidad debe ser positiva.');
+  }
+  return (-Math.log(1 - quantile) * 2 ** bits) / hashesPerSecond;
+}
+
 /** Valor de la cabecera `POW_HEADER`: `<token>:<contador>`. */
 export function formatPowHeader(token: string, counter: string): string {
   return `${token}:${counter}`;

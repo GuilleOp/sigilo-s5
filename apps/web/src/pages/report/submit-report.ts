@@ -6,7 +6,7 @@ import { digestBlob } from '@sigilo/huella';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import type { PinnedKeys } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch } from '../../crypto/key-pinning.ts';
-import { obtainProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
+import { createProofProvider, sendWithProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
 import type { PowSolver } from '../../crypto/proof-of-work.ts';
 import {
   buildIdentityBlock,
@@ -157,6 +157,9 @@ export async function submitReport(
     );
   }
 
+  // Un solo reto cubre las pruebas y la denuncia; se resuelve al primer uso y se renueva una vez
+  // si el servidor lo rechaza (por ejemplo, porque venció).
+  const proofs = createProofProvider(api, 'complaint', solver, onProgress);
   const images = draft.evidence.flatMap((item) => item.clean);
   const evidence: EvidenceDescriptor[] = [];
   for (const [index, image] of images.entries()) {
@@ -165,10 +168,11 @@ export async function submitReport(
       evidence.push(known);
       continue;
     }
-    const proof = await obtainProof(api, 'evidence', solver, onProgress);
-    onProgress(`Enviando tus pruebas limpias: ${index + 1} de ${images.length}.`);
     const mediaType = mediaTypeOf(image.blob);
-    const descriptor = await api.uploadEvidence(image.blob, mediaType, proof);
+    const descriptor = await sendWithProof(proofs, (proof) => {
+      onProgress(`Enviando tus pruebas limpias: ${index + 1} de ${images.length}.`);
+      return api.uploadEvidence(image.blob, mediaType, proof);
+    });
     await assertDescriptorMatches(descriptor, image.blob, mediaType);
     uploads.set(image.blob, descriptor);
     evidence.push(descriptor);
@@ -192,11 +196,12 @@ export async function submitReport(
 
   const request = buildSubmitRequest(input, receipt.keys, sealedIdentity);
 
-  const proof = await obtainProof(api, 'complaint', solver, onProgress);
-  onProgress('Enviando tu denuncia.');
   let response;
   try {
-    response = await api.submitComplaint(request, proof);
+    response = await sendWithProof(proofs, (proof) => {
+      onProgress('Enviando tu denuncia.');
+      return api.submitComplaint(request, proof);
+    });
   } catch (error) {
     // Una prueba ya asociada, purgada o inexistente hace fallar el envío: en el reintento se
     // vuelven a subir todas en lugar de repetir los mismos descriptores.

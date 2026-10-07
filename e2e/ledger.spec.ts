@@ -18,7 +18,7 @@ import { expect, test } from './support/fixtures.ts';
 test.beforeAll(async ({ request }) => {
   // Garantiza al menos un evento publicado aunque este archivo se ejecute solo.
   await seedAnonymousComplaint(request);
-  advanceServerClockToNextDay();
+  await advanceServerClockToNextDay();
 });
 
 /** Toda la bitácora publicada y su cabeza, por páginas. */
@@ -62,7 +62,7 @@ test('los eventos del día quedan pendientes y sin secuencia hasta que cierra el
   expect(sameDay.head).toEqual(before.head);
   for (const digest of digests) expect(isPendingInDatabase(digest)).toBe(true);
 
-  advanceServerClockToNextDay();
+  await advanceServerClockToNextDay();
   const nextDay = await publishedLedger(request);
   const published = nextDay.events.filter((event) => digests.includes(event.payloadDigest));
   expect(published.map((event) => event.payloadDigest).sort()).toEqual([...digests].sort());

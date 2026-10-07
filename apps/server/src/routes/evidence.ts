@@ -8,7 +8,10 @@ import { mediaTypeOf } from '../http/request.ts';
 import { requireProofOfWork } from '../security/proof-of-work.ts';
 import { storeEvidence } from '../services/evidence-service.ts';
 
-/** Registra `POST evidenceUpload`, que exige la prueba de trabajo de propósito `evidence`. */
+/**
+ * Registra `POST evidenceUpload`, que exige la prueba de trabajo del reto `complaint` de la
+ * denuncia (sirve para hasta `MAX_EVIDENCE_ITEMS` subidas antes del envío).
+ */
 export function registerEvidenceRoutes(app: Hono, ctx: AppContext): void {
   app.post(
     ROUTES.evidenceUpload,

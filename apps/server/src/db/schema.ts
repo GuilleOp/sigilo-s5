@@ -401,12 +401,19 @@ function assertNoRowidData(db: DatabaseSync): void {
   if (total > 0) throw new Error(ROWID_DATA_MESSAGE);
 }
 
+// Migración 5: la 3 recreó `ledger_events` sin el índice por día, así que `lastBefore` (la consulta
+// `since`, el cierre a medias) recorría la tabla completa. Con el índice, su costo es logarítmico.
+const LEDGER_EVENTS_BY_DAY = `
+CREATE INDEX ledger_events_by_day ON ledger_events (at, seq);
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
   { version: 2, sql: RECEIPT_AND_MAILBOX_INTEGRITY },
   { version: 3, sql: DAILY_SHUFFLED_LEDGER, precheck: assertNoLegacyData },
   { version: 4, sql: RANDOM_ORDER_STORAGE, precheck: assertNoRowidData },
+  { version: 5, sql: LEDGER_EVENTS_BY_DAY },
 ];
 
 /** Versión más reciente del esquema. */

@@ -1,7 +1,8 @@
-// Prueba de trabajo en el navegador: pide un reto de un solo uso, lo resuelve en un Web Worker del
-// mismo origen y arma la cabecera que exige el servidor.
+// Prueba de trabajo en el navegador: pide un reto, lo resuelve en un Web Worker del mismo origen,
+// arma la cabecera que exige el servidor, estima la espera y renueva el reto una vez si vence.
 import type { PowChallenge, PowPurpose } from '@sigilo/contracts';
-import { formatPowHeader, solvePow } from '@sigilo/core';
+import { formatPowHeader, powSolveSeconds, solvePow } from '@sigilo/core';
+import { ApiRequestError } from '../services/api-client.ts';
 import type { PowWorkerRequest, PowWorkerResponse } from '../workers/pow-worker.ts';
 
 /** Resuelve un reto; `onProgress` recibe cuántos contadores lleva probados. */
@@ -58,9 +59,23 @@ export interface PowApi {
 export const POW_PROGRESS_INTERVAL_MS = 4000;
 
 /**
+ * Estimado en lenguaje claro de lo que puede tardar un reto de `bits` en un celular sencillo: el
+ * percentil 95 a 50 mil hashes por segundo (`powSolveSeconds`), redondeado hacia arriba.
+ */
+export function describePowWait(bits: number): string {
+  const seconds = powSolveSeconds(bits);
+  if (seconds < 5) return 'Puede tardar unos segundos.';
+  if (seconds < 55) {
+    return `En un celular sencillo puede tardar hasta ${Math.ceil(seconds / 10) * 10} segundos.`;
+  }
+  const minutes = Math.ceil(seconds / 60);
+  return `En un celular sencillo puede tardar hasta ${minutes === 1 ? '1 minuto' : `${minutes} minutos`}.`;
+}
+
+/**
  * Pide un reto para `purpose`, lo resuelve y devuelve el valor de la cabecera `POW_HEADER`.
- * `announce` recibe mensajes en lectura fácil: uno al empezar y, si tarda, uno cada
- * `POW_PROGRESS_INTERVAL_MS`.
+ * `announce` recibe mensajes en lectura fácil: uno al empezar, con el estimado de espera, y, si
+ * tarda, uno cada `POW_PROGRESS_INTERVAL_MS`.
  */
 export async function obtainProof(
   api: PowApi,
@@ -71,7 +86,7 @@ export async function obtainProof(
 ): Promise<string> {
   const challenge = await api.getPowChallenge(purpose);
   if (challenge.bits > 0) {
-    announce('Protegiendo tu envío contra envíos automáticos. Puede tardar unos segundos.');
+    announce(`Protegiendo tu envío contra envíos automáticos. ${describePowWait(challenge.bits)}`);
   }
   let lastAnnouncedAt = now();
   const counter = await solver(challenge, () => {
@@ -81,4 +96,46 @@ export async function obtainProof(
     announce('Seguimos protegiendo tu envío contra envíos automáticos. No cierres esta página.');
   });
   return formatPowHeader(challenge.token, counter);
+}
+
+/** Solución reutilizable de un reto: la misma cabecera sirve hasta que el servidor la rechace. */
+export interface ProofProvider {
+  /** Cabecera vigente; resuelve el reto la primera vez. */
+  current(): Promise<string>;
+  /** Pide y resuelve un reto nuevo, que sustituye al vigente. */
+  renew(): Promise<string>;
+}
+
+/**
+ * Crea el proveedor de pruebas de `purpose`. Un reto `complaint` cubre las pruebas y el envío de
+ * la denuncia, así que una denuncia resuelve un solo reto en lugar de uno por petición.
+ */
+export function createProofProvider(
+  api: PowApi,
+  purpose: PowPurpose,
+  solver: PowSolver,
+  announce: (message: string) => void,
+): ProofProvider {
+  let header: Promise<string> | null = null;
+  const renew = (): Promise<string> => {
+    header = obtainProof(api, purpose, solver, announce);
+    return header;
+  };
+  return { current: () => header ?? renew(), renew };
+}
+
+/**
+ * Envía con la prueba vigente. Si el servidor responde `proof_required` (el reto venció, agotó sus
+ * usos o la dificultad subió mientras tanto), resuelve otro y reintenta una sola vez.
+ */
+export async function sendWithProof<T>(
+  proofs: ProofProvider,
+  send: (proof: string) => Promise<T>,
+): Promise<T> {
+  try {
+    return await send(await proofs.current());
+  } catch (error) {
+    if (!(error instanceof ApiRequestError) || error.code !== 'proof_required') throw error;
+    return send(await proofs.renew());
+  }
 }

@@ -6,6 +6,8 @@ import {
   leadingZeroBits,
   parsePowHeader,
   powDigest,
+  powSolveSeconds,
+  SLOW_DEVICE_HASHES_PER_SECOND,
   solvePow,
 } from './pow.ts';
 import { toHex } from './encoding.ts';
@@ -71,5 +73,24 @@ describe('cabecera de la prueba', () => {
     expect(parsePowHeader('sin-separador')).toBeNull();
     expect(parsePowHeader(':42')).toBeNull();
     expect(parsePowHeader(`${TOKEN}:abc`)).toBeNull();
+  });
+});
+
+describe('powSolveSeconds', () => {
+  it('estima el cuantil de la geométrica para un celular lento', () => {
+    // Percentil 95 a 20 bits y 50 mil hashes por segundo: ln(20) · 2^20 / 50 000 ≈ 62.8 s.
+    expect(powSolveSeconds(20)).toBeCloseTo((Math.log(20) * 2 ** 20) / 50_000, 6);
+    expect(powSolveSeconds(20)).toBeCloseTo(62.83, 1);
+    // La mediana es ln(2) veces el promedio y cada bit duplica el tiempo.
+    expect(powSolveSeconds(10, 0.5, 1)).toBeCloseTo(Math.log(2) * 1024, 6);
+    expect(powSolveSeconds(19) * 2).toBeCloseTo(powSolveSeconds(20), 6);
+    expect(powSolveSeconds(0)).toBeCloseTo(Math.log(20) / SLOW_DEVICE_HASHES_PER_SECOND, 9);
+  });
+
+  it('rechaza dificultades, cuantiles y velocidades inválidos', () => {
+    expect(() => powSolveSeconds(33)).toThrow('dificultad');
+    expect(() => powSolveSeconds(10, 1)).toThrow('cuantil');
+    expect(() => powSolveSeconds(10, 0)).toThrow('cuantil');
+    expect(() => powSolveSeconds(10, 0.5, 0)).toThrow('velocidad');
   });
 });

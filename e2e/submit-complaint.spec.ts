@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import exifr from 'exifr';
 import { downloadEvidence, fetchComplaintDetail } from './support/api.ts';
+import { loginAsAuthority, openComplaint } from './support/authority.ts';
 import { expect, test } from './support/fixtures.ts';
 import {
   continueTo,
@@ -96,4 +97,12 @@ test('una denuncia anónima limpia sus pruebas, revisa el texto y entrega un rec
     expect(await exifr.gps(bytes)).toBeUndefined();
     expect(await exifr.parse(bytes, { tiff: true, exif: true, gps: true })).toBeUndefined();
   }
+
+  // Sin atender, el panel avisa el día en que la retención borrará las pruebas.
+  expect(detail.evidenceDeletionOn).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
+  await loginAsAuthority(page);
+  await openComplaint(page, folio);
+  await expect(page.getByTestId('evidence-deletion-warning')).toContainText(
+    `Las pruebas se borrarán el ${detail.evidenceDeletionOn ?? ''} si no se atiende.`,
+  );
 });

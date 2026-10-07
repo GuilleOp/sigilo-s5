@@ -4,6 +4,7 @@ import { primaryOffenseCode } from '@sigilo/contracts';
 import { sealedIdentityDigest } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
+import { DEFAULT_EVIDENCE_RETENTION_DAYS, evidenceDeletionDay } from './evidence-service.ts';
 
 /** Resumen de la denuncia con la clave principal de la conducta; nunca incluye el sobre. */
 export function toSummary(complaint: ComplaintRecord): ComplaintSummary {
@@ -28,11 +29,10 @@ function publishedReceivedEvent(ctx: AppContext, complaint: ComplaintRecord) {
 /**
  * Vista de seguimiento: estatus, línea de tiempo, accesos a la identidad, mensajes, comprobante y,
  * si ya se publicó, el evento `complaint.received` para que el cliente lo verifique contra su
- * comprobante. Antes publica los días cerrados, para que el evento aparezca en cuanto corresponda.
+ * comprobante. Solo muestra lo ya publicado: los días los cierra la tarea programada.
  * Seguridad: las aperturas de identidad se muestran de inmediato, aunque su evento siga pendiente.
  */
 export function buildTrackingView(ctx: AppContext, complaint: ComplaintRecord): TrackingView {
-  ctx.ledger.publishClosedDays();
   const receivedEvent = publishedReceivedEvent(ctx, complaint);
   return {
     folio: complaint.folio,
@@ -46,15 +46,24 @@ export function buildTrackingView(ctx: AppContext, complaint: ComplaintRecord): 
   };
 }
 
+/** Fecha de borrado de las pruebas por la retención, si la denuncia sigue sin atender. */
+function evidenceDeletionOn(ctx: AppContext, complaint: ComplaintRecord): string | null {
+  if (complaint.status !== 'received' || !ctx.evidence.hasStoredForFolio(complaint.folio)) {
+    return null;
+  }
+  const retentionDays = ctx.deps.evidenceRetentionDays ?? DEFAULT_EVIDENCE_RETENTION_DAYS;
+  return evidenceDeletionDay(complaint.receivedOn, retentionDays);
+}
+
 /**
  * Detalle para la autoridad, con lo necesario para recalcular el contexto de la identidad y el
  * digesto del envío (incluido el digesto del sobre y, si ya se publicó, la secuencia de su
- * evento `complaint.received`).
+ * evento `complaint.received`) y, si sigue sin atender, el día en que se borrarán sus pruebas.
  * Seguridad: nunca incluye el sobre de identidad.
  */
 export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord): ComplaintDetail {
-  ctx.ledger.publishClosedDays();
   const receivedEvent = publishedReceivedEvent(ctx, complaint);
+  const deletionOn = evidenceDeletionOn(ctx, complaint);
   return {
     summary: toSummary(complaint),
     version: 1,
@@ -66,6 +75,7 @@ export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord
       ? {}
       : { sealedIdentityDigest: sealedIdentityDigest(complaint.sealedIdentity) }),
     ...(receivedEvent === null ? {} : { receivedEventSeq: receivedEvent.seq }),
+    ...(deletionOn === null ? {} : { evidenceDeletionOn: deletionOn }),
     messages: ctx.messages.listByFolio(complaint.folio),
     identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
   };

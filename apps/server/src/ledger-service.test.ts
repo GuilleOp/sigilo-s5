@@ -1,5 +1,6 @@
 // Pruebas del servicio de bitácora: eventos pendientes sin secuencia, cierre de días con barajado
-// criptográfico, publicación perezosa y atómica.
+// criptográfico, por lotes atómicos que ceden el event loop, fechas ante un reloj que retrocede y
+// tope diario del que la autoridad está exenta.
 import { describe, expect, it } from 'vitest';
 import { LEDGER_GENESIS_HASH } from '@sigilo/contracts';
 import { generateSigningKeyPair, keyIdFor, verifyChain, verifyLedgerHead } from '@sigilo/core';
@@ -29,13 +30,13 @@ function setup(
     ...(shuffleDay === undefined ? {} : { shuffleDay }),
     ...extra,
   });
-  const record = (index: number) =>
+  const record = (index: number, actorRole: 'reporter' | 'authority' = 'reporter') =>
     withTransaction(db, () =>
       ledger.record({
         type: 'message.sent',
         folio: FOLIO,
         at: now.toISOString().slice(0, 10),
-        actorRole: 'reporter',
+        actorRole,
         payload: { folio: FOLIO, index },
       }),
     );
@@ -43,7 +44,7 @@ function setup(
 }
 
 describe('createLedgerService', () => {
-  it('no publica ni numera los eventos del día hasta que el día cierra', () => {
+  it('no publica ni numera los eventos del día hasta que la tarea cierra el día', async () => {
     const { ledger, record, keys, setNow } = setup();
     const pending = record(0);
     expect(pending).not.toHaveProperty('seq');
@@ -53,19 +54,23 @@ describe('createLedgerService', () => {
     expect(verifyLedgerHead(head, keys.publicKey)).toBe(true);
 
     setNow(new Date('2026-10-21T00:00:01Z'));
+    // Las lecturas nunca cierran días: muestran lo ya publicado.
+    expect(ledger.page(0, 10).events).toEqual([]);
+    expect(ledger.head().seq).toBe(0);
+    expect(await ledger.publishClosedDays()).toBe(1);
     const page = ledger.page(0, 10);
     expect(page.events.map((event) => event.payloadDigest)).toEqual([pending.payloadDigest]);
     expect(page.head).toMatchObject({ seq: 0, hash: page.events[0]?.hash, at: '2026-10-20' });
   });
 
-  it('encadena cada día completo, en orden de días, con el orden del barajado', () => {
+  it('encadena cada día completo, en orden de días, con el orden del barajado', async () => {
     // Barajado determinista para la prueba: invierte el orden de cada día.
     const { ledger, record, setNow } = setup((ids) => [...ids].reverse());
     const day1 = [record(0), record(1), record(2)];
     setNow(new Date('2026-10-21T12:00:00Z'));
     const day2 = [record(3), record(4)];
     setNow(new Date('2026-10-22T00:30:00Z'));
-    expect(ledger.publishClosedDays()).toBe(5);
+    expect(await ledger.publishClosedDays()).toBe(5);
     const events = ledger.page(0, 10).events;
     expect(verifyChain(events)).toEqual({ valid: true });
     expect(events.map((event) => event.at)).toEqual([
@@ -83,19 +88,20 @@ describe('createLedgerService', () => {
     expect(new Set(events.slice(3).map((event) => event.payloadDigest))).toEqual(
       new Set(day2.map((event) => event.payloadDigest)),
     );
-    expect(ledger.publishClosedDays()).toBe(0);
+    expect(await ledger.publishClosedDays()).toBe(0);
   });
 
-  it('baraja con aleatoriedad: muchos eventos del mismo día no conservan su orden de llegada', () => {
+  it('baraja con aleatoriedad: muchos eventos del mismo día no conservan su orden de llegada', async () => {
     const { ledger, record, setNow } = setup();
     const arrivals = Array.from({ length: 40 }, (_, index) => record(index).payloadDigest);
     setNow(new Date('2026-10-21T00:00:01Z'));
+    await ledger.publishClosedDays();
     const published = ledger.page(0, 100).events.map((event) => event.payloadDigest);
     expect(new Set(published)).toEqual(new Set(arrivals));
     expect(published).not.toEqual(arrivals);
   });
 
-  it('si el barajado falla no publica nada del día', () => {
+  it('si el barajado falla no publica nada del día', async () => {
     const { ledger, record, repository, setNow } = setup((ids) => {
       if (ids.length > 1) throw new Error('falla sintética');
       return [...ids];
@@ -103,16 +109,16 @@ describe('createLedgerService', () => {
     record(0);
     record(1);
     setNow(new Date('2026-10-21T00:00:01Z'));
-    expect(() => ledger.publishClosedDays()).toThrow('falla sintética');
+    await expect(ledger.publishClosedDays()).rejects.toThrow('falla sintética');
     expect(repository.last()).toBeNull();
     expect(repository.listPendingBefore('2026-10-21')).toHaveLength(2);
   });
 
-  it('encadena por lotes y no publica un día interrumpido hasta terminarlo', () => {
+  it('encadena por lotes y no publica un día interrumpido hasta terminarlo', async () => {
     let insertsBeforeFailure = Number.POSITIVE_INFINITY;
     const { ledger, record, repository, setNow, keys } = setup(
       undefined,
-      { batchSize: 2, publishOnRead: false },
+      { batchSize: 2 },
       (base) => ({
         ...base,
         insert: (event, payloadJson) => {
@@ -128,7 +134,7 @@ describe('createLedgerService', () => {
     setNow(new Date('2026-10-22T10:00:00Z'));
     // Se cae a la mitad del segundo día: primer día completo y un lote del segundo.
     insertsBeforeFailure = 4;
-    expect(() => ledger.publishClosedDays()).toThrow('corte sintético');
+    await expect(ledger.publishClosedDays()).rejects.toThrow('corte sintético');
     expect(repository.listPendingBefore('2026-10-22')).toHaveLength(3);
     const partial = ledger.page(0, 10);
     // La cabeza se queda en el primer día y la página no muestra el día a medias.
@@ -137,7 +143,7 @@ describe('createLedgerService', () => {
     expect(verifyLedgerHead(partial.head, keys.publicKey)).toBe(true);
 
     insertsBeforeFailure = Number.POSITIVE_INFINITY;
-    expect(ledger.publishClosedDays()).toBe(3);
+    expect(await ledger.publishClosedDays()).toBe(3);
     const events = ledger.page(0, 10).events;
     expect(verifyChain(events)).toEqual({ valid: true });
     expect(new Set(events.map((event) => event.payloadDigest))).toEqual(
@@ -156,13 +162,56 @@ describe('createLedgerService', () => {
     record(3);
   });
 
-  it('entrega la página desde el vecino anterior a un día y guarda la firma de la cabeza', () => {
+  it('los eventos de la autoridad no cuentan para el tope del día ni se rechazan', () => {
+    const { record } = setup(undefined, { maxPendingPerDay: 2 });
+    record(0);
+    record(1);
+    expect(() => record(2)).toThrow(expect.objectContaining({ code: 'ledger_day_full' }));
+    for (let index = 3; index < 8; index += 1) record(index, 'authority');
+    expect(() => record(9)).toThrow(expect.objectContaining({ code: 'ledger_day_full' }));
+  });
+
+  it('si el reloj retrocede, fecha el evento después del último día publicado y sigue publicando', async () => {
+    const { ledger, record, setNow } = setup();
+    record(0);
+    setNow(new Date('2026-10-22T10:00:00Z'));
+    expect(await ledger.publishClosedDays()).toBe(1);
+    expect(ledger.head().at).toBe('2026-10-20');
+    // El reloj vuelve al 19: el evento no puede caer en un día ya publicado.
+    setNow(new Date('2026-10-19T23:59:00Z'));
+    expect(record(1).at).toBe('2026-10-21');
+    // Otro evento nunca queda antes de uno pendiente.
+    setNow(new Date('2026-10-18T08:00:00Z'));
+    expect(record(2).at).toBe('2026-10-21');
+    setNow(new Date('2026-10-22T10:05:00Z'));
+    expect(await ledger.publishClosedDays()).toBe(2);
+    const events = ledger.page(0, 10).events;
+    expect(verifyChain(events)).toEqual({ valid: true });
+    expect(events.map((event) => event.at)).toEqual(['2026-10-20', '2026-10-21', '2026-10-21']);
+  });
+
+  it('cede el event loop entre lotes y comparte el cierre en curso', async () => {
+    const { ledger, record, setNow } = setup(undefined, { batchSize: 2 });
+    for (let index = 0; index < 6; index += 1) record(index);
+    setNow(new Date('2026-10-21T00:00:01Z'));
+    const timeline: number[] = [];
+    const first = ledger.publishClosedDays();
+    expect(ledger.publishClosedDays()).toBe(first);
+    setImmediate(() => timeline.push(ledger.page(0, 10).events.length));
+    expect(await first).toBe(6);
+    // Una lectura intercalada entre lotes ve un día a medias, pero la página no lo muestra.
+    expect(timeline).toEqual([0]);
+    expect(ledger.page(0, 10).events).toHaveLength(6);
+  });
+
+  it('entrega la página desde el vecino anterior a un día y guarda la firma de la cabeza', async () => {
     const { ledger, record, setNow } = setup();
     record(0);
     setNow(new Date('2026-10-21T10:00:00Z'));
     record(1);
     record(2);
     setNow(new Date('2026-10-22T10:00:00Z'));
+    await ledger.publishClosedDays();
     const since = ledger.pageSince('2026-10-21', 10);
     expect(since.events.map((event) => event.at)).toEqual([
       '2026-10-20',
@@ -173,22 +222,5 @@ describe('createLedgerService', () => {
     expect(ledger.pageSince('2026-10-25', 10).events.map((event) => event.seq)).toEqual([2]);
     // La misma cabeza se sirve con el mismo objeto firmado hasta que cambia.
     expect(ledger.head()).toBe(ledger.head());
-  });
-
-  it('con la publicación perezosa desactivada solo muestra lo ya encadenado', () => {
-    const { db, repository, keys, record, setNow } = setup();
-    record(0);
-    setNow(new Date('2026-10-21T00:00:01Z'));
-    const readOnly = createLedgerService({
-      db,
-      repository,
-      serverKeyId: keyIdFor(keys.publicKey),
-      serverSigningPrivateKey: keys.privateKey,
-      now: () => new Date('2026-10-21T00:00:01Z'),
-      publishOnRead: false,
-    });
-    expect(readOnly.page(0, 10).events).toEqual([]);
-    expect(readOnly.publishClosedDays()).toBe(1);
-    expect(readOnly.page(0, 10).events).toHaveLength(1);
   });
 });

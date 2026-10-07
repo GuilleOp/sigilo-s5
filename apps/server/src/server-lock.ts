@@ -2,15 +2,13 @@
 // base y permite a los scripts saber si el servidor está en marcha.
 import { connect } from 'node:net';
 import {
-  closeSync,
   linkSync,
-  openSync,
   readFileSync,
   renameSync,
   rmSync,
   statSync,
   utimesSync,
-  writeSync,
+  writeFileSync,
 } from 'node:fs';
 import { uptime } from 'node:os';
 import { join } from 'node:path';
@@ -25,6 +23,12 @@ export const LOCK_FILE = 'server.lock';
  * que el PID ya es de otro proceso.
  */
 export const LOCK_STALE_MS = 60 * 60 * 1000;
+
+/**
+ * Antigüedad mínima para que un bloqueo con contenido inválido se considere abandonado: uno
+ * reciente puede ser de otra herramienta que aún lo está escribiendo.
+ */
+export const INVALID_LOCK_GRACE_MS = 10 * 1000;
 
 /** Opciones de lectura y toma del bloqueo; se inyectan para probar. */
 export interface LockOptions {
@@ -74,9 +78,13 @@ function writeWarning(message: string): void {
 
 /** Motivo por el que un bloqueo ya no pertenece a un servidor vivo, o `null` si sigue vigente. */
 function staleReason(state: LockState, options: LockOptions): string | null {
-  if (state.pid === null) return 'su contenido no es un PID válido';
-  if (!isProcessAlive(state.pid)) return `el proceso ${state.pid} ya terminó`;
   const now = (options.now ?? Date.now)();
+  if (state.pid === null) {
+    return now - state.modifiedAt < INVALID_LOCK_GRACE_MS
+      ? null
+      : 'su contenido no es un PID válido';
+  }
+  if (!isProcessAlive(state.pid)) return `el proceso ${state.pid} ya terminó`;
   if (state.modifiedAt < (options.bootTime ?? defaultBootTime)()) {
     return `es anterior al último arranque del sistema y el PID ${state.pid} es de otro proceso`;
   }
@@ -92,20 +100,23 @@ export function lockHolder(dataDir: string, options: LockOptions = {}): number |
   return state === null || staleReason(state, options) !== null ? null : state.pid;
 }
 
+/**
+ * Crea el bloqueo ya completo: escribe el PID en un archivo temporal único y lo enlaza con
+ * `linkSync`, que falla si `server.lock` existe. Así nadie ve nunca un bloqueo vacío o a medio
+ * escribir (que parecería abandonado y otro servidor apartaría).
+ */
 function createExclusive(path: string, pid: number): boolean {
-  let fd: number;
+  const temporary = `${path}.${toHex(randomBytes(8))}.tmp`;
+  writeFileSync(temporary, `${pid}\n`, { mode: 0o600, flag: 'wx' });
   try {
-    fd = openSync(path, 'wx', 0o600);
+    linkSync(temporary, path);
+    return true;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
     throw error;
-  }
-  try {
-    writeSync(fd, `${pid}\n`);
   } finally {
-    closeSync(fd);
+    rmSync(temporary, { force: true });
   }
-  return true;
 }
 
 /**
@@ -137,11 +148,12 @@ function setAsideStale(path: string, judged: LockState): void {
 }
 
 /**
- * Toma el bloqueo con el PID del proceso y devuelve la función que lo libera. El archivo se crea
- * de forma atómica (`wx`), así dos servidores que arrancan a la vez no pueden tomarlo los dos.
- * Un bloqueo abandonado (proceso terminado, contenido inválido, anterior al arranque del sistema o
- * sin renovar en `LOCK_STALE_MS`) se sustituye con un aviso que explica el motivo. Lanza error si
- * otro servidor vivo lo tiene.
+ * Toma el bloqueo con el PID del proceso y devuelve la función que lo libera. El archivo aparece
+ * de forma atómica y ya con su contenido (`linkSync` desde un temporal), así dos servidores que
+ * arrancan a la vez no pueden tomarlo los dos. Un bloqueo abandonado (proceso terminado, contenido
+ * inválido con más de `INVALID_LOCK_GRACE_MS`, anterior al arranque del sistema o sin renovar en
+ * `LOCK_STALE_MS`) se sustituye con un aviso que explica el motivo. Lanza error si otro servidor
+ * vivo lo tiene o si el contenido es inválido pero reciente.
  */
 export function acquireServerLock(
   dataDir: string,
@@ -161,6 +173,11 @@ export function acquireServerLock(
       if (state.pid === pid) {
         refreshServerLock(dataDir);
         return release;
+      }
+      if (state.pid === null) {
+        throw new Error(
+          'El bloqueo del directorio de datos se está escribiendo; vuelve a intentarlo.',
+        );
       }
       throw new Error(
         `Ya hay un servidor en marcha con este directorio de datos (PID ${state.pid}).`,
