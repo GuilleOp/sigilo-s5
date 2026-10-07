@@ -19,4 +19,5 @@ Fecha límite oficial: 13 de noviembre de 2026, 23:59 (hora del centro de Méxic
 1. Debe: flujo completo de denuncia anónima y sellada, seguimiento, buzón, bitácora, Huella Cero
    para imágenes y PDF, vista previa de lo que verá la autoridad, accesibilidad básica.
 2. Debería: semáforo de riesgo, revisor de texto, datos abiertos, verificador de bitácora.
-3. Podría: revelación por umbral 2 de 3, periodo de espera, prueba de trabajo anti abuso.
+3. Podría: revelación por umbral 2 de 3 y periodo de espera. La prueba de trabajo contra abuso ya
+   está implementada.

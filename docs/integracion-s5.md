@@ -54,12 +54,20 @@ Los paquetes son ESM y TypeScript sin paso de build: el bundler del frontend los
    - exigir la siguiente `sequence` por remitente en el buzón y verificar las firmas con
      `verifyMailboxSignature`;
    - firmar el comprobante y los eventos con `signReceipt`, `buildEvent` y `signLedgerHead`;
-   - publicar la bitácora solo con eventos de días anteriores.
+   - dejar cada evento pendiente y, al cerrar el día, encadenar los pendientes en orden barajado
+     (`pendingEventFor`, `shuffle`, `chainEvent`); publicar solo días cerrados;
+   - firmar en el comprobante el `payloadDigest` de `complaint.received` (no su `seq`) y calcular
+     `submissionDigest` con el sobre resumido (`computeSubmissionDigest`);
+   - en `identity.opened`, incluir `receiptTag` (`identityOpenedPayload`);
+   - exigir la prueba de trabajo (`POW_HEADER`) en los envíos de denuncias y pruebas.
 5. **Seguimiento.** Autenticar comparando `computeAuthVerifier(authKey)` en tiempo constante,
    responder igual ante folio o llave inválidos y contar solo los fallos. Entregar el evento de
-   recepción para que el navegador lo verifique con `verifyReceiptEvent`.
-6. **Panel de autoridad.** Recalcular el contexto con `identityContextFromDetail` y descifrar en el
-   navegador con la llave privada de la autoridad; nunca en el servidor.
+   recepción para que el navegador lo verifique con `verifyReceiptEvent`, y concilie sus aperturas
+   con `reconcileIdentityOpenings`.
+6. **Panel de autoridad.** Verificar las llaves del denunciante con `submissionDigestFromDetail`
+   contra el evento `complaint.received` publicado, recalcular el contexto con
+   `identityContextFromDetail` y descifrar en el navegador con la llave privada de la autoridad;
+   nunca en el servidor.
 7. **Despliegue.** CSP estricta como cabecera, `frame-ancestors 'none'`, sin peticiones a terceros,
    sin IP en registros, y anclaje periódico de la cabeza de la bitácora (`npm run ledger:anchor`) en
    un repositorio público.
@@ -75,10 +83,10 @@ Con un CMS headless, la lógica de las rutas se implementa como extensiones de e
 
 ## Pruebas
 
-`SIGILO_TEST_CLOCK_FILE` desplaza el reloj del servidor de referencia para probar la publicación
-diaria de la bitácora y los meses cerrados de los datos abiertos. Es solo para pruebas: el servidor
-se niega a arrancar con esa variable si `NODE_ENV=production`. Una integración propia debe ofrecer un
-reloj inyectable equivalente.
+`SIGILO_TEST_CLOCK_FILE` desplaza el reloj del servidor de referencia para probar el cierre diario
+de la bitácora y los meses congelados de los datos abiertos. Solo se acepta con `SIGILO_E2E=1` o
+`NODE_ENV=test`, con un archivo del usuario del servidor que no puedan escribir otros y un desfase de
+0 a 400 días. Una integración propia debe ofrecer un reloj inyectable equivalente.
 
 ## Compatibilidad
 

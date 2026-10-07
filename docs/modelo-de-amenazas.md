@@ -14,8 +14,9 @@ Versión v1:
 - Bitácora encadenada y publicada por lotes diarios, con anclaje.
 - Huella Cero para imágenes y PDF.
 
-La revelación por umbral 2 de 3, la prueba de trabajo contra abuso y la verificación de la
-integridad del código servido son trabajo futuro.
+También: prueba de trabajo para envíos y pruebas, y conciliación de aperturas con la etiqueta del
+recibo. La revelación por umbral 2 de 3 y la verificación de la integridad del código servido son
+trabajo futuro.
 
 ## Activos
 
@@ -49,31 +50,38 @@ implementado), **R** residual documentado.
 
 ## A. Inferencia por el contenido
 
-| #   | Ataque                                                              | Categoría  | Mitigación                                                                                                            | Estado    |
-| --- | ------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- | --------- |
-| A01 | Detalle que solo conocen pocas personas                             | LINDDUN I  | Revisor de texto y vista «Así te verá la autoridad»                                                                   | R         |
-| A02 | Estilometría contra correos internos                                | LINDDUN I  | Aviso a la persona usuaria                                                                                            | R         |
-| A03 | Versiones únicas de un documento repartido (trampa del canario)     | LINDDUN I  | Aviso; no se puede eliminar                                                                                           | R         |
-| A04 | Caracteres invisibles o homoglifos que codifican al destinatario    | LINDDUN I  | Detección ampliada (ver nota) y eliminación automática al armar los hechos y los mensajes del buzón                   | M parcial |
-| A05 | Contenido visual: capturas con nombre de usuario, reflejos, rostros | LINDDUN I  | Aviso en la vista previa                                                                                              | R         |
-| A06 | Huella del sensor de la cámara                                      | LINDDUN L  | Recodificación y reducción de resolución; lo debilita, no lo elimina                                                  | R         |
-| A07 | Rastros internos de documentos (autor, rutas, revisiones, XMP)      | LINDDUN I  | PDF convertido a imagen; Office, video y audio rechazados                                                             | M         |
-| A08 | Metadatos de imagen (GPS, dispositivo, fecha)                       | LINDDUN I  | Recodificación en canvas y nueva inspección de la copia; si conserva metadatos, la prueba queda en error y no se sube | M         |
-| A09 | Correlación de horario entre un evento interno y el envío           | LINDDUN L  | Fechas redondeadas al día; la bitácora pública solo publica eventos de días anteriores                                | M parcial |
-| A10 | Intersección a lo largo de varias respuestas del buzón              | LINDDUN L  | Horas redondeadas, relleno fijo de 4096 bytes, revisor también en respuestas                                          | M parcial |
-| A11 | Celdas pequeñas en estadísticas                                     | LINDDUN D2 | Solo meses completos anteriores, conteos redondeados a múltiplos de 5 y supresión de celdas menores a 5               | M parcial |
-| A12 | Ubicación precisa                                                   | LINDDUN I  | Solo entidad y municipio opcional; sin mapa                                                                           | M         |
+| #   | Ataque                                                              | Categoría  | Mitigación                                                                                                                                                                   | Estado    |
+| --- | ------------------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| A01 | Detalle que solo conocen pocas personas                             | LINDDUN I  | Revisor de texto y vista «Así te verá la autoridad»                                                                                                                          | R         |
+| A02 | Estilometría contra correos internos                                | LINDDUN I  | Aviso a la persona usuaria                                                                                                                                                   | R         |
+| A03 | Versiones únicas de un documento repartido (trampa del canario)     | LINDDUN I  | Aviso; no se puede eliminar                                                                                                                                                  | R         |
+| A04 | Caracteres invisibles o homoglifos que codifican al destinatario    | LINDDUN I  | Detección ampliada y mapa de confusables en todo token (ver nota); eliminación automática al armar los hechos y los mensajes del buzón                                       | M parcial |
+| A05 | Contenido visual: capturas con nombre de usuario, reflejos, rostros | LINDDUN I  | Aviso en la vista previa                                                                                                                                                     | R         |
+| A06 | Huella del sensor de la cámara                                      | LINDDUN L  | Recodificación y reducción de resolución; lo debilita, no lo elimina                                                                                                         | R         |
+| A07 | Rastros internos de documentos (autor, rutas, revisiones, XMP)      | LINDDUN I  | PDF convertido a imagen; Office, video y audio rechazados                                                                                                                    | M         |
+| A08 | Metadatos de imagen (GPS, dispositivo, fecha)                       | LINDDUN I  | Recodificación en canvas y nueva inspección de la copia (solo se acepta el perfil sRGB genérico del navegador); si conserva metadatos, la prueba queda en error y no se sube | M         |
+| A09 | Correlación de horario entre un evento interno y el envío           | LINDDUN L  | Fechas redondeadas al día; los eventos del día se encadenan barajados al cerrarlo y solo se publican días cerrados                                                           | M         |
+| A10 | Intersección a lo largo de varias respuestas del buzón              | LINDDUN L  | Horas redondeadas, relleno fijo de 4096 bytes, revisor también en respuestas                                                                                                 | M parcial |
+| A11 | Celdas pequeñas en estadísticas                                     | LINDDUN D2 | Meses congelados al cerrarse, conteos redondeados a múltiplos de 5, supresión de celdas menores a 5 y suprimidos redondeados por mes                                         | M parcial |
+| A12 | Ubicación precisa                                                   | LINDDUN I  | Solo entidad y municipio opcional; sin mapa                                                                                                                                  | M         |
 
 Notas:
 
-- **A04.** Se detectan los caracteres de formato (Cf), `Default_Ignorable_Code_Point`, los rellenos
-  Hangul, el Braille en blanco, los espacios no estándar, las marcas combinantes sueltas y los
-  homoglifos cirílicos o griegos dentro de palabras latinas. U+2028 y U+2029 (separadores de línea y
-  de párrafo) no se detectan. Al limpiar, algunos emojis compuestos pierden su forma.
-- **A09.** Dentro de un mismo día, el número de secuencia conserva el orden de llegada. Barajar los
-  eventos del día al cierre queda como trabajo futuro (P).
+- **A04.** Se detectan los caracteres de formato (Cf), `Default_Ignorable_Code_Point`, controles,
+  uso privado, no asignados, separadores de línea y de párrafo, rellenos Hangul, Braille en blanco,
+  espacios no estándar, marcas combinantes sueltas o sin forma compuesta, confusables (subconjunto de
+  UTS #39, unas 120 entradas, aplicado a todo token, incluso de una letra) y variantes tipográficas.
+  `\r\n` pasa a `\n`. Costos conocidos: los textos rusos o griegos legítimos se transliteran en
+  parte, se pierden las marcas sin forma compuesta, la raya de diálogo pasa a `-` y algunos emojis
+  compuestos pierden su forma. Un canario hecho con sinónimos o con el orden de las frases no se
+  detecta (A03).
+- **A08.** El perfil ICC genérico se acepta por su descripción (`sRGB` de Chromium o
+  `sRGB IEC61966-2.1` de WebKit), no por una huella binaria. Un perfil con esa descripción y datos
+  distintos pasaría la verificación (R).
 - **A11.** Un atacante que envía denuncias falsas con la misma combinación (relleno de celdas)
-  puede hacer visible una celda; los cambios de estatus también mueven los conteos publicados (R).
+  puede llevar una celda al umbral y hacerla visible; la prueba de trabajo lo encarece y congelar los
+  meses evita que los cambios de estatus muevan los conteos publicados, pero cruzar el umbral sigue
+  siendo posible (R).
 
 ## B. Dispositivo y red de la persona denunciante
 
@@ -95,41 +103,43 @@ entrada; la salida rápida lo reemplaza al navegar a la página neutra.
 
 ## C. Servidor, operación y cadena de suministro
 
-| #   | Ataque                                                     | Categoría   | Mitigación                                                                                                       | Estado    |
-| --- | ---------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- | --------- |
-| C01 | Lectura de la base de datos o respaldos                    | STRIDE I    | Identidad y mensajes del buzón cifrados en el cliente; hechos y pruebas limpias en claro (ver F01)               | M parcial |
-| C02 | Registro de direcciones IP                                 | LINDDUN L   | Registros con método, ruta normalizada, estatus y duración; sin IP, agente de usuario ni cuerpos                 | M         |
-| C03 | Código JavaScript malicioso servido a víctimas específicas | STRIDE T    | Ninguna en v1; hashes publicados por versión y verificador                                                       | P; R      |
-| C04 | Sustitución de llaves públicas de la autoridad             | STRIDE S    | Llaves fijadas en el bundle y comparadas con `GET /keys` antes de subir nada                                     | M         |
-| C05 | Reescritura de la bitácora                                 | STRIDE T, R | Cadena de hashes, triggers de solo agregar, cabeza firmada y anclaje con `npm run ledger:anchor`                 | M parcial |
-| C06 | Pérdida o borrado de denuncias                             | STRIDE D, R | Comprobante firmado y evento de recepción verificable en poder de la persona denunciante                         | M         |
-| C07 | Mover un sobre de identidad a otra denuncia (trasplante)   | STRIDE T    | AAD vinculado a `authVerifier`, `reporterKeys` y `contentDigest`; índice único de `authVerifier`                 | M         |
-| C08 | Enumeración de folios o recibos                            | LINDDUN D   | 60 bits de folio, 88 de recibo, respuesta idéntica, consulta ligera del verificador y límite de fallos por folio | M         |
-| C09 | Saturación con denuncias o pruebas falsas                  | STRIDE D    | 120 denuncias y 600 subidas por hora; purga de pruebas pendientes con más de 24 h                                | M parcial |
-| C10 | Archivo malicioso contra el visor de la autoridad          | STRIDE E    | Solo JPEG y PNG, bytes mágicos y tamaño en el servidor; descarga como adjunto con `nosniff`                      | M parcial |
-| C11 | XSS en los hechos mostrados a la autoridad                 | STRIDE E    | React sin `dangerouslySetInnerHTML` y CSP estricta                                                               | M         |
-| C12 | Permisos de lectura públicos mal configurados              | STRIDE I    | Rutas de autoridad con token comparado en tiempo constante; pruebas de autorización                              | M         |
-| C13 | Dependencia comprometida                                   | STRIDE T    | Lockfile y dependencias mínimas                                                                                  | M parcial |
-| C14 | Aleatoriedad débil                                         | STRIDE S    | Solo `crypto.getRandomValues`; lint prohíbe `Math.random`                                                        | M         |
-| C15 | Longitud del texto cifrado revela datos                    | LINDDUN I   | Relleno fijo de la identidad y de los mensajes del buzón a 4096 bytes                                            | M         |
-| C16 | Repetir, reordenar u omitir mensajes del buzón             | STRIDE T    | `sequence` por remitente en el AAD y en la firma; el servidor exige la siguiente; el cliente avisa si falta una  | M parcial |
-| C17 | El servidor sustituye las llaves de la persona denunciante | STRIDE S    | Modo `sealed`: van dentro del AAD de la identidad; modo `anonymous`: confianza en el primer uso                  | M parcial |
-| C18 | Texto arbitrario en catálogos o datos abiertos             | STRIDE T    | Entidad, municipio, ente y conducta validados contra los catálogos de contracts; fórmulas neutralizadas en CSV   | M         |
-| C19 | Bloquear el seguimiento de todas las personas              | STRIDE D    | Solo los fallos cuentan; el exceso global solo frena (10 ms por fallo, máximo 2 s)                               | M parcial |
+| #   | Ataque                                                       | Categoría   | Mitigación                                                                                                                                                                                    | Estado    |
+| --- | ------------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| C01 | Lectura de la base de datos o respaldos                      | STRIDE I    | Identidad y mensajes del buzón cifrados en el cliente; hechos y pruebas limpias en claro (ver F01)                                                                                            | M parcial |
+| C02 | Registro de direcciones IP o de la actividad de las personas | LINDDUN L   | Registro agregado por hora por omisión, sin las rutas de la persona denunciante; nunca IP, agente de usuario, cuerpos ni folios                                                               | M         |
+| C03 | Código JavaScript malicioso servido a víctimas específicas   | STRIDE T    | Ninguna en v1; hashes publicados por versión y verificador                                                                                                                                    | P; R      |
+| C04 | Sustitución de llaves públicas de la autoridad               | STRIDE S    | Llaves fijadas en el bundle y comparadas con `GET /keys` antes de subir nada                                                                                                                  | M         |
+| C05 | Reescritura de la bitácora                                   | STRIDE T, R | Cadena de hashes, triggers de solo agregar, cabeza firmada y anclaje con `npm run ledger:anchor`                                                                                              | M parcial |
+| C06 | Pérdida o borrado de denuncias                               | STRIDE D, R | Comprobante firmado y evento de recepción verificable en poder de la persona denunciante                                                                                                      | M         |
+| C07 | Mover un sobre de identidad a otra denuncia (trasplante)     | STRIDE T    | AAD vinculado a `authVerifier`, `reporterKeys` y `contentDigest`; índice único de `authVerifier`                                                                                              | M         |
+| C08 | Enumeración de folios o recibos                              | LINDDUN D   | 60 bits de folio, 88 de recibo, respuesta idéntica, consulta ligera del verificador y límite de fallos por folio                                                                              | M         |
+| C09 | Saturación con denuncias o pruebas falsas                    | STRIDE D    | Prueba de trabajo de 18 bits por envío y por prueba; 120 denuncias y 600 subidas por hora; cuota de 5 GiB; purga de pendientes con más de 24 h; retención opcional de pruebas sin seguimiento | M parcial |
+| C10 | Archivo malicioso contra el visor de la autoridad            | STRIDE E    | Solo JPEG y PNG, bytes mágicos y tamaño en el servidor; descarga como adjunto con `nosniff`                                                                                                   | M parcial |
+| C11 | XSS en los hechos mostrados a la autoridad                   | STRIDE E    | React sin `dangerouslySetInnerHTML` y CSP estricta                                                                                                                                            | M         |
+| C12 | Permisos de lectura públicos mal configurados                | STRIDE I    | Rutas de autoridad con token comparado en tiempo constante; pruebas de autorización                                                                                                           | M         |
+| C13 | Dependencia comprometida                                     | STRIDE T    | Lockfile y dependencias mínimas                                                                                                                                                               | M parcial |
+| C14 | Aleatoriedad débil                                           | STRIDE S    | Solo `crypto.getRandomValues`; lint prohíbe `Math.random`                                                                                                                                     | M         |
+| C15 | Longitud del texto cifrado revela datos                      | LINDDUN I   | Relleno fijo de la identidad y de los mensajes del buzón a 4096 bytes                                                                                                                         | M         |
+| C16 | Repetir, reordenar u omitir mensajes del buzón               | STRIDE T    | `sequence` por remitente en el AAD y en la firma; el servidor exige la siguiente; el cliente avisa si falta una                                                                               | M parcial |
+| C17 | El servidor sustituye las llaves de la persona denunciante   | STRIDE S    | En ambos modos, el panel recalcula el digesto del envío y lo compara con el evento `complaint.received` publicado; en modo `sealed`, además, van en el AAD                                    | M parcial |
+| C18 | Texto arbitrario en catálogos o datos abiertos               | STRIDE T    | Entidad, municipio, ente y conducta validados contra los catálogos de contracts; fórmulas neutralizadas en CSV                                                                                | M         |
+| C19 | Bloquear el seguimiento de todas las personas                | STRIDE D    | Solo los fallos cuentan; el exceso global solo frena (10 ms por fallo, máximo 2 s)                                                                                                            | M parcial |
 
 Notas:
 
 - **C05.** El anclaje requiere que la operación ejecute `ledger:anchor` y versione el archivo en
   `anchors/`. Las reescrituras entre dos anclas no se detectan: quien tiene la llave de firma del
   servidor puede rehacer la cadena posterior a la última ancla.
-- **C09.** Las cuotas son globales: un atacante puede agotarlas para todas las personas. La prueba de
-  trabajo autoalojada es trabajo futuro (P).
+- **C09.** La prueba de trabajo encarece cada envío, pero un atacante con cómputo suficiente puede
+  pagarla. Las cuotas globales quedan como último recurso: si se agotan, afectan a todas las
+  personas (R).
 - **C10.** Una carga hecha a mano con prefijo JPEG válido llega al decodificador del navegador de la
   autoridad. Recodificar en el servidor es trabajo futuro (P).
 - **C16.** El servidor puede retener el último mensaje sin que se note; la bitácora registra cada
   `message.sent`.
-- **C17.** En modo `anonymous` no hay identidad a la cual vincular las llaves: el panel confía en las
-  que entrega el servidor.
+- **C17.** Mientras el evento `complaint.received` no se publica (hasta que cierra su día), el panel
+  muestra las llaves como «pendientes» de verificar. La comparación depende de que la persona
+  denunciante haya verificado su evento contra su comprobante.
 - **C19.** El freno global retrasa a todas las personas hasta 2 s y no limita el volumen de un
   atacante que envía en paralelo.
 
@@ -146,8 +156,11 @@ Notas:
 
 Notas:
 
-- **D01.** El registro de aperturas es un control de política, no criptográfico. Quien tenga la llave
-  privada de la autoridad y una copia de la base puede descifrar sin pasar por la ruta.
+- **D01.** Cada apertura publica un `identity.opened` con `receiptTag`, derivado del recibo. La
+  persona denunciante busca en toda la bitácora los eventos con su etiqueta y los concilia con las
+  aperturas de su seguimiento: detecta una apertura que el servidor ocultó o registró con otro folio.
+  Aun así, es un control de política: quien tenga la llave privada de la autoridad y una copia de la
+  base puede descifrar sin pasar por la ruta, y eso no deja evento.
 - **D03.** La llave se importa en una página entregada por el mismo servidor. Si ese código se altera
   (A4), puede exfiltrarla en cuanto se importa. Mitigaciones futuras (P): descifrar con una
   herramienta separada y firmada, o con llaves no extraíbles (WebAuthn PRF).
@@ -180,6 +193,9 @@ Notas:
    visible pero no lo impide. El umbral 2 de 3 reduce este riesgo.
 5. Los respaldos contienen los hechos y las pruebas limpias en claro.
 6. Entre dos anclas, la operación con la llave del servidor puede rehacer la bitácora.
+7. El relleno de celdas puede hacer cruzar el umbral de publicación en los datos abiertos.
+8. Las cuotas globales son el último recurso contra el abuso y pueden agotarse para todos.
+9. El perfil sRGB genérico se acepta por su descripción, no por su contenido.
 
 ## Historial de seguridad
 
@@ -199,6 +215,22 @@ Hallazgos de la revisión interna de SIGILO, corregidos antes de la versión v1:
 | El seguimiento tenía un oráculo de existencia por tiempo                | Consulta ligera del verificador antes de cargar (C08)        |
 | CORS quedaba activo por omisión                                         | Desactivado salvo configuración explícita                    |
 | Las rutas de la aplicación quedaban en el historial del navegador       | Router en memoria (B10)                                      |
+
+Segunda ronda:
+
+| Hallazgo                                                                   | Corrección                                                                  |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| El orden de los eventos dentro del día revelaba el de llegada              | Eventos pendientes y encadenado barajado al cerrar el día (A09)             |
+| El comprobante con `seq` ataba el orden de la bitácora al de llegada       | El comprobante firma `payloadDigest`                                        |
+| El servidor podía ocultar una apertura de identidad                        | `receiptTag` en `identity.opened` y conciliación en el seguimiento (D01)    |
+| En modo anónimo, el panel confiaba en las llaves que entregaba el servidor | Verificación contra el evento `complaint.received` publicado (C17)          |
+| Sin prueba de trabajo, las cuotas eran la única defensa                    | Hashcash con retos HMAC de un solo uso (C09)                                |
+| Almacenamiento sin tope                                                    | Cuota total de pruebas y retención opcional (C09)                           |
+| Los registros por petición permitían correlacionar envíos                  | Registro agregado por hora por omisión (C02)                                |
+| Homoglifos aislados y otros caracteres pasaban la limpieza                 | Mapa de confusables en todo token y categorías nuevas (A04)                 |
+| Los conteos publicados cambiaban con los estatus                           | Meses congelados al cerrarse (A11)                                          |
+| El anclaje confiaba en el hash almacenado                                  | Recalcula la cadena desde el ancla anterior (C05)                           |
+| El reloj de pruebas podía activarse fuera de pruebas                       | Solo con `SIGILO_E2E=1` o `NODE_ENV=test`, archivo seguro y desfase acotado |
 
 ## Observaciones sobre sistemas de terceros
 

@@ -11,11 +11,11 @@ de seguridad independiente (ver [SECURITY.md](SECURITY.md)).
 
 Protege la identidad de la persona denunciante en las tres etapas del proceso:
 
-| Etapa       | Mecanismo                                                                                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Recepción   | Huella Cero: limpieza de pruebas en el navegador, eliminación de marcas invisibles, revisión del texto, semáforo de riesgo y vista previa de lo que verá la autoridad.                  |
-| Trámite     | Identidad sellada: los datos personales se cifran en el navegador hacia la autoridad competente, vinculados a su denuncia; cada apertura queda registrada y es visible para la persona. |
-| Seguimiento | Recibo de ocho palabras, buzón cifrado bidireccional sin datos de contacto y bitácora publicada por día, anclable y verificable.                                                        |
+| Etapa       | Mecanismo                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recepción   | Huella Cero: limpieza de pruebas en el navegador, eliminación de marcas invisibles, revisión del texto, semáforo de riesgo y vista previa de lo que verá la autoridad.                      |
+| Trámite     | Identidad sellada: los datos personales se cifran en el navegador hacia la autoridad competente, vinculados a su denuncia; cada apertura queda registrada y es visible para la persona.     |
+| Seguimiento | Recibo de ocho palabras, buzón cifrado bidireccional sin datos de contacto, bitácora publicada por día en orden barajado, anclable y verificable, y conciliación de aperturas de identidad. |
 
 Lo que no resuelve y los riesgos residuales están en el [modelo de amenazas](docs/modelo-de-amenazas.md).
 
@@ -42,11 +42,11 @@ Panel de la autoridad (enlace «Panel de autoridad» del pie, o `http://127.0.0.
 
 Otros comandos:
 
-| Comando                            | Uso                                                                                                                                                                                        |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run demo:reset`               | Borra la base y las pruebas de la demostración y conserva las llaves.                                                                                                                      |
-| `npm run ledger:anchor`            | Escribe `anchors/AAAA-MM-DD.json` con la cabeza pública firmada. Requiere que la base exista (el servidor debe haber arrancado al menos una vez) o `SIGILO_ANCHOR_URL` apuntando a la API. |
-| `npm run keys:generate -- --force` | Reemplaza las llaves; después reconstruye la web para fijar las nuevas.                                                                                                                    |
+| Comando                                                         | Uso                                                                                                                                                                                    |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run demo:reset -- --yes`                                   | Borra la base y las pruebas de la demostración y conserva las llaves. Se niega a correr con el servidor en marcha; sin `--yes` exige el marcador `.sigilo-demo` en `apps/server/data`. |
+| `SIGILO_ANCHOR_URL=http://127.0.0.1:8787 npm run ledger:anchor` | Forma preferida: escribe `anchors/AAAA-MM-DD.json` con la cabeza pública firmada, leída de la API. Sin la variable lee la base local en solo lectura (y avisa si no existe).           |
+| `npm run keys:generate -- --force`                              | Reemplaza las llaves; después reconstruye la web para fijar las nuevas.                                                                                                                |
 
 Un solo origen sin Vite:
 
@@ -58,7 +58,13 @@ SIGILO_WEB_DIST=../web/dist npm run start -w @sigilo/server
 La web queda en `http://127.0.0.1:8787` con su CSP, `frame-ancestors 'none'` y `X-Frame-Options`
 como cabeceras.
 
-Las variables del servidor están documentadas en `apps/server/.env.example`.
+Las variables del servidor están documentadas en `apps/server/.env.example` y en
+[interfaces.md](docs/interfaces.md). Entre ellas: `SIGILO_POW_BITS` (prueba de trabajo, 18 bits por
+omisión), `SIGILO_EVIDENCE_QUOTA_BYTES` (5 GiB), `SIGILO_UNTRACKED_RETENTION_DAYS` (desactivada) y
+`SIGILO_REQUEST_LOG` (`aggregate` por omisión).
+
+Una base creada antes de la migración 3 del servidor no arranca: el servidor indica ejecutar
+`npm run demo:reset -- --yes`.
 
 ## Pruebas
 
@@ -84,7 +90,7 @@ apps/server         Servidor de referencia (Hono + node:sqlite)
 apps/web            Aplicación de referencia (Vite + React)
 scripts/            Llaves, anclaje de la bitácora y reinicio de la demostración
 e2e/                Pruebas de extremo a extremo
-anchors/            Anclas publicadas de la bitácora (lo crea ledger:anchor)
+anchors/            Anclas publicadas de la bitácora (`ledger:anchor`)
 docs/               Arquitectura, decisiones, modelo de amenazas y guías
 ```
 

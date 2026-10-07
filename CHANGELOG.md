@@ -28,6 +28,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Documentación: arquitectura, modelo de amenazas, especificación criptográfica, interfaces,
   integración con el S5, accesibilidad, datos sintéticos, declaración de uso de IA y guion de la
   demostración.
+- Prueba de trabajo tipo hashcash para denuncias y pruebas: `GET /api/v1/pow/challenge`, retos
+  firmados con HMAC de un solo uso y cabecera `X-Sigilo-Pow`, resuelta en un Web Worker.
+- `receiptTag` en `identity.opened` y conciliación de aperturas en el seguimiento.
+- Verificación de las llaves de la persona denunciante en el panel contra el evento
+  `complaint.received` publicado, también en modo anónimo.
+- Cuota total de almacenamiento de pruebas (`SIGILO_EVIDENCE_QUOTA_BYTES`, `507 storage_full`) y
+  retención opcional de pruebas sin seguimiento (`SIGILO_UNTRACKED_RETENTION_DAYS`).
+- Registro de peticiones configurable (`SIGILO_REQUEST_LOG`), agregado por hora por omisión.
+- Bloqueo `server.lock` del directorio de datos y `anchors/.gitkeep`.
+- Mapa de confusables (subconjunto de UTS #39) y categorías `control`, `private_use`, `unassigned`,
+  `line_separator`, `uncomposed_mark`, `confusable` y `typographic_variant` en Huella Cero.
+- En core: `receiptTagFor`, `pendingEventFor`, `chainEvent`, `identityOpenedPayload`,
+  `identityOpenedPayloadDigest`, `reconcileIdentityOpenings`, `sealedIdentityDigest`,
+  `submissionDigestInput`, `submissionDigestFromDetail`, `randomInt`, `shuffle` y el módulo `pow`.
+  En contracts: `primaryOffenseCode`, `pow.ts` y `POW_HEADER`.
 
 ### Cambiado
 
@@ -39,6 +54,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Requisito mínimo: Node.js 22.18.
 - `keys:generate` regenera siempre las llaves fijadas y crea `apps/server/.env` con un token
   aleatorio.
+- Migración 3: los eventos del día quedan pendientes y se encadenan barajados al cerrar el día; la
+  migración rechaza bases con datos anteriores e indica `demo:reset`.
+- El comprobante firma `payloadDigest` en lugar de `ledgerSeq`, y `submissionDigest` se calcula con
+  el sobre de identidad resumido.
+- `identity.opened` incluye `openingId` y `receiptTag`; `complaint.status_changed`, `changeId`.
+- `TrackingView.receivedEvent` es opcional; `ComplaintDetail` incluye `sealedIdentityDigest` y
+  `receivedEventSeq`; `OpenIdentityResponse` incluye `openingId`.
+- Datos abiertos congelados por mes (`open_data_months`), conducta guardada con su clave principal y
+  suprimidos redondeados por mes.
+- `ledger:anchor` recalcula la cadena desde el ancla anterior; la forma preferida es leer la API
+  (`SIGILO_ANCHOR_URL`) y da un mensaje claro si no hay base.
+- `demo:reset` exige `--yes` (o el marcador `.sigilo-demo`) y no corre con el servidor en marcha.
+- Los limitadores tienen tope LRU de 100 000 llaves y barrido amortizado; las credenciales correctas
+  siempre se aceptan.
+- Huella Cero normaliza la tipografía por omisión (`shouldNormalizeTypography`) y `\r\n` a `\n`; la
+  copia limpia acepta solo el perfil sRGB genérico del navegador (`allowGenericSrgbProfile`).
 
 ### Corregido
 
@@ -63,3 +94,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Consulta ligera del verificador para evitar un oráculo de existencia por tiempo.
 - CORS desactivado por omisión y cabeceras completas para la web servida.
 - El reloj de pruebas `SIGILO_TEST_CLOCK_FILE` se rechaza con `NODE_ENV=production`.
+- Orden de llegada oculto dentro del día por encadenado barajado (Fisher-Yates criptográfico).
+- Aperturas de identidad ocultas por el servidor detectables con `receiptTag`.
+- Llaves de la persona denunciante verificadas contra el registro público en ambos modos.
+- Prueba de trabajo contra envíos masivos, cuota de almacenamiento y retención.
+- Registro agregado por omisión para no correlacionar envíos.
+- Homoglifos aislados y caracteres de control, uso privado y no asignados eliminados.
+- El reloj de pruebas solo se acepta con `SIGILO_E2E=1` o `NODE_ENV=test`, con un archivo seguro y
+  un desfase de 0 a 400 días.

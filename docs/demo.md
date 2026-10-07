@@ -16,22 +16,31 @@ comandos se ejecutan desde la raíz del repositorio con Node 22.18 o superior.
    `apps/web/src/config/pinned-keys.json` y crea `apps/server/.env` con un
    `SIGILO_AUTHORITY_TOKEN` aleatorio.
 
-2. Dejar la base vacía (conserva las llaves):
+2. Dejar la base vacía (conserva las llaves). Con el servidor detenido:
 
    ```sh
-   npm run demo:reset
+   npm run demo:reset -- --yes
    ```
 
-3. Levantar el servidor con un reloj de demostración y la web, en dos terminales:
+   Sin `--yes`, el script exige el marcador `.sigilo-demo` en `apps/server/data`, y se niega a correr
+   si el servidor está en marcha. Una base creada antes de la migración 3 no arranca: el servidor
+   pide ejecutar este mismo comando.
+
+3. Preparar el reloj de demostración y levantar el servidor y la web, en dos terminales:
 
    ```sh
-   SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run dev:server
+   printf 0 > /tmp/sigilo-reloj && chmod 600 /tmp/sigilo-reloj
+   SIGILO_E2E=1 SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run dev:server
    npm run dev:web
    ```
 
-   La bitácora pública solo publica eventos de días anteriores. Para mostrarla el mismo día se usa
-   el reloj de pruebas: el servidor suma al reloj real los milisegundos escritos en ese archivo. Solo
-   funciona fuera de producción; con `NODE_ENV=production` el servidor se niega a arrancar.
+   Los eventos del día se publican al cerrar el día (UTC). Para mostrarlos durante la presentación
+   se usa el reloj de pruebas: el servidor suma al reloj real los milisegundos escritos en el
+   archivo. Solo se acepta con `SIGILO_E2E=1` (o `NODE_ENV=test`), con un archivo propio que no
+   puedan escribir otros y un desfase de 0 a 400 días.
+
+   La prueba de trabajo está activa (18 bits): al enviar, la web la resuelve en un Web Worker y
+   avisa «Protegiendo tu envío contra envíos automáticos. Puede tardar unos segundos».
 
 4. Ventanas abiertas en `http://127.0.0.1:5173`:
    - Persona denunciante: «Denunciar» y «Dar seguimiento».
@@ -94,7 +103,7 @@ puertas.
 
 1. Entrar en «Dar seguimiento» con el folio y las 8 palabras.
 2. Ver la línea de tiempo, el comprobante verificado, la pregunta descifrada en el navegador y el
-   estado de publicación del evento de recepción («aparecerá mañana»).
+   aviso de que su anotación está pendiente de publicar.
 3. Responder; el revisor avisa si la respuesta revela algo.
 4. Ver «Tu nombre sigue bajo llave. Nadie lo ha abierto».
 
@@ -113,8 +122,12 @@ puertas.
    registro firmado.
 
    ```sh
-   echo 86400000 > /tmp/sigilo-reloj
+   printf 86400000 > /tmp/sigilo-reloj
    ```
+
+   Al cerrar el día, los eventos se encadenan en orden barajado: el orden en la bitácora no es el de
+   llegada. En el seguimiento, el aviso del registro público pasa de «pendiente de publicar» a «ya aparece en el registro público» y la
+   apertura de identidad aparece conciliada con la bitácora.
 
 2. Anclar la cabeza pública en un directorio temporal y pegar el contenido del archivo en
    «Verificar bitácora»: «La bitácora contiene el anclaje publicado».
@@ -128,16 +141,16 @@ puertas.
    ejecutar:
 
    ```sh
-   rm -rf /tmp/sigilo-copia && cp -R apps/server/data /tmp/sigilo-copia
+   rm -rf /tmp/sigilo-copia && cp -R apps/server/data /tmp/sigilo-copia && rm -f /tmp/sigilo-copia/server.lock
    node -e "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync('/tmp/sigilo-copia/sigilo.db');db.exec('DROP TRIGGER ledger_events_no_update');db.prepare('UPDATE ledger_events SET payload_digest=? WHERE seq=0').run('0'.repeat(64))"
-   SIGILO_DATA_DIR=/tmp/sigilo-copia SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run dev:server
+   SIGILO_DATA_DIR=/tmp/sigilo-copia SIGILO_E2E=1 SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run dev:server
    ```
 
    Primero hay que quitar el trigger que impide modificar eventos. Al verificar de nuevo, la página
    indica que la bitácora no coincide. Después, detener ese servidor y volver a levantar el original.
 
-4. Trasplante del sobre de identidad: ejecutar la prueba que reproduce el ataque y mostrar que se
-   rechaza.
+4. Trasplante del sobre de identidad: detener el servidor y la web (las pruebas E2E usan los puertos
+   8787 y 4173), ejecutar la prueba que reproduce el ataque y mostrar que se rechaza.
 
    ```sh
    npm run test:e2e -- e2e/transplant.spec.ts
@@ -148,14 +161,14 @@ puertas.
 ## Acto 6. Adopción (1 min)
 
 1. Mostrar los paquetes `core` y `huella` y la [guía de integración](integracion-s5.md).
-2. Mostrar «Datos abiertos»: solo meses cerrados, conteos redondeados a múltiplos de 5 y las
-   denuncias que no se muestran para proteger a quienes denunciaron.
+2. Mostrar «Datos abiertos»: solo meses congelados al cerrarse, conteos redondeados a múltiplos de 5
+   y las denuncias que no se muestran para proteger a quienes denunciaron.
 3. Lámina final: recepción, trámite y seguimiento, con sus mecanismos.
 
 ## Después de la presentación
 
 ```sh
-npm run demo:reset
+npm run demo:reset -- --yes
 rm -rf /tmp/sigilo-reloj /tmp/sigilo-anclas /tmp/sigilo-copia
 ```
 
@@ -167,5 +180,6 @@ rm -rf /tmp/sigilo-reloj /tmp/sigilo-anclas /tmp/sigilo-copia
 | ¿Y si la autoridad abre sin motivo?         | Queda registrado y visible para la persona; el umbral 2 de 3 es la siguiente etapa.                          |
 | ¿Y si pierdo el recibo?                     | No hay recuperación por diseño; se puede presentar otra denuncia citando el folio.                           |
 | ¿Es legal la apertura?                      | La LGRA obliga a la autoridad a mantener la confidencialidad (art. 91); el sistema la hace verificable.      |
+| ¿Qué evita el abuso masivo?                 | Prueba de trabajo por envío, límites, cuota de almacenamiento y, como último recurso, cuotas globales.       |
 | ¿Por qué la bitácora tarda un día?          | Publicar al instante revelaría la hora exacta de cada envío; los lotes diarios lo evitan.                    |
 | ¿Quién garantiza que no reescriben todo?    | Las anclas versionadas en un repositorio público; entre dos anclas sigue siendo posible, y así se documenta. |
