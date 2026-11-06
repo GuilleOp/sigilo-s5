@@ -87,6 +87,19 @@ describe('assessRisk', () => {
     expect(result.level).toBe('low');
   });
 
+  it('nombra los datos medios por su tipo: fechas y horas, o pistas de la casa o el negocio', () => {
+    const address = { ...finding('medium'), kind: 'address' as const };
+    const texts = (findings: TextFinding[]) =>
+      assessRisk({ ...base, textFindings: findings }).reasons.map((reason) => reason.text);
+    expect(texts([finding('medium')])).toContain('Tu texto tiene 1 fecha u hora exacta.');
+    expect(texts([address, { ...address, kind: 'own_property' }])).toContain(
+      'Tu texto tiene 2 pistas de tu casa, tu negocio o tus bienes.',
+    );
+    expect(texts([finding('medium'), address])).toContain(
+      'Tu texto tiene 2 pistas como una fecha, una hora o una dirección.',
+    );
+  });
+
   it('los caracteres invisibles y el municipio suman', () => {
     const result = assessRisk({
       ...base,

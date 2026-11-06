@@ -112,8 +112,18 @@ export function assessRisk(signals: RiskSignals): RiskAssessment {
     `Tu texto tiene ${plural(high, 'dato que puede identificarte', 'datos que pueden identificarte')}.`,
     Math.min(CAP_TEXT_HIGH, high * WEIGHT_TEXT_HIGH),
   );
+  // Los datos medios son fechas y horas, o pistas de la persona ciudadana (dirección, «mi negocio»).
+  const timing = signals.textFindings.filter(
+    (finding) =>
+      finding.severity === 'medium' &&
+      (finding.kind === 'exact_date' || finding.kind === 'exact_time'),
+  ).length;
   add(
-    `Tu texto tiene ${plural(medium, 'fecha u hora exacta', 'fechas u horas exactas')}.`,
+    timing === medium
+      ? `Tu texto tiene ${plural(medium, 'fecha u hora exacta', 'fechas u horas exactas')}.`
+      : timing === 0
+        ? `Tu texto tiene ${plural(medium, 'pista de tu casa, tu negocio o tus bienes', 'pistas de tu casa, tu negocio o tus bienes')}.`
+        : `Tu texto tiene ${plural(medium, 'pista', 'pistas')} como una fecha, una hora o una dirección.`,
     Math.min(CAP_TEXT_MEDIUM, medium * WEIGHT_TEXT_MEDIUM),
   );
   add(

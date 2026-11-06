@@ -206,3 +206,50 @@ describe('reviewText: posiciones y orden', () => {
     expect(reviewText('')).toEqual([]);
   });
 });
+
+describe('reviewText: datos con los que se reconoce a una persona ciudadana', () => {
+  it('detecta números de trámite, expediente, licencia o cuenta de servicio', () => {
+    const text =
+      'Fui por mi trámite número A-2026-0042, luego a la licencia 4471209 y pagué la cuenta de agua no. 88123; el expediente QRO/15/2026 sigue igual.';
+    expect(excerpts(text, 'case_number')).toEqual([
+      'trámite número A-2026-0042',
+      'licencia 4471209',
+      'expediente QRO/15/2026',
+    ]);
+    expect(only(text, 'case_number')[0]?.severity).toBe('high');
+    expect(only(text, 'case_number')[0]?.suggestion).toMatch(/número de trámite/u);
+  });
+
+  it('no marca trámites sin número ni el número de un contrato público', () => {
+    expect(only('Pedí una licencia de conducir y me pidieron dinero.', 'case_number')).toEqual([]);
+    expect(only('El contrato IFFE-AD-2026-0042 se adjudicó directo.', 'case_number')).toEqual([]);
+    expect(only('La cuenta pública 2025 no lo muestra.', 'case_number')).toEqual([]);
+  });
+
+  it('detecta placas con o sin guiones, y no las placas sin número', () => {
+    const text = 'Me detuvieron con placas ABC-123-D y a otro con placa 7KLM45.';
+    expect(excerpts(text, 'plate')).toEqual(['placas ABC-123-D', 'placa 7KLM45']);
+    expect(only('Le quitaron las placas del carro.', 'plate')).toEqual([]);
+  });
+
+  it('detecta direcciones con calle y número', () => {
+    const text = 'Vivo en la calle Hidalgo 25 y el local está en Avenida de los Pinos 1200.';
+    expect(excerpts(text, 'address')).toEqual(['calle Hidalgo 25', 'Avenida de los Pinos 1200']);
+    expect(only('La oficina está en la calle principal.', 'address')).toEqual([]);
+  });
+
+  it('detecta «mi negocio», «mi casa» o «mi carro» con una sugerencia neutra', () => {
+    const findings = only(
+      'Clausuraron mi negocio, revisaron mi casa y se llevaron mi carro.',
+      'own_property',
+    );
+    expect(findings.map((finding) => finding.excerpt)).toEqual([
+      'mi negocio',
+      'mi casa',
+      'mi carro',
+    ]);
+    expect(findings[0]?.suggestion).toMatch(/un negocio de la zona/u);
+    expect(findings[1]?.suggestion).toMatch(/un domicilio/u);
+    expect(findings[2]?.suggestion).toMatch(/un vehículo particular/u);
+  });
+});

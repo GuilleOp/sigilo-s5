@@ -47,4 +47,8 @@ export const FINDING_KIND_LABELS: Readonly<Record<TextFinding['kind'], string>> 
   uniqueness: 'Dato que solo tú sabrías',
   self_role: 'Tu cargo o lugar de trabajo',
   proper_name: 'Posible nombre de persona',
+  case_number: 'Número de trámite o expediente',
+  plate: 'Placas de un vehículo',
+  address: 'Dirección exacta',
+  own_property: 'Tu negocio, tu casa o tu vehículo',
 };

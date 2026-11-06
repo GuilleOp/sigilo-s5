@@ -315,6 +315,10 @@ Residuales inherentes (no tienen corrección dentro del diseño; se aceptan y se
 - **Vista dividida sin anclas.** Sin anclas publicadas fuera del servidor no se detecta (C05).
 - **Marcas visibles.** Un canario hecho con sinónimos, con el orden de las frases o con marcas
   legítimas conservadas no se puede quitar sin dañar el texto (A03, A04).
+- **La persona ciudadana ya vista.** Si la persona denunciada atendió cara a cara a quien denuncia,
+  puede deducir quién fue; el anonimato la protege del resto, no de ese recuerdo. Lo reducen el
+  revisor de trámites, placas y direcciones, el aviso de la revisión y la corroboración; la LGRA no
+  prevé medidas de protección para particulares ([personas-ciudadanas.md](personas-ciudadanas.md)).
 - **Dificultad sostenida en el máximo.** Un ataque continuo mantiene la prueba de trabajo en 20
   bits: las personas legítimas esperan lo que tarda ese reto (hasta unos 63 s en un celular básico
   el 95 % de las veces), pero no quedan fuera (C09).

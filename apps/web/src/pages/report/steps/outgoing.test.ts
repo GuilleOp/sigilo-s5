@@ -13,7 +13,7 @@ describe('travellingItems y stayingItems', () => {
   it('en modo anónimo no hay sobre con el nombre, ni correo, ni teléfono, ni cuenta', () => {
     const draft = draftWith({ mode: 'anonymous' });
     expect(travellingItems(draft, true).join(' ')).not.toMatch(/sobre aparte/u);
-    expect(travellingItems(draft, true)).toContain('Ninguna prueba.');
+    expect(travellingItems(draft, true)).toContain('Pruebas: ninguna.');
     expect(stayingItems(draft).join(' ')).toMatch(/correo o tu teléfono: no los pedimos/u);
   });
 

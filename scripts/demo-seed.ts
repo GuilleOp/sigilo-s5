@@ -433,6 +433,35 @@ function attackFacts(key: string): SubmitComplaintRequest['facts'] {
   };
 }
 
+/**
+ * Caso ciudadano (sección 4.6): dos personas que no trabajan en la oficina, a quienes les pidieron
+ * dinero en la misma ventanilla, denuncian por separado y en días distintos. La corroboración ciega
+ * las junta sin que ninguna sea «la que habló». Relatos ya revisados con Huella Cero.
+ */
+const CITIZEN_ACCUSED: CorroborationIdentifier = {
+  kind: 'servidor',
+  name: 'Servidor Ficticio Cuatro',
+  entityId: 'VE-MOVILIDAD',
+};
+
+const CITIZEN_NARRATIVES = {
+  'case.ventanilla-1':
+    'En el módulo de licencias del Instituto de Movilidad Estatal Ficticio, la persona que atiende la ventanilla de renovación pidió 800 pesos en efectivo para entregar la licencia el mismo día. Sin ese pago, dijo, el trámite tardaría un mes. No dio ningún recibo. Pasó en septiembre de 2026, por la mañana.',
+  'case.ventanilla-2':
+    'Fui a renovar una licencia de conducir al Instituto de Movilidad Estatal Ficticio y en la ventanilla me dijeron que mis documentos tenían errores, pero que se podían arreglar con una cooperación. Comentaron que así se hace con quien tiene prisa. Ocurrió a finales de septiembre de 2026.',
+} as const;
+
+function citizenFacts(key: keyof typeof CITIZEN_NARRATIVES): SubmitComplaintRequest['facts'] {
+  return {
+    stateCode: '22',
+    entityId: 'VE-MOVILIDAD',
+    offenseCode: 'LGRA-52',
+    occurredPeriod: '2026-09',
+    accused: 'Servidor Ficticio Cuatro, ventanilla de renovación de licencias',
+    description: CITIZEN_NARRATIVES[key],
+  };
+}
+
 /** Último día que siembra el script. */
 const LAST_DAY = 35;
 
@@ -564,6 +593,27 @@ async function main(): Promise<void> {
       action: 'accept',
     });
     say('- El buzón turna la denuncia de Luis al OIC y el OIC la acepta.');
+  }
+  for (const [day, key] of [
+    [4, 'case.ventanilla-1'],
+    [6, 'case.ventanilla-2'],
+  ] as const) {
+    if (until < day) break;
+    await advanceTo(day);
+    const citizen = await submitViaRouter(
+      directory,
+      { key, mode: 'anonymous', facts: citizenFacts(key), identifier: CITIZEN_ACCUSED },
+      'authority.comptroller-queretaro',
+    );
+    seeded.push({ key: citizen.key, folio: citizen.folio, words: citizen.words });
+    // Al aceptarla, el nodo la confirma ante el índice y cuenta como fuente independiente.
+    await asAuthority(
+      'queretaro',
+      'recepcion.contraloria.queretaro',
+      ROUTES.authorityProcedure(citizen.folio),
+      { action: 'accept' },
+    );
+    say(`- La Contraloría de Querétaro acepta la denuncia ciudadana ${key}.`);
   }
   if (until >= 30) {
     await advanceTo(30);

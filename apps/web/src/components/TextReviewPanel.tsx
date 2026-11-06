@@ -43,7 +43,7 @@ export function TextReviewPanel({ text, textareaId, idPrefix }: TextReviewPanelP
       </p>
       {!isEmpty && (
         <section
-          className="card"
+          className="card text-review"
           aria-labelledby={`${idPrefix}-title`}
           data-testid={`${idPrefix}-review`}
         >

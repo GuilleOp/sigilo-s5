@@ -1,5 +1,6 @@
 // Pregunta opcional del paso de hechos: si quien denuncia trabaja o trabajó en la oficina, para
-// avisarle si su grupo es pequeño. La respuesta no se envía: solo decide el aviso en la revisión.
+// avisarle si su grupo es pequeño o, si no trabaja ahí, darle los consejos para personas
+// ciudadanas. La respuesta no se envía: solo decide el aviso en la revisión.
 import { TextField } from '../../../components/Field.tsx';
 import { reportDraftStore } from '../../../state/report-draft.ts';
 import type { WorkplaceDraft } from '../../../state/report-draft.ts';
@@ -19,13 +20,14 @@ export function WorkplaceFields({ workplace }: WorkplaceFieldsProps) {
       <legend>¿Trabajas o trabajaste en esa oficina? (opcional)</legend>
       <p id="workplace-hint" className="field__hint">
         Si es así, te diremos si tu grupo de compañeras y compañeros es pequeño, porque entonces el
-        relato podría identificarte. Esta respuesta no se envía.
+        relato podría identificarte. Si no trabajas ahí, te daremos consejos para ese caso. Esta
+        respuesta no se envía.
       </p>
       <div className="choice-list">
         {(
           [
             ['yes', 'Sí'],
-            ['no', 'No'],
+            ['no', 'No (por ejemplo, fui a hacer un trámite)'],
           ] as const
         ).map(([value, label]) => (
           <div key={value} className="choice">

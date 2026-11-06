@@ -85,3 +85,32 @@ test('/verificar cuenta denuncias y aperturas con la bitácora ya comprobada', a
   }
   await expectNoAccessibilityViolations(page, 'verificar: cifras');
 });
+
+test('quien no trabaja en la oficina ve el aviso ciudadano y el revisor marca su trámite', async ({
+  page,
+}) => {
+  await startReport(page, 'anonymous');
+  await continueTo(page, 'facts');
+  await fillFacts(page, {
+    accused: 'La persona que atiende la ventanilla de licencias',
+    description:
+      'En la ventanilla de licencias me pidieron 800 pesos para entregar mi trámite número A-2026-0042 el mismo día, y revisaron las placas ABC-123-D.',
+  });
+  await page.getByTestId('workplace-no').check();
+  await expect(page.getByTestId('workplace-area')).toHaveCount(0);
+  const review = page.getByTestId('description-review');
+  await expect(review).toContainText('Número de trámite o expediente');
+  await expect(review).toContainText('Placas de un vehículo');
+  await continueTo(page, 'evidence');
+  await continueTo(page, 'review');
+  const notice = page.getByTestId('citizen-notice');
+  await expect(notice).toContainText('te atendió en persona');
+  await notice.getByText('¿Te pidieron dinero y lo pagaste?').click();
+  await expect(notice.getByTestId('citizen-bribe')).toContainText('artículos 88 y 89');
+  await notice.getByText('¿Y si me niegan el trámite o me amenazan?').click();
+  await expect(notice.getByTestId('citizen-retaliation')).toContainText(
+    'no prevé medidas equivalentes para particulares',
+  );
+  await expect(page.getByTestId('anonymity-notice')).toHaveCount(0);
+  await expectNoAccessibilityViolations(page, 'paso 4: aviso ciudadano');
+});

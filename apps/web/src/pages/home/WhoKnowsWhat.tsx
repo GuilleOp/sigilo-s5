@@ -75,7 +75,7 @@ export const DOUBTS: readonly Doubt[] = [
   {
     question: '¿Y si alguien cambió esta página para espiarme?',
     answer:
-      'Las llaves de confianza vienen fijadas en la página, que comprueba la firma del directorio de autoridades antes de enviar; si algo no coincide, no envía nada. Pero si alguien altera el código de la página, también podría alterar esa comprobación. Por eso el código es abierto, para que cualquier organización lo revise, y comprobar que la página que recibes es la auditada sigue en desarrollo.',
+      'Las llaves de confianza vienen fijadas en la página, que comprueba la firma del directorio de autoridades antes de enviar; si algo no coincide, no envía nada. Pero si alguien altera el código de la página, también podría alterar esa comprobación. Por eso el código es abierto, para que cualquier organización lo revise. Una forma de comprobar que la página que recibes es la auditada todavía está en desarrollo.',
   },
   {
     question: '¿Cómo sé que esto no es una promesa más?',
@@ -87,35 +87,54 @@ export const DOUBTS: readonly Doubt[] = [
 /** Sección de la pantalla de inicio. */
 export function WhoKnowsWhat() {
   return (
-    <section className="trust" aria-labelledby="who-knows-title" data-testid="who-knows-what">
+    <section className="card trust" aria-labelledby="who-knows-title" data-testid="who-knows-what">
       <h2 id="who-knows-title">¿Quién sabe qué de ti?</h2>
       <p>
         No te pedimos que confíes en nosotros. Esto es lo que puede ver cada parte del camino de tu
         denuncia, y cómo comprobarlo.
       </p>
-      <TableScroll labelledBy="who-knows-caption">
-        <table className="trust-table">
-          <caption id="who-knows-caption">Qué puede saber cada parte del camino</caption>
-          <thead>
-            <tr>
-              <th scope="col">Quién</th>
-              <th scope="col">Qué ve</th>
-              <th scope="col">¿Puede leer tu denuncia?</th>
-              <th scope="col">¿Puede saber quién eres?</th>
-            </tr>
-          </thead>
-          <tbody>
-            {PARTIES.map((party) => (
-              <tr key={party.name}>
-                <th scope="row">{party.name}</th>
-                <td>{party.sees}</td>
-                <td>{party.reads}</td>
-                <td>{party.knowsWho}</td>
+      {/* En celular, tarjetas; en pantallas anchas, la tabla. La otra queda oculta también para
+          los lectores de pantalla (display: none), así nadie oye el contenido dos veces. */}
+      <ul className="trust-cards" data-testid="who-knows-cards">
+        {PARTIES.map((party) => (
+          <li key={party.name}>
+            <h3>{party.name}</h3>
+            <dl>
+              <dt>Qué ve</dt>
+              <dd>{party.sees}</dd>
+              <dt>¿Puede leer tu denuncia?</dt>
+              <dd>{party.reads}</dd>
+              <dt>¿Puede saber quién eres?</dt>
+              <dd>{party.knowsWho}</dd>
+            </dl>
+          </li>
+        ))}
+      </ul>
+      <div className="trust-table-wrap">
+        <TableScroll labelledBy="who-knows-caption">
+          <table className="trust-table">
+            <caption id="who-knows-caption">Qué puede saber cada parte del camino</caption>
+            <thead>
+              <tr>
+                <th scope="col">Quién</th>
+                <th scope="col">Qué ve</th>
+                <th scope="col">¿Puede leer tu denuncia?</th>
+                <th scope="col">¿Puede saber quién eres?</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableScroll>
+            </thead>
+            <tbody>
+              {PARTIES.map((party) => (
+                <tr key={party.name}>
+                  <th scope="row">{party.name}</th>
+                  <td>{party.sees}</td>
+                  <td>{party.reads}</td>
+                  <td>{party.knowsWho}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
+      </div>
       <p className="trust__note">
         Esto describe el envío por la red de SIGILO. Si tu estado usa un solo servidor, ese servidor
         ve tu conexión: SIGILO no la registra, pero quien opera el servidor o su proveedor sí podría

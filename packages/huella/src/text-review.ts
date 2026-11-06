@@ -13,7 +13,11 @@ export type TextFindingKind =
   | 'exact_time'
   | 'uniqueness'
   | 'self_role'
-  | 'proper_name';
+  | 'proper_name'
+  | 'case_number'
+  | 'plate'
+  | 'address'
+  | 'own_property';
 
 /** Gravedad del hallazgo. */
 export type TextFindingSeverity = 'low' | 'medium' | 'high';
@@ -86,6 +90,21 @@ const MY_WORDS =
   'jef[ea]|area|oficina|escritorio|turno|departamento|unidad|coordinacion|direccion|puesto|' +
   'cubiculo|supervisor[a]?|superior|plaza|guardia|caja|ventanilla|modulo|equipo de trabajo';
 
+// Trámites que una persona ciudadana suele citar con su número: con él se encuentra su expediente.
+const CASE_WORDS =
+  'tramite|expediente|folio|licencia|permiso|cuenta|predial|recibo|solicitud|infraccion|boleta|' +
+  'multa|medidor|credencial|contrato de (?:luz|agua|servicio)';
+/** Palabras de `CASE_WORDS` con su acento, para la sugerencia (el texto se compara sin acentos). */
+const ACCENTED: Readonly<Record<string, string>> = { tramite: 'trámite', infraccion: 'infracción' };
+const NUMBER_WORDS = '(?:numero|num\\.?|no\\.?|n°|#)';
+// Un código con al menos un dígito: «A-2026-0042», «123456», «QRO/15/2026».
+const CODE = '((?=[a-z0-9/-]*\\d)[a-z0-9][a-z0-9/-]{3,})';
+const STREET_WORDS = 'calle|avenida|av\\.|calzada|privada|andador|boulevard|blvd\\.?|callejon';
+const BUSINESS_WORDS =
+  'negocio|local|tienda|taller|restaurante|fonda|changarro|establecimiento|comercio|empresa';
+const PROPERTY_WORDS = 'predio|terreno|casa|domicilio|vivienda';
+const VEHICLE_WORDS = 'carro|coche|auto|vehiculo|camioneta|camion|taxi|moto|motocicleta';
+
 function rx(source: string): RegExp {
   return new RegExp(source, 'gu');
 }
@@ -116,6 +135,50 @@ function fullYear(value: string | undefined): string | null {
 }
 
 const RULES: readonly Rule[] = [
+  {
+    kind: 'case_number',
+    severity: 'high',
+    pattern: rx(
+      `${B_START}(?:${NUMBER_WORDS}\\s*(?:de(?:l)?\\s+)?)?(${CASE_WORDS})\\s*(?:${NUMBER_WORDS}\\s*)?:?\\s*${CODE}${B_END}`,
+    ),
+    suggest: (match) =>
+      `Quita el número${match.groups[0] === undefined ? '' : ` de ${ACCENTED[match.groups[0]] ?? match.groups[0]}`}: con él se puede encontrar tu trámite y saber quién eres. Escribe solo de qué tipo de trámite se trata.`,
+  },
+  {
+    kind: 'plate',
+    severity: 'high',
+    pattern: rx(
+      `${B_START}placas?(?:\\s+de\\s+circulacion)?\\s*(?:${NUMBER_WORDS}\\s*)?:?\\s*((?=[a-z0-9-]*\\d)[a-z0-9]{2,4}(?:-?[a-z0-9]{1,4}){0,2})${B_END}`,
+    ),
+    suggest: () =>
+      'Quita las placas: llevan directo al dueño del vehículo. Escribe, por ejemplo: «un vehículo particular».',
+  },
+  {
+    kind: 'address',
+    severity: 'medium',
+    pattern: rx(
+      `${B_START}(?:${STREET_WORDS})\\s+(?:[\\p{L}]+\\s+){1,4}?(?:${NUMBER_WORDS}\\s*)?\\d{1,5}${B_END}`,
+    ),
+    suggest: () =>
+      'Quita la dirección exacta: si es la de tu casa o tu negocio, te identifica. Basta con el municipio o la zona.',
+  },
+  {
+    kind: 'own_property',
+    severity: 'medium',
+    pattern: rx(
+      `${B_START}(?:mis?|nuestr[oa]s?)\\s+(${BUSINESS_WORDS}|${PROPERTY_WORDS}|${VEHICLE_WORDS})${B_END}`,
+    ),
+    suggest: (match) => {
+      const word = match.groups[0] ?? '';
+      if (new RegExp(`^(?:${BUSINESS_WORDS})$`, 'u').test(word)) {
+        return 'Evita decir que el negocio es tuyo. Escribe, por ejemplo: «un negocio de la zona».';
+      }
+      if (new RegExp(`^(?:${VEHICLE_WORDS})$`, 'u').test(word)) {
+        return 'Evita decir que el vehículo es tuyo. Escribe, por ejemplo: «un vehículo particular».';
+      }
+      return 'Evita decir que el lugar es tuyo. Escribe, por ejemplo: «un domicilio de la colonia».';
+    },
+  },
   {
     kind: 'email',
     severity: 'high',
@@ -249,6 +312,7 @@ const INSTITUTIONAL_WORDS = new Set(
     'gobierno estado estados unidos mexicanos municipio municipal ayuntamiento instituto comision ' +
     'fiscalia general federal nacional estatal tribunal congreso senado camara diputados ' +
     'presidencia universidad hospital plataforma digital mexico ciudad publico publica funcion ' +
+    'movilidad transito ' +
     'hacienda credito salud educacion recursos humanos materiales obras servicios administracion ' +
     'finanzas desarrollo social seguridad contraloria auditoria superior organo interno control ' +
     'sistema anticorrupcion transparencia juzgado poder judicial ejecutivo legislativo procuraduria ' +

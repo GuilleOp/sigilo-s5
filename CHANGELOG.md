@@ -5,8 +5,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Corregido
+
+- El panel de la autoridad mostraba «Las llaves no coinciden» en toda denuncia con corroboración
+  ciega (Marta, Luis y los casos ciudadanos): el digesto del envío incluía la corroboración y el
+  detalle no. Ahora entra su digesto (`corroborationDigest`, migración 13), que también recibe la
+  supervisora; la autoridad no ve la etiqueta.
+
 ### Agregado
 
+- Personas ciudadanas (`docs/personas-ciudadanas.md`): aviso propio en la revisión para quien no
+  trabaja en la oficina, con información sobre el soborno (LGRA, arts. 66, 88 y 89) y las
+  represalias; el revisor de frases marca números de trámite, placas, direcciones y «mi negocio»;
+  caso de la ventanilla en la demostración, con dos personas corroboradas.
 - Confianza verificable (`docs/confianza-verificable.md`): en lugar de pedir confianza, la web da
   formas de comprobar el anonimato.
   - Paso 1: invitación a escribir en modo avión; los pasos 1 a 4 y la limpieza de fotos funcionan

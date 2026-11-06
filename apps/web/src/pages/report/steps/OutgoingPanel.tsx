@@ -23,7 +23,7 @@ export function travellingItems(draft: ReportDraft, isNetwork: boolean): string[
   return [
     'Los hechos que escribiste: lugar, oficina, conducta, mes y año, persona o cargo, y tu relato.',
     proofs === 0
-      ? 'Ninguna prueba.'
+      ? 'Pruebas: ninguna.'
       : `${proofs === 1 ? 'Una prueba limpia' : `${proofs} pruebas limpias`}, sin ubicación ni datos del equipo.`,
     ...(draft.mode === 'sealed'
       ? [
@@ -49,7 +49,11 @@ export function stayingItems(draft: ReportDraft): string[] {
       ? ['Una cuenta: no existe en SIGILO.']
       : ['Tu nombre, tu correo o tu teléfono: no los pedimos, y no hay cuenta.']),
     'La ubicación, la fecha y el modelo del equipo de tus fotos originales: los quitamos aquí.',
-    'Tu área de trabajo. Si dices que trabajas en esa oficina, descargamos los tamaños de grupo de todo el estado: eso deja ver la entidad, igual que el destino de tu denuncia.',
+    ...(draft.workplace.worksThere === 'yes'
+      ? [
+          'Tu área de trabajo. Como dijiste que trabajas en esa oficina, descargamos los tamaños de grupo de todo el estado: eso deja ver la entidad, igual que el destino de tu denuncia.',
+        ]
+      : ['Tu respuesta sobre si trabajas en esa oficina.']),
     'La hora exacta: el servidor solo guarda el día.',
   ];
 }

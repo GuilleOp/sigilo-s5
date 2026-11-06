@@ -153,7 +153,9 @@ cuentas de cada nodo y el reloj simulado común (`reloj/desfase`, que leen los n
 `demo:seed` importa los 31 acuerdos con plantilla y los 5 de control, envía a Marta por la
 ventanilla única (con la copia limpia de su foto; el original con EXIF sintético queda en
 `.red-demo/fixtures/` para mostrar la limpieza en la web), a la persona de Querétaro, las tres
-denuncias del atacante y a Luis por la entrada propia del nodo Federal. Después adelanta el reloj:
+denuncias del atacante, a Luis por la entrada propia del nodo Federal y, los días 4 y 6, a las dos
+personas ciudadanas de la ventanilla de licencias (`case.ventanilla-1` y `case.ventanilla-2`), que
+la Contraloría de Querétaro acepta. Después adelanta el reloj:
 el día 30 el OIC califica la falta grave como no grave con su plantilla y lo notifica por el buzón;
 el 31 corren el auditor (AUD-01 y AUD-03) y las reglas (escalamiento por conflicto sin excusa y por
 calificación con señales); el 32 la supervisora abre el expediente con la segunda llave; el 35
@@ -166,7 +168,7 @@ Lo que se ve, comprobado con la red en Docker:
   inconformidad…», con el plazo de la Sala.
 - Panel del nodo Federal con `investigacion.iffe.uno`: en el detalle de Marta, prioridad alta
   (85 puntos), alerta de posible conflicto de interés con el procedimiento del art. 58,
-  «2 personas independientes denuncian lo mismo», las señales AUD-01 y AUD-03 y las reglas que
+  «2 o más personas independientes denuncian lo mismo», las señales AUD-01 y AUD-03 y las reglas que
   escalaron a la supervisora.
 - Supervisora (`supervision.federal.uno`): «Escalamientos que recibiste» lista 5 denuncias
   escaladas, cada una con su folio, el día, la autoridad de origen y las reglas que se cumplieron.

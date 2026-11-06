@@ -1,6 +1,6 @@
 // Paso 4: revisión con la vista de la autoridad, lo que sale del equipo, el destino de la denuncia,
-// el grupo de anonimato y el semáforo de riesgo con acciones. Cada acción lleva el foco al lugar
-// exacto que corrige y anuncia el resultado en una frase.
+// el grupo de anonimato (o el aviso para quien no trabaja ahí) y el semáforo de riesgo con
+// acciones. Cada acción lleva el foco al lugar exacto que corrige y anuncia el resultado.
 import { useMemo } from 'react';
 import { withAnonymityFactor } from '@sigilo/anonimato';
 import { assessRisk } from '@sigilo/huella';
@@ -18,6 +18,7 @@ import { buildRiskActions, buildRiskSignals } from '../../../state/report-risk.t
 import type { RiskAction } from '../../../state/report-risk.ts';
 import type { ResolvedDestination } from '../destination.ts';
 import { AuthorityPreview } from './AuthorityPreview.tsx';
+import { CitizenNotice } from './CitizenNotice.tsx';
 import { evidenceTitleId } from './EvidenceItemCard.tsx';
 import { EVIDENCE_INPUT_ID } from './EvidenceStep.tsx';
 import { OutgoingPanel } from './OutgoingPanel.tsx';
@@ -120,6 +121,7 @@ export function ReviewStep({ draft, destination, goToStep }: ReviewStepProps) {
         status={anonymity}
         onGeneralize={() => goToStep('facts', 'description-title')}
       />
+      {draft.workplace.worksThere === 'no' && <CitizenNotice />}
       <RoutingPanel destination={destination} />
       <AuthorityPreview draft={draft} />
       <OutgoingPanel draft={draft} destination={destination} />

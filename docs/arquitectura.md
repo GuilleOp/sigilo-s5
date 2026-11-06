@@ -8,14 +8,22 @@ El estándar S5 y la red federada se deciden en los [ADR 0005 a 0010](adr/).
 
 ## Componentes
 
-| Componente               | Ubicación            | Responsabilidad                                                                |
-| ------------------------ | -------------------- | ------------------------------------------------------------------------------ |
-| Contratos                | `packages/contracts` | Esquemas zod, catálogos y rutas de la API v1. Fuente única de verdad.          |
-| Núcleo criptográfico     | `packages/core`      | HPKE, Ed25519, recibo, derivación de llaves, comprobante, buzón, bitácora.     |
-| Huella Cero              | `packages/huella`    | Limpieza de pruebas, marcas invisibles, revisión de texto, semáforo de riesgo. |
-| Servidor de referencia   | `apps/server`        | API v1 sobre Hono y `node:sqlite`. Valida, almacena, registra y sirve la web.  |
-| Aplicación de referencia | `apps/web`           | Denuncia, seguimiento, panel de autoridad, datos abiertos y verificación.      |
-| Scripts                  | `scripts/`           | Llaves de demostración, anclaje de la bitácora y reinicio de la demostración.  |
+| Componente                | Ubicación                | Responsabilidad                                                                               |
+| ------------------------- | ------------------------ | --------------------------------------------------------------------------------------------- |
+| Contratos                 | `packages/contracts`     | Esquemas zod, catálogos y rutas de la API v1. Fuente única de verdad.                         |
+| Núcleo criptográfico      | `packages/core`          | HPKE, Ed25519, recibo, derivación de llaves, comprobante, buzón, bitácora.                    |
+| Huella Cero               | `packages/huella`        | Limpieza de pruebas, marcas invisibles, revisión de texto, semáforo de riesgo.                |
+| Red federada              | `packages/red`           | Directorio firmado, autoridad competente, sobres del enrutador, bitácora nacional.            |
+| Grupo de anonimato        | `packages/anonimato`     | Tamaño del grupo de trabajo en el navegador, con los fragmentos de S1 y S2.                   |
+| Contexto de la PDN        | `packages/contexto-pdn`  | Verificaciones con tres resultados, conflicto de interés y prioridad.                         |
+| Auditor                   | `packages/auditor`       | Señales deterministas sobre las actuaciones de la autoridad (AUD-01 a AUD-08).                |
+| Corroboración ciega       | `packages/corroboracion` | Cliente VOPRF, resumen difuso y señales de independencia.                                     |
+| Servidor de referencia    | `apps/server`            | API v1 sobre Hono y `node:sqlite`; nodo de la red. Valida, almacena, registra y sirve la web. |
+| Aplicación de referencia  | `apps/web`               | Denuncia, seguimiento, panel de autoridad, datos abiertos y verificación.                     |
+| Enrutador ciego           | `apps/enrutador`         | Reenvía sobres sin poder leerlos; directorio, bitácora nacional y testigos.                   |
+| Servicio de corroboración | `apps/corroboracion`     | Evaluador OPRF e índice de coincidencias.                                                     |
+| Validador                 | `tools/validador`        | Revisa un sitio contra el Estándar S5 (`npm run validate`).                                   |
+| Scripts                   | `scripts/`               | Llaves, cuentas, red y semilla de la demostración, anclaje y reinicio.                        |
 
 ```mermaid
 flowchart LR

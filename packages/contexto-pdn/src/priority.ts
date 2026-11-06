@@ -235,7 +235,8 @@ export function buildContextSheet(
   if (reporters > 1) {
     apply(
       'independent-corroboration',
-      `${reporters} personas independientes denuncian lo mismo (${reporters - 1} además de esta). Son señales de independencia, no pruebas de identidad.`,
+      // El índice solo revela intervalos («2 o más»); el texto no debe leerse como un conteo exacto.
+      '2 o más personas independientes denuncian lo mismo, incluida esta denuncia. Son señales de independencia, no pruebas de identidad.',
       null,
       reporters - 1,
     );

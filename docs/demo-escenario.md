@@ -297,6 +297,40 @@ sobre el umbral de 0.75: es el acuerdo número 32 que coincide con la plantilla.
 | `case.sanction-queretaro`    | Cierre histórico (día -90) de `authority.comptroller-queretaro` con amonestación privada, expediente `CEF-RES-0004`, presente en el S3 ficticio de Querétaro.        | Verificación S3: confirmado (histórico)     |
 | `case.queretaro-dormant`     | Denuncia aceptada por `authority.comptroller-queretaro` el día 0 sin actuaciones posteriores.                                                                        | Alerta opcional de inactividad (día 181)    |
 
+### 4.6 `case.ventanilla-1` y `case.ventanilla-2`: dos personas ciudadanas en la misma ventanilla
+
+Dos personas que no trabajan en la oficina denuncian por separado, por la ventanilla única, en modo
+anónimo y sin pruebas, ante `authority.comptroller-queretaro` (`node.queretaro`), que acepta cada
+una. Responden «No» a «¿Trabajas o trabajaste en esa oficina?», así que la revisión les muestra el
+aviso para personas ciudadanas ([personas-ciudadanas.md](personas-ciudadanas.md)) en lugar del
+grupo de anonimato.
+
+| Campo            | Valor                                                                       |
+| ---------------- | --------------------------------------------------------------------------- |
+| Días             | 4 (`case.ventanilla-1`) y 6 (`case.ventanilla-2`)                           |
+| `stateCode`      | `22`                                                                        |
+| `entityId`       | `VE-MOVILIDAD`                                                              |
+| `offenseCode`    | `LGRA-52` (cohecho)                                                         |
+| `occurredPeriod` | `2026-09`                                                                   |
+| Corroboración    | `servidor`: «Servidor Ficticio Cuatro» en `VE-MOVILIDAD`, evaluado con OPRF |
+
+Narraciones:
+
+> En el módulo de licencias del Instituto de Movilidad Estatal Ficticio, la persona que atiende la
+> ventanilla de renovación pidió 800 pesos en efectivo para entregar la licencia el mismo día. Sin
+> ese pago, dijo, el trámite tardaría un mes. No dio ningún recibo. Pasó en septiembre de 2026, por
+> la mañana.
+
+> Fui a renovar una licencia de conducir al Instituto de Movilidad Estatal Ficticio y en la
+> ventanilla me dijeron que mis documentos tenían errores, pero que se podían arreglar con una
+> cooperación. Comentaron que así se hace con quien tiene prisa. Ocurrió a finales de septiembre de 2026.
+
+Hallazgos esperados del revisor: ninguno. Para mostrar el revisor en vivo, escribir «con mi trámite
+número A-2026-0042» o «las placas ABC-123-D»: los marca como `case_number` y `plate`.
+
+Señales de independencia: otro día, texto distinto, sin pruebas compartidas. Resultado: la persona
+denunciada cuenta con **2 personas independientes**, sin que la Contraloría sepa quiénes son.
+
 ## 5. Datos PDN sintéticos
 
 Imitan un subconjunto de la estructura pública de cada sistema (ver los esquemas en

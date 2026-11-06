@@ -23,7 +23,7 @@ export const LIMITS: readonly { risk: string; whatHelps: string }[] = [
     whatHelps: 'Usa los datos de tu celular o una red que no sea de tu trabajo.',
   },
   {
-    risk: 'Si alguien alterara el código de esta página, también podría alterar sus comprobaciones. Comprobar que la página que recibes es la auditada sigue en desarrollo.',
+    risk: 'Si alguien alterara el código de esta página, también podría alterar sus comprobaciones. Todavía estamos desarrollando una forma de comprobar que la página que recibes es la auditada.',
     whatHelps:
       'El código es abierto y cualquier organización puede revisarlo. Entra siempre por una dirección de confianza.',
   },
