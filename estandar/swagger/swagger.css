@@ -1,0 +1,18 @@
+/* Franja de prototipo y aviso de Swagger UI faltante, con contraste AA. */
+.prototype-banner,
+.swagger-missing {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  font-family: system-ui, sans-serif;
+  font-size: 1rem;
+}
+
+.prototype-banner {
+  background: hsl(168 56% 7%);
+  color: hsl(0 0% 100%);
+}
+
+.swagger-missing {
+  background: hsl(45 100% 50%);
+  color: hsl(0 0% 0%);
+}

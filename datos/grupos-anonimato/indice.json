@@ -1,0 +1,483 @@
+{
+  "version": 1,
+  "k": 10,
+  "cubetas": [
+    "1-4",
+    "5-9",
+    "10-49",
+    "50+"
+  ],
+  "fechaCorte": "2026-10-07",
+  "descripcion": "Tamaño del grupo de anonimato por entidad, ente y área (personas distintas con declaración en S1 en los últimos 24 meses de cada proveedor), en cubetas. Un fragmento por entidad.",
+  "entidades": [
+    {
+      "clave": "00",
+      "nombre": "Federación",
+      "archivo": "00.json",
+      "hayDatos": true,
+      "bytes": 290015,
+      "sha256": "ff4c54a0da1ab25ada7350526415eb2804504e1442f55b7b4ac18440b309cfc4",
+      "entesPublicados": 295,
+      "areasPublicadas": 7076,
+      "ventanas": [
+        {
+          "proveedor": "BANXICO",
+          "desde": "2024-09-11",
+          "hasta": "2026-09-11"
+        },
+        {
+          "proveedor": "CNDH",
+          "desde": "2024-09-29",
+          "hasta": "2026-09-29"
+        },
+        {
+          "proveedor": "SFP",
+          "desde": "2020-12-31",
+          "hasta": "2022-12-31"
+        }
+      ]
+    },
+    {
+      "clave": "01",
+      "nombre": "Aguascalientes",
+      "archivo": "01.json",
+      "hayDatos": true,
+      "bytes": 42609,
+      "sha256": "771d9a99a700284e194897da552ec1abbc288953041b5bbedc4a46cd10d7ef72",
+      "entesPublicados": 115,
+      "areasPublicadas": 717,
+      "ventanas": [
+        {
+          "proveedor": "Aguascalientes",
+          "desde": "2024-08-20",
+          "hasta": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "clave": "02",
+      "nombre": "Baja California",
+      "archivo": "02.json",
+      "hayDatos": true,
+      "bytes": 10976,
+      "sha256": "4843206a9bfaadafc0cf7b9776be115438b24b0d2dbfcbc543837b03f0966c60",
+      "entesPublicados": 65,
+      "areasPublicadas": 195,
+      "ventanas": [
+        {
+          "proveedor": "BajaCalifornia",
+          "desde": "2024-07-03",
+          "hasta": "2026-07-03"
+        }
+      ]
+    },
+    {
+      "clave": "03",
+      "nombre": "Baja California Sur",
+      "archivo": "03.json",
+      "hayDatos": true,
+      "bytes": 25229,
+      "sha256": "1a509cfe7f34861966adff02319fe413b54d16d70d0fbc1d4e946f3e31629435",
+      "entesPublicados": 71,
+      "areasPublicadas": 537,
+      "ventanas": [
+        {
+          "proveedor": "BajaCaliforniaSur",
+          "desde": "2024-09-28",
+          "hasta": "2026-09-28"
+        }
+      ]
+    },
+    {
+      "clave": "04",
+      "nombre": "Campeche",
+      "archivo": "04.json",
+      "hayDatos": true,
+      "bytes": 2790,
+      "sha256": "13220f257eda9693485289bde0b9adba7934e10856cc26050cb74e57c687dc0b",
+      "entesPublicados": 27,
+      "areasPublicadas": 17,
+      "ventanas": [
+        {
+          "proveedor": "Campeche",
+          "desde": "2023-12-03",
+          "hasta": "2025-12-03"
+        }
+      ]
+    },
+    {
+      "clave": "05",
+      "nombre": "Coahuila de Zaragoza",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "06",
+      "nombre": "Colima",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "07",
+      "nombre": "Chiapas",
+      "archivo": "07.json",
+      "hayDatos": true,
+      "bytes": 70764,
+      "sha256": "8f56e2ba5f446661e45b7570aa401300bcd270f1f0a721c073eac422b949ee4b",
+      "entesPublicados": 862,
+      "areasPublicadas": 544,
+      "ventanas": [
+        {
+          "proveedor": "Chiapas",
+          "desde": "2023-03-24",
+          "hasta": "2025-03-24"
+        }
+      ]
+    },
+    {
+      "clave": "08",
+      "nombre": "Chihuahua",
+      "archivo": "08.json",
+      "hayDatos": true,
+      "bytes": 2762,
+      "sha256": "efbbba6ddf48edd080f2caa875b0218d2b5e7d35bfab564c7e4e1f3a480245f1",
+      "entesPublicados": 18,
+      "areasPublicadas": 32,
+      "ventanas": [
+        {
+          "proveedor": "Chihuahua",
+          "desde": "2024-08-03",
+          "hasta": "2026-08-03"
+        }
+      ]
+    },
+    {
+      "clave": "09",
+      "nombre": "Ciudad de México",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "10",
+      "nombre": "Durango",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "11",
+      "nombre": "Guanajuato",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "12",
+      "nombre": "Guerrero",
+      "archivo": "12.json",
+      "hayDatos": true,
+      "bytes": 43659,
+      "sha256": "332fab6d85d5c0f94613e0e055c33838fa946e7bdde560abfd790f84593c008d",
+      "entesPublicados": 613,
+      "areasPublicadas": 183,
+      "ventanas": [
+        {
+          "proveedor": "Guerrero",
+          "desde": "2024-09-22",
+          "hasta": "2026-09-22"
+        }
+      ]
+    },
+    {
+      "clave": "13",
+      "nombre": "Hidalgo",
+      "archivo": "13.json",
+      "hayDatos": true,
+      "bytes": 39778,
+      "sha256": "b8322b061886182be5061d0c107de4c6ff24e3a6e2151d8e9df06eb1f8c994df",
+      "entesPublicados": 92,
+      "areasPublicadas": 816,
+      "ventanas": [
+        {
+          "proveedor": "Hidalgo",
+          "desde": "2023-11-07",
+          "hasta": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "clave": "14",
+      "nombre": "Jalisco",
+      "archivo": "14.json",
+      "hayDatos": true,
+      "bytes": 106187,
+      "sha256": "a8cb6776f266f5690e9715542fe589bf93262ed91fda9fb1e2b3b41e1524b923",
+      "entesPublicados": 677,
+      "areasPublicadas": 1618,
+      "ventanas": [
+        {
+          "proveedor": "Jalisco",
+          "desde": "2024-09-27",
+          "hasta": "2026-09-27"
+        }
+      ]
+    },
+    {
+      "clave": "15",
+      "nombre": "México",
+      "archivo": "15.json",
+      "hayDatos": true,
+      "bytes": 25098,
+      "sha256": "0f3d495395e8618a935a4d4d8ba15dc463482a5455be162138f448cb9e6c435d",
+      "entesPublicados": 7,
+      "areasPublicadas": 403,
+      "ventanas": [
+        {
+          "proveedor": "EdoMex",
+          "desde": "2024-09-29",
+          "hasta": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "clave": "16",
+      "nombre": "Michoacán de Ocampo",
+      "archivo": "16.json",
+      "hayDatos": true,
+      "bytes": 19509,
+      "sha256": "2f818b64ea0b847f4307ff17d97b457f6f7b4f27fd9fea7f6e30b921d2d3f6ad",
+      "entesPublicados": 281,
+      "areasPublicadas": 280,
+      "ventanas": [
+        {
+          "proveedor": "Michoacan",
+          "desde": "2022-02-23",
+          "hasta": "2024-02-23"
+        }
+      ]
+    },
+    {
+      "clave": "17",
+      "nombre": "Morelos",
+      "archivo": "17.json",
+      "hayDatos": true,
+      "bytes": 3881,
+      "sha256": "63d204db7662b5461f7fd74d1e76c95d72314b8850904aa6aada36e98622e1e1",
+      "entesPublicados": 30,
+      "areasPublicadas": 38,
+      "ventanas": [
+        {
+          "proveedor": "Morelos",
+          "desde": "2024-07-07",
+          "hasta": "2026-07-07"
+        }
+      ]
+    },
+    {
+      "clave": "18",
+      "nombre": "Nayarit",
+      "archivo": "18.json",
+      "hayDatos": true,
+      "bytes": 2135,
+      "sha256": "ed97edc688d416a0907cbe638bc3db4d3ab53a3b3f87150b5f58faad9b925e40",
+      "entesPublicados": 5,
+      "areasPublicadas": 36,
+      "ventanas": [
+        {
+          "proveedor": "Nayarit",
+          "desde": "2024-06-21",
+          "hasta": "2026-06-21"
+        }
+      ]
+    },
+    {
+      "clave": "19",
+      "nombre": "Nuevo León",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "20",
+      "nombre": "Oaxaca",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "21",
+      "nombre": "Puebla",
+      "archivo": "21.json",
+      "hayDatos": true,
+      "bytes": 233254,
+      "sha256": "cc45967b66c5f502082b125556d5d6636ab294ff8213ee0b4116a0fa2c22d424",
+      "entesPublicados": 2807,
+      "areasPublicadas": 2110,
+      "ventanas": [
+        {
+          "proveedor": "Puebla",
+          "desde": "2024-10-07",
+          "hasta": "2026-10-07"
+        }
+      ]
+    },
+    {
+      "clave": "22",
+      "nombre": "Querétaro",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "23",
+      "nombre": "Quintana Roo",
+      "archivo": "23.json",
+      "hayDatos": true,
+      "bytes": 58134,
+      "sha256": "ee88c3ec061d46857c3848172df060490fe55f6ae59f6914737232d6d8ef2873",
+      "entesPublicados": 97,
+      "areasPublicadas": 1153,
+      "ventanas": [
+        {
+          "proveedor": "Quintanaroo",
+          "desde": "2024-07-04",
+          "hasta": "2026-07-04"
+        }
+      ]
+    },
+    {
+      "clave": "24",
+      "nombre": "San Luis Potosí",
+      "archivo": "24.json",
+      "hayDatos": true,
+      "bytes": 19738,
+      "sha256": "367a43136a4e648bebbc29e326a3aa67f21cb1acbf1766faa7105a31c796b964",
+      "entesPublicados": 88,
+      "areasPublicadas": 473,
+      "ventanas": [
+        {
+          "proveedor": "SanLuisPotosi",
+          "desde": "2024-09-30",
+          "hasta": "2026-09-30"
+        }
+      ]
+    },
+    {
+      "clave": "25",
+      "nombre": "Sinaloa",
+      "archivo": "25.json",
+      "hayDatos": true,
+      "bytes": 7121,
+      "sha256": "7e8fdaca1e8a76ffe54a699a99acaf7925b3e0bf8f80f423c118142b3d49968e",
+      "entesPublicados": 96,
+      "areasPublicadas": 47,
+      "ventanas": [
+        {
+          "proveedor": "Sinaloa",
+          "desde": "2024-09-14",
+          "hasta": "2026-09-14"
+        }
+      ]
+    },
+    {
+      "clave": "26",
+      "nombre": "Sonora",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "27",
+      "nombre": "Tabasco",
+      "archivo": "27.json",
+      "hayDatos": true,
+      "bytes": 31462,
+      "sha256": "a2693296340300d7693e868037b909b2a08ae04d78f5c12e695e256fa83ec3e6",
+      "entesPublicados": 70,
+      "areasPublicadas": 598,
+      "ventanas": [
+        {
+          "proveedor": "Tabasco",
+          "desde": "2024-06-09",
+          "hasta": "2026-06-09"
+        }
+      ]
+    },
+    {
+      "clave": "28",
+      "nombre": "Tamaulipas",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "29",
+      "nombre": "Tlaxcala",
+      "archivo": "29.json",
+      "hayDatos": true,
+      "bytes": 14381,
+      "sha256": "149c02e0bc301fcdb6d7c08864769d62e872185d39dfc4da149a874a79fe208d",
+      "entesPublicados": 71,
+      "areasPublicadas": 325,
+      "ventanas": [
+        {
+          "proveedor": "Tlaxcala",
+          "desde": "2024-10-01",
+          "hasta": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "clave": "30",
+      "nombre": "Veracruz de Ignacio de la Llave",
+      "archivo": "30.json",
+      "hayDatos": true,
+      "bytes": 3925,
+      "sha256": "d5ac2fa6fc2f694a8116bfd0fea9420a0f99617dce085d7b4987a76a06c0c203",
+      "entesPublicados": 51,
+      "areasPublicadas": 4,
+      "ventanas": [
+        {
+          "proveedor": "Veracruz",
+          "desde": "2020-04-01",
+          "hasta": "2022-04-01"
+        }
+      ]
+    },
+    {
+      "clave": "31",
+      "nombre": "Yucatán",
+      "archivo": null,
+      "hayDatos": false
+    },
+    {
+      "clave": "32",
+      "nombre": "Zacatecas",
+      "archivo": "32.json",
+      "hayDatos": true,
+      "bytes": 38669,
+      "sha256": "3bbc32a70208fd5553609cb2b833ff567855dc3a6f0f4bab7e70eedf56fc8f8f",
+      "entesPublicados": 227,
+      "areasPublicadas": 748,
+      "ventanas": [
+        {
+          "proveedor": "Zacatecas",
+          "desde": "2024-09-01",
+          "hasta": "2026-09-01"
+        }
+      ]
+    }
+  ],
+  "resumenNacional": {
+    "personas": 1544310,
+    "entes": 6986,
+    "gruposArea": 368538,
+    "pctPersonasKMenor10Area": 38.0,
+    "pctPersonasKMenor10Ente": 0.5,
+    "pctProtegidasPor": {
+      "area": 54.5,
+      "ente": 42.8,
+      "grupo": 2.7,
+      "entidad": 0.0,
+      "insuficiente": 0.0
+    },
+    "areasPublicadas": 17950,
+    "areasConNombreSuprimido": 2052,
+    "entesConNombreSuprimido": 321,
+    "entesConS2": 699,
+    "areasConS2": 89
+  }
+}

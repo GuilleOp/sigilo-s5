@@ -2,6 +2,12 @@
 // y sin orden de llegada, una línea por petición solo en desarrollo, y nada en modo `off`.
 import { describe, expect, it } from 'vitest';
 import { ROUTES } from '@sigilo/contracts';
+import {
+  CORROBORATION_OPERATIONS,
+  NETWORK_OPERATIONS,
+  STANDARD_OPERATIONS,
+} from '@sigilo/contracts/standard';
+import { UNCOUNTED_ROUTES } from './request-log.ts';
 import { createRequestLog } from './request-log.ts';
 import type { RequestLogLine, RequestLogMode } from './request-log.ts';
 import {
@@ -19,6 +25,25 @@ function serverWith(mode: RequestLogMode) {
   const server = createTestServer({ requestLog, now: () => now });
   return { server, lines, requestLog, setNow: (date: Date) => (now = date) };
 }
+
+/** Grupos del estándar que usa la persona denunciante (además de la red y la corroboración). */
+const REPORTER_TAGS = new Set(['Llaves y retos', 'Denuncia', 'Seguimiento', 'Bitácora pública']);
+
+describe('rutas sin contar', () => {
+  it('excluye todas las rutas de quien denuncia, de la red y de la corroboración (H9)', () => {
+    const reporter = STANDARD_OPERATIONS.filter((operation) => REPORTER_TAGS.has(operation.tag));
+    // Las del evaluador las usa el navegador de quien denuncia; las del índice, solo los nodos.
+    const evaluator = CORROBORATION_OPERATIONS.filter(
+      (operation) => operation.servedBy === 'evaluator',
+    );
+    const paths = [...reporter, ...NETWORK_OPERATIONS, ...evaluator].map(
+      (operation) => operation.path,
+    );
+    expect(paths.length).toBeGreaterThan(10);
+    const counted = paths.filter((path) => !path.includes('{') && !UNCOUNTED_ROUTES.has(path));
+    expect(counted).toEqual([]);
+  });
+});
 
 describe('createRequestLog', () => {
   it('en modo aggregate cuenta por hora, sin rutas de la persona denunciante, llaves ni bitácora', async () => {

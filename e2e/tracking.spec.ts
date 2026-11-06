@@ -97,3 +97,19 @@ test('unas palabras incorrectas dan el mismo error que un folio inexistente', as
   expect(wrongWordsError).toContain('El folio o el recibo no coinciden');
   expect(missingFolioError).toBe(wrongWordsError);
 });
+
+test('escribir las 8 palabras con espacios en la primera casilla las reparte', async ({
+  page,
+  request,
+}) => {
+  const { folio, words } = await seedAnonymousComplaint(request);
+  await page.goto('/seguimiento');
+  const form = page.getByTestId('tracking-login');
+  await form.getByTestId('tracking-folio').fill(folio);
+  await form.getByTestId('receipt-word-1').pressSequentially(words.join(' '));
+  for (const [index, word] of words.entries()) {
+    await expect(form.getByTestId(`receipt-word-${index + 1}`)).toHaveValue(word);
+  }
+  await form.getByTestId('tracking-submit').click();
+  await expect(page.getByTestId('tracking-view')).toBeVisible();
+});

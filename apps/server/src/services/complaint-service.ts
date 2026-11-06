@@ -1,38 +1,57 @@
-// Recepción de denuncias y acciones de la autoridad sobre ellas (estatus y apertura de identidad).
-import type {
-  ComplaintStatus,
-  OpenIdentityResponse,
-  SubmitComplaintRequest,
-  SubmitComplaintResponse,
-} from '@sigilo/contracts';
+// Recepción de denuncias: validación, folio, comprobante firmado y entrada al buzón general del nodo.
+import type { SubmitComplaintRequest, SubmitComplaintResponse } from '@sigilo/contracts';
 import {
   computeSubmissionDigest,
   generateFolio,
-  identityOpenedPayload,
-  randomBytes,
   signReceipt,
   toDayDate,
-  toHex,
+  toMexicoCentralDay,
 } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
-import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import { withTransaction } from '../db/database.ts';
 import { ApiFailure } from '../http/errors.ts';
-import { hasIdentityShape, isKey32 } from './crypto-checks.ts';
+import { hasInvisibleCharacters } from '../security/invisible-text.ts';
+import { hasEscalationShape, hasIdentityShape, isKey32 } from './crypto-checks.ts';
+import { directoryAuthority } from '../network/network-context.ts';
+import { authorityOfKeyId, isAcceptedIdentityKey } from './authority-keys.ts';
 import { budgetOf } from './evidence-service.ts';
+import { queueCorroboration } from './corroboration-service.ts';
+import { reviewConflictOnAssignment } from './pdn-context.ts';
+
+/** Cómo llegó la denuncia: por el enrutador ciego (con su autoridad destino) o directo al nodo. */
+export interface SubmissionOrigin {
+  /** Autoridad destino del sobre de red, si llegó por el enrutador. */
+  routedTo?: string;
+}
 
 const MAX_FOLIO_ATTEMPTS = 8;
 
 function assertRequestShape(ctx: AppContext, request: SubmitComplaintRequest): void {
-  const { reporterKeys, authVerifier, sealedIdentity } = request;
+  const { reporterKeys, authVerifier, sealedIdentity, escalationEnvelope, facts } = request;
+  // Seguridad (PRV-23): un carácter invisible en el texto libre puede ser la marca que delata a
+  // quien filtró el documento; la web siempre los quita, así que se rechaza en lugar de guardarlo.
+  if (hasInvisibleCharacters(facts.accused) || hasInvisibleCharacters(facts.description)) {
+    throw new ApiFailure('bad_request');
+  }
+  if (escalationEnvelope !== undefined) {
+    // Seguridad: la segunda llave solo se acepta cifrada hacia la supervisora publicada.
+    const supervisorKeyId = ctx.deps.keys.publicKeySet.supervisor?.keyId;
+    const isForSupervisor =
+      supervisorKeyId !== undefined && escalationEnvelope.keyId === supervisorKeyId;
+    if (!isForSupervisor || !hasEscalationShape(escalationEnvelope)) {
+      throw new ApiFailure('bad_request');
+    }
+  }
   const hasValidKeys =
     isKey32(reporterKeys.boxPublicKey) &&
     isKey32(reporterKeys.signingPublicKey) &&
     isKey32(authVerifier);
   if (!hasValidKeys) throw new ApiFailure('bad_request');
   if (request.mode === 'sealed') {
-    // Seguridad: la identidad solo se acepta cifrada hacia la llave fijada de la autoridad.
-    const isForAuthority = sealedIdentity?.keyId === ctx.deps.keys.publicKeySet.authority.keyId;
+    // Seguridad: la identidad solo se acepta cifrada hacia la llave fijada de la autoridad o
+    // hacia la de una autoridad que el nodo aloja según el directorio verificado.
+    const isForAuthority =
+      sealedIdentity !== undefined && isAcceptedIdentityKey(ctx, sealedIdentity.keyId);
     if (sealedIdentity === undefined || !isForAuthority || !hasIdentityShape(sealedIdentity)) {
       throw new ApiFailure('bad_request');
     }
@@ -77,13 +96,49 @@ function newFolio(ctx: AppContext): string {
  * prueba de trabajo. La fecha de recepción es la del evento registrado (ver `LedgerService`), así
  * el comprobante y la bitácora coinciden aunque el reloj retroceda.
  */
+/**
+ * Autoridad que recibe directamente la denuncia: la que eligió la ventanilla única (destino del
+ * sobre de red) o aquella hacia cuya llave del directorio se cifró la identidad, si el nodo la
+ * aloja y no es el buzón general. `null` la deja en el buzón general.
+ */
+/**
+ * Indica si la autoridad es supervisora (por el directorio o por el archivo de cuentas). Una
+ * supervisora recibe escalamientos con la segunda llave; nunca denuncias directas (H11).
+ */
+function isSupervisory(ctx: AppContext, authorityId: string): boolean {
+  const network = ctx.deps.network;
+  const inDirectory =
+    network === undefined ? undefined : directoryAuthority(network, authorityId)?.role;
+  return inDirectory === 'supervisory' || ctx.authorities.supervisorAuthorityId === authorityId;
+}
+
+function directTarget(
+  ctx: AppContext,
+  request: SubmitComplaintRequest,
+  origin: SubmissionOrigin,
+): string | null {
+  const inbox = ctx.authorities.inboxAuthorityId;
+  const isTarget = (authorityId: string | null): authorityId is string =>
+    authorityId !== null &&
+    authorityId !== inbox &&
+    ctx.authorities.authority(authorityId) !== null &&
+    !isSupervisory(ctx, authorityId);
+  const routed = origin.routedTo ?? null;
+  if (isTarget(routed)) return routed;
+  const keyId = request.sealedIdentity?.keyId;
+  const byKey = keyId === undefined ? null : authorityOfKeyId(ctx, keyId);
+  return isTarget(byKey) ? byKey : null;
+}
+
 export function submitComplaint(
   ctx: AppContext,
   request: SubmitComplaintRequest,
+  origin: SubmissionOrigin = {},
 ): SubmitComplaintResponse {
   assertRequestShape(ctx, request);
   const submissionDigest = computeSubmissionDigest(request);
-  return withTransaction(ctx.deps.db, () => {
+  const target = directTarget(ctx, request, origin);
+  const response = withTransaction(ctx.deps.db, () => {
     // Seguridad: cada recibo pertenece a una sola denuncia. Reutilizar el verificador de otra es
     // el primer paso para trasplantar su sobre de identidad (el índice único también lo impide).
     if (ctx.complaints.hasAuthVerifier(request.authVerifier)) throw new ApiFailure('bad_request');
@@ -99,6 +154,8 @@ export function submitComplaint(
       payload: { folio, submissionDigest },
     });
     const receivedOn = event.at;
+    // Día legal de recepción (hora del centro de México): de él corren los plazos.
+    const receivedLegalOn = toMexicoCentralDay(ctx.deps.now());
     const receipt = signReceipt(
       {
         folio,
@@ -120,75 +177,52 @@ export function submitComplaint(
       reporterKeys: request.reporterKeys,
       authVerifier: request.authVerifier,
       receipt,
+      receivedLegalOn,
+      assignedAuthorityId: ctx.authorities.inboxAuthorityId,
+      managementState: 'received_in_inbox',
+      legalStage: null,
+      closureReason: null,
+      escalationEnvelope: request.escalationEnvelope ?? null,
     });
     associateEvidence(ctx, request, folio);
     ctx.statusHistory.insert(folio, 'received', receivedOn);
+    ctx.procedure.insertStep(folio, {
+      action: 'received',
+      on: receivedOn,
+      legalOn: receivedLegalOn,
+      managementState: 'received_in_inbox',
+      legalStage: null,
+      closureReason: null,
+      authorityId: ctx.authorities.inboxAuthorityId,
+      actorId: null,
+      note: null,
+    });
+    if (target !== null) {
+      // La ventanilla única ya eligió la autoridad competente con el directorio: llega turnada.
+      ctx.complaints.updateProcedure(folio, {
+        status: 'routed',
+        assignedAuthorityId: target,
+        managementState: 'routed',
+        legalStage: null,
+        closureReason: null,
+      });
+      ctx.statusHistory.insert(folio, 'routed', receivedOn);
+      ctx.procedure.insertStep(folio, {
+        action: 'routed',
+        on: receivedOn,
+        legalOn: receivedLegalOn,
+        managementState: 'routed',
+        legalStage: null,
+        closureReason: null,
+        authorityId: target,
+        actorId: null,
+        note: 'La ventanilla única la envió a la autoridad competente según el directorio de la red.',
+      });
+    }
+    queueCorroboration(ctx, folio, request, origin.routedTo === undefined ? 'direct' : 'relay');
     return { folio, receipt };
   });
-}
-
-/**
- * Cambia el estatus y registra `complaint.status_changed`.
- * Lanza `not_found` si el folio no existe y `bad_request` si el estatus no cambia.
- * Seguridad: el estatus vigente se vuelve a leer dentro de la transacción, así dos cambios
- * simultáneos no registran dos eventos del mismo estatus.
- */
-export function changeStatus(
-  ctx: AppContext,
-  folio: string,
-  status: ComplaintStatus,
-): ComplaintRecord {
-  return withTransaction(ctx.deps.db, () => {
-    const current = ctx.complaints.find(folio);
-    if (current === null) throw new ApiFailure('not_found');
-    if (current.status === status) throw new ApiFailure('bad_request');
-    const { at: changedOn } = ctx.ledger.record({
-      type: 'complaint.status_changed',
-      folio,
-      at: toDayDate(ctx.deps.now()),
-      actorRole: 'authority',
-      // Seguridad: un identificador aleatorio hace único el digesto aunque el estatus se repita,
-      // y el folio impide adivinarlo probando estatus.
-      payload: { folio, status, changeId: toHex(randomBytes(16)) },
-    });
-    ctx.complaints.updateStatus(folio, status);
-    ctx.statusHistory.insert(folio, status, changedOn);
-    return { ...current, status };
-  });
-}
-
-/**
- * Registra `identity.opened` con su fundamento y después entrega el sobre de identidad. La
- * autoridad recalcula su contexto (AAD) desde el detalle de la denuncia.
- * Lanza `not_found` si la denuncia es anónima.
- * Seguridad: es la única vía para obtener el sobre y siempre deja rastro. La persona denunciante
- * ve la apertura de inmediato en su seguimiento; el evento público se encadena al cerrar el día y
- * lleva la etiqueta de su recibo, para que lo encuentre aunque se registre con otro folio.
- */
-export function openIdentity(
-  ctx: AppContext,
-  complaint: ComplaintRecord,
-  legalBasis: string,
-): OpenIdentityResponse {
-  const sealedIdentity = complaint.sealedIdentity;
-  if (complaint.mode !== 'sealed' || sealedIdentity === null) throw new ApiFailure('not_found');
-  const openingId = toHex(randomBytes(16));
-  const payload = identityOpenedPayload({
-    folio: complaint.folio,
-    openingId,
-    legalBasis,
-    authVerifier: complaint.authVerifier,
-  });
-  withTransaction(ctx.deps.db, () => {
-    const { at: openedOn } = ctx.ledger.record({
-      type: 'identity.opened',
-      folio: complaint.folio,
-      at: toDayDate(ctx.deps.now()),
-      actorRole: 'authority',
-      payload,
-      receiptTag: payload.receiptTag,
-    });
-    ctx.identityOpenings.insert(complaint.folio, openingId, openedOn, legalBasis);
-  });
-  return { sealedIdentity, openingId };
+  // Seguridad: la revisión de conflicto solo informa; si falla, la denuncia ya quedó guardada.
+  if (target !== null) reviewConflictOnAssignment(ctx, response.folio, target);
+  return response;
 }

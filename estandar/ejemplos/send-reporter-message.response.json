@@ -1,0 +1,14 @@
+{
+  "messageId": "786d36e4b9d5bf4415896de8add7334d",
+  "from": "reporter",
+  "sequence": 1,
+  "sentOn": "2026-11-10T02:00Z",
+  "envelope": {
+    "v": 1,
+    "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+    "keyId": "f7bc219ff223a248",
+    "enc": "VR2RaKqXnAoOBwAnmH1PIPvsg6mOC-SpPlUvZxx3kuM",
+    "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+  },
+  "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+}

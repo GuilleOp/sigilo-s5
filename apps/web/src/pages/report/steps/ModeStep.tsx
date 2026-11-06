@@ -72,8 +72,9 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
           />
           <span>
             <span className="choice__title">Identidad sellada</span>
-            Das tu nombre. Puedes pedir protección. Tu nombre va guardado bajo llave: solo la
-            autoridad puede abrirlo. Si lo abre, debe decir qué ley se lo permite. Tú lo verás.
+            Das tu nombre. Puedes pedir protección. Tu nombre va guardado bajo llave: solo lo abre
+            la autoridad competente con dos aprobaciones y un fundamento, o tú si decides
+            inconformarte. Siempre queda registrado y tú lo verás.
           </span>
         </label>
         {modeError && (
@@ -88,8 +89,9 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
           <h3 id="identity-title">Tus datos, bajo llave</h3>
           <p>
             Tus datos se guardan bajo llave antes de salir de tu equipo. Nadie del sistema puede
-            leerlos. Solo la autoridad puede abrirlos y debe decir qué ley se lo permite. Tú verás
-            cada vez que los abran.
+            leerlos. Solo los abre la autoridad competente, con la aprobación de dos personas
+            distintas y un fundamento legal, o tú, si decides inconformarte (la ley pide tu nombre y
+            firma). Tú verás cada vez que los abran.
           </p>
           <TextField
             id="fullName"

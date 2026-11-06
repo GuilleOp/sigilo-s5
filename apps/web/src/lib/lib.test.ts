@@ -4,7 +4,13 @@ import { reviewText } from '@sigilo/huella';
 import { adviseReporter } from './advisor.ts';
 import { parseCsv, parseOpenDataCsv } from './csv.ts';
 import { isCompleteFolio, normalizeFolioInput } from './folio-input.ts';
-import { formatDayDate, formatHourDate, formatMonthPeriod } from './format.ts';
+import {
+  STATUS_HINTS,
+  STATUS_LABELS,
+  formatDayDate,
+  formatHourDate,
+  formatMonthPeriod,
+} from './format.ts';
 import { detectPersonalDataRequest } from './personal-data-request.ts';
 import {
   matchesReceiptWord,
@@ -147,6 +153,15 @@ describe('CSV de datos abiertos', () => {
 });
 
 describe('formatos', () => {
+  it('toma el nombre y la explicación de cada estatus del catálogo del trámite', () => {
+    expect(Object.keys(STATUS_LABELS)).toHaveLength(7);
+    expect(STATUS_LABELS.investigating).toBe('En investigación');
+    expect(STATUS_LABELS.routed).toBe('Turnada a la autoridad competente');
+    expect(STATUS_HINTS.archived).toBe(
+      'Se cerró por ahora; puede reabrirse si hay nuevos elementos.',
+    );
+  });
+
   it('formatea fechas sin depender de la zona horaria', () => {
     expect(formatDayDate('2026-10-01')).toBe('1 de octubre de 2026');
     expect(formatHourDate('2026-10-01T09:00Z')).toBe(

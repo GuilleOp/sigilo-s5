@@ -173,7 +173,7 @@ export function adviseReporter(answers: AdvisorAnswers): AdvisorResult {
       id: 'protection',
       priority: 'important',
       title: 'Para pedir protección, la autoridad necesita saber quién eres',
-      text: 'Elige «Identidad sellada»: tu nombre va guardado bajo llave y solo la autoridad puede abrirlo. Cada vez que lo abra queda anotado y tú lo verás en tu seguimiento.',
+      text: 'Elige «Identidad sellada»: tu nombre va guardado bajo llave y solo lo abre la autoridad competente con dos aprobaciones, o tú si decides inconformarte. Cada apertura queda anotada y tú la verás en tu seguimiento.',
     });
   } else if (answers.protection === 'unsure') {
     add({

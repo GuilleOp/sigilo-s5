@@ -1,0 +1,1261 @@
+{
+  "schemaVersion": 1,
+  "tool": {
+    "name": "sigilo-validar",
+    "version": "0.1.0",
+    "userAgent": "sigilo-validar/0.1.0 (Datatón 2026)"
+  },
+  "mode": "pasivo",
+  "target": {
+    "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+    "pages": [
+      {
+        "label": "inicio",
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/"
+      },
+      {
+        "label": "formulario",
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia"
+      }
+    ]
+  },
+  "startedAt": "2026-11-05T07:23:55.602Z",
+  "finishedAt": "2026-11-05T08:08:28.536Z",
+  "limits": {
+    "maxRequests": 400,
+    "navigationTimeoutMs": 30000,
+    "maxResourceBytes": 4194304
+  },
+  "summary": {
+    "cumple": 4,
+    "no_cumple": 5,
+    "advertencia": 4,
+    "no_aplica": 16
+  },
+  "checks": [
+    {
+      "id": "PRV-01",
+      "title": "Cero peticiones a terceros",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Ninguna petición a terceros durante la carga del inicio y del formulario.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Se registraron 73 peticiones (73 al propio origen)."
+        }
+      ],
+      "references": [
+        "LGRA art. 91",
+        "SESNA S-04",
+        "BPDN Seguridad de la Información"
+      ]
+    },
+    {
+      "id": "PRV-02",
+      "title": "CSP estricta como cabecera",
+      "severity": "obligatoria",
+      "status": "no_cumple",
+      "summary": "No hay Content-Security-Policy como cabecera.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "CSP enviada como cabecera.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+          "name": "content-security-policy",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "CSP enviada como cabecera.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia",
+          "name": "content-security-policy",
+          "value": "(ausente)"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.3",
+        "BPDN Seguridad de la Información"
+      ]
+    },
+    {
+      "id": "PRV-03",
+      "title": "HSTS",
+      "severity": "obligatoria",
+      "status": "no_cumple",
+      "summary": "No envía Strict-Transport-Security.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "HSTS del documento.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+          "name": "strict-transport-security",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "HSTS del documento.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia",
+          "name": "strict-transport-security",
+          "value": "(ausente)"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.5",
+        "ASVS V9.1.1"
+      ]
+    },
+    {
+      "id": "PRV-04",
+      "title": "Protección contra marcos",
+      "severity": "obligatoria",
+      "status": "no_cumple",
+      "summary": "Sin frame-ancestors 'none' ni X-Frame-Options: DENY.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "Protección contra marcos (antigua).",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+          "name": "x-frame-options",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Directiva frame-ancestors de la CSP.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+          "name": "content-security-policy",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Protección contra marcos (antigua).",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia",
+          "name": "x-frame-options",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Directiva frame-ancestors de la CSP.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia",
+          "name": "content-security-policy",
+          "value": "(ausente)"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.7"
+      ]
+    },
+    {
+      "id": "PRV-05",
+      "title": "Sin Referer",
+      "severity": "obligatoria",
+      "status": "no_cumple",
+      "summary": "No envía Referrer-Policy; el navegador usa strict-origin-when-cross-origin.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "Política de referente.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+          "name": "referrer-policy",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Política de referente.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia",
+          "name": "referrer-policy",
+          "value": "(ausente)"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.6",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-06",
+      "title": "Permissions-Policy restrictiva",
+      "severity": "obligatoria",
+      "status": "no_cumple",
+      "summary": "No envía Permissions-Policy: la página puede pedir ubicación, micrófono y cámara.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "Política de permisos.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+          "name": "permissions-policy",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Política de permisos.",
+          "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia",
+          "name": "permissions-policy",
+          "value": "(ausente)"
+        }
+      ],
+      "references": [
+        "ASVS V14.4",
+        "SESNA S-02",
+        "SESNA S-04",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-07",
+      "title": "Sin recursos de terceros en el HTML",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "El HTML y la carga solo usan scripts, estilos y fuentes del propio sitio.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "BPDN Seguridad de la Información",
+        "ASVS V14.2.3"
+      ]
+    },
+    {
+      "id": "PRV-08",
+      "title": "Sin reconocimiento de voz remoto",
+      "severity": "obligatoria",
+      "status": "advertencia",
+      "summary": "El código usa la API de reconocimiento de voz del navegador; en Chrome y Edge el audio se procesa en servidores del fabricante.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "codigo",
+          "description": "Evidencia de código redactada: 2 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio."
+        },
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "LGRA art. 91",
+        "SESNA S-07"
+      ]
+    },
+    {
+      "id": "PRV-09",
+      "title": "Folio no secuencial ni predecible",
+      "severity": "obligatoria",
+      "status": "advertencia",
+      "summary": "El folio se genera en el navegador con un generador no criptográfico, en un espacio aproximado de 10^5 valores por año, y el navegador consulta si un folio existe. El detalle técnico se conserva fuera del repositorio.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "codigo",
+          "description": "Evidencia de código redactada: 5 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio."
+        },
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "ASVS V6.3.1",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-10",
+      "title": "Sin borradores en el almacenamiento del navegador",
+      "severity": "obligatoria",
+      "status": "advertencia",
+      "summary": "El formulario guarda un borrador en localStorage durante 24 horas, sin cifrar: queda legible para quien use el mismo equipo. El detalle técnico se conserva fuera del repositorio.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "codigo",
+          "description": "Evidencia de código redactada: 9 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio."
+        },
+        {
+          "kind": "almacenamiento",
+          "description": "Clave presente tras cargar formulario (sessionStorage).",
+          "name": "[clave redactada]",
+          "value": "[4 caracteres]"
+        },
+        {
+          "kind": "nota",
+          "description": "Al menos 12 uso(s) más de almacenamiento sin relación aparente con el formulario (bibliotecas, preferencias)."
+        },
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "ASVS V8.2.2",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-11",
+      "title": "Sin mapas ni geocodificación externos",
+      "severity": "obligatoria",
+      "status": "advertencia",
+      "summary": "El código integra mapas o geocodificación de terceros (se activan al interactuar, p. ej. al escribir un domicilio): Mapbox, OpenStreetMap (teselas o Nominatim).",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "codigo",
+          "description": "Evidencia de código redactada: 9 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio."
+        },
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "SESNA S-02",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-12",
+      "title": "Cookies seguras y sin rastreo",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "El sitio no fijó ninguna cookie durante la carga.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Sin Set-Cookie ni cookies en el navegador."
+        }
+      ],
+      "references": [
+        "ASVS V3.4.1",
+        "ASVS V3.4.2",
+        "ASVS V3.4.3"
+      ]
+    },
+    {
+      "id": "PRV-13",
+      "title": "Sin analítica ni rastreadores",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "No se encontraron analítica ni rastreadores en la red ni en el código.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "LGRA art. 91",
+        "LGPDPPSO finalidad"
+      ]
+    },
+    {
+      "id": "PRV-14",
+      "title": "Identidad cifrada en el navegador",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91",
+        "LGRA art. 64 fr. III",
+        "SESNA S-04",
+        "ASVS V6.2.7"
+      ]
+    },
+    {
+      "id": "PRV-15",
+      "title": "Respuesta indistinguible ante folio o secreto inválidos",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V6.2.8",
+        "API2:2023",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-16",
+      "title": "Enlaces externos sin fuga de origen",
+      "severity": "recomendada",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-17",
+      "title": "Sin caché",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V8.1.1",
+        "ASVS V8.2.1"
+      ]
+    },
+    {
+      "id": "PRV-18",
+      "title": "Sin traducción ni indexación remotas",
+      "severity": "recomendada",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-19",
+      "title": "Fechas públicas sin hora exacta",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-20",
+      "title": "Pruebas sin metadatos aceptadas por el nodo",
+      "severity": "recomendada",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "SESNA S-03",
+        "ASVS V12.2.1",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-21",
+      "title": "Denuncia sin datos personales",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-22",
+      "title": "Datos abiertos sin celdas pequeñas",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "SESNA S-06",
+        "BPDN art. 60",
+        "BPDN art. 61"
+      ]
+    },
+    {
+      "id": "PRV-23",
+      "title": "Caracteres invisibles en los hechos",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "SESNA S-03"
+      ]
+    },
+    {
+      "id": "API-01",
+      "title": "Conformidad con el contrato",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "API9:2023",
+        "SESNA S-11",
+        "BPDN especificación por sistema"
+      ]
+    },
+    {
+      "id": "API-02",
+      "title": "Errores comunes sin datos sensibles",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V7.4.1",
+        "API8:2023"
+      ]
+    },
+    {
+      "id": "SEC-31",
+      "title": "TLS moderno",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V9.1.1",
+        "ASVS V9.1.2",
+        "ASVS V9.1.3"
+      ]
+    },
+    {
+      "id": "SEC-32",
+      "title": "Cabeceras de tipo de contenido",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V14.4.1",
+        "ASVS V14.4.4"
+      ]
+    },
+    {
+      "id": "SEC-33",
+      "title": "CORS cerrado",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V14.5.3",
+        "API8:2023"
+      ]
+    },
+    {
+      "id": "SEC-34",
+      "title": "Sin divulgación de versión",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V14.3.3"
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "kind": "codigo",
+      "description": "Usa ALTCHA con el reto servido en [ruta redactada] (propio origen, sin terceros)."
+    },
+    {
+      "kind": "cabecera",
+      "description": "Cabecera que revela tecnología del servidor (ASVS V14.3.3).",
+      "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+      "name": "x-powered-by",
+      "value": "Next.js"
+    },
+    {
+      "kind": "cabecera",
+      "description": "Cabecera que revela tecnología del servidor (ASVS V14.3.3).",
+      "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/",
+      "name": "server",
+      "value": "ZENEDGE"
+    },
+    {
+      "kind": "nota",
+      "description": "Reporte regenerado el 2026-11-05T08:08:28.536Z a partir de la captura del 2026-11-05T07:23:55.602Z, sin hacer nuevas peticiones al sitio."
+    },
+    {
+      "kind": "nota",
+      "description": "Reporte redactado: se omitieron fragmentos de código, rutas de recursos JavaScript y nombres de colecciones, campos y claves. El detalle completo se conserva fuera del repositorio para la divulgación privada."
+    }
+  ],
+  "network": {
+    "requestCount": 75,
+    "isRequestLimitReached": false,
+    "requests": [
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "document",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "font",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "stylesheet",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "stylesheet",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "image",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "image",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "fetch",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "document",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "font",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "stylesheet",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "stylesheet",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "stylesheet",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]",
+        "method": "GET",
+        "resourceType": "image",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      }
+    ]
+  },
+  "errors": []
+}

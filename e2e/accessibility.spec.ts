@@ -3,7 +3,14 @@
 // obligatorios anunciados y atajo de teclado de la salida rápida.
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
-import { seedAnonymousComplaint } from './support/api.ts';
+import {
+  prepareSealedComplaint,
+  routeToInvestigation,
+  seedAnonymousComplaint,
+  seedPreparedComplaint,
+  syntheticFacts,
+} from './support/api.ts';
+import { E2E_ACCOUNTS } from './support/environment.ts';
 import { expectNoAccessibilityViolations } from './support/accessibility.ts';
 import { loginAsAuthority, openComplaint } from './support/authority.ts';
 import { expect, test } from './support/fixtures.ts';
@@ -111,7 +118,9 @@ test('el seguimiento y el panel de autoridad no tienen violaciones de accesibili
   request,
 }) => {
   const { folio, words } = await seedAnonymousComplaint(request);
-  await loginAsAuthority(page);
+  // La pregunta por el buzón la hace la investigación de la autoridad que aceptó la denuncia.
+  await routeToInvestigation(request, folio);
+  await loginAsAuthority(page, E2E_ACCOUNTS.iffeInvestigator);
   await expect(page.getByTestId('complaint-list')).toBeVisible();
   await expectNoAccessibilityViolations(page, 'autoridad: listado');
   await openComplaint(page, folio);
@@ -241,4 +250,100 @@ test.describe('atajo de la salida rápida', () => {
     await page.keyboard.press('Escape');
     await page.waitForURL(`https://${exitHost}/**`);
   });
+});
+
+/** Temas de la dirección A y anchos que se revisan (celular y escritorio). */
+const THEMES = ['light', 'dark', 'contrast'] as const;
+const WIDTHS = [390, 1280] as const;
+
+/** Carpeta opcional para guardar capturas de cada pantalla (SIGILO_SCREENSHOTS_DIR). */
+const SCREENSHOTS_DIR = process.env['SIGILO_SCREENSHOTS_DIR'] ?? '';
+
+async function checkScreen(page: Page, name: string, theme: string, width: number) {
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+  await expectNoAccessibilityViolations(page, `${name} (${theme}, ${width} px)`);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, `${name} se desplaza a lo ancho en ${width} px`).toBeLessThanOrEqual(0);
+  if (SCREENSHOTS_DIR !== '') {
+    await page.screenshot({
+      path: `${SCREENSHOTS_DIR}/${name}-${theme}-${width}.png`,
+      fullPage: true,
+    });
+  }
+}
+
+for (const theme of THEMES) {
+  for (const width of WIDTHS) {
+    test(`las pantallas principales cumplen AA en el tema ${theme} a ${width} px`, async ({
+      page,
+      request,
+    }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize({ width, height: width < 600 ? 844 : 900 });
+      // El tema elegido se recuerda en el navegador: así se fija antes de cargar cada pantalla.
+      await page.addInitScript((value) => {
+        try {
+          window.localStorage.setItem('sigilo-tema', value);
+        } catch {
+          // Sin almacenamiento: el selector seguiría funcionando en la página.
+        }
+      }, theme);
+
+      await page.goto('/');
+      await expect(page.getByTestId('shield')).toBeVisible();
+      await checkScreen(page, 'inicio', theme, width);
+
+      // Denunciar: la revisión con el grupo de anonimato y el navegador de pasos.
+      await startReport(page, 'anonymous');
+      await continueTo(page, 'facts');
+      await page.getByTestId('state-select').selectOption('22');
+      await page.getByTestId('entity-select').selectOption('VE-INSTITUTO');
+      await page.getByTestId('offense-select').selectOption('LGRA-59');
+      await page.getByTestId('period-month').selectOption('03');
+      await page.getByTestId('period-year').selectOption(String(new Date().getFullYear()));
+      await page.getByTestId('accused-input').fill(NEUTRAL_FACTS.accused);
+      await page.getByTestId('description-input').fill(NEUTRAL_FACTS.description);
+      await page.getByTestId('workplace-yes').check();
+      await continueTo(page, 'evidence');
+      await continueTo(page, 'review');
+      await expect(page.getByTestId('anonymity-notice')).toBeVisible();
+      await checkScreen(page, 'denunciar', theme, width);
+
+      // Seguimiento de una denuncia sellada y turnada.
+      const prepared = await prepareSealedComplaint(
+        request,
+        'Persona Ficticia Temas',
+        syntheticFacts({ entityId: 'VE-INSTITUTO', offenseCode: 'LGRA-59' }),
+      );
+      const { folio, words } = await seedPreparedComplaint(request, prepared);
+      await routeToInvestigation(request, folio);
+      await openTracking(page, folio, words);
+      await expect(page.getByTestId('identity-status')).toBeVisible();
+      await checkScreen(page, 'seguimiento', theme, width);
+
+      // Panel: la ficha de la denuncia.
+      await loginAsAuthority(page, E2E_ACCOUNTS.iffeInvestigator);
+      await openComplaint(page, folio);
+      await expect(page.getByTestId('context-sheet')).toBeVisible();
+      await checkScreen(page, 'panel', theme, width);
+
+      await page.goto('/observatorio');
+      await expect(page.getByTestId('coverage-matrix')).toBeVisible();
+      await checkScreen(page, 'observatorio', theme, width);
+    });
+  }
+}
+
+test('el selector de tema cambia los colores y recuerda la elección', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('Alto contraste', { exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
+  expect(await page.evaluate(() => window.localStorage.getItem('sigilo-tema'))).toBe('contrast');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
+  await page.getByText('Como mi sistema', { exact: true }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/u);
+  expect(await page.evaluate(() => window.localStorage.length)).toBe(0);
 });

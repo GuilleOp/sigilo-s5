@@ -1,0 +1,53 @@
+{
+  "entries": [
+    {
+      "v": 1,
+      "seq": 0,
+      "type": "directory.version",
+      "at": "2026-11-09",
+      "directorySerial": 1,
+      "directoryDigest": "3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9f0a2b4c6d8e0f1a2b",
+      "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hash": "6e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d"
+    },
+    {
+      "v": 1,
+      "seq": 1,
+      "type": "node.head",
+      "at": "2026-11-09",
+      "nodeId": "node.queretaro",
+      "nodeHead": {
+        "seq": 41,
+        "hash": "a41f0c2e9b8d7a6c5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d",
+        "at": "2026-11-09",
+        "serverKeyId": "c3f8e2a1b0d94756",
+        "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+      },
+      "prevHash": "6e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d",
+      "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f"
+    }
+  ],
+  "head": {
+    "head": {
+      "v": 1,
+      "seq": 1,
+      "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+      "at": "2026-11-09",
+      "directorySerial": 1,
+      "operatorKeyId": "5d1c2a9e8b7f3c40"
+    },
+    "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+    "cosignatures": [
+      {
+        "witnessId": "node.queretaro",
+        "keyId": "c3f8e2a1b0d94756",
+        "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+      },
+      {
+        "witnessId": "observer.cpc-queretaro",
+        "keyId": "c3f8e2a1b0d94756",
+        "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+      }
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "transferId": "5b1e0c9d8a7f6e5d4c3b2a1908f7e6d5",
+  "receipt": {
+    "folio": "P3W8-H2NC-6FJV",
+    "submissionDigest": "ccaf46406392ac527c992cdb4592f757519c398359ddd0ae89474357e96be6f2",
+    "receivedOn": "2026-11-05",
+    "payloadDigest": "06070e6e2bc7be88a3beecfb1b7ec80e2ee8d8fae2ae612e28e1c6347dc3d797",
+    "serverKeyId": "c64189c912bb3ce1",
+    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+  },
+  "request": {
+    "version": 1,
+    "mode": "sealed",
+    "facts": {
+      "stateCode": "22",
+      "municipalityCode": "014",
+      "entityId": "VE-OBRAS",
+      "offenseCode": "LGRA-52",
+      "occurredPeriod": "2026-09",
+      "accused": "Servidor Ficticio Dos, jefe de licencias de la Secretaría de Obras de Villa Ejemplo",
+      "description": "Para agilizar un permiso de construcción pidieron un pago en efectivo fuera de la ventanilla. El pago no tenía recibo."
+    },
+    "evidence": [
+      {
+        "evidenceId": "16ed88d6f3ea7c6c4841645c43cd2c79",
+        "mediaType": "image/jpeg",
+        "sha256": "2fba3e8225db3948a2560e78ff0f3c161472b03d83f6505ee3b124ecc19405ed",
+        "sizeBytes": 482113
+      }
+    ],
+    "sealedIdentity": {
+      "v": 1,
+      "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+      "keyId": "f7bc219ff223a248",
+      "enc": "fsOie5ivq9VBIaT8pAwSTHn5gXsdDbKhlGG6xR-D0mc",
+      "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+    },
+    "protectionRequested": true,
+    "reporterKeys": {
+      "boxPublicKey": "PCLP94gM6QhqKrW5rUxRyOkjYp_c20X88FzkKeeBPeE",
+      "signingPublicKey": "5C-TWh-HnoKNmmiGagV86aRffsRIHL0GRv7TbrS-CBU"
+    },
+    "authVerifier": "6H9gCXCtBR7tRa2GGz5vvMxJ5x3oaqb0mNjkfPnUav0"
+  }
+}

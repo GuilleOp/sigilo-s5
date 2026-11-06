@@ -1,0 +1,19 @@
+{
+  "notices": [
+    {
+      "seq": 1,
+      "status": {
+        "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+        "confirmation": "confirmed",
+        "isRevealed": true,
+        "groupId": "4b8e1f0a2c9d7e3651a0b4c8d2e6f193",
+        "complaints": 2,
+        "independentSources": 2,
+        "confirmedOtherSources": 1,
+        "sameOriginCount": 1,
+        "flags": [],
+        "signals": []
+      }
+    }
+  ]
+}

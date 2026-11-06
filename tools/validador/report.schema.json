@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sigilo.invalid/estandar/validador/report.schema.json",
+  "title": "Reporte de sigilo-validar (formato 1)",
+  "description": "Resultado de una corrida del validador del Estándar S5. Los campos y su orden son estables dentro de schemaVersion 1; los cambios incompatibles suben schemaVersion.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "tool",
+    "mode",
+    "target",
+    "startedAt",
+    "finishedAt",
+    "limits",
+    "summary",
+    "checks",
+    "observations",
+    "network",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "userAgent"],
+      "properties": {
+        "name": { "const": "sigilo-validar" },
+        "version": { "type": "string" },
+        "userAgent": { "type": "string" }
+      }
+    },
+    "mode": { "enum": ["pasivo", "conformidad"] },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "pages"],
+      "properties": {
+        "url": { "type": "string" },
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "url"],
+            "properties": { "label": { "type": "string" }, "url": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "startedAt": { "type": "string", "description": "ISO 8601 en UTC." },
+    "finishedAt": { "type": "string", "description": "ISO 8601 en UTC." },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxRequests", "navigationTimeoutMs", "maxResourceBytes"],
+      "properties": {
+        "maxRequests": { "type": "integer", "minimum": 1 },
+        "navigationTimeoutMs": { "type": "integer", "minimum": 1 },
+        "maxResourceBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cumple", "no_cumple", "advertencia", "no_aplica"],
+      "properties": {
+        "cumple": { "type": "integer", "minimum": 0 },
+        "no_cumple": { "type": "integer", "minimum": 0 },
+        "advertencia": { "type": "integer", "minimum": 0 },
+        "no_aplica": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "description": "Una entrada por verificación de estandar/verificaciones.json, en su orden. Las no automatizadas salen como no_aplica.",
+      "items": { "$ref": "#/$defs/check" }
+    },
+    "observations": {
+      "type": "array",
+      "description": "Hallazgos informativos que no son una verificación del estándar.",
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestCount", "isRequestLimitReached", "requests"],
+      "properties": {
+        "requestCount": { "type": "integer", "minimum": 0 },
+        "isRequestLimitReached": { "type": "boolean" },
+        "requests": { "type": "array", "items": { "$ref": "#/$defs/request" } }
+      }
+    },
+    "errors": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "status": { "enum": ["cumple", "no_cumple", "advertencia", "no_aplica"] },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "status",
+        "summary",
+        "isHeuristic",
+        "evidence",
+        "references"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^(PRV|API|SEC)-\\d{2}$" },
+        "title": { "type": "string" },
+        "severity": { "enum": ["obligatoria", "recomendada"] },
+        "status": { "$ref": "#/$defs/status" },
+        "summary": { "type": "string" },
+        "isHeuristic": {
+          "type": "boolean",
+          "description": "true si el resultado es una inferencia del análisis estático y no una observación directa."
+        },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "references": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "description"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "cabecera",
+            "red",
+            "html",
+            "codigo",
+            "cookie",
+            "almacenamiento",
+            "respuesta",
+            "nota"
+          ]
+        },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "name": { "type": "string" },
+        "value": { "type": "string" },
+        "snippet": { "type": "string" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "method", "resourceType", "page", "party", "status", "isBlocked"],
+      "properties": {
+        "url": { "type": "string" },
+        "method": { "type": "string" },
+        "resourceType": { "type": "string" },
+        "page": { "type": "string" },
+        "party": { "enum": ["propio", "mismo_sitio", "tercero", "incrustado"] },
+        "status": { "type": ["integer", "null"] },
+        "isBlocked": { "type": "boolean" },
+        "blockReason": { "type": "string" }
+      }
+    }
+  }
+}

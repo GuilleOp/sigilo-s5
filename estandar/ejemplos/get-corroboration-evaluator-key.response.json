@@ -1,0 +1,9 @@
+{
+  "suite": "ristretto255-SHA512/VOPRF",
+  "epoch": 1,
+  "keyId": "7c2e9a4b1d0f3856",
+  "publicKey": "yAPizGsF_BUGRUm1kgZZykp3ssym8E9rNXAJM1R2rU4",
+  "signingKeyId": "b51f0e3a9c7d2468",
+  "signingPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f",
+  "validFrom": "2026-11-09"
+}

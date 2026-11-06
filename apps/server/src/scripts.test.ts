@@ -17,7 +17,9 @@ import { join, resolve } from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { LedgerAnchorSchema, PublicKeySetSchema } from '@sigilo/contracts';
 import { fromBase64Url, toDayDate, verifyLedgerHead } from '@sigilo/core';
-import { parseAuthorityDemoKey, parseKeysFile } from './keys-file.ts';
+import { parseAuthorityDemoKey, parseKeysFile, parseSupervisorDemoKey } from './keys-file.ts';
+import { createAuthorityRegistry } from './security/authority-registry.ts';
+import { verifyPassword } from './security/passwords.ts';
 import { MISSING_DATABASE_MESSAGE } from './ledger-anchor.ts';
 import { LOCK_FILE } from './server-lock.ts';
 
@@ -51,18 +53,13 @@ function paths(directory: string) {
   return {
     dataDir: join(directory, 'data'),
     pinned: join(directory, 'pinned-keys.json'),
-    envFile: join(directory, 'server.env'),
     anchors: join(directory, 'anchors'),
   };
 }
 
 function keyEnv(directory: string): Record<string, string> {
-  const { dataDir, pinned, envFile } = paths(directory);
-  return {
-    SIGILO_DATA_DIR: dataDir,
-    SIGILO_PINNED_KEYS_FILE: pinned,
-    SIGILO_ENV_FILE: envFile,
-  };
+  const { dataDir, pinned } = paths(directory);
+  return { SIGILO_DATA_DIR: dataDir, SIGILO_PINNED_KEYS_FILE: pinned };
 }
 
 function readJson(path: string): unknown {
@@ -82,33 +79,35 @@ afterEach(() => {
 });
 
 describe('scripts/generate-keys.ts', () => {
-  it('genera llaves coherentes, regenera las fijadas y crea .env con un token', () => {
+  it('genera llaves coherentes con la de la supervisora y regenera las fijadas', () => {
     const directory = temporaryDir();
-    const { dataDir, pinned, envFile } = paths(directory);
+    const { dataDir, pinned } = paths(directory);
     // Las fijadas existen en un clon nuevo (se versionan) y no deben bloquear la generación.
     writeFileSync(pinned, '{}\n');
     const result = runScript('generate-keys.ts', keyEnv(directory));
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain(envFile.split('/').at(-1));
+    expect(result.stdout).toContain('accounts:generate');
 
     const keysPath = join(dataDir, 'keys.json');
     const authorityPath = join(dataDir, 'authority-demo-key.json');
+    const supervisorPath = join(dataDir, 'supervisor-demo-key.json');
     const keys = parseKeysFile(readJson(keysPath));
     parseAuthorityDemoKey(readJson(authorityPath), keys.publicKeySet);
+    parseSupervisorDemoKey(readJson(supervisorPath), keys.publicKeySet);
+    expect(keys.publicKeySet.supervisor).toBeDefined();
     expect(PublicKeySetSchema.parse(readJson(pinned))).toEqual(keys.publicKeySet);
-    for (const path of [keysPath, authorityPath, envFile]) {
+    for (const path of [keysPath, authorityPath, supervisorPath]) {
       expect(statSync(path).mode & 0o777, path).toBe(0o600);
     }
-    const token = /^SIGILO_AUTHORITY_TOKEN=(\S+)$/mu.exec(readFileSync(envFile, 'utf8'))?.[1];
-    expect(token?.length).toBeGreaterThanOrEqual(32);
+    // Ya no se crea ningún token compartido.
+    expect(existsSync(join(directory, 'server.env'))).toBe(false);
   });
 
-  it('se niega a reemplazar llaves privadas sin --force y con --force conserva el token', () => {
+  it('se niega a reemplazar llaves privadas sin --force', () => {
     const directory = temporaryDir();
-    const { dataDir, pinned, envFile } = paths(directory);
+    const { dataDir, pinned } = paths(directory);
     expect(runScript('generate-keys.ts', keyEnv(directory)).status).toBe(0);
     const firstKeys = readFileSync(join(dataDir, 'keys.json'), 'utf8');
-    const firstEnv = readFileSync(envFile, 'utf8');
 
     const refused = runScript('generate-keys.ts', keyEnv(directory));
     expect(refused.status).toBe(1);
@@ -120,7 +119,36 @@ describe('scripts/generate-keys.ts', () => {
     const secondKeys = parseKeysFile(readJson(join(dataDir, 'keys.json')));
     expect(readFileSync(join(dataDir, 'keys.json'), 'utf8')).not.toBe(firstKeys);
     expect(PublicKeySetSchema.parse(readJson(pinned))).toEqual(secondKeys.publicKeySet);
-    expect(readFileSync(envFile, 'utf8')).toBe(firstEnv);
+  });
+});
+
+describe('scripts/generate-accounts.ts', () => {
+  it('genera cuentas individuales con digestos y credenciales de demostración privadas', async () => {
+    const directory = temporaryDir();
+    const { dataDir } = paths(directory);
+    const result = runScript('generate-accounts.ts', { SIGILO_DATA_DIR: dataDir });
+    expect(result.status, result.stderr).toBe(0);
+    const accountsPath = join(dataDir, 'authority-accounts.json');
+    const credentialsPath = join(dataDir, 'authority-demo-credentials.json');
+    const registry = createAuthorityRegistry(readJson(accountsPath));
+    for (const path of [accountsPath, credentialsPath]) {
+      expect(statSync(path).mode & 0o777, path).toBe(0o600);
+    }
+    const { credenciales } = readJson(credentialsPath) as {
+      credenciales: { username: string; password: string; function: string }[];
+    };
+    const functions = new Set(credenciales.map((item) => item.function));
+    expect([...functions].sort()).toEqual(['intake', 'investigation', 'supervision']);
+    const [first] = credenciales;
+    if (first === undefined) throw new Error('Faltan credenciales.');
+    const account = registry.findByUsername(first.username);
+    if (account === null) throw new Error('Falta la cuenta.');
+    await expect(verifyPassword(first.password, account.passwordHash)).resolves.toBe(true);
+    // El archivo que lee el servidor nunca trae contraseñas en claro.
+    expect(readFileSync(accountsPath, 'utf8')).not.toContain(first.password);
+    const refused = runScript('generate-accounts.ts', { SIGILO_DATA_DIR: dataDir });
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('--force');
   });
 });
 

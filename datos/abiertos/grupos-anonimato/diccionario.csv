@@ -1,0 +1,22 @@
+archivo,campo,tipo,descripcion
+cubetas.csv,ambito_clave,texto,"Clave INEGI de la entidad federativa (2 dígitos), 00 para lo federal o NAC para el agregado nacional."
+cubetas.csv,ambito,texto,Nombre de la entidad federativa o «Nacional».
+cubetas.csv,nivel,texto,"Nivel del grupo: «area» (ente y área de adscripción) o «ente» (ente público completo)."
+cubetas.csv,cubeta,texto,"Rango de personas distintas del grupo: 1-4, 5-9, 10-49 o 50+."
+cubetas.csv,grupos,entero,Número de grupos (áreas o entes) cuyo tamaño cae en la cubeta.
+cubetas.csv,personas,entero,"Personas distintas en los grupos de la cubeta, redondeadas a 10. Vacío si se suprime."
+cubetas.csv,personas_suprimido,entero,1 si se suprimió: la celda tenía de 1 a 4 personas o menos de 3 grupos; 0 en otro caso.
+resumen.csv,ambito_clave,texto,"Clave INEGI de la entidad federativa, 00 para lo federal o NAC para el agregado nacional."
+resumen.csv,ambito,texto,Nombre de la entidad federativa o «Nacional».
+resumen.csv,personas,entero,"Personas distintas cuya declaración más reciente en S1 cae en la ventana de 24 meses de su proveedor y no es de conclusión, redondeadas a 10."
+resumen.csv,entes,entero,Entes públicos distintos (nombre normalizado dentro de la entidad) con al menos una persona.
+resumen.csv,grupos_area,entero,"Grupos (ente, área) distintos con al menos una persona."
+resumen.csv,pct_personas_k_menor_10_area,decimal,"Porcentaje de personas cuyo grupo (ente, área) tiene menos de 10 personas."
+resumen.csv,pct_personas_k_menor_10_ente,decimal,Porcentaje de personas cuyo ente tiene menos de 10 personas.
+resumen.csv,pct_protegidas_area,decimal,"Porcentaje de personas cuyo grupo protector, tras la generalización, es su propia área (k de al menos 10 y nombre publicable)."
+resumen.csv,pct_protegidas_ente,decimal,Porcentaje de personas cuyo grupo protector es su ente completo.
+resumen.csv,pct_protegidas_grupo_entes,decimal,Porcentaje de personas cuyo grupo protector es «otros entes del mismo orden de gobierno» de la entidad.
+resumen.csv,pct_protegidas_entidad,decimal,Porcentaje de personas que solo quedan protegidas a nivel de la entidad completa.
+resumen.csv,pct_sin_proteccion,decimal,Porcentaje de personas sin ningún nivel con al menos 10 personas.
+resumen.csv,(pct_*),decimal,"Todos los porcentajes llevan un decimal y quedan vacíos si su numerador es de 1 a 4 (o por supresión complementaria entre los porcentajes de protección)."
+resumen.csv,fecha_corte,fecha,Fecha más reciente de declaración usada (AAAA-MM-DD).

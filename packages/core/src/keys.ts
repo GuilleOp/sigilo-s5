@@ -20,6 +20,8 @@ export interface DeploymentPublicKeys {
   authorityBoxPublicKey: Uint8Array;
   /** Ed25519 con la que la autoridad firma sus mensajes. */
   authoritySigningPublicKey: Uint8Array;
+  /** X25519 de la autoridad supervisora (segunda llave), si el despliegue la tiene. */
+  supervisorBoxPublicKey?: Uint8Array;
 }
 
 const KEY_LENGTH = 32;
@@ -79,7 +81,9 @@ export function buildPublicKeySet(keys: DeploymentPublicKeys): PublicKeySet {
     keys.serverSigningPublicKey,
     keys.authorityBoxPublicKey,
     keys.authoritySigningPublicKey,
+    ...(keys.supervisorBoxPublicKey === undefined ? [] : [keys.supervisorBoxPublicKey]),
   ]);
+  const supervisor = keys.supervisorBoxPublicKey;
   return {
     server: {
       keyId: keyIdFor(keys.serverSigningPublicKey),
@@ -90,5 +94,10 @@ export function buildPublicKeySet(keys: DeploymentPublicKeys): PublicKeySet {
       boxPublicKey: toBase64Url(keys.authorityBoxPublicKey),
       signingPublicKey: toBase64Url(keys.authoritySigningPublicKey),
     },
+    ...(supervisor === undefined
+      ? {}
+      : {
+          supervisor: { keyId: keyIdFor(supervisor), boxPublicKey: toBase64Url(supervisor) },
+        }),
   };
 }

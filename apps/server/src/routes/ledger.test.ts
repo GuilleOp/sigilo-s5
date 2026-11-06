@@ -13,9 +13,8 @@ import {
   createReporter,
   createTestServer,
   NEXT_DAY,
-  postJson,
   submitComplaint,
-  TEST_TOKEN,
+  moveTo,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
 
@@ -75,15 +74,17 @@ describe('bitácora', () => {
     const [first] = folios;
     if (!first) throw new Error('Falta el folio.');
     await server.advanceTo(new Date('2026-10-21T08:00:00Z'));
-    await postJson(server.app, ROUTES.authorityStatus(first), { status: 'routing' }, TEST_TOKEN);
+    await moveTo(server, first, 'routing');
     await server.advanceTo(new Date('2026-10-22T08:00:00Z'));
 
     const response = await server.app.request(`${ROUTES.ledgerEvents}?from=0&limit=500`);
     const raw = await response.text();
     const page = LedgerPageSchema.parse(JSON.parse(raw));
+    // Turnar y devolver al buzón general son dos acciones del trámite.
     expect(page.events.map((event) => event.type)).toEqual([
       'complaint.received',
       'complaint.received',
+      'complaint.status_changed',
       'complaint.status_changed',
     ]);
     expect(verifyChain(page.events)).toEqual({ valid: true });
@@ -91,7 +92,7 @@ describe('bitácora', () => {
     for (const folio of folios) expect(raw).not.toContain(folio);
 
     const head = await readHead(server);
-    expect(head).toMatchObject({ seq: 2, hash: page.events[2]?.hash, at: '2026-10-21' });
+    expect(head).toMatchObject({ seq: 3, hash: page.events[3]?.hash, at: '2026-10-21' });
     expect(verifyLedgerHead(head, server.serverPublicKey)).toBe(true);
     expect(page.head).toEqual(head);
   });

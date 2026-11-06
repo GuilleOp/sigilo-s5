@@ -1,4 +1,5 @@
-/* Componentes compartidos: botones, avisos, tarjetas, progreso, semáforo y revisor de texto. */
+/* Componentes compartidos: botones, avisos, tarjetas, progreso, semáforo y revisor de texto.
+   Dirección visual A: botones en píldora, tarjetas blancas sobre menta y contornos verdes. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -8,7 +9,7 @@
   min-width: var(--target-min);
   padding: var(--space-2) var(--space-4);
   border: 2px solid var(--color-primary);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   background: var(--color-primary);
   color: var(--color-on-primary);
   font-weight: 700;
@@ -35,7 +36,7 @@
 .button--danger {
   background: var(--color-danger);
   border-color: var(--color-danger);
-  color: var(--color-bg);
+  color: var(--color-on-danger);
 }
 
 .button:disabled,
@@ -47,12 +48,12 @@
 .quick-exit {
   background: var(--color-danger);
   border-color: var(--color-danger);
-  color: var(--color-bg);
+  color: var(--color-on-danger);
 }
 
 .quick-exit:hover {
   background: var(--color-danger);
-  color: var(--color-bg);
+  color: var(--color-on-danger);
   text-decoration: underline;
 }
 
@@ -88,7 +89,7 @@
 
 .alert--info {
   background: var(--color-info-bg);
-  border-color: var(--color-focus);
+  border-color: var(--color-info);
 }
 
 .alert--success {
@@ -248,7 +249,7 @@
 
 .review-text mark {
   background: var(--color-mark-bg);
-  color: inherit;
+  color: var(--color-on-mark);
   text-decoration: underline wavy var(--color-danger) 2px;
   text-underline-offset: 0.25em;
   border-bottom: 2px solid var(--color-text);
@@ -296,11 +297,12 @@
   font-weight: 700;
 }
 
+/* Recibo: cada palabra en una píldora con contorno verde, como los campos de la plataforma. */
 .receipt-words li {
-  padding: var(--space-2) var(--space-3);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-bg);
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
 }
 
 .word-grid {

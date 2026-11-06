@@ -36,3 +36,12 @@ documentación.
 La web muestra el aviso «Demostración: no envíes denuncias reales» (se apaga con
 `VITE_DEMO_NOTICE=false`). Si se publica una instancia en línea, debe conservar ese aviso y borrar
 sus datos con regularidad (`npm run demo:reset`); el borrado automático no está implementado.
+
+## Escenario de la demostración
+
+El escenario completo de la demostración final (red, autoridades, personas, casos, datos PDN
+sintéticos, línea de tiempo y observatorio) se especifica en [demo-escenario.md](demo-escenario.md).
+Es la fuente única para las semillas, las pruebas E2E del recorrido y el guion. Sigue estas
+convenciones y agrega dos precisiones: las fechas se expresan en días relativos al día 0 del reloj
+de demostración, y los RFC sintéticos con prefijo `XAXX` también se usan como clave en los
+archivos de semillas de las fuentes ficticias (nunca en narraciones).

@@ -428,6 +428,355 @@ BEGIN
 END;
 `;
 
+// Migración 7: nodo de varias autoridades. Cada denuncia guarda la autoridad que la tiene, su
+// estado en el flujo de gestión y su etapa legal, el día legal de recepción (hora del centro) y la
+// segunda llave. Registros de solo agregar: pasos del trámite (con su nota pública), acuerdos de
+// cierre, solicitudes y aprobaciones de apertura de identidad (una persona aprueba una sola vez
+// por solicitud: lo impide el índice único), reglas públicas cumplidas y eventos de seguridad de
+// las cuentas (sin IP ni agente de usuario). Las denuncias anteriores quedan en el buzón general.
+const MULTI_AUTHORITY_NODE = `
+ALTER TABLE complaints ADD COLUMN received_legal_on TEXT;
+UPDATE complaints SET received_legal_on = received_on;
+ALTER TABLE complaints ADD COLUMN assigned_authority TEXT;
+ALTER TABLE complaints ADD COLUMN management_state TEXT NOT NULL DEFAULT 'received_in_inbox';
+ALTER TABLE complaints ADD COLUMN legal_stage TEXT;
+ALTER TABLE complaints ADD COLUMN closure_reason TEXT;
+ALTER TABLE complaints ADD COLUMN escalation_envelope_json TEXT;
+CREATE INDEX complaints_by_authority ON complaints (assigned_authority, received_on);
+CREATE INDEX complaints_by_management_state ON complaints (management_state);
+
+CREATE TABLE procedure_steps (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  step_on TEXT NOT NULL,
+  legal_on TEXT NOT NULL,
+  management_state TEXT NOT NULL,
+  legal_stage TEXT,
+  closure_reason TEXT,
+  authority_id TEXT NOT NULL,
+  actor_id TEXT,
+  note TEXT,
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER procedure_steps_no_update BEFORE UPDATE ON procedure_steps
+BEGIN
+  SELECT RAISE(ABORT, 'Los pasos del trámite son de solo agregar.');
+END;
+CREATE TRIGGER procedure_steps_no_delete BEFORE DELETE ON procedure_steps
+BEGIN
+  SELECT RAISE(ABORT, 'Los pasos del trámite son de solo agregar.');
+END;
+
+CREATE TABLE closure_agreements (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  authority_id TEXT NOT NULL,
+  closed_on TEXT NOT NULL,
+  legal_on TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  legal_basis TEXT NOT NULL,
+  agreement TEXT NOT NULL,
+  agreement_digest TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX closure_agreements_by_authority ON closure_agreements (authority_id, closed_on);
+CREATE TRIGGER closure_agreements_no_update BEFORE UPDATE ON closure_agreements
+BEGIN
+  SELECT RAISE(ABORT, 'Los acuerdos de cierre son de solo agregar.');
+END;
+CREATE TRIGGER closure_agreements_no_delete BEFORE DELETE ON closure_agreements
+BEGIN
+  SELECT RAISE(ABORT, 'Los acuerdos de cierre son de solo agregar.');
+END;
+
+CREATE TABLE identity_requests (
+  request_id TEXT PRIMARY KEY,
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  authority_id TEXT NOT NULL,
+  requested_on TEXT NOT NULL,
+  legal_basis TEXT NOT NULL,
+  requested_by TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+CREATE INDEX identity_requests_by_folio ON identity_requests (folio);
+CREATE TRIGGER identity_requests_no_update BEFORE UPDATE ON identity_requests
+BEGIN
+  SELECT RAISE(ABORT, 'Las solicitudes de apertura son de solo agregar.');
+END;
+CREATE TRIGGER identity_requests_no_delete BEFORE DELETE ON identity_requests
+BEGIN
+  SELECT RAISE(ABORT, 'Las solicitudes de apertura son de solo agregar.');
+END;
+
+CREATE TABLE identity_approvals (
+  approval_id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL REFERENCES identity_requests (request_id),
+  account_id TEXT NOT NULL,
+  approved_on TEXT NOT NULL,
+  legal_basis TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+CREATE UNIQUE INDEX identity_approvals_one_per_account ON identity_approvals (request_id, account_id);
+CREATE TRIGGER identity_approvals_no_update BEFORE UPDATE ON identity_approvals
+BEGIN
+  SELECT RAISE(ABORT, 'Las aprobaciones de apertura son de solo agregar.');
+END;
+CREATE TRIGGER identity_approvals_no_delete BEFORE DELETE ON identity_approvals
+BEGIN
+  SELECT RAISE(ABORT, 'Las aprobaciones de apertura son de solo agregar.');
+END;
+
+CREATE TABLE rule_triggers (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  rule_key TEXT NOT NULL,
+  anchor_on TEXT NOT NULL,
+  triggered_on TEXT NOT NULL,
+  due_on TEXT NOT NULL,
+  effect TEXT NOT NULL CHECK (effect IN ('escalate', 'alert')),
+  authority_id TEXT NOT NULL,
+  supervisor_id TEXT,
+  PRIMARY KEY (folio, rule_key, anchor_on)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX rule_triggers_by_supervisor ON rule_triggers (supervisor_id, triggered_on)
+  WHERE effect = 'escalate';
+CREATE TRIGGER rule_triggers_no_update BEFORE UPDATE ON rule_triggers
+BEGIN
+  SELECT RAISE(ABORT, 'Las reglas cumplidas son de solo agregar.');
+END;
+CREATE TRIGGER rule_triggers_no_delete BEFORE DELETE ON rule_triggers
+BEGIN
+  SELECT RAISE(ABORT, 'Las reglas cumplidas son de solo agregar.');
+END;
+
+CREATE TABLE authority_security_events (
+  event_id TEXT PRIMARY KEY,
+  at TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  account_id TEXT,
+  folio_digest TEXT
+) STRICT, WITHOUT ROWID;
+CREATE INDEX authority_security_events_by_account ON authority_security_events (account_id, at);
+CREATE TRIGGER authority_security_events_no_update BEFORE UPDATE ON authority_security_events
+BEGIN
+  SELECT RAISE(ABORT, 'El registro de seguridad es de solo agregar.');
+END;
+CREATE TRIGGER authority_security_events_no_delete BEFORE DELETE ON authority_security_events
+BEGIN
+  SELECT RAISE(ABORT, 'El registro de seguridad es de solo agregar.');
+END;
+`;
+
+// Migración 8: integración de la red, el contexto de la PDN, el auditor y la corroboración. Todo es
+// de solo agregar: revisiones de conflicto de interés, verificaciones de sanciones, señales del
+// auditor, registros pendientes y estado de corroboración (lo que dice el índice) y turnados a otro
+// nodo con su comprobante. El estado de la corroboración se agrega como filas nuevas: la vigente es
+// la más reciente.
+/**
+ * Migración 9: calificación de la falta con su acuerdo (LGRA, art. 100) y recurso de inconformidad
+ * de la persona denunciante (arts. 102 a 110), ambos de solo agregar; calificación de los acuerdos
+ * importados.
+ */
+/**
+ * Migración 10 (revisión de seguridad de la Etapa 5): secuencia del buzón de la autoridad al
+ * momento de cada archivo y calificación, para que solo un mensaje posterior cuente como su
+ * notificación (H6); un folio destino por turnado (H1) y
+ * su vencimiento; entregas del sobre de identidad (H7).
+ */
+/**
+ * Migración 12 (H3): confirmación ante el índice cuando la autoridad acepta la denuncia y baja
+ * firmada al cerrarla como improcedente o acumulada.
+ */
+const CORROBORATION_CONFIRMATION = `
+ALTER TABLE corroboration_registrations ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0
+  CHECK (confirmed IN (0, 1));
+ALTER TABLE corroboration_registrations ADD COLUMN withdrawal_reason TEXT
+  CHECK (withdrawal_reason IS NULL OR withdrawal_reason IN ('spam', 'inadmissible', 'duplicate'));
+ALTER TABLE corroboration_registrations ADD COLUMN withdrawn INTEGER NOT NULL DEFAULT 0
+  CHECK (withdrawn IN (0, 1));
+`;
+
+/** Migración 11: nota pública del turnado, que la persona lee cuando llega el comprobante (H1). */
+const TRANSFER_NOTE = `
+ALTER TABLE transfers ADD COLUMN note TEXT;
+`;
+
+const SECURITY_REVIEW = `
+CREATE TABLE act_instants (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  act TEXT NOT NULL CHECK (act IN ('closure', 'qualification')),
+  authority_sequence INTEGER NOT NULL,
+  PRIMARY KEY (folio, act, authority_sequence)
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER act_instants_no_update BEFORE UPDATE ON act_instants
+BEGIN
+  SELECT RAISE(ABORT, 'Los actos registrados son de solo agregar.');
+END;
+CREATE UNIQUE INDEX transfers_target_folio ON transfers (to_node, target_folio)
+  WHERE target_folio IS NOT NULL;
+CREATE TABLE identity_releases (
+  release_id TEXT PRIMARY KEY,
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  opening_id TEXT NOT NULL,
+  released_on TEXT NOT NULL,
+  actor_id TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+CREATE INDEX identity_releases_by_folio ON identity_releases (folio);
+CREATE TRIGGER identity_releases_no_update BEFORE UPDATE ON identity_releases
+BEGIN
+  SELECT RAISE(ABORT, 'Las entregas de identidad son de solo agregar.');
+END;
+CREATE TRIGGER identity_releases_no_delete BEFORE DELETE ON identity_releases
+BEGIN
+  SELECT RAISE(ABORT, 'Las entregas de identidad son de solo agregar.');
+END;
+`;
+
+const QUALIFICATION_AND_APPEAL = `
+CREATE TABLE qualifications (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  authority_id TEXT NOT NULL,
+  on_day TEXT NOT NULL,
+  legal_on TEXT NOT NULL,
+  severity TEXT NOT NULL CHECK (severity IN ('serious', 'non_serious')),
+  legal_basis TEXT NOT NULL,
+  agreement TEXT NOT NULL,
+  agreement_digest TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER qualifications_no_update BEFORE UPDATE ON qualifications
+BEGIN
+  SELECT RAISE(ABORT, 'Las calificaciones son de solo agregar.');
+END;
+CREATE TRIGGER qualifications_no_delete BEFORE DELETE ON qualifications
+BEGIN
+  SELECT RAISE(ABORT, 'Las calificaciones son de solo agregar.');
+END;
+CREATE TABLE appeals (
+  appeal_id TEXT PRIMARY KEY,
+  folio TEXT NOT NULL UNIQUE REFERENCES complaints (folio),
+  filed_on TEXT NOT NULL,
+  legal_on TEXT NOT NULL,
+  reasons TEXT NOT NULL,
+  opening_id TEXT NOT NULL,
+  qualification_position INTEGER NOT NULL
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER appeals_no_update BEFORE UPDATE ON appeals
+BEGIN
+  SELECT RAISE(ABORT, 'Las inconformidades son de solo agregar.');
+END;
+CREATE TRIGGER appeals_no_delete BEFORE DELETE ON appeals
+BEGIN
+  SELECT RAISE(ABORT, 'Las inconformidades son de solo agregar.');
+END;
+ALTER TABLE imported_acts ADD COLUMN qualification TEXT
+  CHECK (qualification IS NULL OR qualification IN ('serious', 'non_serious'));
+`;
+
+const NETWORK_AND_CONTEXT = `
+CREATE TABLE conflict_reviews (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  authority_id TEXT NOT NULL,
+  checked_on TEXT NOT NULL,
+  legal_on TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  requires_response INTEGER NOT NULL CHECK (requires_response IN (0, 1)),
+  check_json TEXT NOT NULL,
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE TABLE sanction_checks (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  checked_on TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  explanation TEXT NOT NULL,
+  unverifiable INTEGER NOT NULL CHECK (unverifiable IN (0, 1)),
+  claim_json TEXT NOT NULL,
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE TABLE audit_signals (
+  signal_id TEXT PRIMARY KEY,
+  subject_key TEXT NOT NULL,
+  folio TEXT,
+  authority_id TEXT NOT NULL,
+  rule_id TEXT NOT NULL,
+  signal_key TEXT NOT NULL,
+  flagged_on TEXT NOT NULL,
+  signal_json TEXT NOT NULL,
+  record_digest TEXT NOT NULL,
+  UNIQUE (rule_id, subject_key, signal_key)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX audit_signals_by_folio ON audit_signals (folio);
+CREATE TABLE corroboration_registrations (
+  folio TEXT PRIMARY KEY REFERENCES complaints (folio),
+  epoch INTEGER NOT NULL,
+  tag TEXT NOT NULL,
+  similarity TEXT,
+  received_at TEXT NOT NULL,
+  entry TEXT NOT NULL CHECK (entry IN ('relay', 'direct')),
+  folio_digest TEXT NOT NULL UNIQUE,
+  registered INTEGER NOT NULL DEFAULT 0 CHECK (registered IN (0, 1))
+) STRICT, WITHOUT ROWID;
+CREATE TABLE corroboration_status (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  updated_on TEXT NOT NULL,
+  complaints INTEGER NOT NULL,
+  independent_sources INTEGER NOT NULL,
+  is_possible_campaign INTEGER NOT NULL CHECK (is_possible_campaign IN (0, 1)),
+  new_indication_on TEXT,
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE TABLE corroboration_cursor (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  after_seq INTEGER NOT NULL
+) STRICT;
+CREATE TABLE transfers (
+  transfer_id TEXT PRIMARY KEY,
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  to_authority TEXT NOT NULL,
+  to_node TEXT NOT NULL,
+  transferred_on TEXT NOT NULL,
+  relay_digest TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  target_folio TEXT,
+  target_receipt_json TEXT
+) STRICT, WITHOUT ROWID;
+CREATE INDEX transfers_by_folio ON transfers (folio);
+CREATE TABLE imported_acts (
+  act_id TEXT PRIMARY KEY,
+  authority_id TEXT NOT NULL,
+  file_number TEXT NOT NULL,
+  issued_on TEXT NOT NULL,
+  reason TEXT,
+  agreement TEXT NOT NULL,
+  batch_id TEXT NOT NULL,
+  UNIQUE (authority_id, file_number)
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER imported_acts_no_update BEFORE UPDATE ON imported_acts
+BEGIN
+  SELECT RAISE(ABORT, 'Los acuerdos importados son de solo agregar.');
+END;
+CREATE TRIGGER conflict_reviews_no_update BEFORE UPDATE ON conflict_reviews
+BEGIN
+  SELECT RAISE(ABORT, 'Las revisiones de conflicto son de solo agregar.');
+END;
+CREATE TRIGGER sanction_checks_no_update BEFORE UPDATE ON sanction_checks
+BEGIN
+  SELECT RAISE(ABORT, 'Las verificaciones de sanciones son de solo agregar.');
+END;
+CREATE TRIGGER audit_signals_no_update BEFORE UPDATE ON audit_signals
+BEGIN
+  SELECT RAISE(ABORT, 'Las señales del auditor son de solo agregar.');
+END;
+CREATE TRIGGER corroboration_status_no_update BEFORE UPDATE ON corroboration_status
+BEGIN
+  SELECT RAISE(ABORT, 'El estado de corroboración es de solo agregar.');
+END;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -436,6 +785,12 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 4, sql: RANDOM_ORDER_STORAGE, precheck: assertNoRowidData },
   { version: 5, sql: LEDGER_EVENTS_BY_DAY },
   { version: 6, sql: EVIDENCE_DISCARDS },
+  { version: 7, sql: MULTI_AUTHORITY_NODE },
+  { version: 8, sql: NETWORK_AND_CONTEXT },
+  { version: 9, sql: QUALIFICATION_AND_APPEAL },
+  { version: 10, sql: SECURITY_REVIEW },
+  { version: 11, sql: TRANSFER_NOTE },
+  { version: 12, sql: CORROBORATION_CONFIRMATION },
 ];
 
 /** Versión más reciente del esquema. */

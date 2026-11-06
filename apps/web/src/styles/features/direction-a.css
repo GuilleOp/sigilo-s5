@@ -1,0 +1,951 @@
+/* Componentes propios de la dirección A «Puente PDN → S5» (maquetas-v2/a-puente): distintivos de
+   sistema, estados en píldora, constelaciones, «Tu escudo», anillo de tres llaves, ruta de etapas,
+   navegador de pasos, contadores sobre banda y selector de tema. Solo usa tokens de tokens.css. */
+
+/* Íconos de línea: heredan el color del texto. */
+.icon {
+  inline-size: 1.15em;
+  block-size: 1.15em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.2em;
+}
+
+.button--sm {
+  min-block-size: var(--target-min);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+/* Titulares: peso ligero con remate en negritas, como la plataforma. */
+.display-title {
+  font-size: var(--text-2xl);
+  font-weight: 300;
+  line-height: 1.15;
+  color: var(--color-title);
+}
+
+.display-title strong {
+  font-weight: 900;
+}
+
+@media (min-width: 48rem) {
+  .display-title {
+    font-size: var(--text-3xl);
+  }
+}
+
+.lead {
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+/* Distintivo de sistema: anillo abierto con el glifo y la clave arriba a la izquierda. */
+.sys-badge {
+  --sys: 3.25rem;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--sys);
+  block-size: var(--sys);
+  flex: none;
+  color: var(--color-primary);
+}
+
+.sys-badge--sm {
+  --sys: 2.5rem;
+}
+
+.sys-badge--protect {
+  color: var(--color-protect);
+}
+
+.sys-badge--warning {
+  color: var(--color-warning);
+}
+
+.sys-badge__ring {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.sys-badge .sys-badge__glyph {
+  position: absolute;
+  inset: 24%;
+  inline-size: 52%;
+  block-size: 52%;
+  stroke-width: 1.8;
+}
+
+.sys-badge__key {
+  position: absolute;
+  left: -2%;
+  top: -6%;
+  padding: 0 1px;
+  font-size: calc(var(--sys) * 0.3);
+  font-weight: 900;
+  line-height: 1;
+  color: currentColor;
+  background: var(--color-surface);
+}
+
+/* Estado en píldora: siempre ícono y texto. */
+.state-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  inline-size: fit-content;
+  padding: 1px 10px 1px 6px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  background: var(--color-surface);
+  vertical-align: middle;
+}
+
+.state-tag .icon {
+  inline-size: 1.05rem;
+  block-size: 1.05rem;
+}
+
+.state-tag--ok {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.state-tag--warn {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.state-tag--bad {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.state-tag--info {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+.state-tag--nocov {
+  color: var(--color-no-coverage);
+  background: var(--color-no-coverage-bg);
+  border-style: dashed;
+}
+
+.state-tag--protect {
+  color: var(--color-protect);
+}
+
+.state-tag--idle {
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  font-weight: 700;
+}
+
+/* Inicio: titular con la constelación que termina en tu denuncia sellada. */
+.hero {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+}
+
+@media (min-width: 48rem) {
+  .hero {
+    grid-template-columns: 1.35fr 1fr;
+  }
+
+  /* Como en la maqueta: los dos botones del titular lado a lado. */
+  .hero .actions {
+    flex-wrap: nowrap;
+  }
+}
+
+.constellation {
+  inline-size: 100%;
+  block-size: auto;
+  display: block;
+}
+
+.constellation__edge {
+  stroke: var(--color-node);
+  stroke-width: 0.8;
+  opacity: 0.55;
+}
+
+.constellation__edge--protect {
+  stroke: var(--color-node-protect);
+  stroke-width: 1.4;
+  opacity: 0.9;
+}
+
+.constellation__node {
+  fill: var(--color-node);
+}
+
+.constellation__node--cyan {
+  fill: var(--color-node-cyan);
+}
+
+.constellation__you {
+  fill: var(--color-protect-fill);
+  stroke: var(--color-node-protect);
+  stroke-width: 2;
+}
+
+.constellation__halo {
+  fill: none;
+  stroke: var(--color-node-protect);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+  transform-origin: 290px 105px;
+  animation: constellation-pulse 3s ease-in-out 1;
+}
+
+.constellation__label {
+  fill: var(--color-text);
+  font: 800 11px var(--font-body);
+}
+
+@keyframes constellation-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.12);
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation__halo {
+    animation: none;
+  }
+}
+
+/* «Tu escudo». */
+.shield {
+  position: relative;
+  margin-block: var(--space-6);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  border: 2px solid var(--color-protect);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.shield::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: -2px;
+  block-size: 8px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(
+    90deg,
+    var(--color-header-1),
+    var(--color-header-2),
+    var(--color-protect-fill)
+  );
+}
+
+/* En alto contraste el degradado empezaba en negro (invisible sobre el fondo negro). */
+:root[data-theme='contrast'] .shield::before {
+  background: var(--color-protect);
+}
+
+@media (prefers-contrast: more) {
+  :root:not([data-theme]) .shield::before {
+    background: var(--color-protect);
+  }
+}
+
+.shield__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.shield__head h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 900;
+}
+
+.shield__head p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.shield__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  column-gap: var(--space-5);
+}
+
+@media (min-width: 48rem) {
+  .shield__list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.shield__list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--space-3);
+  align-content: start;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-surface-strong);
+}
+
+.shield__list li > .sys-badge {
+  grid-row: span 3;
+}
+
+.shield__name {
+  font-weight: 900;
+}
+
+.shield__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Grupo de anonimato como constelación. */
+.crowd-pair {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 48rem) {
+  .crowd-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.crowd-panel {
+  margin: 0;
+  padding: var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.crowd-panel--goal {
+  border-color: var(--color-protect);
+}
+
+.crowd-panel figcaption {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.crowd-panel__title {
+  font-weight: 900;
+}
+
+.crowd-panel__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.crowd {
+  inline-size: 100%;
+  block-size: 4.5rem;
+  display: block;
+}
+
+.crowd__person {
+  fill: var(--color-node);
+  opacity: 0.75;
+}
+
+.crowd__you {
+  fill: var(--color-protect-fill);
+  stroke: var(--color-node-protect);
+  stroke-width: 1.5;
+}
+
+.crowd__link {
+  stroke: var(--color-node);
+  stroke-width: 0.8;
+  opacity: 0.5;
+}
+
+/* Identidad sellada: anillo de tres llaves con su registro. */
+.sealed {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.sealed > :not(.sealed-ring, .sealed__summary) {
+  grid-column: 1 / -1;
+}
+
+/* En pantallas anchas el anillo va a la izquierda del resumen. */
+@media (min-width: 36rem) {
+  .sealed {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
+.sealed__summary h2 {
+  margin-top: 0;
+}
+
+.sealed-ring {
+  inline-size: 5.5rem;
+  block-size: 5.5rem;
+  flex: none;
+}
+
+.sealed-ring__seg {
+  fill: none;
+  stroke: var(--color-protect);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.sealed-ring__seg--free {
+  stroke: var(--color-border);
+  stroke-width: 5;
+  stroke-dasharray: 2 5;
+}
+
+.sealed-ring__core {
+  fill: none;
+  stroke: var(--color-protect);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sealed__keys {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.sealed__keys li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+}
+
+.sealed__keys .icon {
+  color: var(--color-protect);
+}
+
+.sealed__ledger {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 4px solid var(--color-primary);
+  background: var(--color-bg);
+  font-size: var(--text-sm);
+}
+
+.sealed__ledger > :last-child {
+  margin-bottom: 0;
+}
+
+.identity-panel__head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.identity-panel__head h3 {
+  margin-top: 0;
+}
+
+.identity-panel__appeal {
+  margin-block: var(--space-4);
+  padding: var(--space-3);
+  border: 2px solid var(--color-protect);
+  border-radius: var(--radius);
+}
+
+/* Ruta de etapas del seguimiento. */
+.route {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-5);
+}
+
+.route__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  gap: 0 var(--space-3);
+  padding-bottom: var(--space-4);
+}
+
+.route__step::before {
+  content: '';
+  position: absolute;
+  left: calc(1.125rem - 1px);
+  top: 2.25rem;
+  bottom: 0;
+  inline-size: 2px;
+  background: var(--color-node);
+  opacity: 0.6;
+}
+
+.route__step:last-child::before {
+  display: none;
+}
+
+.route__node {
+  display: grid;
+  place-items: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: 2px solid var(--color-node);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.route__node .icon {
+  inline-size: 1rem;
+  block-size: 1rem;
+}
+
+.route__step[data-s='done'] .route__node {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.route__step[data-s='now'] .route__node {
+  background: var(--color-protect-fill);
+  border-color: var(--color-node-protect);
+  color: var(--color-on-protect);
+  box-shadow:
+    0 0 0 4px var(--color-bg),
+    0 0 0 6px var(--color-node-protect);
+}
+
+.route__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-2);
+  align-items: baseline;
+  min-block-size: 2.25rem;
+  margin: 0;
+  padding-top: 5px;
+}
+
+.route__name {
+  font-weight: 900;
+}
+
+.route__when {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.route__explain {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  font-size: var(--text-sm);
+}
+
+.route__explain > :last-child {
+  margin-bottom: 0;
+}
+
+.route__explain-title {
+  margin: 0 0 var(--space-1);
+  font-weight: 900;
+  color: var(--color-primary);
+}
+
+.route .deadline-list {
+  margin-top: var(--space-2);
+}
+
+/* Navegador de pasos inferior, en píldora. */
+.stepper {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  max-inline-size: 30rem;
+  margin: var(--space-5) auto 0;
+  padding: 6px;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  box-shadow: 0 6px 18px rgb(5 30 26 / 18%);
+}
+
+@media (min-height: 30rem) and (min-width: 22.5rem) {
+  .stepper {
+    position: sticky;
+    bottom: 10px;
+    z-index: 2;
+  }
+
+  /* H7: el margen inferior es la altura real de la píldora (la mide StepNavigator con un
+     ResizeObserver) más su separación, para que el control enfocado no quede detrás. */
+  html:has(.stepper) {
+    scroll-padding-bottom: calc(var(--stepper-height, 8rem) + 1.5rem);
+  }
+}
+
+.stepper .button {
+  border-radius: var(--radius-pill);
+}
+
+.stepper__slot {
+  inline-size: 1px;
+}
+
+.stepper__mid {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-xs);
+  line-height: 1.25;
+}
+
+.stepper__mid b {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+}
+
+.stepper__dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.stepper__dots i {
+  inline-size: 14px;
+  block-size: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+}
+
+.stepper__dots i.is-on {
+  background: var(--color-primary);
+}
+
+/* Ficha: prioridad con el puntaje grande y la fuente con su distintivo. */
+.priority__score {
+  font-size: var(--text-counter);
+  font-weight: 300;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.priority__text {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.source-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.conflict__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.conflict__head h3 {
+  margin: 0;
+}
+
+.conflict .sys-badge__key {
+  background: var(--color-surface);
+}
+
+/* Observatorio: contadores sobre banda. */
+.counters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-3);
+  margin: var(--space-4) calc(-1 * var(--space-4));
+  padding: var(--space-5) var(--space-4);
+  background: var(--color-header-1);
+  color: var(--color-on-header);
+  text-align: center;
+}
+
+:root[data-theme='contrast'] .counters {
+  border-block: 2px solid var(--color-border);
+}
+
+@media (min-width: 48rem) {
+  .counters {
+    grid-template-columns: repeat(4, 1fr);
+    margin-inline: 0;
+    border-radius: var(--radius);
+  }
+}
+
+.counters__item {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.counters dt {
+  font-size: var(--text-sm);
+}
+
+.counters dd {
+  margin: 0;
+  font-size: var(--text-counter);
+  font-weight: 300;
+  line-height: 1.05;
+}
+
+.escalations__list {
+  list-style: none;
+  padding: 0;
+}
+
+.escalations__item {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.escalations__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Preferencias (tema y modos de uso): al final de cada pantalla, con un enlace en la barra. */
+.preferences {
+  max-inline-size: 64rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.preferences h2 {
+  margin-top: 0;
+}
+
+.preferences__grid {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .preferences__grid {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
+.preferences-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  margin-inline-start: auto;
+  padding: 0 var(--space-3);
+  border: 2px solid var(--color-on-header);
+  border-radius: var(--radius-pill);
+  color: var(--color-on-header);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.preferences-link:hover {
+  color: var(--color-on-header);
+  text-decoration: underline;
+}
+
+.theme-switcher {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.theme-switcher legend {
+  padding: 0;
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.theme-switcher__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+
+.theme-switcher__option {
+  position: relative;
+}
+
+.theme-switcher__option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  /* El clic llega a la etiqueta, que selecciona la opción. */
+  pointer-events: none;
+}
+
+.theme-switcher__option label {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.theme-switcher__option input:checked + label {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.theme-switcher__option input:focus-visible + label {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .icon,
+  .sys-badge__ring,
+  .sealed-ring__seg,
+  .sealed-ring__core {
+    stroke: CanvasText;
+  }
+
+  .state-tag,
+  .stepper,
+  .shield {
+    border-color: CanvasText;
+  }
+
+  .theme-switcher__option input:checked + label {
+    outline: 2px solid Highlight;
+  }
+
+  .stepper__dots i.is-on {
+    background: Highlight;
+  }
+
+  .counters {
+    border: 1px solid CanvasText;
+  }
+
+  .crowd__you,
+  .constellation__you {
+    fill: Highlight;
+  }
+}
+
+/* En pantallas muy angostas la barra fija se queda mínima (marca y salida rápida): las
+   preferencias siguen al final de la página. */
+@media (max-width: 25.99rem) {
+  .preferences-link {
+    display: none;
+  }
+}
+
+/* H5/H11: el cuerpo parte palabras largas (folios, direcciones) donde haga falta, pero las tablas y
+   los botones del navegador de pasos cortan solo entre palabras; las tablas anchas tienen un ancho
+   mínimo y se desplazan dentro de su caja enfocable. */
+.data-table th,
+.data-table td,
+.stepper .button {
+  overflow-wrap: normal;
+  hyphens: auto;
+}
+
+.data-table--wide {
+  min-inline-size: 36rem;
+}
+
+.table-scroll:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Modos de uso: la etiqueta y su ayuda (asociada con aria-describedby) en dos renglones. */
+.usage-modes .choice__title {
+  display: block;
+  font-weight: 700;
+}
+
+.usage-modes .usage-modes__hint {
+  margin: 0;
+}
+
+/* Sesión vencida del panel: se ve encima del detalle, que sigue en pantalla. */
+.session-expired {
+  border: 2px solid var(--color-warning);
+}

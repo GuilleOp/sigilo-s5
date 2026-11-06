@@ -59,7 +59,10 @@ El español se escribe con ortografía completa (acentos, diéresis y eñe) en c
 
 - Rama principal `main`, siempre desplegable. Ramas cortas: `feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`.
 - Commits con [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/) en español: `feat(core): agrega sobre HPKE`.
-- Ámbitos válidos: `contracts`, `core`, `huella`, `server`, `web`, `e2e`, `docs`, `ci`, `infra`.
+- Ámbitos válidos: `contracts`, `core`, `huella`, `server`, `web`, `e2e`, `docs`, `ci`, `infra`, `validador`,
+  `datos` (proceso de datos de la PDN en `datos/`), `red`, `enrutador`, `anonimato`
+  (`packages/anonimato`), `contexto` (`packages/contexto-pdn`), `auditor` (`packages/auditor`),
+  `corroboracion` (`packages/corroboracion` y `apps/corroboracion`).
 - Versionado [SemVer](https://semver.org/lang/es/). Cambios registrados en `CHANGELOG.md` (formato Keep a Changelog).
 
 ## Definición de terminado

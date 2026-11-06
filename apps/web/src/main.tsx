@@ -5,10 +5,14 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { createAppRouter } from './app/router.tsx';
 import { onQuickExit, quickExit } from './state/quick-exit.ts';
+import { applyTheme, readStoredTheme, setInitialTheme } from './state/theme.ts';
+import { modesFromQuery, setInitialModes } from './state/usage-modes.ts';
+import './styles/fonts.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/layout.css';
 import './styles/components.css';
+import './styles/features/index.css';
 
 const container = document.getElementById('root');
 if (container === null) throw new Error('Falta el contenedor de la aplicación.');
@@ -17,6 +21,13 @@ if (container === null) throw new Error('Falta el contenedor de la aplicación.'
 // pantalla inicial. Después la entrada del historial se reemplaza por la raíz y el enrutador vive
 // en memoria, así que el historial no conserva qué pantallas se visitaron.
 const initialPath = location.pathname;
+// Un quiosco o un módulo de atención se configura con `?modo=quiosco` (y otros modos) en su enlace.
+const initialModes = modesFromQuery(location.search);
+setInitialModes(initialModes);
+// El tema se aplica antes de pintar para no parpadear. En quiosco no se lee el de otra persona.
+const initialTheme = initialModes.isKiosk ? 'system' : readStoredTheme();
+setInitialTheme(initialTheme);
+applyTheme(initialTheme, document.documentElement);
 history.replaceState(null, '', '/');
 
 const root = createRoot(container);

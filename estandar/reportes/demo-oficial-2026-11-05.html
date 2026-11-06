@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Reporte del Estándar S5 · dev-denuncias-dataton.plataformadigitalnacional.org</title>
+<style>
+:root{color-scheme:light dark;--bg:#ffffff;--fg:#1a1f24;--muted:#4a5560;--line:#c9d1d8;--accent:#0f6b5d;--code:#f2f5f7;
+--ok-bg:#e3f4e8;--ok-fg:#0b5320;--bad-bg:#fde8e8;--bad-fg:#8a1414;--warn-bg:#fff1cc;--warn-fg:#5c3d00;--na-bg:#eceff2;--na-fg:#36404a}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1917;--fg:#e8eeec;--muted:#b4c2be;--line:#2f4541;--accent:#5fd3bf;--code:#132824;
+--ok-bg:#123d22;--ok-fg:#b7f0c8;--bad-bg:#4a1414;--bad-fg:#ffd1d1;--warn-bg:#3f3000;--warn-fg:#ffe7a3;--na-bg:#25302e;--na-fg:#d5dedb}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem}
+h1{font-size:1.6rem;margin:.2rem 0 1rem;color:var(--accent)}
+h2{font-size:1.25rem;margin-top:2.2rem;border-bottom:2px solid var(--line);padding-bottom:.3rem}
+h3{font-size:1.05rem;margin:0 0 .4rem}
+h4{font-size:.95rem;margin:1rem 0 .3rem;color:var(--muted)}
+a{color:var(--accent)}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px}.skip:focus{left:1rem;top:1rem;background:var(--bg);padding:.5rem;z-index:1}
+dl.facts{display:grid;grid-template-columns:max-content 1fr;gap:.25rem 1rem;margin:0}
+dl.facts dt{font-weight:600}dl.facts dd{margin:0;overflow-wrap:anywhere}
+.summary{display:flex;flex-wrap:wrap;gap:.6rem;list-style:none;padding:0}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:40rem}
+caption{text-align:left;font-weight:600;padding:.4rem 0}
+th,td{border:1px solid var(--line);padding:.5rem .6rem;text-align:left;vertical-align:top}
+thead th{background:var(--code)}
+.badge{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-weight:700;white-space:nowrap;border:1px solid currentColor}
+.badge-cumple{background:var(--ok-bg);color:var(--ok-fg)}.badge-no_cumple{background:var(--bad-bg);color:var(--bad-fg)}
+.badge-advertencia{background:var(--warn-bg);color:var(--warn-fg)}.badge-no_aplica{background:var(--na-bg);color:var(--na-fg)}
+.icon{display:inline-block;min-width:1ch;text-align:center}
+.tag{font-size:.85rem;color:var(--muted)}
+.check{border:1px solid var(--line);border-radius:1rem;padding:1rem;margin:1rem 0}
+ul.evidence{padding-left:1.1rem}ul.evidence li{margin:.5rem 0;overflow-wrap:anywhere}
+.kind{font-weight:700}
+.meta{font-size:.9rem;color:var(--muted)}
+pre{background:var(--code);padding:.5rem;border-radius:.5rem;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#resultados">Saltar a los resultados</a>
+<main>
+<p class="tag">Prototipo para el Datatón 2026 · no es el sistema oficial</p>
+<h1>Reporte de verificación del Estándar S5</h1>
+<dl class="facts">
+  <dt>Sitio</dt><dd><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></dd>
+  <dt>Páginas</dt><dd>inicio: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code><br>formulario: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia</code></dd>
+  <dt>Modo</dt><dd>Pasivo (solo GET a recursos públicos, sin enviar formularios)</dd>
+  <dt>Fecha</dt><dd><time datetime="2026-11-05T07:23:55.602Z">2026-11-05T07:23:55.602Z</time></dd>
+  <dt>Herramienta</dt><dd>sigilo-validar 0.1.0 · User-Agent <code>sigilo-validar/0.1.0 (Datatón 2026)</code></dd>
+  <dt>Peticiones</dt><dd>75 de un máximo de 400</dd>
+</dl>
+<h2>Resumen</h2>
+<ul class="summary" aria-label="Conteo por resultado"><li><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <strong>4</strong></li><li><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span> <strong>5</strong></li><li><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span> <strong>4</strong></li><li><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <strong>16</strong></li></ul>
+<p class="tag">«Inferencia» señala resultados del análisis estático del código descargado: son indicios, no certeza. «Observación» señala lo visto directamente en cabeceras, red o respuestas.</p>
+<h2 id="resultados">Resultados por verificación</h2>
+<div class="table-wrap">
+<table>
+<caption>Verificaciones del Estándar S5 y su resultado</caption>
+<thead><tr><th scope="col">Id</th><th scope="col">Verificación</th><th scope="col">Severidad</th><th scope="col">Resultado</th><th scope="col">Conclusión</th><th scope="col">Tipo</th></tr></thead>
+<tbody>
+<tr>
+  <th scope="row"><a href="#PRV-01">PRV-01</a></th>
+  <td>Cero peticiones a terceros</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Ninguna petición a terceros durante la carga del inicio y del formulario.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-02">PRV-02</a></th>
+  <td>CSP estricta como cabecera</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span></td>
+  <td>No hay Content-Security-Policy como cabecera.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-03">PRV-03</a></th>
+  <td>HSTS</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span></td>
+  <td>No envía Strict-Transport-Security.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-04">PRV-04</a></th>
+  <td>Protección contra marcos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span></td>
+  <td>Sin frame-ancestors &#39;none&#39; ni X-Frame-Options: DENY.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-05">PRV-05</a></th>
+  <td>Sin Referer</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span></td>
+  <td>No envía Referrer-Policy; el navegador usa strict-origin-when-cross-origin.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-06">PRV-06</a></th>
+  <td>Permissions-Policy restrictiva</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span></td>
+  <td>No envía Permissions-Policy: la página puede pedir ubicación, micrófono y cámara.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-07">PRV-07</a></th>
+  <td>Sin recursos de terceros en el HTML</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>El HTML y la carga solo usan scripts, estilos y fuentes del propio sitio.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-08">PRV-08</a></th>
+  <td>Sin reconocimiento de voz remoto</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span></td>
+  <td>El código usa la API de reconocimiento de voz del navegador; en Chrome y Edge el audio se procesa en servidores del fabricante.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-09">PRV-09</a></th>
+  <td>Folio no secuencial ni predecible</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span></td>
+  <td>El folio se genera en el navegador con un generador no criptográfico, en un espacio aproximado de 10^5 valores por año, y el navegador consulta si un folio existe. El detalle técnico se conserva fuera del repositorio.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-10">PRV-10</a></th>
+  <td>Sin borradores en el almacenamiento del navegador</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span></td>
+  <td>El formulario guarda un borrador en localStorage durante 24 horas, sin cifrar: queda legible para quien use el mismo equipo. El detalle técnico se conserva fuera del repositorio.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-11">PRV-11</a></th>
+  <td>Sin mapas ni geocodificación externos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span></td>
+  <td>El código integra mapas o geocodificación de terceros (se activan al interactuar, p. ej. al escribir un domicilio): Mapbox, OpenStreetMap (teselas o Nominatim).</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-12">PRV-12</a></th>
+  <td>Cookies seguras y sin rastreo</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>El sitio no fijó ninguna cookie durante la carga.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-13">PRV-13</a></th>
+  <td>Sin analítica ni rastreadores</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>No se encontraron analítica ni rastreadores en la red ni en el código.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-14">PRV-14</a></th>
+  <td>Identidad cifrada en el navegador</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-15">PRV-15</a></th>
+  <td>Respuesta indistinguible ante folio o secreto inválidos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-16">PRV-16</a></th>
+  <td>Enlaces externos sin fuga de origen</td>
+  <td>Recomendada</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-17">PRV-17</a></th>
+  <td>Sin caché</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-18">PRV-18</a></th>
+  <td>Sin traducción ni indexación remotas</td>
+  <td>Recomendada</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-19">PRV-19</a></th>
+  <td>Fechas públicas sin hora exacta</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-20">PRV-20</a></th>
+  <td>Pruebas sin metadatos aceptadas por el nodo</td>
+  <td>Recomendada</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-21">PRV-21</a></th>
+  <td>Denuncia sin datos personales</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-22">PRV-22</a></th>
+  <td>Datos abiertos sin celdas pequeñas</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-23">PRV-23</a></th>
+  <td>Caracteres invisibles en los hechos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#API-01">API-01</a></th>
+  <td>Conformidad con el contrato</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#API-02">API-02</a></th>
+  <td>Errores comunes sin datos sensibles</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-31">SEC-31</a></th>
+  <td>TLS moderno</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-32">SEC-32</a></th>
+  <td>Cabeceras de tipo de contenido</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-33">SEC-33</a></th>
+  <td>CORS cerrado</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-34">SEC-34</a></th>
+  <td>Sin divulgación de versión</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2>Detalle y evidencia</h2>
+<section class="check" id="PRV-01" aria-labelledby="PRV-01-title">
+  <h3 id="PRV-01-title">PRV-01 · Cero peticiones a terceros</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Ninguna petición a terceros durante la carga del inicio y del formulario.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Se registraron 73 peticiones (73 al propio origen).</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>SESNA S-04</li><li>BPDN Seguridad de la Información</li></ul>
+</section>
+<section class="check" id="PRV-02" aria-labelledby="PRV-02-title">
+  <h3 id="PRV-02-title">PRV-02 · CSP estricta como cabecera</h3>
+  <p><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>No hay Content-Security-Policy como cabecera.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> CSP enviada como cabecera.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">content-security-policy: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> CSP enviada como cabecera.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia</code></div><div class="meta">content-security-policy: <code>(ausente)</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.3</li><li>BPDN Seguridad de la Información</li></ul>
+</section>
+<section class="check" id="PRV-03" aria-labelledby="PRV-03-title">
+  <h3 id="PRV-03-title">PRV-03 · HSTS</h3>
+  <p><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>No envía Strict-Transport-Security.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> HSTS del documento.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">strict-transport-security: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> HSTS del documento.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia</code></div><div class="meta">strict-transport-security: <code>(ausente)</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.5</li><li>ASVS V9.1.1</li></ul>
+</section>
+<section class="check" id="PRV-04" aria-labelledby="PRV-04-title">
+  <h3 id="PRV-04-title">PRV-04 · Protección contra marcos</h3>
+  <p><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Sin frame-ancestors &#39;none&#39; ni X-Frame-Options: DENY.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> Protección contra marcos (antigua).<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">x-frame-options: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> Directiva frame-ancestors de la CSP.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">content-security-policy: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> Protección contra marcos (antigua).<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia</code></div><div class="meta">x-frame-options: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> Directiva frame-ancestors de la CSP.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia</code></div><div class="meta">content-security-policy: <code>(ausente)</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.7</li></ul>
+</section>
+<section class="check" id="PRV-05" aria-labelledby="PRV-05-title">
+  <h3 id="PRV-05-title">PRV-05 · Sin Referer</h3>
+  <p><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>No envía Referrer-Policy; el navegador usa strict-origin-when-cross-origin.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> Política de referente.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">referrer-policy: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> Política de referente.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia</code></div><div class="meta">referrer-policy: <code>(ausente)</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.6</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-06" aria-labelledby="PRV-06-title">
+  <h3 id="PRV-06-title">PRV-06 · Permissions-Policy restrictiva</h3>
+  <p><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>No envía Permissions-Policy: la página puede pedir ubicación, micrófono y cámara.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> Política de permisos.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">permissions-policy: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> Política de permisos.<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/presentar-denuncia</code></div><div class="meta">permissions-policy: <code>(ausente)</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4</li><li>SESNA S-02</li><li>SESNA S-04</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-07" aria-labelledby="PRV-07-title">
+  <h3 id="PRV-07-title">PRV-07 · Sin recursos de terceros en el HTML</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>El HTML y la carga solo usan scripts, estilos y fuentes del propio sitio.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>BPDN Seguridad de la Información</li><li>ASVS V14.2.3</li></ul>
+</section>
+<section class="check" id="PRV-08" aria-labelledby="PRV-08-title">
+  <h3 id="PRV-08-title">PRV-08 · Sin reconocimiento de voz remoto</h3>
+  <p><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>El código usa la API de reconocimiento de voz del navegador; en Chrome y Edge el audio se procesa en servidores del fabricante.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Código</span> Evidencia de código redactada: 2 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio.</li><li><span class="kind">Nota</span> Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>SESNA S-07</li></ul>
+</section>
+<section class="check" id="PRV-09" aria-labelledby="PRV-09-title">
+  <h3 id="PRV-09-title">PRV-09 · Folio no secuencial ni predecible</h3>
+  <p><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>El folio se genera en el navegador con un generador no criptográfico, en un espacio aproximado de 10^5 valores por año, y el navegador consulta si un folio existe. El detalle técnico se conserva fuera del repositorio.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Código</span> Evidencia de código redactada: 5 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio.</li><li><span class="kind">Nota</span> Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V6.3.1</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-10" aria-labelledby="PRV-10-title">
+  <h3 id="PRV-10-title">PRV-10 · Sin borradores en el almacenamiento del navegador</h3>
+  <p><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>El formulario guarda un borrador en localStorage durante 24 horas, sin cifrar: queda legible para quien use el mismo equipo. El detalle técnico se conserva fuera del repositorio.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Código</span> Evidencia de código redactada: 9 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio.</li><li><span class="kind">Almacenamiento</span> Clave presente tras cargar formulario (sessionStorage).<div class="meta">[clave redactada]: <code>[4 caracteres]</code></div></li><li><span class="kind">Nota</span> Al menos 12 uso(s) más de almacenamiento sin relación aparente con el formulario (bibliotecas, preferencias).</li><li><span class="kind">Nota</span> Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V8.2.2</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-11" aria-labelledby="PRV-11-title">
+  <h3 id="PRV-11-title">PRV-11 · Sin mapas ni geocodificación externos</h3>
+  <p><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>El código integra mapas o geocodificación de terceros (se activan al interactuar, p. ej. al escribir un domicilio): Mapbox, OpenStreetMap (teselas o Nominatim).</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Código</span> Evidencia de código redactada: 9 fragmento(s) en recursos de https://dev-denuncias-dataton.plataformadigitalnacional.org. El detalle técnico se conserva fuera del repositorio.</li><li><span class="kind">Nota</span> Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-02</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-12" aria-labelledby="PRV-12-title">
+  <h3 id="PRV-12-title">PRV-12 · Cookies seguras y sin rastreo</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>El sitio no fijó ninguna cookie durante la carga.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Sin Set-Cookie ni cookies en el navegador.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V3.4.1</li><li>ASVS V3.4.2</li><li>ASVS V3.4.3</li></ul>
+</section>
+<section class="check" id="PRV-13" aria-labelledby="PRV-13-title">
+  <h3 id="PRV-13-title">PRV-13 · Sin analítica ni rastreadores</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>No se encontraron analítica ni rastreadores en la red ni en el código.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Análisis estático de 45 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>LGPDPPSO finalidad</li></ul>
+</section>
+<section class="check" id="PRV-14" aria-labelledby="PRV-14-title">
+  <h3 id="PRV-14-title">PRV-14 · Identidad cifrada en el navegador</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>LGRA art. 64 fr. III</li><li>SESNA S-04</li><li>ASVS V6.2.7</li></ul>
+</section>
+<section class="check" id="PRV-15" aria-labelledby="PRV-15-title">
+  <h3 id="PRV-15-title">PRV-15 · Respuesta indistinguible ante folio o secreto inválidos</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V6.2.8</li><li>API2:2023</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-16" aria-labelledby="PRV-16-title">
+  <h3 id="PRV-16-title">PRV-16 · Enlaces externos sin fuga de origen</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Recomendada (DEBERÍA)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-17" aria-labelledby="PRV-17-title">
+  <h3 id="PRV-17-title">PRV-17 · Sin caché</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V8.1.1</li><li>ASVS V8.2.1</li></ul>
+</section>
+<section class="check" id="PRV-18" aria-labelledby="PRV-18-title">
+  <h3 id="PRV-18-title">PRV-18 · Sin traducción ni indexación remotas</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Recomendada (DEBERÍA)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-19" aria-labelledby="PRV-19-title">
+  <h3 id="PRV-19-title">PRV-19 · Fechas públicas sin hora exacta</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-20" aria-labelledby="PRV-20-title">
+  <h3 id="PRV-20-title">PRV-20 · Pruebas sin metadatos aceptadas por el nodo</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Recomendada (DEBERÍA)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-03</li><li>ASVS V12.2.1</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-21" aria-labelledby="PRV-21-title">
+  <h3 id="PRV-21-title">PRV-21 · Denuncia sin datos personales</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-22" aria-labelledby="PRV-22-title">
+  <h3 id="PRV-22-title">PRV-22 · Datos abiertos sin celdas pequeñas</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-06</li><li>BPDN art. 60</li><li>BPDN art. 61</li></ul>
+</section>
+<section class="check" id="PRV-23" aria-labelledby="PRV-23-title">
+  <h3 id="PRV-23-title">PRV-23 · Caracteres invisibles en los hechos</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-03</li></ul>
+</section>
+<section class="check" id="API-01" aria-labelledby="API-01-title">
+  <h3 id="API-01-title">API-01 · Conformidad con el contrato</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>API9:2023</li><li>SESNA S-11</li><li>BPDN especificación por sistema</li></ul>
+</section>
+<section class="check" id="API-02" aria-labelledby="API-02-title">
+  <h3 id="API-02-title">API-02 · Errores comunes sin datos sensibles</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Se evalúa solo en modo conformidad (contra un nodo que dice cumplir el estándar).</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V7.4.1</li><li>API8:2023</li></ul>
+</section>
+<section class="check" id="SEC-31" aria-labelledby="SEC-31-title">
+  <h3 id="SEC-31-title">SEC-31 · TLS moderno</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V9.1.1</li><li>ASVS V9.1.2</li><li>ASVS V9.1.3</li></ul>
+</section>
+<section class="check" id="SEC-32" aria-labelledby="SEC-32-title">
+  <h3 id="SEC-32-title">SEC-32 · Cabeceras de tipo de contenido</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.1</li><li>ASVS V14.4.4</li></ul>
+</section>
+<section class="check" id="SEC-33" aria-labelledby="SEC-33-title">
+  <h3 id="SEC-33-title">SEC-33 · CORS cerrado</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.5.3</li><li>API8:2023</li></ul>
+</section>
+<section class="check" id="SEC-34" aria-labelledby="SEC-34-title">
+  <h3 id="SEC-34-title">SEC-34 · Sin divulgación de versión</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.3.3</li></ul>
+</section>
+<h2>Observaciones</h2>
+<ul class="evidence"><li><span class="kind">Código</span> Usa ALTCHA con el reto servido en [ruta redactada] (propio origen, sin terceros).</li><li><span class="kind">Cabecera</span> Cabecera que revela tecnología del servidor (ASVS V14.3.3).<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">x-powered-by: <code>Next.js</code></div></li><li><span class="kind">Cabecera</span> Cabecera que revela tecnología del servidor (ASVS V14.3.3).<div class="meta">URL: <code>https://dev-denuncias-dataton.plataformadigitalnacional.org/</code></div><div class="meta">server: <code>ZENEDGE</code></div></li><li><span class="kind">Nota</span> Reporte regenerado el 2026-11-05T08:08:28.536Z a partir de la captura del 2026-11-05T07:23:55.602Z, sin hacer nuevas peticiones al sitio.</li><li><span class="kind">Nota</span> Reporte redactado: se omitieron fragmentos de código, rutas de recursos JavaScript y nombres de colecciones, campos y claves. El detalle completo se conserva fuera del repositorio para la divulgación privada.</li></ul>
+
+<h2>Peticiones de red registradas</h2>
+<details>
+<summary>Ver las 73 peticiones</summary>
+<div class="table-wrap">
+<table>
+<caption>Peticiones del navegador durante la carga</caption>
+<thead><tr><th scope="col">Página</th><th scope="col">Método</th><th scope="col">Tipo</th><th scope="col">Origen</th><th scope="col">Resultado</th><th scope="col">URL</th></tr></thead>
+<tbody>
+<tr><td>inicio</td><td>GET</td><td>document</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>font</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>stylesheet</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>stylesheet</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>image</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>image</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>fetch</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>document</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>font</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>stylesheet</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>stylesheet</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>stylesheet</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>image</td><td>propio</td><td>200</td><td><code>https://dev-denuncias-dataton.plataformadigitalnacional.org/[ruta redactada]</code></td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</main>
+</body>
+</html>

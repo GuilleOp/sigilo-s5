@@ -1,0 +1,17 @@
+[
+  {
+    "folio": "K7Q2-M9XP-4RTD",
+    "escalatedOn": "2026-12-06",
+    "fromAuthorityId": "authority.oic-iffe",
+    "rules": [
+      {
+        "on": "2026-12-06",
+        "ruleKey": "escalation.grave-stalled",
+        "name": "Falta grave sin iniciar el procedimiento a los 30 días",
+        "explanation": "Si la autoridad no inicia el procedimiento correspondiente ante una posible falta grave en 30 días naturales, pasa a la autoridad supervisora.",
+        "effect": "escalate",
+        "dueOn": "2026-12-05"
+      }
+    ]
+  }
+]

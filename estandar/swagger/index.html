@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- Vista estática del Estándar S5 con Swagger UI copiado localmente (sin CDN ni peticiones a terceros). -->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+    />
+    <title>Estándar S5 · OpenAPI</title>
+    <link rel="stylesheet" href="./vendor/swagger-ui.css" />
+    <link rel="stylesheet" href="./swagger.css" />
+  </head>
+  <body>
+    <p class="prototype-banner">Prototipo para el Datatón 2026 · no es el sistema oficial</p>
+    <noscript>
+      Esta vista necesita JavaScript. El documento está en
+      <a href="../openapi.yaml">openapi.yaml</a> y el diccionario en
+      <a href="../diccionario-de-datos.md">diccionario-de-datos.md</a>.
+    </noscript>
+    <p id="swagger-missing" class="swagger-missing" hidden>
+      Falta Swagger UI en <code>estandar/swagger/vendor/</code>. Ejecuta
+      <code>npm run standard:build</code> y vuelve a cargar la página.
+    </p>
+    <main id="swagger-ui"></main>
+    <script src="./vendor/swagger-ui-bundle.js"></script>
+    <script src="./swagger-init.js"></script>
+  </body>
+</html>

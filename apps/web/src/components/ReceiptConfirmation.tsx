@@ -48,7 +48,9 @@ export function ReceiptConfirmation({ words, onConfirmed }: ReceiptConfirmationP
           value={typed[index]}
           error={
             hasTried && !isCorrect(index)
-              ? `La palabra número ${position + 1} no coincide. Revisa tu recibo.`
+              ? (typed[index] ?? '').trim() === ''
+                ? `Escribe la palabra ${position + 1}.`
+                : `La palabra número ${position + 1} no coincide. Revisa tu recibo.`
               : undefined
           }
           data-testid={`confirm-word-${position + 1}`}

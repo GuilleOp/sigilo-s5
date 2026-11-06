@@ -5,10 +5,246 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [1.0.0] - 2026-11-05
+
+Versión entregada al Datatón Anticorrupción 2026: Estándar S5, red federada, protección de quien
+denuncia con datos de la PDN, rendición de cuentas de la autoridad, datos abiertos nuevos e
+interfaz en la familia visual del S5.
+
+### Seguridad
+
+- Sexta ronda de revisión (Etapa 5): sección G del modelo de amenazas (G01 a G11, actores A9 y
+  A10, riesgos residuales 17 a 19), ajustes al perfil de seguridad y tabla H1 a H11 en
+  `docs/historial-de-seguridad.md`.
+- H3 (G03): el índice de coincidencias ya no sirve de oráculo de «¿hay denuncias contra X?» ni
+  suma fuentes por denuncias de sondeo: una coincidencia cuenta y se revela solo cuando el nodo la
+  confirma como aceptada (`POST …/indice/confirmaciones`), pasan 30 días según el reloj del índice
+  o es una custodia; el nodo da de baja el spam (`POST …/indice/bajas`). La custodia se libera solo
+  con fuentes confirmadas (`confirmedOtherSources`).
+- H4 (G04): el enrutador y cada testigo descargan `ledgerEvents` entre la cabeza anterior y la
+  nueva de un nodo y rechazan, registrándolo, una historia reescrita con secuencia mayor o que no
+  se puede verificar (`packages/red/src/node-history.ts`).
+- H10 (G10): `verifySignedDirectory` acepta un serial mínimo y una antigüedad máxima fijados en la
+  raíz de confianza y el `validUntil` del directorio; `npm run red:demo` fija el serial vigente en
+  `network-trust.json`.
+
+### Cambiado
+
+- Revisión de seguridad de la Etapa 5 (hallazgos H1 a H11 del servidor):
+  - H1: un turnado entre nodos cede la competencia solo con el comprobante del destino ligado a la
+    misma denuncia (digesto, recibo, llaves y hechos); sin él vence a los 10 días hábiles y se escala
+    (`escalation.transfer-unconfirmed`).
+  - H2: `escalation.declined-serious` escala de inmediato el cierre que declina una falta grave;
+    `escalation.archive-signals` cubre esos cierres.
+  - H3: la corroboración solo la ve la autoridad competente después de aceptar, en intervalos, y cada
+    consulta queda en la bitácora; el nodo confirma ante el índice al aceptar y pide la baja firmada
+    al cerrar como improcedente o acumulada.
+  - H5: la justificación propia ante un conflicto ya no apaga la regla y se escala
+    (`escalation.conflict-justified`); la autoridad que se excusa solo puede reasignar o turnar.
+  - H6: solo un mensaje posterior al archivo o a la calificación cuenta como su notificación.
+  - H7: el sobre de identidad del recurso pide dos aprobaciones (una de supervisión) dentro de la
+    ventana del recurso, y toda entrega registra `identity.released`, visible en el seguimiento.
+  - H8: la contraseña correcta entra aunque un tercero haya agotado el límite de intentos.
+  - H9: no se cuentan por hora las rutas de quien denuncia, de la red ni del evaluador.
+  - H10 (web): el directorio se verifica con el día de hoy y la frescura de la raíz.
+  - H11: el buzón de red solo acepta sobres con el HMAC del enrutador y nunca turna directo a una
+    supervisora.
+  - Migraciones 10, 11 y 12.
+
+- Ajuste legal con el texto vigente de la LGRA: la inconformidad (art. 102) procede contra la
+  calificación de no grave, no contra un archivo. Nueva calificación con acuerdo en el trámite
+  (migración 9), `POST tracking/appeal` con apertura de identidad solo para el recurso (art. 109),
+  plazos de inconformidad (art. 103) y de la Sala (art. 107), y regla
+  `escalation.downgrade-signals` (AUD-01, AUD-03 y AUD-04; art. 64, fr. I). `escalation.conflict`
+  corre desde el primer acto resolutivo y explica el art. 58. Las alertas de inactividad en la
+  investigación ya no citan la caducidad, que solo aplica después de admitido el informe
+  (art. 74); el art. 64, fr. II, dice «no inicien el procedimiento correspondiente».
+
+- El panel de autoridad ya no usa `SIGILO_AUTHORITY_TOKEN`; el servidor no arranca si se define.
+  Se retiraron `POST authority/complaints/{folio}/status` y `.../identity`, reemplazados por
+  `.../procedure` y las rutas de apertura 2 de 3. Migración 7 de la base.
+- Las peticiones rechazan campos desconocidos (`z.strictObject`), también anidados (SEC-18).
+- `remainingDays` y `evaluateDeadline` cuentan un plazo vencido en la misma unidad que el aviso
+  (`remainingUnit`).
+- HSTS exige al menos un año y se envía con `SIGILO_HTTPS=1` (SEC-31, PRV-03).
+- El servidor rechaza caracteres invisibles en los hechos (PRV-23).
+- OpenAPI: `limit` con máximo 500 y `Cache-Control: no-store` en cada respuesta; el patrón del
+  folio sale de `FOLIO_PATTERN`.
+
+### Agregado
+
+- Web, piezas de B y C en el lenguaje de A: recibo como talón perforado que se imprime solo; sellos
+  fechados con nota al margen en las etapas del seguimiento; regla del plazo; sello de lacre con el
+  libro de aperturas en «Tu identidad»; grafo del conflicto de interés en el panel; mapa de nodos de
+  las 32 entidades en el observatorio. «Preferencias» al final de cada pantalla; el seguimiento
+  ordena estado, etapas, plazos, identidad, mensajes y anclajes (plegados), y muestra un solo
+  estado vigente.
+- Contratos: `IdentityOpeningRequestView.purpose` (`authority` o `appeal`) distingue la solicitud
+  de apertura para el recurso de inconformidad.
+
+- Web, dirección visual A «Puente PDN → S5»: distintivos de sistema con anillo abierto (S1, S2,
+  S3, S5, S6, 69B) en las verificaciones y la ficha de contexto; identidad sellada como anillo de
+  tres llaves con su registro de aperturas y de entregas del sobre (`identity.released`) en el
+  seguimiento y en el panel; grupo de anonimato como constelación; «Tu escudo» y constelación
+  decorativa en el inicio; ruta de etapas con los plazos en el seguimiento; navegador de pasos
+  inferior; contadores sobre banda en el observatorio; Mulish autoalojada (OFL); selector de tema
+  (claro, oscuro, alto contraste o «como mi sistema»), recordado en el navegador salvo en quiosco.
+- Panel: la supervisora ve sus escalamientos; el recurso de inconformidad pide dos aprobaciones (al
+  menos una de supervisión) antes de entregar el sobre (H7); una autoridad excusada solo puede
+  reasignar, devolver o turnar.
+- Seguimiento: el titular dice la etapa legal real (por ejemplo, «Calificación de la falta»).
+- Web, ventanilla única por la red: con `apps/web/src/config/network-trust.json` (lo escribe
+  `npm run red:demo`; `null` = un solo nodo) la web verifica el directorio del mismo origen,
+  propone la autoridad competente con su razonamiento (la persona puede corregirla), cifra hacia el
+  nodo destino y envía por el enrutador ciego. El seguimiento busca el folio en todos los nodos.
+- Nodo: copia del directorio firmado (`GET /api/v1/red/directory`) y pasos sin cabeceras al
+  enrutador (`POST /api/v1/red/relay`) y al evaluador OPRF (`GET .../evaluador/reto`,
+  `POST .../evaluador/evaluaciones`), para que la web no pida nada a otro origen.
+- Web: aviso del grupo de anonimato (un cargador y un fragmento por denuncia, servido en
+  `/datos/grupos-anonimato/`) con su factor en el semáforo; corroboración ciega opcional con VOPRF
+  en un Web Worker; seguimiento con etapas, plazos, reglas, escalamiento, ventana de inconformidad
+  y turnado entre nodos; panel con ficha de contexto, conflicto (`respond_conflict`), señales del
+  auditor, corroboración, sanción declarada y turnado que vuelve a cifrar en el navegador
+  (SEC-19); observatorio `/observatorio`; modos de quiosco, asistida, poca conexión y lectura
+  fácil; franja «Prototipo para el Datatón 2026 · no es el sistema oficial».
+- El servidor de referencia es un nodo de la red federada: buzón de red `POST /api/v1/red/inbox`,
+  registro ante el enrutador, cabeza en la bitácora nacional y cofirma como testigo
+  (`@sigilo/red/witness`); varias autoridades por nodo con sus llaves del directorio verificado;
+  turnado a otro nodo re-cifrado en el navegador (SEC-19) con `complaint.transferred` y el folio
+  nuevo en el seguimiento. Migración 8.
+- Contexto PDN en el nodo: ficha con prioridad explicable, conflicto de interés al turnar (alerta
+  con excusa o justificación, LGRA art. 58) y verificación de la sanción declarada al cerrar
+  contra S3. Fuentes sintéticas en la demostración o SQLite (`SIGILO_PDN_SOURCES`).
+- Auditor en la tarea periódica con `audit.signal`, importación de acuerdos (`closures.imported`) y
+  conteos para el observatorio; reglas `escalation.conflict` y `escalation.archive-signals`.
+- Corroboración ciega en el nodo: registro firmado en el índice, avisos de coincidencia y «posible
+  nuevo indicio» sobre un archivo (LGRA art. 100).
+- `compose.yaml` con el evaluador y el índice; `npm run red:demo` con cuentas por nodo y reloj
+  simulado; `npm run demo:seed` siembra el escenario de `docs/demo-escenario.md`.
+
+- Nodo de varias autoridades del Estándar S5 (0.2.0): cuentas individuales por persona con su
+  autoridad y su función (recepción y turnado, investigación, supervisión), inicio de sesión con
+  scrypt, sesiones que vencen a los 15 minutos sin actividad o a las 8 horas, límite de 10 fallos
+  por usuario y registro de seguridad sin IP (SEC-06, SEC-12, SEC-14, SEC-15, SEC-21).
+  `npm run accounts:generate` crea las cuentas sintéticas de la demostración.
+- Trámite con el catálogo: turnar, aceptar, reasignar, devolver al buzón general, avanzar de etapa
+  legal y cerrar con uno de los seis motivos, su fundamento y el acuerdo en versión pública, con
+  competencia por folio y notas públicas. El seguimiento muestra la línea de tiempo explicada, el
+  cierre, los plazos (en curso, por vencer, vencido) y las reglas cumplidas.
+- Apertura de identidad 2 de 3: dos personas distintas de la autoridad competente, cada una con su
+  fundamento; el servidor solo entrega el sobre a quien aprobó (SEC-05).
+- Motor de plazos y escalamiento con reglas públicas (`ESCALATION_RULES`) y segunda llave: la web
+  cifra los hechos y las pruebas hacia la supervisora y el nodo los entrega solo cuando se cumple
+  una regla de escalamiento (ADR 0007).
+- `toMexicoCentralDay` en `@sigilo/core`: los plazos se cuentan en la hora del centro de México.
+- `@sigilo/auditor` (ADR 0009, nivel B): reglas deterministas AUD-01 a AUD-08 que señalan con
+  evidencia lado a lado y nunca deciden (cierre con plantilla por shingles y Jaccard, archivo contra
+  pruebas, corroboración o datos confirmados de la PDN, calificación degradada con fundamento en la
+  LGRA art. 64-I, plazos con el catálogo y `@sigilo/core`, actuación vacía, tasa de archivo en casos
+  corroborados, concentración de archivos y movimiento antes de prescribir), umbrales publicados en
+  `config/umbrales.json` y clasificación orientativa por palabras clave.
+- Adaptador opcional de modelo abierto local (Ollama o llama.cpp server solo en 127.0.0.1),
+  desactivado por omisión y con falla cerrada: texto como dato delimitado, salida validada con zod y
+  contra el propio texto, descarte de toda salida fuera del esquema y doble de pruebas con
+  respuestas maliciosas.
+- Evaluación publicada del auditor (`npm run auditor:eval`, `packages/auditor/EVALUACION.md`) con un
+  conjunto sintético etiquetado que incluye el escenario y casos difíciles.
+- `AuditLedgerRecordSchema` en `@sigilo/contracts` (`audit.ts`): registro de bitácora de cada señal
+  con la versión de las reglas o el digesto del modelo y los digestos de entrada y salida.
+- Corroboración ciega (ADR 0006 y 0010): paquete `@sigilo/corroboracion` con la normalización y
+  etiqueta de dominio del identificador (`servidor`, `rfc`, `ocid`), el cliente VOPRF de RFC 9497
+  sobre `ristretto255-SHA512` (`ristretto255_oprf` de @noble/curves) validado con los vectores
+  oficiales del apéndice A.1.2, el resumen difuso del relato con llave derivada de la salida VOPRF,
+  las señales de independencia («posible mismo origen» y «posible campaña») y la custodia opcional
+  (formato y máquina de estados, nivel B).
+- Servicios `@sigilo/corroboracion-servicio` (`apps/corroboracion`, Hono y `node:sqlite`): evaluador
+  OPRF con prueba de trabajo de un solo uso, tope diario opcional y conteos diarios firmados de
+  días cerrados; índice de coincidencias que acepta solo registros firmados por nodos del
+  directorio, cuenta fuentes independientes y deja avisos por nodo. Prueba de extremo a extremo
+  del escenario (Marta y Luis: 2 fuentes; atacante: 1 con posible campaña) que inspecciona ambas
+  bases.
+- Grupo «Corroboración» en el Estándar S5 y campo opcional `corroboration` del directorio con la
+  llave pública del evaluador. Sección «Corroboración ciega (VOPRF)» en `docs/criptografia.md`
+  con el protocolo, las llaves, qué ve cada servicio, los riesgos y la integración pendiente.
+- Red federada (ADR 0005 y 0007): paquete `@sigilo/red` con el directorio de autoridades firmado
+  por la operación y cofirmado por testigos m de n, la propuesta de autoridad competente con su
+  razonamiento (para el navegador), los sobres del enrutador ciego con tramos fijos, la bitácora
+  nacional y el cliente del nodo (registro, cabeza y buzón de red).
+- Enrutador ciego `@sigilo/enrutador` (Hono y `node:sqlite`): sirve el directorio, reenvía
+  sobres opacos sin guardar contenido, IP ni cabeceras y con respuesta idéntica para cualquier
+  destino, recoge las cabezas de los nodos y publica la cabeza nacional cofirmada 2 de 3, con
+  pruebas de inclusión. Incluye el proceso de testigo.
+- Grupo «Red» en el Estándar S5 (`estandar/openapi.yaml`, diccionario y ejemplos).
+- `compose.yaml` y `docker/Dockerfile` multietapa sobre `node:22-bookworm-slim` (usuario sin
+  privilegios, sin secretos en la imagen): enrutador, nodos Querétaro y Federal con su web y tres
+  testigos. `npm run red:demo` genera las llaves sintéticas en `.red-demo/`.
+- Guía en borrador `docs/guia-conecta-tu-estado.md` y sección «Red federada» en
+  `docs/arquitectura.md`.
+- Estándar S5 en `estandar/`: OpenAPI 3.1 (`openapi.yaml` y `openapi.json`) generado desde
+  `packages/contracts` con `z.toJSONSchema`, diccionario de datos en Markdown y CSV con el formato
+  de la PDN, catálogo del trámite en JSON, ejemplos sintéticos de cada cuerpo, vista local con
+  Swagger UI sin CDN y `README.md` con la generación, la lectura y el versionado SemVer (0.1.0).
+- Script `npm run standard:build` (con `-- --check`), validación del OpenAPI con
+  `@apidevtools/swagger-parser` sin red y pruebas que fallan si `estandar/` no está al día, si un
+  ejemplo no cumple su esquema o si el servidor no registra exactamente las rutas del estándar.
+- Catálogo del trámite en `@sigilo/contracts`: flujo de gestión del S5 (buzón general, turnada,
+  aceptada, reasignada, devuelta y cerrada con seis motivos), etapas legales de faltas
+  administrativas y de hechos de corrupción, quién actúa, explicaciones en lenguaje sencillo y
+  plazos de la LGRA con su fundamento (arts. 64, 74, 96, 100, 103 y 107).
+- Días de descanso obligatorio de 2025 a 2028 (Ley Federal del Trabajo, art. 74) como lista
+  explícita.
+- `@sigilo/core` (`deadlines.ts`): vencimientos en días naturales, hábiles (calendario configurable),
+  meses y años, y situación del plazo (en curso, por vencer o vencido).
+- Descripciones en español en los esquemas de `@sigilo/contracts`.
+- Validador del Estándar S5 (`tools/validador`, `npm run validate`): modo pasivo (PRV-01 a PRV-13)
+  y modo conformidad (PRV-09, PRV-10, PRV-14, PRV-15, API-01 y API-02), reporte JSON con esquema y
+  reporte HTML accesible. Reportes del demo oficial y de la referencia en `estandar/reportes`.
+- Proceso reproducible de datos de la PDN (`datos/proceso/`, Python 3 sin dependencias): grupos de
+  anonimato por entidad con generalización jerárquica y cubetas, matriz de cobertura, equivalencias
+  de instituciones S1-S2-S3-S6, salidas privadas en SQLite fuera del repositorio y tres conjuntos
+  de datos abiertos con diccionario y metodología. Script `npm run data:test`, incluido en
+  `npm run check` y en CI.
+- `@sigilo/anonimato`: grupo de anonimato en el navegador. Carga del mismo origen el índice y un
+  solo fragmento por denuncia (fetch inyectable, SHA-256 contra el índice), devuelve cubeta, nivel,
+  marca de contratación de S2, riesgo y un texto sencillo con acciones sugeridas, y dice con
+  honestidad cuando no hay datos. Normalización idéntica a `datos/proceso` (prueba cruzada con
+  Python) y `withAnonymityFactor` para sumar el factor al semáforo de Huella Cero.
+- `@sigilo/contexto-pdn`: verificaciones con tres resultados (`confirmed`, `contradicted`,
+  `no_coverage` con motivo) que consultan la matriz de cobertura, conflicto de interés antes de
+  turnar (S1 y cadena de mando de S2), contrato citado contra S6, lista tipo 69-B, sanciones contra
+  S3 con la regla «sanción no verificable», y ficha de contexto con prioridad explicable
+  (`config/prioridad.json`). Fuentes sintéticas del escenario y fuentes SQLite en solo lectura.
+  Las sanciones se buscan por expediente y entidad (y por institución cuando el registro la trae):
+  los números de expediente se repiten entre entidades.
+
+### Cambiado
+
+- `docs/uso-de-ia.md` declara el auditor y el modelo local opcional (finalidad, alcance, límites,
+  que no ve identidades y que no decide); se conserva la declaración del uso de IA en el desarrollo.
+- El escenario fija los umbrales de `signal.template-closure` en similitud 0.75 y 5 coincidencias
+  (la propuesta de 0.9 y 20 no detectaba las tres variantes de la plantilla). Nuevo ámbito de commit
+  `auditor` en `docs/convenciones.md`.
+- `@sigilo/huella` expone también `./risk` y `./months`.
+- El escenario de la demostración usa `no_coverage` y los cuatro motivos de «sin cobertura»
+  (`state-without-system`, `institution-not-connected`, `period-out-of-range`,
+  `record-not-found`), más `ambiguous-record` para expedientes repetidos.
+- El estatus HTTP y el mensaje de cada código de error pasan a `@sigilo/contracts`
+  (`API_ERROR_HTTP_STATUS`, `API_ERROR_MESSAGES`); el servidor responde exactamente igual.
+- La web toma los nombres y explicaciones de los estatus de `COMPLAINT_STATUSES`, sin cambiar los
+  textos.
+- `swagger-ui-dist` trae `@scarf/scarf`; su telemetría queda desactivada con `scarfSettings` y su
+  script de instalación no se ejecuta.
+
 ## [0.9.1] - 2026-10-07
 
 ### Corregido
 
+- Auditor (reglas 1.1.0), contra el texto vigente de la LGRA: la caducidad de la instancia
+  (art. 74) solo se cita en el procedimiento ya admitido el Informe de Presunta Responsabilidad, y
+  se aclara que se decreta a solicitud del presunto infractor; en la investigación la señal es
+  «inactividad prolongada» (`signal.prolonged-inactivity`). AUD-04 dice «no iniciar el
+  procedimiento correspondiente» (art. 64, fr. II). AUD-01 y AUD-03 se aplican también a acuerdos
+  de calificación, y AUD-02 ya no trata una calificación como archivo.
 - Datos abiertos fallaban en Node 22: el SQLite integrado no acepta reutilizar el parámetro `?1`.
 - Prueba del bloqueo del servidor independiente del tiempo encendido de la máquina.
 - CI con matriz de Node 22.18 y la versión más reciente.

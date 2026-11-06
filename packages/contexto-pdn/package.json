@@ -1,0 +1,19 @@
+{
+  "name": "@sigilo/contexto-pdn",
+  "version": "1.0.0",
+  "description": "Contexto de la PDN para el nodo y el panel de la autoridad: verificaciones con tres resultados, conflicto de interés y prioridad explicable.",
+  "license": "CC-BY-NC-4.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sqlite": "./src/sqlite-sources.ts",
+    "./synthetic": "./src/synthetic-sources.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@sigilo/anonimato": "1.0.0",
+    "@sigilo/huella": "1.0.0"
+  }
+}

@@ -10,6 +10,8 @@ export interface PinnedKeys {
   serverSigningPublicKey: Uint8Array;
   authorityBoxPublicKey: Uint8Array;
   authoritySigningPublicKey: Uint8Array;
+  /** Llave de la supervisora (segunda llave), si el despliegue la tiene. */
+  supervisorBoxPublicKey?: Uint8Array;
 }
 
 /**
@@ -28,7 +30,21 @@ export function parsePinnedKeys(raw: unknown): PinnedKeys {
   if (keyIdFor(authorityBoxPublicKey) !== set.authority.keyId) {
     throw new Error('La llave fijada de la autoridad no corresponde a su identificador.');
   }
-  return { set, serverSigningPublicKey, authorityBoxPublicKey, authoritySigningPublicKey };
+  const supervisor = set.supervisor;
+  const supervisorBoxPublicKey =
+    supervisor === undefined ? undefined : fromBase64Url(supervisor.boxPublicKey);
+  if (supervisor !== undefined && supervisorBoxPublicKey !== undefined) {
+    if (keyIdFor(supervisorBoxPublicKey) !== supervisor.keyId) {
+      throw new Error('La llave fijada de la supervisora no corresponde a su identificador.');
+    }
+  }
+  return {
+    set,
+    serverSigningPublicKey,
+    authorityBoxPublicKey,
+    authoritySigningPublicKey,
+    ...(supervisorBoxPublicKey === undefined ? {} : { supervisorBoxPublicKey }),
+  };
 }
 
 /** Llaves públicas del despliegue, fijadas al compilar. */

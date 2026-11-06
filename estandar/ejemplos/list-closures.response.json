@@ -1,0 +1,13 @@
+[
+  {
+    "folio": "K7Q2-M9XP-4RTD",
+    "authorityId": "authority.oic-iffe",
+    "on": "2026-11-20",
+    "legalOn": "2026-11-20",
+    "reason": "attended",
+    "legalBasis": "LGRA, art. 100: conclusión de la investigación con elementos.",
+    "agreement": "Con fundamento en el artículo 100 de la Ley General de Responsabilidades Administrativas se concluye la investigación del expediente sintético OIC-PRUEBA-0001: se requirió información a la unidad compradora y se comprobó la entrega completa de los bienes.",
+    "agreementDigest": "0f2b5c1e9a7d43b8a6e1c0d9f8b7a6e5d4c3b2a1908f7e6d5c4b3a2918f7e6d5",
+    "actorId": "acct-5f0c2a9d1e7b3c44"
+  }
+]

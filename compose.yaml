@@ -1,0 +1,170 @@
+# Red federada de demostración de SIGILO, toda en local y con datos sintéticos:
+#   enrutador        enrutador ciego, directorio firmado y bitácora nacional   127.0.0.1:8790
+#   nodo-queretaro   servidor de referencia como nodo estatal, con su web      127.0.0.1:8781
+#   nodo-federal     servidor de referencia como nodo Federal y común          127.0.0.1:8782
+#   evaluador        evaluador OPRF de la corroboración ciega                  127.0.0.1:8791
+#   indice           índice de coincidencias de la corroboración ciega         127.0.0.1:8792
+#   testigo-*        dos observadores que, con el nodo Querétaro, cofirman la bitácora nacional (2 de 3)
+# Todo en un comando: npm run demo:todo (y npm run demo:apagar para bajarla y limpiar).
+# A mano: npm run red:demo (genera las llaves en .red-demo/, que no se versiona), después
+# docker compose build && docker compose up -d, y npm run demo:seed siembra el escenario.
+# Los nodos usan el reloj simulado de la demostración (.red-demo/reloj/desfase): no es producción.
+# Usuario de los contenedores: SIGILO_UID y SIGILO_GID (1000 por omisión, el usuario `node` de la
+# imagen), nunca root. Debe ser el dueño de .red-demo/ en el equipo: el nodo solo acepta un reloj
+# que sea suyo y escribe sus bases en esas carpetas (0700). npm run demo:todo usa `id -u` e `id -g`;
+# en Linux con otro UID, a mano: SIGILO_UID=$(id -u) SIGILO_GID=$(id -g) docker compose up -d.
+# Sin registros de terceros ni telemetría: las imágenes solo usan node:22 oficial y npm al construir.
+
+name: sigilo-red
+
+# Mismo UID que el dueño de .red-demo/ (ver arriba); por omisión, el usuario `node` de la imagen.
+x-hardening: &hardening
+  user: '${SIGILO_UID:-1000}:${SIGILO_GID:-1000}'
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+x-node-build: &node-build
+  context: .
+  dockerfile: docker/Dockerfile
+  target: nodo
+
+x-witness: &witness
+  <<: *hardening
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: testigo
+  image: sigilo/testigo:local
+  environment:
+    SIGILO_WITNESS_ROUTER_URL: http://enrutador:8790
+    SIGILO_WITNESS_INTERVAL_SECONDS: '30'
+    # H4: el testigo descarga la bitácora de cada nodo para comprobar que su cabeza nueva extiende
+    # la anterior.
+    SIGILO_WITNESS_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080
+  networks:
+    - interna
+  depends_on:
+    enrutador:
+      condition: service_healthy
+
+services:
+  enrutador:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: enrutador
+    image: sigilo/enrutador:local
+    environment:
+      # Direcciones internas de los nodos en la red de compose (las públicas están en el directorio).
+      SIGILO_ROUTER_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080
+      SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS: '60'
+    volumes:
+      - ./.red-demo/enrutador:/data
+    depends_on:
+      nodo-queretaro:
+        condition: service_healthy
+      nodo-federal:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:8790:8790'
+    networks:
+      - interna
+      - publica
+
+  evaluador:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: evaluador
+    image: sigilo/evaluador:local
+    volumes:
+      - ./.red-demo/evaluador:/data
+    ports:
+      - '127.0.0.1:8791:8791'
+    networks:
+      - interna
+      - publica
+
+  indice:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: indice
+    image: sigilo/indice:local
+    environment:
+      # El mismo reloj simulado que los nodos (solo en la demostración).
+      NODE_ENV: development
+      SIGILO_DEMO: '1'
+      SIGILO_INDEX_CLOCK_FILE: /reloj/desfase
+    volumes:
+      - ./.red-demo/indice:/data
+      - ./.red-demo/reloj:/reloj:ro
+    ports:
+      - '127.0.0.1:8792:8792'
+    networks:
+      - interna
+      - publica
+
+  nodo-queretaro:
+    <<: *hardening
+    build:
+      <<: *node-build
+      additional_contexts:
+        node-keys: ./.red-demo/nodos/queretaro/web
+    image: sigilo/nodo-queretaro:local
+    env_file:
+      - ./.red-demo/nodos/queretaro/node.env
+    volumes:
+      - ./.red-demo/nodos/queretaro/data:/data
+      - ./.red-demo/reloj:/reloj:ro
+    ports:
+      - '127.0.0.1:8781:8080'
+    networks:
+      - interna
+      - publica
+
+  nodo-federal:
+    <<: *hardening
+    build:
+      <<: *node-build
+      additional_contexts:
+        node-keys: ./.red-demo/nodos/federal/web
+    image: sigilo/nodo-federal:local
+    env_file:
+      - ./.red-demo/nodos/federal/node.env
+    volumes:
+      - ./.red-demo/nodos/federal/data:/data
+      - ./.red-demo/reloj:/reloj:ro
+    ports:
+      - '127.0.0.1:8782:8080'
+    networks:
+      - interna
+      - publica
+
+  testigo-cpc-queretaro:
+    <<: *witness
+    volumes:
+      - ./.red-demo/testigos/observer.cpc-queretaro:/data
+
+  testigo-universidad-ejemplo:
+    <<: *witness
+    volumes:
+      - ./.red-demo/testigos/observer.university-ejemplo:/data
+
+  # El nodo Querétaro es el tercer testigo: cofirma desde su propia tarea periódica.
+
+networks:
+  # Red entre enrutador, nodos y testigos, sin salida a internet.
+  interna:
+    internal: true
+  # Solo para publicar los puertos en 127.0.0.1 del equipo.
+  publica: {}

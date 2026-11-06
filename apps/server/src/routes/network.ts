@@ -1,0 +1,161 @@
+// Buzón de red del nodo (`POST /api/v1/red/inbox`): abre los sobres que entrega el enrutador ciego,
+// pasa la operación a las propias rutas v1 del nodo y cifra la respuesta hacia el navegador. Además,
+// para la web servida en el mismo origen: copia del directorio firmado, paso de sobres al enrutador
+// y paso de evaluaciones al evaluador OPRF (la web no hace peticiones a otros orígenes).
+import type { Context, Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import {
+  CORROBORATION_ROUTES,
+  CorroborationEvaluationRequestSchema,
+  NETWORK_ROUTES,
+  POW_HEADER,
+  RelayRequestSchema,
+} from '@sigilo/contracts';
+import { createNodeInboxHandler, responseToRoutedReply, routedRequestToFetch } from '@sigilo/red';
+import type { AppContext } from '../context.ts';
+import { errorResponse } from '../http/errors.ts';
+
+/** Mayor sobre de red (tramo de 16 MiB en Base64 con su JSON), como el enrutador. */
+export const MAX_INBOX_BODY_BYTES = 23 * 1024 * 1024;
+
+/** Mayor petición de evaluación OPRF que se pasa al evaluador. */
+const MAX_EVALUATION_BODY_BYTES = 1024;
+
+/**
+ * Autoridad destino de cada petición que llegó por el buzón de red. Solo la escribe este módulo,
+ * sobre objetos `Request` que él mismo crea: una petición directa nunca está aquí, así que nadie
+ * puede elegir su autoridad con una cabecera.
+ */
+const ROUTED_TARGETS = new WeakMap<Request, string>();
+
+/** Autoridad destino si la petición llegó por el enrutador ciego, o `undefined`. */
+export function routedTargetOf(request: Request): string | undefined {
+  return ROUTED_TARGETS.get(request);
+}
+
+async function readJsonBody(c: Context): Promise<unknown> {
+  try {
+    return await c.req.json();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Reenvía la respuesta de otro servicio sin sus cabeceras: solo el estatus y el cuerpo JSON. Si el
+ * servicio no responde o no responde JSON, se contesta `internal` sin detalles.
+ */
+async function relayResponse(c: Context, response: Response): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return errorResponse(c, 'internal');
+  }
+  return c.json(body as object, response.status as 200);
+}
+
+/**
+ * Registra el buzón de red y los pasos del mismo origen. Sin red configurada todas responden `404`,
+ * igual que una ruta inexistente.
+ * Seguridad: el nodo no recibe ninguna cabecera de quien envía (el enrutador arma la petición desde
+ * cero) y la operación se ejecuta con las mismas validaciones y pruebas de trabajo que una directa.
+ * En los pasos al enrutador y al evaluador el nodo arma la petición desde cero, con solo el tipo de
+ * contenido (y la prueba de trabajo del evaluador): no reenvía cookies, agente de usuario ni IP.
+ */
+export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
+  const network = ctx.deps.network;
+  const inbox =
+    network === undefined
+      ? null
+      : createNodeInboxHandler({
+          nodeBoxPrivateKey: network.nodeBoxPrivateKey,
+          // Seguridad (H11): solo sobres que pasaron por el enrutador, con su etiqueta HMAC.
+          relaySecret: network.relaySecret,
+          handle: async (routed) => {
+            const request = routedRequestToFetch(routed);
+            ROUTED_TARGETS.set(request, routed.to);
+            return responseToRoutedReply(await app.request(request));
+          },
+        });
+  app.post(
+    NETWORK_ROUTES.nodeInbox,
+    bodyLimit({
+      maxSize: MAX_INBOX_BODY_BYTES,
+      onError: (c) => errorResponse(c, 'payload_too_large'),
+    }),
+    (c) => (inbox === null ? errorResponse(c, 'not_found') : inbox(c.req.raw)),
+  );
+
+  // Copia del directorio firmado: la web lo verifica con la raíz que trae fijada, así que el nodo
+  // no puede alterarlo sin que se note.
+  app.get(NETWORK_ROUTES.directory, (c) =>
+    network === undefined ? errorResponse(c, 'not_found') : c.json(network.signedDirectory),
+  );
+
+  // Paso al enrutador ciego: el nodo de origen solo ve el destino y el tramo, como el enrutador.
+  app.post(
+    NETWORK_ROUTES.relay,
+    bodyLimit({
+      maxSize: MAX_INBOX_BODY_BYTES,
+      onError: (c) => errorResponse(c, 'payload_too_large'),
+    }),
+    async (c) => {
+      if (network === undefined || network.routerUrl === null) {
+        return errorResponse(c, 'not_found');
+      }
+      const parsed = RelayRequestSchema.safeParse(await readJsonBody(c));
+      if (!parsed.success) return errorResponse(c, 'bad_request');
+      try {
+        const response = await network.fetch(`${network.routerUrl}${NETWORK_ROUTES.relay}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed.data),
+        });
+        return await relayResponse(c, response);
+      } catch {
+        return errorResponse(c, 'internal');
+      }
+    },
+  );
+
+  // Paso al evaluador OPRF: el nodo solo ve el elemento cegado, que no revela el identificador.
+  const evaluatorUrl = network?.directory.corroboration?.evaluatorUrl ?? null;
+  app.get(CORROBORATION_ROUTES.evaluatorChallenge, async (c) => {
+    if (network === undefined || evaluatorUrl === null) return errorResponse(c, 'not_found');
+    try {
+      const response = await network.fetch(
+        `${evaluatorUrl}${CORROBORATION_ROUTES.evaluatorChallenge}`,
+        { method: 'GET' },
+      );
+      return await relayResponse(c, response);
+    } catch {
+      return errorResponse(c, 'internal');
+    }
+  });
+  app.post(
+    CORROBORATION_ROUTES.evaluations,
+    bodyLimit({
+      maxSize: MAX_EVALUATION_BODY_BYTES,
+      onError: (c) => errorResponse(c, 'payload_too_large'),
+    }),
+    async (c) => {
+      if (network === undefined || evaluatorUrl === null) return errorResponse(c, 'not_found');
+      const parsed = CorroborationEvaluationRequestSchema.safeParse(await readJsonBody(c));
+      if (!parsed.success) return errorResponse(c, 'bad_request');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const proof = c.req.header(POW_HEADER);
+      if (proof !== undefined) headers[POW_HEADER] = proof;
+      try {
+        const response = await network.fetch(`${evaluatorUrl}${CORROBORATION_ROUTES.evaluations}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(parsed.data),
+        });
+        return await relayResponse(c, response);
+      } catch {
+        return errorResponse(c, 'internal');
+      }
+    },
+  );
+}

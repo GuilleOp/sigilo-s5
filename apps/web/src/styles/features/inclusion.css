@@ -1,0 +1,50 @@
+/* Modos de uso: panel de modos, barra del quiosco y lectura fácil (letra más grande y más espacio).
+   Solo usa tokens. */
+.usage-modes {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.usage-modes legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.usage-modes__hint {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.kiosk-bar {
+  max-inline-size: 64rem;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin-block: var(--space-3);
+  background: var(--color-surface);
+}
+
+.kiosk-bar p {
+  margin: 0;
+}
+
+:root[data-reading='easy'] body {
+  font-size: 1.2rem;
+  line-height: 1.8;
+  word-spacing: 0.08em;
+}
+
+:root[data-reading='easy'] .field__hint,
+:root[data-reading='easy'] .source {
+  font-size: 1.05rem;
+}

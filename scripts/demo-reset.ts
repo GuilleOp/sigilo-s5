@@ -1,5 +1,6 @@
 // Reinicia la demostración: borra la base y las pruebas del directorio de datos y conserva las
-// llaves (`keys.json` y `authority-demo-key.json`).
+// llaves (`keys.json`, `authority-demo-key.json` y `supervisor-demo-key.json`) y las cuentas de la
+// autoridad (`authority-accounts.json`).
 // Uso: npm run demo:reset -- --yes (o con el marcador `.sigilo-demo` en el directorio de datos).
 // Se niega si el servidor está en marcha (bloqueo del directorio de datos o puerto ocupado).
 import { existsSync, rmSync } from 'node:fs';
@@ -40,7 +41,7 @@ async function main(): Promise<void> {
   console.log(
     removed.length === 0
       ? `No había datos de demostración en ${where}.`
-      : `Se borraron la base y las pruebas de ${where}; las llaves se conservan.`,
+      : `Se borraron la base y las pruebas de ${where}; las llaves y las cuentas se conservan.`,
   );
 }
 

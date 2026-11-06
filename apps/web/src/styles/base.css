@@ -1,4 +1,4 @@
-/* Estilos base: tipografía del sistema, foco visible, formularios y diseño móvil primero. */
+/* Estilos base: tipografía, foco visible, formularios y diseño móvil primero (dirección visual A). */
 *,
 *::before,
 *::after {
@@ -32,6 +32,8 @@ h4 {
 
 h1 {
   font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--color-title);
 }
 
 h2 {
@@ -119,8 +121,15 @@ textarea {
   min-height: var(--target-min);
   padding: var(--space-2) var(--space-3);
   border: 2px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+/* Campo enfocado: contorno verde, además del anillo de foco. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--color-primary);
 }
 
 textarea {
@@ -141,8 +150,8 @@ input[type='file']::file-selector-button {
   margin-right: var(--space-3);
   padding: var(--space-2) var(--space-4);
   border: 2px solid var(--color-primary);
-  border-radius: var(--radius);
-  background: var(--color-bg);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
   color: var(--color-primary);
   font: inherit;
   font-weight: 700;
@@ -198,8 +207,11 @@ td {
   color: var(--color-text-muted);
 }
 
-.print-only {
-  display: none;
+/* H1: en pantalla nunca se ve, aunque otra clase (como .receipt-words) le dé display. */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
 }
 
 @media print {

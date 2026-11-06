@@ -1,0 +1,15 @@
+{
+  "account": {
+    "accountId": "acct-5f0c2a9d1e7b3c44",
+    "authorityId": "authority.oic-iffe",
+    "function": "investigation"
+  },
+  "authority": {
+    "authorityId": "authority.oic-iffe",
+    "name": "Órgano Interno de Control Ficticio",
+    "supervisorId": "authority.oversight-federal",
+    "isInbox": false
+  },
+  "idleTimeoutSeconds": 900,
+  "absoluteTimeoutSeconds": 28800
+}

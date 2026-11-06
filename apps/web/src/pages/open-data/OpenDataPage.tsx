@@ -1,5 +1,6 @@
 // Pantalla /datos-abiertos: tabla del CSV agregado y descarga, con supresión de celdas pequeñas.
 import { useEffect, useState } from 'react';
+import { TableScroll } from '../../components/TableScroll.tsx';
 import {
   ComplaintStatusSchema,
   findOffense,
@@ -99,9 +100,9 @@ export function OpenDataPage() {
           {table.rows.length === 0 ? (
             <p>Aún no hay combinaciones con {OPEN_DATA_MIN_CELL} denuncias o más.</p>
           ) : (
-            <div className="table-scroll">
+            <TableScroll labelledBy={'open-data-caption'}>
               <table data-testid="open-data-table">
-                <caption>Número de denuncias</caption>
+                <caption id={'open-data-caption'}>Número de denuncias</caption>
                 <thead>
                   <tr>
                     {table.headers.map((header) => (
@@ -121,7 +122,7 @@ export function OpenDataPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
         </>
       )}

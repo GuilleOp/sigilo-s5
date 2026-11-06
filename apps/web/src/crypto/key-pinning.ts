@@ -7,7 +7,9 @@ export type KeyField =
   | 'server.signingPublicKey'
   | 'authority.keyId'
   | 'authority.boxPublicKey'
-  | 'authority.signingPublicKey';
+  | 'authority.signingPublicKey'
+  | 'supervisor.keyId'
+  | 'supervisor.boxPublicKey';
 
 /** Error que bloquea el cifrado: el servidor publica llaves distintas de las fijadas. */
 export class KeyMismatchError extends Error {
@@ -33,6 +35,13 @@ export function diffPublicKeys(pinned: PublicKeySet, served: PublicKeySet): KeyF
       'authority.signingPublicKey',
       pinned.authority.signingPublicKey,
       served.authority.signingPublicKey,
+    ],
+    // La segunda llave también se compara: un servidor que la sustituya leería las escaladas.
+    ['supervisor.keyId', pinned.supervisor?.keyId ?? '', served.supervisor?.keyId ?? ''],
+    [
+      'supervisor.boxPublicKey',
+      pinned.supervisor?.boxPublicKey ?? '',
+      served.supervisor?.boxPublicKey ?? '',
     ],
   ];
   return pairs.filter(([, expected, actual]) => expected !== actual).map(([field]) => field);

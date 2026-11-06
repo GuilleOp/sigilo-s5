@@ -1,0 +1,10 @@
+{
+  "token": "Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq",
+  "idleTimeoutSeconds": 900,
+  "absoluteTimeoutSeconds": 28800,
+  "account": {
+    "accountId": "acct-5f0c2a9d1e7b3c44",
+    "authorityId": "authority.oic-iffe",
+    "function": "investigation"
+  }
+}

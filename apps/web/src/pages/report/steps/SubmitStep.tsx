@@ -12,18 +12,56 @@ import { formatDayDate } from '../../../lib/format.ts';
 import { setNavigationWarning } from '../../../lib/navigation-guard.ts';
 import { api } from '../../../services/api.ts';
 import { describeError } from '../../../services/api-client.ts';
+import { useMemoryStore } from '../../../state/memory-store.ts';
 import { reportDraftStore } from '../../../state/report-draft.ts';
+import { usageModesStore } from '../../../state/usage-modes.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
+import { evaluatorKeyFromDirectory } from '@sigilo/corroboracion';
+import { identifierFromDraft } from '../../../corroboration/blind-corroboration.ts';
+import { workerCorroborationRunner } from '../../../corroboration/corroboration-runner.ts';
+import { destinationFor, keysForDestination } from '../../../network/network-keys.ts';
+import { createRelayApi, sameOriginRelaySender } from '../../../network/relay-api.ts';
+import type { ResolvedDestination } from '../destination.ts';
 import {
   ReceiptVerificationError,
   SubmissionBlockedError,
   submitReport,
 } from '../submit-report.ts';
-import type { SubmittedReport } from '../submit-report.ts';
+import type { NetworkSubmission, SubmittedReport } from '../submit-report.ts';
 
 interface SubmitStepProps {
   draft: ReportDraft;
+  destination: ResolvedDestination;
   onSendingChange: (isSending: boolean) => void;
+}
+
+/**
+ * Envío por la red hacia la autoridad elegida, con la corroboración ciega si la persona la pidió y
+ * el directorio publica el evaluador; `undefined` con un solo nodo.
+ */
+function networkSubmissionFor(
+  draft: ReportDraft,
+  destination: ResolvedDestination,
+): NetworkSubmission | undefined {
+  if (destination.kind !== 'network') return undefined;
+  const target = destinationFor(destination.directory, destination.selected.authorityId);
+  const key = evaluatorKeyFromDirectory(destination.directory);
+  const checked = identifierFromDraft(draft.corroboration, draft.facts.entityId);
+  const identifier = checked !== null && 'identifier' in checked ? checked.identifier : null;
+  return {
+    api: createRelayApi(
+      { authorityId: target.authority.id, node: target.node },
+      sameOriginRelaySender(),
+    ),
+    keys: keysForDestination(target),
+    authorityName: target.authority.name,
+    nodeName: target.node.name,
+    ...(key === null || identifier === null
+      ? {}
+      : {
+          corroborate: (narrative: string) => workerCorroborationRunner(identifier, key, narrative),
+        }),
+  };
 }
 
 type Phase =
@@ -40,8 +78,14 @@ const RESULT_TITLE_ID = 'submit-result-title';
 const LEAVE_WARNING =
   'Si sales ahora, ya no podrás ver tus 8 palabras. Sin ellas no podrás dar seguimiento a tu denuncia.';
 
+/** Solo se envía con un destino resuelto: un nodo o una autoridad del directorio verificado. */
+function canSend(destination: ResolvedDestination): boolean {
+  return destination.kind === 'single-node' || destination.kind === 'network';
+}
+
 /** Envío y entrega del recibo. */
-export function SubmitStep({ draft, onSendingChange }: SubmitStepProps) {
+export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepProps) {
+  const modes = useMemoryStore(usageModesStore);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const isSending = useRef(false);
 
@@ -55,12 +99,16 @@ export function SubmitStep({ draft, onSendingChange }: SubmitStepProps) {
   }, [phase.kind]);
 
   async function send(): Promise<void> {
-    if (isSending.current || phase.kind === 'key-mismatch') return;
+    if (isSending.current || phase.kind === 'key-mismatch' || !canSend(destination)) return;
     isSending.current = true;
     onSendingChange(true);
     try {
-      const result = await submitReport(draft, api, (message) =>
-        setPhase({ kind: 'sending', message }),
+      const network = networkSubmissionFor(draft, destination);
+      const result = await submitReport(
+        draft,
+        api,
+        (message) => setPhase({ kind: 'sending', message }),
+        network === undefined ? {} : { network },
       );
       reportDraftStore.reset();
       setPhase({ kind: 'receipt', result, isVerified: true });
@@ -111,6 +159,39 @@ export function SubmitStep({ draft, onSendingChange }: SubmitStepProps) {
             <p>Guarda tu recibo. Más tarde entra a «Dar seguimiento» para revisar.</p>
           </Alert>
         )}
+        {result.destination !== undefined && (
+          <p data-testid="submit-destination">
+            Llegó a <strong>{result.destination.authorityName}</strong> (
+            {result.destination.nodeName}). Viajó cerrada con llave: nadie en medio pudo leerla.
+          </p>
+        )}
+        {result.corroboration === 'sent' && (
+          <p data-testid="submit-corroboration">
+            Comparamos tu dato sin revelarlo. Si otras personas denunciaron lo mismo por separado,
+            la autoridad lo verá como una coincidencia, sin saber quiénes son.
+          </p>
+        )}
+        {result.corroboration === 'failed' && (
+          <p data-testid="submit-corroboration-failed">
+            No pudimos hacer la comparación con otras denuncias. Tu denuncia se envió igual.
+          </p>
+        )}
+        {modes.isAssisted && (
+          <Alert tone="warning" title="Antes de ver tus palabras" testId="assisted-receipt">
+            <p>
+              Pide a la persona que te ayuda que se aparte de la pantalla. Tus 8 palabras son solo
+              para ti: con ellas cualquiera podría leer los mensajes de tu denuncia.
+            </p>
+          </Alert>
+        )}
+        {modes.isKiosk && (
+          <Alert tone="info" title="Estás en un equipo compartido" testId="kiosk-receipt">
+            <p>
+              Anota tus palabras en papel. Al terminar, pulsa «Terminar y borrar todo» para que la
+              siguiente persona no vea nada.
+            </p>
+          </Alert>
+        )}
         <ReceiptCard folio={result.folio} words={result.words} />
         <ReceiptConfirmation
           words={result.words}
@@ -141,14 +222,26 @@ export function SubmitStep({ draft, onSendingChange }: SubmitStepProps) {
     );
   }
 
-  const isBlocked = phase.kind === 'sending' || phase.kind === 'key-mismatch';
+  const isBlocked =
+    phase.kind === 'sending' || phase.kind === 'key-mismatch' || !canSend(destination);
   return (
     <>
+      {destination.kind === 'network' && (
+        <p data-testid="submit-target">
+          Se enviará a <strong>{destination.selected.name}</strong> ({destination.selected.nodeName}
+          ). Puedes cambiarla en el paso anterior.
+        </p>
+      )}
+      {(destination.kind === 'blocked' || destination.kind === 'needs-choice') && (
+        <Alert tone="danger" title="Todavía no podemos enviar" testId="submit-routing-blocked">
+          <p>{destination.reason}</p>
+        </Alert>
+      )}
       <p>
         Al enviar, te daremos 8 palabras. Con ellas y tu folio podrás ver cómo va tu denuncia y leer
         mensajes.
         {draft.mode === 'sealed' &&
-          ' También guardaremos tu nombre bajo llave: solo la autoridad podrá abrirlo.'}
+          ' También guardaremos tu nombre bajo llave: solo se abre con dos aprobaciones de la autoridad competente, o si tú decides inconformarte.'}
       </p>
       {phase.kind === 'key-mismatch' && (
         <Alert

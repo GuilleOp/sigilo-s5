@@ -14,9 +14,12 @@ import {
   createReceipt,
   identityBlockSize,
   normalizeSubmissionInput,
+  sealReporterEscalation,
   sealReporterIdentity,
   verifySubmission,
 } from '../../crypto/submission.ts';
+import type { CorroborationPayload } from '../../corroboration/blind-corroboration.ts';
+import type { ReporterApi } from '../../network/relay-api.ts';
 import type { SigiloApi } from '../../services/api.ts';
 import { ApiRequestError } from '../../services/api-client.ts';
 import type { ReportDraft } from '../../state/report-draft.ts';
@@ -27,6 +30,23 @@ export interface SubmittedReport {
   folio: string;
   words: string[];
   receivedOn: string;
+  /** Autoridad y nodo de la red a los que llegó, si se envió por la red. */
+  destination?: { authorityName: string; nodeName: string };
+  /** Resultado de la corroboración ciega: `sent`, `failed` (se envió sin ella) o sin pedirla. */
+  corroboration?: 'sent' | 'failed';
+}
+
+/**
+ * Envío por la red: operaciones a través del enrutador ciego y llaves de la autoridad destino
+ * tomadas del directorio verificado.
+ */
+export interface NetworkSubmission {
+  api: ReporterApi;
+  keys: PinnedKeys;
+  authorityName: string;
+  nodeName: string;
+  /** Corroboración ciega opcional: se calcula con el relato final, justo antes de cifrar. */
+  corroborate?: (narrative: string) => Promise<CorroborationPayload | null>;
 }
 
 /** Error cuando el comprobante no verifica: la denuncia pudo llegar, pero no hay prueba firmada. */
@@ -74,6 +94,8 @@ export interface SubmitOptions {
   pinned?: PinnedKeys;
   uploads?: UploadCache;
   solver?: PowSolver;
+  /** Envío por la red; sin él, la denuncia va al nodo de este mismo origen. */
+  network?: NetworkSubmission;
 }
 
 function mediaTypeOf(blob: Blob): EvidenceMediaType {
@@ -125,9 +147,11 @@ export async function submitReport(
   onProgress: (message: string) => void,
   options: SubmitOptions = {},
 ): Promise<SubmittedReport> {
-  const pinned = options.pinned ?? PINNED_KEYS;
+  const network = options.network;
+  const pinned = network?.keys ?? options.pinned ?? PINNED_KEYS;
   const uploads = options.uploads ?? DEFAULT_UPLOADS;
   const solver = options.solver ?? workerPowSolver;
+  const transport: ReporterApi = network?.api ?? api;
   const facts = toComplaintFacts(draft);
   if (facts === null || draft.mode === null) {
     throw new SubmissionBlockedError('Faltan datos de la denuncia. Revisa los pasos anteriores.');
@@ -140,7 +164,9 @@ export async function submitReport(
   }
 
   onProgress('Comprobando que la conexión es segura.');
-  await assertServedKeysMatch(() => api.getKeys(), pinned.set);
+  // Por la red, las llaves salen del directorio ya verificado con la raíz fijada; con un solo
+  // nodo, se comparan las publicadas con las fijadas en el bundle.
+  if (network === undefined) await assertServedKeysMatch(() => api.getKeys(), pinned.set);
 
   const block =
     draft.mode === 'sealed'
@@ -159,7 +185,7 @@ export async function submitReport(
 
   // Un solo reto cubre las pruebas y la denuncia; se resuelve al primer uso y se renueva una vez
   // si el servidor lo rechaza (por ejemplo, porque venció).
-  const proofs = createProofProvider(api, 'complaint', solver, onProgress);
+  const proofs = createProofProvider(transport, 'complaint', solver, onProgress);
   const images = draft.evidence.flatMap((item) => item.clean);
   const evidence: EvidenceDescriptor[] = [];
   for (const [index, image] of images.entries()) {
@@ -171,7 +197,7 @@ export async function submitReport(
     const mediaType = mediaTypeOf(image.blob);
     const descriptor = await sendWithProof(proofs, (proof) => {
       onProgress(`Enviando tus pruebas limpias: ${index + 1} de ${images.length}.`);
-      return api.uploadEvidence(image.blob, mediaType, proof);
+      return transport.uploadEvidence(image.blob, mediaType, proof);
     });
     await assertDescriptorMatches(descriptor, image.blob, mediaType);
     uploads.set(image.blob, descriptor);
@@ -190,17 +216,35 @@ export async function submitReport(
 
   let sealedIdentity;
   if (block !== undefined) {
-    onProgress('Guardando tu nombre bajo llave: solo la autoridad podrá abrirlo.');
+    onProgress(
+      'Guardando tu nombre bajo llave: solo se abre con dos aprobaciones y siempre queda registrado.',
+    );
     sealedIdentity = await sealReporterIdentity(block, input, receipt.keys, pinned);
   }
 
-  const request = buildSubmitRequest(input, receipt.keys, sealedIdentity);
+  // Segunda llave: si la autoridad no actúa a tiempo, la supervisora recibe los hechos.
+  const escalationEnvelope = await sealReporterEscalation(input, receipt.keys, pinned);
+  // Corroboración ciega opcional: si falla, la denuncia sale igual (solo suma prioridad).
+  let corroboration: CorroborationPayload | null = null;
+  let corroborationResult: SubmittedReport['corroboration'];
+  if (network?.corroborate !== undefined) {
+    onProgress('Buscando, sin revelar el dato, si otras personas denunciaron lo mismo.');
+    corroboration = await network.corroborate(input.facts.description).catch(() => null);
+    corroborationResult = corroboration === null ? 'failed' : 'sent';
+  }
+  const request = buildSubmitRequest(
+    input,
+    receipt.keys,
+    sealedIdentity,
+    escalationEnvelope,
+    corroboration ?? undefined,
+  );
 
   let response;
   try {
     response = await sendWithProof(proofs, (proof) => {
       onProgress('Enviando tu denuncia.');
-      return api.submitComplaint(request, proof);
+      return transport.submitComplaint(request, proof);
     });
   } catch (error) {
     // Una prueba ya asociada, purgada o inexistente hace fallar el envío: en el reintento se
@@ -213,5 +257,13 @@ export async function submitReport(
   if (!verifySubmission(request, response, pinned)) {
     throw new ReceiptVerificationError(response.folio, receipt.words);
   }
-  return { folio: response.folio, words: receipt.words, receivedOn: response.receipt.receivedOn };
+  return {
+    folio: response.folio,
+    words: receipt.words,
+    receivedOn: response.receipt.receivedOn,
+    ...(network === undefined
+      ? {}
+      : { destination: { authorityName: network.authorityName, nodeName: network.nodeName } }),
+    ...(corroborationResult === undefined ? {} : { corroboration: corroborationResult }),
+  };
 }

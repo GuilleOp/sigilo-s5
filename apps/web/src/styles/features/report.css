@@ -1,0 +1,139 @@
+/* Componentes nuevos del asistente: destino de la denuncia, grupo de anonimato, lugar de trabajo y
+   corroboración ciega. Solo usa tokens. */
+.routing__target {
+  font-size: 1.05rem;
+}
+
+.routing-choice {
+  border: 0;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+}
+
+.routing-choice legend {
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.routing-choice__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.routing-option {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-2);
+}
+
+.routing-option:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-surface-strong);
+}
+
+.routing-option input {
+  inline-size: 1.4rem;
+  block-size: 1.4rem;
+  margin-top: 0.15rem;
+  flex: none;
+}
+
+.routing-option__name {
+  display: block;
+  font-weight: 700;
+}
+
+.routing-option__meta {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.routing-choice__more summary,
+.routing__why summary,
+.corroboration__explain summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-block-size: var(--target-min);
+  display: flex;
+  align-items: center;
+}
+
+.anonymity {
+  border: 3px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+}
+
+.anonymity[data-risk='high'] {
+  border-color: var(--status-danger);
+}
+
+.anonymity[data-risk='medium'],
+.anonymity[data-risk='unknown'] {
+  border-color: var(--status-warning);
+}
+
+.anonymity[data-risk='low'] {
+  border-color: var(--status-ok);
+}
+
+.anonymity__title {
+  margin-top: 0;
+}
+
+.anonymity__icon {
+  border-radius: 50%;
+  color: var(--color-protect);
+}
+
+.anonymity__icon::before {
+  content: '◎';
+  font-size: 0.8em;
+}
+
+.anonymity__level {
+  font-weight: 700;
+}
+
+.anonymity__actions {
+  padding-inline-start: var(--space-5);
+}
+
+.anonymity__source {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.choice-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.choice-list .choice {
+  margin-bottom: 0;
+  align-items: center;
+}
+
+.workplace,
+.corroboration fieldset {
+  border: 0;
+  padding: 0;
+}
+
+.workplace legend,
+.corroboration legend {
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.corroboration__explain {
+  margin-bottom: var(--space-3);
+}

@@ -1,8 +1,10 @@
 // Pantalla /denunciar: asistente por pasos con progreso, validación y foco gestionado.
 // Al cambiar de paso el foco va al encabezado, o al panel exacto si lo pide el semáforo.
 import { useState } from 'react';
+import { useNetworkState } from '../../network/use-network-state.ts';
 import { ErrorSummary } from '../../components/ErrorSummary.tsx';
 import { StepHeading } from '../../components/StepHeading.tsx';
+import { StepNavigator } from '../../components/StepNavigator.tsx';
 import { StepProgress } from '../../components/StepProgress.tsx';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
@@ -20,6 +22,7 @@ import { FactsStep } from './steps/FactsStep.tsx';
 import { ModeStep } from './steps/ModeStep.tsx';
 import { ReviewStep } from './steps/ReviewStep.tsx';
 import { SubmitStep } from './steps/SubmitStep.tsx';
+import { resolveDestination } from './destination.ts';
 
 const STEPS = [
   { id: 'mode', title: 'Modo', heading: '¿Cómo quieres denunciar?' },
@@ -51,6 +54,8 @@ function validateStep(step: StepId, draft: ReportDraft): FieldErrors {
 /** Asistente de denuncia. */
 export function ReportPage() {
   const draft = useMemoryStore(reportDraftStore);
+  const network = useNetworkState();
+  const destination = resolveDestination(draft, network);
   const [index, setIndex] = useState(0);
   /** Tras moverse de paso, el encabezado nuevo recibe el foco (salvo que haya otro destino). */
   const [shouldFocusHeading, setFocusHeading] = useState(false);
@@ -97,6 +102,7 @@ export function ReportPage() {
         {step.id === 'evidence' && <EvidenceStep draft={draft} errors={visibleErrors} />}
         {step.id === 'review' && (
           <ReviewStep
+            destination={destination}
             draft={draft}
             goToStep={(target, focusId) =>
               goTo(
@@ -106,27 +112,19 @@ export function ReportPage() {
             }
           />
         )}
-        {step.id === 'submit' && <SubmitStep draft={draft} onSendingChange={setSending} />}
+        {step.id === 'submit' && (
+          <SubmitStep draft={draft} destination={destination} onSendingChange={setSending} />
+        )}
       </section>
       {!isSending && (
-        <div className="actions no-print">
-          {/* Tras un envío exitoso el borrador se vacía (modo nulo) y ya no se puede regresar. */}
-          {index > 0 && draft.mode !== null && (
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => goTo(index - 1)}
-              data-testid="step-back"
-            >
-              Atrás
-            </button>
-          )}
-          {index < STEPS.length - 1 && (
-            <button type="button" className="button" onClick={next} data-testid="step-next">
-              Continuar
-            </button>
-          )}
-        </div>
+        <StepNavigator
+          current={index}
+          total={STEPS.length}
+          title={step.title}
+          // Tras un envío exitoso el borrador se vacía (modo nulo) y ya no se puede regresar.
+          {...(index > 0 && draft.mode !== null ? { onBack: () => goTo(index - 1) } : {})}
+          {...(index < STEPS.length - 1 ? { onNext: next } : {})}
+        />
       )}
     </>
   );

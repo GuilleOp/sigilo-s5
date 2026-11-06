@@ -1,5 +1,6 @@
 // Listado de denuncias (resúmenes sin identidad).
 import { findOffense, findState } from '@sigilo/contracts';
+import { TableScroll } from '../../components/TableScroll.tsx';
 import type { ComplaintSummary } from '@sigilo/contracts';
 import { formatDayDate, STATUS_LABELS } from '../../lib/format.ts';
 
@@ -12,9 +13,11 @@ interface ComplaintListProps {
 export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
   if (complaints.length === 0) return <p>No hay denuncias todavía.</p>;
   return (
-    <div className="table-scroll">
-      <table data-testid="complaint-list">
-        <caption className="visually-hidden">Denuncias recibidas</caption>
+    <TableScroll labelledBy={'complaint-list-caption'}>
+      <table className="data-table--wide" data-testid="complaint-list">
+        <caption id={'complaint-list-caption'} className="visually-hidden">
+          Denuncias recibidas
+        </caption>
         <thead>
           <tr>
             <th scope="col">Folio</th>
@@ -50,6 +53,6 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }

@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "to": "authority.comptroller-queretaro",
+  "operationId": "getPowChallenge",
+  "query": { "purpose": "complaint" },
+  "proofOfWork": null,
+  "body": { "kind": "none" },
+  "replyPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f"
+}

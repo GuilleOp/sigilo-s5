@@ -7,6 +7,23 @@ coverage/
 .env.*
 !.env.example
 apps/server/data/
+apps/enrutador/data/
+apps/corroboracion/data/
+# Llaves y bases sintéticas de la red de demostración (npm run red:demo).
+.red-demo/
 playwright-report/
 test-results/
 .forbidden-terms.local
+# Swagger UI copiado de node_modules por npm run standard:build.
+estandar/swagger/vendor/
+
+# Copias de trabajo de agentes
+.claude/worktrees/
+
+# Python (proceso de datos)
+__pycache__/
+*.pyc
+*.captura.json
+
+# Temporales de agentes en la raíz
+.tmp-*

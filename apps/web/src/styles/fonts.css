@@ -1,0 +1,50 @@
+/* Mulish autoalojada (SIL Open Font License 1.1, ver assets/fonts/mulish/OFL.txt). Los archivos
+   vienen del repositorio oficial googlefonts/mulish y Vite los sirve desde el mismo origen: ninguna
+   petición a terceros. `font-display: swap` muestra el texto de inmediato con la fuente del sistema. */
+@font-face {
+  font-family: 'Mulish';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('../assets/fonts/mulish/Mulish-Light.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Mulish';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/mulish/Mulish-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Mulish';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/mulish/Mulish-Italic.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Mulish';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/mulish/Mulish-Bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Mulish';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../assets/fonts/mulish/Mulish-ExtraBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Mulish';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('../assets/fonts/mulish/Mulish-Black.woff2') format('woff2');
+}

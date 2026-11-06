@@ -10,6 +10,8 @@ import { AuthorityLogin } from './AuthorityLogin.tsx';
 import type { AuthoritySession } from './authority-session.ts';
 import { ComplaintDetailView } from './ComplaintDetailView.tsx';
 import { ComplaintList } from './ComplaintList.tsx';
+import { EscalationsPanel } from './EscalationsPanel.tsx';
+import { SessionGuard } from './SessionGuard.tsx';
 
 /** Encabezado del listado: destino del foco al entrar y al volver del detalle. */
 const LIST_TITLE_ID = 'complaint-list-title';
@@ -71,11 +73,14 @@ export function AuthorityPage() {
     if (session !== null && selected === null) refresh(session);
   }, [session, selected, refresh]);
 
+  // Seguridad: las llaves se borran al cambiar de llaves o al salir de la pantalla. Una sesión
+  // renovada (nuevo token tras vencer) conserva las mismas llaves y no las borra.
+  const keys = session?.keys ?? null;
   useEffect(
     () => () => {
-      if (session) wipeAuthorityKeys(session.keys);
+      if (keys !== null) wipeAuthorityKeys(keys);
     },
-    [session],
+    [keys],
   );
 
   return (
@@ -90,11 +95,14 @@ export function AuthorityPage() {
         />
       ) : (
         <>
+          <SessionGuard session={session} onRenewed={setSession} />
           <div className="actions">
             <button
               type="button"
               className="button button--secondary"
               onClick={() => {
+                // Seguridad: la sesión se invalida también en el servidor.
+                void api.logout(session.token).catch(() => undefined);
                 activeSession.current = null;
                 setSession(null);
                 setSelected(null);
@@ -115,6 +123,7 @@ export function AuthorityPage() {
           )}
           {selected === null ? (
             <>
+              {session.account.function === 'supervision' && <EscalationsPanel session={session} />}
               <h2 id={LIST_TITLE_ID} tabIndex={-1}>
                 Denuncias recibidas
               </h2>

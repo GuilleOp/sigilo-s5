@@ -17,7 +17,8 @@ export interface ServerConfig {
   host: string;
   port: number;
   dataDir: string;
-  authorityToken: string;
+  /** Archivo local de cuentas de la autoridad (`SIGILO_ACCOUNTS_FILE`); no se versiona. */
+  accountsFile: string;
   /** Origen permitido por CORS; cadena vacía (por omisión) desactiva CORS. */
   allowedOrigin: string;
   /** Directorio de la web construida para servirla en el mismo origen, o `null`. */
@@ -45,10 +46,43 @@ export interface ServerConfig {
   evidenceRetentionDays: number;
   /** Registro de peticiones (`SIGILO_REQUEST_LOG`). */
   requestLogMode: RequestLogMode;
+  /** Red federada (`SIGILO_NODE_ID` y archivos), o `null` si el nodo trabaja solo. */
+  network: NetworkConfig | null;
+  /** Fuentes de la PDN para el contexto (`SIGILO_PDN_SOURCES`). */
+  pdn: PdnConfig;
+  /** Origen del índice de coincidencias (`SIGILO_CORROBORATION_INDEX_URL`), o `null`. */
+  corroborationIndexUrl: string | null;
+  /** Auditor en la tarea periódica (`SIGILO_AUDIT`, activo por omisión). */
+  isAuditEnabled: boolean;
 }
 
+/** Archivos con que el nodo entra a la red; los genera `npm run red:demo`. */
+export interface NetworkConfig {
+  nodeId: string;
+  nodeBoxKeyFile: string;
+  directoryFile: string;
+  trustFile: string;
+  /** Secreto compartido con el enrutador para autenticar el buzón de red. */
+  relaySecretFile: string;
+  /** Origen del enrutador, o `null` si solo usa el directorio. */
+  routerUrl: string | null;
+  /** Estado del testigo si el directorio nombra testigo a este nodo. */
+  witnessStateFile: string;
+}
+
+/** Fuentes de la PDN: sintéticas (demostración), SQLite descargadas o ninguna. */
+export type PdnConfig =
+  | { kind: 'off' }
+  | { kind: 'synthetic'; dayZero: string | null }
+  | { kind: 'sqlite'; s3Path: string; s6Path: string; coverageFile: string };
+
 const DEFAULT_PORT = 8787;
-const MIN_TOKEN_LENGTH = 32;
+
+/** `max-age` mínimo de `Strict-Transport-Security`: un año (SEC-31, PRV-03). */
+export const MIN_HSTS_MAX_AGE_SECONDS = 31_536_000;
+
+/** Nombre del archivo de cuentas en el directorio de datos. */
+export const ACCOUNTS_FILE_NAME = 'authority-accounts.json';
 const SERVER_ROOT = resolve(import.meta.dirname, '..');
 const INTEGER_PATTERN = /^\d{1,15}$/;
 
@@ -123,6 +157,21 @@ function parseRetentionDays(env: NodeJS.ProcessEnv): number {
   );
 }
 
+/**
+ * `max-age` de HSTS: con `SIGILO_HTTPS=1` (el nodo se publica detrás de TLS) se envía al menos un
+ * año aunque no se configure; un valor explícito menor que un año se rechaza.
+ */
+function parseHsts(env: NodeJS.ProcessEnv): number | null {
+  const isHttps = env.SIGILO_HTTPS === '1';
+  const explicit = parseInteger('SIGILO_HSTS_MAX_AGE', env.SIGILO_HSTS_MAX_AGE, null);
+  if (explicit !== null && explicit < MIN_HSTS_MAX_AGE_SECONDS) {
+    throw new Error(
+      `SIGILO_HSTS_MAX_AGE debe ser de al menos ${MIN_HSTS_MAX_AGE_SECONDS} segundos (un año).`,
+    );
+  }
+  return explicit ?? (isHttps ? MIN_HSTS_MAX_AGE_SECONDS : null);
+}
+
 function isTestEnvironment(env: NodeJS.ProcessEnv): boolean {
   return env.SIGILO_E2E === '1' || env.NODE_ENV === 'test';
 }
@@ -186,21 +235,94 @@ export function createOffsetClock(file: string, realNow: () => number = Date.now
   };
 }
 
+const NODE_ID_PATTERN = /^node\.[a-z0-9-]{2,40}$/u;
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
+
+function parseOrigin(name: string, value: string | undefined): string | null {
+  if (value === undefined || value === '') return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${name} debe ser un origen http(s).`);
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`${name} debe ser un origen http(s).`);
+  }
+  return url.origin;
+}
+
+/**
+ * Red federada: `SIGILO_NODE_ID` la activa y entonces exige el directorio, la raíz y la llave de
+ * red. Los archivos por omisión están en el directorio de datos, como los escribe `red:demo`.
+ */
+function parseNetwork(env: NodeJS.ProcessEnv, dataDir: string): NetworkConfig | null {
+  const nodeId = env.SIGILO_NODE_ID ?? '';
+  if (nodeId === '') return null;
+  if (!NODE_ID_PATTERN.test(nodeId)) {
+    throw new Error('SIGILO_NODE_ID debe tener la forma node.<nombre>.');
+  }
+  const file = (name: string, fallback: string): string =>
+    resolve(env[name] || join(dataDir, fallback));
+  return {
+    nodeId,
+    nodeBoxKeyFile: file('SIGILO_NODE_BOX_KEY_FILE', 'red-node-key.json'),
+    directoryFile: file('SIGILO_NETWORK_DIRECTORY_FILE', 'directory.json'),
+    trustFile: file('SIGILO_NETWORK_TRUST_FILE', 'network-trust.json'),
+    relaySecretFile: file('SIGILO_RELAY_SECRET_FILE', 'relay-secret.json'),
+    routerUrl: parseOrigin('SIGILO_ROUTER_URL', env.SIGILO_ROUTER_URL),
+    witnessStateFile: file('SIGILO_WITNESS_STATE_FILE', 'witness-state.json'),
+  };
+}
+
+function parsePdn(env: NodeJS.ProcessEnv): PdnConfig {
+  const kind = env.SIGILO_PDN_SOURCES ?? '';
+  if (kind === '' || kind === 'off') return { kind: 'off' };
+  if (kind === 'synthetic') {
+    // Seguridad: los datos sintéticos no deben pasar por reales en producción.
+    if (env.NODE_ENV === 'production' && env.SIGILO_DEMO !== '1') {
+      throw new Error('SIGILO_PDN_SOURCES=synthetic solo se usa en demostración (SIGILO_DEMO=1).');
+    }
+    const dayZero = env.SIGILO_DEMO_DAY_ZERO ?? '';
+    if (dayZero !== '' && !DAY_PATTERN.test(dayZero)) {
+      throw new Error('SIGILO_DEMO_DAY_ZERO debe ser una fecha AAAA-MM-DD.');
+    }
+    return { kind: 'synthetic', dayZero: dayZero === '' ? null : dayZero };
+  }
+  if (kind === 'sqlite') {
+    const s3 = env.SIGILO_PDN_S3_PATH ?? '';
+    const s6 = env.SIGILO_PDN_S6_PATH ?? '';
+    if (s3 === '' || s6 === '') {
+      throw new Error('SIGILO_PDN_SOURCES=sqlite exige SIGILO_PDN_S3_PATH y SIGILO_PDN_S6_PATH.');
+    }
+    return {
+      kind: 'sqlite',
+      s3Path: resolve(s3),
+      s6Path: resolve(s6),
+      coverageFile: resolve(
+        env.SIGILO_PDN_COVERAGE_FILE ||
+          join(SERVER_ROOT, '..', '..', 'datos', 'cobertura', 'matriz.json'),
+      ),
+    };
+  }
+  throw new Error('SIGILO_PDN_SOURCES debe ser off, synthetic o sqlite.');
+}
+
 /**
  * Construye la configuración a partir de las variables de entorno.
- * Lanza error si `SIGILO_AUTHORITY_TOKEN` falta o mide menos de 32 caracteres, si algún número no
- * es válido, si `SIGILO_POW_MAX_BITS` excede la base más `MAX_POW_ADAPTIVE_SPAN_BITS`, si se usa la variable retirada `SIGILO_UNTRACKED_RETENTION_DAYS`, si `SIGILO_TEST_CLOCK_FILE` se define fuera de un entorno de pruebas
+ * Lanza error si se define el retirado `SIGILO_AUTHORITY_TOKEN`, si algún número no es válido, si
+ * `SIGILO_HSTS_MAX_AGE` es menor que un año, si `SIGILO_POW_MAX_BITS` excede la base más `MAX_POW_ADAPTIVE_SPAN_BITS`, si se usa la variable retirada `SIGILO_UNTRACKED_RETENTION_DAYS`, si `SIGILO_TEST_CLOCK_FILE` se define fuera de un entorno de pruebas
  * (`SIGILO_E2E=1` o `NODE_ENV=test`) o con un archivo inseguro, o si `SIGILO_REQUEST_LOG` no es
  * válido para el entorno.
  * Seguridad: CORS queda desactivado salvo que `SIGILO_ALLOWED_ORIGIN` lo configure; la web se
  * sirve en el mismo origen (por el proxy de Vite o con `SIGILO_WEB_DIST`).
  */
 export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
-  const authorityToken = env.SIGILO_AUTHORITY_TOKEN ?? '';
-  // Seguridad: un token corto es adivinable; se exige longitud mínima antes de arrancar.
-  if (authorityToken.length < MIN_TOKEN_LENGTH) {
+  // Seguridad: el token compartido se retiró (SEC-06, SEC-12); se rechaza para que nadie crea que
+  // sigue protegiendo el panel.
+  if ((env.SIGILO_AUTHORITY_TOKEN ?? '') !== '') {
     throw new Error(
-      `SIGILO_AUTHORITY_TOKEN es obligatorio y debe medir al menos ${MIN_TOKEN_LENGTH} caracteres.`,
+      'SIGILO_AUTHORITY_TOKEN se retiró: el panel usa cuentas individuales (npm run accounts:generate). Quítalo del entorno o de apps/server/.env.',
     );
   }
   const webDist = env.SIGILO_WEB_DIST ?? '';
@@ -215,14 +337,15 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
   const testClockFile = testClock === '' ? null : resolve(testClock);
   if (testClockFile !== null) assertTestClockFileSafe(testClockFile);
   const powBits = parsePowBits(env.SIGILO_POW_BITS);
+  const dataDir = resolve(env.SIGILO_DATA_DIR || DEFAULT_DATA_DIR);
   return {
     host: '127.0.0.1',
     port: parsePort(env.SIGILO_PORT),
-    dataDir: resolve(env.SIGILO_DATA_DIR || DEFAULT_DATA_DIR),
-    authorityToken,
+    dataDir,
+    accountsFile: resolve(env.SIGILO_ACCOUNTS_FILE || join(dataDir, ACCOUNTS_FILE_NAME)),
     allowedOrigin: env.SIGILO_ALLOWED_ORIGIN ?? '',
     webDistDir: webDist === '' ? null : resolve(webDist),
-    hstsMaxAgeSeconds: parseInteger('SIGILO_HSTS_MAX_AGE', env.SIGILO_HSTS_MAX_AGE, null),
+    hstsMaxAgeSeconds: parseHsts(env),
     testClockFile,
     powBits,
     powMaxBits: parsePowMaxBits(env.SIGILO_POW_MAX_BITS, powBits),
@@ -231,6 +354,13 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
       DEFAULT_EVIDENCE_QUOTA_BYTES,
     evidenceRetentionDays: parseRetentionDays(env),
     requestLogMode: parseRequestLog(env),
+    network: parseNetwork(env, dataDir),
+    pdn: parsePdn(env),
+    corroborationIndexUrl: parseOrigin(
+      'SIGILO_CORROBORATION_INDEX_URL',
+      env.SIGILO_CORROBORATION_INDEX_URL,
+    ),
+    isAuditEnabled: env.SIGILO_AUDIT !== '0',
   };
 }
 

@@ -1,0 +1,117 @@
+{
+  "folio": "K7Q2-M9XP-4RTD",
+  "mode": "sealed",
+  "status": "investigating",
+  "timeline": [
+    { "status": "received", "on": "2026-11-05" },
+    { "status": "routed", "on": "2026-11-06" },
+    { "status": "investigating", "on": "2026-11-09" }
+  ],
+  "identityAccess": [
+    {
+      "on": "2026-11-12",
+      "actorRole": "authority",
+      "legalBasis": "LGRA art. 91: se requiere la identidad para ofrecerla como testigo en el procedimiento del expediente sintético.",
+      "openingId": "345568f4c2d3291f6b1aa0d66a134f8e",
+      "approvalCount": 2
+    }
+  ],
+  "evidenceDiscards": [],
+  "messages": [
+    {
+      "messageId": "f5be9aeda0aeee53fc6931ef3a7a7d99",
+      "from": "authority",
+      "sequence": 0,
+      "sentOn": "2026-11-09T17:00Z",
+      "envelope": {
+        "v": 1,
+        "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+        "keyId": "f7bc219ff223a248",
+        "enc": "HqeQ13nw2-w2vRlVp7ccmEQsI9CmpwCJnrSSV6FVt0E",
+        "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+      },
+      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+    },
+    {
+      "messageId": "786d36e4b9d5bf4415896de8add7334d",
+      "from": "reporter",
+      "sequence": 0,
+      "sentOn": "2026-11-10T02:00Z",
+      "envelope": {
+        "v": 1,
+        "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+        "keyId": "f7bc219ff223a248",
+        "enc": "VR2RaKqXnAoOBwAnmH1PIPvsg6mOC-SpPlUvZxx3kuM",
+        "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+      },
+      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+    }
+  ],
+  "receipt": {
+    "folio": "K7Q2-M9XP-4RTD",
+    "submissionDigest": "ccaf46406392ac527c992cdb4592f757519c398359ddd0ae89474357e96be6f2",
+    "receivedOn": "2026-11-05",
+    "payloadDigest": "06070e6e2bc7be88a3beecfb1b7ec80e2ee8d8fae2ae612e28e1c6347dc3d797",
+    "serverKeyId": "c64189c912bb3ce1",
+    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+  },
+  "receivedEvent": {
+    "seq": 41,
+    "type": "complaint.received",
+    "folioDigest": "1cadc826d104014d2ed7b5bb2fef5c22b8d940aeaa2f14d9f65fec049aa9e292",
+    "at": "2026-11-05",
+    "actorRole": "system",
+    "payloadDigest": "06070e6e2bc7be88a3beecfb1b7ec80e2ee8d8fae2ae612e28e1c6347dc3d797",
+    "prevHash": "b7936c8777a5a5368179decf6377c150b30784676a633ff2229174d2852111b2",
+    "hash": "cb37babe6ca52df9e33e426166e0ab21696e6fb2a7c51cdc2a49bbd103b69e8c"
+  },
+  "procedure": {
+    "managementState": "accepted",
+    "managementStateName": "Aceptada",
+    "explanation": "La institución revisó tu denuncia y aceptó que le corresponde atenderla. Desde aquí empieza la investigación y corren los plazos legales.",
+    "legalStage": "investigation",
+    "legalStageName": "Investigación",
+    "steps": [
+      {
+        "on": "2026-11-05",
+        "legalOn": "2026-11-05",
+        "action": "received",
+        "managementState": "received_in_inbox",
+        "title": "Recibida",
+        "explanation": "Tu denuncia llegó al buzón general del sistema. Ahí se revisa para saber qué institución debe atenderla. Todavía nadie la investiga."
+      },
+      {
+        "on": "2026-11-06",
+        "legalOn": "2026-11-06",
+        "action": "routed",
+        "managementState": "routed",
+        "title": "Turnada a Órgano Interno de Control Ficticio",
+        "explanation": "Turnar significa enviar tu denuncia a la institución que puede investigarla. Esa institución todavía tiene que aceptarla."
+      },
+      {
+        "on": "2026-11-09",
+        "legalOn": "2026-11-09",
+        "action": "stage_advanced",
+        "managementState": "accepted",
+        "legalStage": "investigation",
+        "title": "Etapa: Investigación",
+        "explanation": "La autoridad investigadora reúne información y pruebas.",
+        "note": "Se pidió información a la unidad compradora ficticia."
+      }
+    ],
+    "deadlines": [
+      {
+        "key": "prescription_serious",
+        "name": "Prescripción de faltas graves",
+        "explanation": "La facultad para sancionar una falta grave o una falta de particulares prescribe en 7 años.",
+        "startsOn": "2026-09-01",
+        "dueOn": "2033-09-01",
+        "status": "running",
+        "remaining": 2492,
+        "remainingUnit": "natural_days",
+        "legalBasis": ["Ley General de Responsabilidades Administrativas, art. 74"]
+      }
+    ],
+    "rules": []
+  }
+}

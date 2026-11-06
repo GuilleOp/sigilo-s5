@@ -1,0 +1,15 @@
+archivo,campo,tipo,descripcion
+indicadores-comprador-anio.csv,anio,texto,Año de inicio del procedimiento (tender.tenderPeriod.startDate de la última release).
+ambos,comprador_id,texto,Identificador del comprador en S6 (buyer.id).
+ambos,comprador,texto,Nombre más frecuente del comprador (buyer.name).
+ambos,clave_ente,texto,Clave normalizada del ente (00|NOMBRE); si coincide con S1 es la clave del ente en S1.
+ambos,en_s1,booleano,true si el comprador coincide con un ente federal de S1 tras normalizar.
+ambos,en_s2,booleano,true si ese ente de S1 también coincide con una dependencia de S2 (SABG).
+ambos,procedimientos,entero,Procedimientos distintos (ocid) con inicio entre 2018 y 2022 según su última release.
+ambos,pct_licitacion_publica,decimal,Porcentaje de procedimientos con tender.procurementMethod = open.
+ambos,pct_invitacion_restringida,decimal,Porcentaje con tender.procurementMethod = selective (invitación a cuando menos tres personas).
+ambos,pct_adjudicacion_directa,decimal,Porcentaje con tender.procurementMethod = direct.
+ambos,pct_sin_metodo,decimal,Porcentaje sin método de contratación.
+ambos,monto_adjudicado_mxn,entero,"Suma de awards[].value.amount en pesos mexicanos (MXN), redondeada al peso. Excluye otras monedas."
+ambos,adjudicaciones_otra_moneda,entero,Adjudicaciones en moneda distinta de MXN (no se suman al monto).
+ambos,procedimientos_ocid_sin_prefijo,entero,Procedimientos cuyo ocid no empieza con «ocds-» (formato heredado; ver la metodología).

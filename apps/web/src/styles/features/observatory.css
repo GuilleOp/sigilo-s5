@@ -1,0 +1,110 @@
+/* Observatorio: gráficas de barras de una serie con etiqueta directa, matriz de cobertura con
+   «Sin cobertura» marcado con ícono y texto, y lista de conjuntos de datos. Solo usa tokens. */
+.observatory-section {
+  margin-block: var(--space-6);
+}
+
+.bar-chart {
+  margin: var(--space-4) 0;
+}
+
+.bar-chart__title {
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+}
+
+.bar-chart__rows {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+}
+
+.bar-chart__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'label value'
+    'track track';
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.bar-chart__label {
+  grid-area: label;
+}
+
+.bar-chart__value {
+  grid-area: value;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-chart__track {
+  grid-area: track;
+  display: block;
+  block-size: 0.9rem;
+  background: var(--color-surface-strong);
+  border-radius: 0 4px 4px 0;
+}
+
+.bar-chart__bar {
+  display: block;
+  block-size: 100%;
+  background: var(--color-primary);
+  border-radius: 0 4px 4px 0;
+}
+
+.coverage-cell__icon {
+  display: inline-block;
+  inline-size: 0.9em;
+  block-size: 0.9em;
+  margin-inline-end: var(--space-1);
+  border: 2px solid var(--status-ok);
+  border-radius: 50%;
+  background: var(--status-ok);
+  vertical-align: -0.1em;
+}
+
+/* data-covered está en la celda, no en el ícono: sin cobertura es un círculo punteado y vacío. */
+.coverage-cell[data-covered='false'] .coverage-cell__icon {
+  border-style: dotted;
+  border-color: var(--status-no-coverage);
+  background: transparent;
+}
+
+.coverage-cell[data-covered='false'] {
+  font-style: italic;
+}
+
+.coverage-matrix tr[data-synthetic] th {
+  font-style: italic;
+}
+
+.dataset-list {
+  padding-inline-start: var(--space-5);
+}
+
+.dataset-list__title {
+  font-weight: 700;
+  margin-bottom: var(--space-1);
+}
+
+.dataset-list__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+}
+
+.dataset-list__files a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+@media (forced-colors: active) {
+  .bar-chart__bar {
+    background: CanvasText;
+  }
+}

@@ -1,0 +1,13 @@
+archivo,campo,tipo,descripcion
+matriz-cobertura.csv,entidad_clave,texto,Clave INEGI de la entidad federativa (2 dígitos); 00 agrupa la Administración Pública Federal y los órganos autónomos nacionales.
+matriz-cobertura.csv,entidad,texto,Nombre oficial de la entidad federativa o «Federación».
+matriz-cobertura.csv,sistema,texto,"S1 declaraciones, S2 servidores en contrataciones, S3S servidores sancionados, S3P particulares sancionados, S6 contrataciones (OCDS)."
+matriz-cobertura.csv,periodo,texto,"Año del registro, «sin_fecha» si la fecha falta o es implausible, o «total» para la fila resumen del par entidad y sistema."
+matriz-cobertura.csv,hay_datos,booleano,true si la descarga masiva trae al menos un registro.
+matriz-cobertura.csv,registros,entero,"Registros en la descarga masiva: declaraciones en S1, persona por ejercicio en S2, expedientes en S3 y releases en S6. Vacío si se suprime."
+matriz-cobertura.csv,registros_rango,texto,"«1-4» cuando el conteo se suprime por ser menor a 5. En la fila «total» con periodos suprimidos, el rango posible del total (registros publicados más de 1 a 4 por periodo suprimido)."
+matriz-cobertura.csv,proveedores,entero,Número de proveedores de datos (carpetas o archivos de la descarga) con registros.
+matriz-cobertura.csv,lista_proveedores,texto,Proveedores separados por punto y coma.
+matriz-cobertura.csv,fecha_min,fecha,"Fecha válida más antigua (AAAA-MM-DD). Vacía si se suprime o no hay fechas válidas. En la fila «total», solo de los periodos publicados."
+matriz-cobertura.csv,fecha_max,fecha,"Fecha válida más reciente (AAAA-MM-DD). Vacía si se suprime o no hay fechas válidas. En la fila «total», solo de los periodos publicados."
+matriz-cobertura.csv,notas,texto,Notas de calidad separadas por « | » (solo en la fila «total»).

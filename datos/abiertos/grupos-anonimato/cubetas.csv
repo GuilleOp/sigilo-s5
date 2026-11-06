@@ -1,0 +1,185 @@
+ambito_clave,ambito,nivel,cubeta,grupos,personas,personas_suprimido
+NAC,Nacional,area,1-4,325323,440270,0
+NAC,Nacional,area,5-9,22682,146600,0
+NAC,Nacional,area,10-49,17305,334950,0
+NAC,Nacional,area,50+,3228,622490,0
+NAC,Nacional,ente,1-4,4569,6040,0
+NAC,Nacional,ente,5-9,330,2140,0
+NAC,Nacional,ente,10-49,657,16170,0
+NAC,Nacional,ente,50+,1430,1519950,0
+00,Federación,area,1-4,169166,220280,0
+00,Federación,area,5-9,9283,59770,0
+00,Federación,area,10-49,6552,126500,0
+00,Federación,area,50+,1385,230470,0
+00,Federación,ente,1-4,27,60,0
+00,Federación,ente,5-9,15,100,0
+00,Federación,ente,10-49,67,1940,0
+00,Federación,ente,50+,190,634920,0
+01,Aguascalientes,area,1-4,1622,2980,0
+01,Aguascalientes,area,5-9,497,3280,0
+01,Aguascalientes,area,10-49,629,12420,0
+01,Aguascalientes,area,50+,158,39990,0
+01,Aguascalientes,ente,1-4,2,,1
+01,Aguascalientes,ente,5-9,3,20,0
+01,Aguascalientes,ente,10-49,27,780,0
+01,Aguascalientes,ente,50+,85,57870,0
+02,Baja California,area,1-4,2266,3220,0
+02,Baja California,area,5-9,194,1270,0
+02,Baja California,area,10-49,177,3540,0
+02,Baja California,area,50+,32,2900,0
+02,Baja California,ente,1-4,28,40,0
+02,Baja California,ente,5-9,7,40,0
+02,Baja California,ente,10-49,7,200,0
+02,Baja California,ente,50+,23,10630,0
+03,Baja California Sur,area,1-4,9013,12430,0
+03,Baja California Sur,area,5-9,703,4530,0
+03,Baja California Sur,area,10-49,562,10350,0
+03,Baja California Sur,area,50+,64,8020,0
+03,Baja California Sur,ente,1-4,5,20,0
+03,Baja California Sur,ente,5-9,3,20,0
+03,Baja California Sur,ente,10-49,16,390,0
+03,Baja California Sur,ente,50+,47,34900,0
+04,Campeche,area,1-4,313,420,0
+04,Campeche,area,5-9,23,150,0
+04,Campeche,area,10-49,17,360,0
+04,Campeche,area,50+,1,,1
+04,Campeche,ente,1-4,15,20,0
+04,Campeche,ente,5-9,4,20,0
+04,Campeche,ente,10-49,6,150,0
+04,Campeche,ente,50+,2,,1
+07,Chiapas,area,1-4,6182,8940,0
+07,Chiapas,area,5-9,635,4110,0
+07,Chiapas,area,10-49,489,9280,0
+07,Chiapas,area,50+,59,5230,0
+07,Chiapas,ente,1-4,700,930,0
+07,Chiapas,ente,5-9,47,320,0
+07,Chiapas,ente,10-49,95,2370,0
+07,Chiapas,ente,50+,87,23940,0
+08,Chihuahua,area,1-4,89,110,0
+08,Chihuahua,area,5-9,7,40,0
+08,Chihuahua,area,10-49,12,370,0
+08,Chihuahua,area,50+,20,6320,0
+08,Chihuahua,ente,1-4,16,20,0
+08,Chihuahua,ente,5-9,1,,1
+08,Chihuahua,ente,10-49,0,0,0
+08,Chihuahua,ente,50+,2,,1
+12,Guerrero,area,1-4,3477,4760,0
+12,Guerrero,area,5-9,254,1650,0
+12,Guerrero,area,10-49,159,3010,0
+12,Guerrero,area,50+,25,2340,0
+12,Guerrero,ente,1-4,544,710,0
+12,Guerrero,ente,5-9,26,170,0
+12,Guerrero,ente,10-49,33,710,0
+12,Guerrero,ente,50+,28,10150,0
+13,Hidalgo,area,1-4,29946,39880,0
+13,Hidalgo,area,5-9,1493,9380,0
+13,Hidalgo,area,10-49,899,16700,0
+13,Hidalgo,area,50+,123,16570,0
+13,Hidalgo,ente,1-4,7,10,0
+13,Hidalgo,ente,5-9,4,30,0
+13,Hidalgo,ente,10-49,17,410,0
+13,Hidalgo,ente,50+,65,82070,0
+14,Jalisco,area,1-4,6129,10390,0
+14,Jalisco,area,5-9,1385,9160,0
+14,Jalisco,area,10-49,1353,27170,0
+14,Jalisco,area,50+,380,135520,0
+14,Jalisco,ente,1-4,463,620,0
+14,Jalisco,ente,5-9,32,210,0
+14,Jalisco,ente,10-49,77,1840,0
+14,Jalisco,ente,50+,152,179570,0
+15,México,area,1-4,1441,2060,0
+15,México,area,5-9,182,1240,0
+15,México,area,10-49,375,7780,0
+15,México,area,50+,52,6550,0
+15,México,ente,1-4,0,0,0
+15,México,ente,5-9,0,0,0
+15,México,ente,10-49,0,0,0
+15,México,ente,50+,7,17630,0
+16,Michoacán de Ocampo,area,1-4,2945,4520,0
+16,Michoacán de Ocampo,area,5-9,399,2590,0
+16,Michoacán de Ocampo,area,10-49,267,5500,0
+16,Michoacán de Ocampo,area,50+,37,4640,0
+16,Michoacán de Ocampo,ente,1-4,163,250,0
+16,Michoacán de Ocampo,ente,5-9,21,140,0
+16,Michoacán de Ocampo,ente,10-49,37,790,0
+16,Michoacán de Ocampo,ente,50+,75,16060,0
+17,Morelos,area,1-4,1066,1500,0
+17,Morelos,area,5-9,94,600,0
+17,Morelos,area,10-49,39,650,0
+17,Morelos,area,50+,0,0,0
+17,Morelos,ente,1-4,20,30,0
+17,Morelos,ente,5-9,3,20,0
+17,Morelos,ente,10-49,1,,1
+17,Morelos,ente,50+,6,2680,0
+18,Nayarit,area,1-4,198,340,0
+18,Nayarit,area,5-9,49,310,0
+18,Nayarit,area,10-49,35,580,0
+18,Nayarit,area,50+,1,,1
+18,Nayarit,ente,1-4,1,,1
+18,Nayarit,ente,5-9,0,0,0
+18,Nayarit,ente,10-49,0,0,0
+18,Nayarit,ente,50+,4,4600,0
+21,Puebla,area,1-4,60704,82290,0
+21,Puebla,area,5-9,3686,23660,0
+21,Puebla,area,10-49,2377,44380,0
+21,Puebla,area,50+,279,42290,0
+21,Puebla,ente,1-4,2351,2980,0
+21,Puebla,ente,5-9,136,860,0
+21,Puebla,ente,10-49,184,4260,0
+21,Puebla,ente,50+,284,184520,0
+23,Quintana Roo,area,1-4,5197,8790,0
+23,Quintana Roo,area,5-9,1087,7160,0
+23,Quintana Roo,area,10-49,1209,24490,0
+23,Quintana Roo,area,50+,246,31980,0
+23,Quintana Roo,ente,1-4,7,20,0
+23,Quintana Roo,ente,5-9,3,20,0
+23,Quintana Roo,ente,10-49,16,400,0
+23,Quintana Roo,ente,50+,71,71980,0
+24,San Luis Potosí,area,1-4,3012,5120,0
+24,San Luis Potosí,area,5-9,578,3780,0
+24,San Luis Potosí,area,10-49,501,9830,0
+24,San Luis Potosí,area,50+,60,8420,0
+24,San Luis Potosí,ente,1-4,2,,1
+24,San Luis Potosí,ente,5-9,2,,1
+24,San Luis Potosí,ente,10-49,20,600,0
+24,San Luis Potosí,ente,50+,73,26540,0
+25,Sinaloa,area,1-4,809,1150,0
+25,Sinaloa,area,5-9,74,490,0
+25,Sinaloa,area,10-49,45,770,0
+25,Sinaloa,area,50+,6,350,0
+25,Sinaloa,ente,1-4,75,100,0
+25,Sinaloa,ente,5-9,7,50,0
+25,Sinaloa,ente,10-49,6,100,0
+25,Sinaloa,ente,50+,8,2520,0
+27,Tabasco,area,1-4,1659,2710,0
+27,Tabasco,area,5-9,370,2510,0
+27,Tabasco,area,10-49,441,9400,0
+27,Tabasco,area,50+,174,59440,0
+27,Tabasco,ente,1-4,7,20,0
+27,Tabasco,ente,5-9,3,20,0
+27,Tabasco,ente,10-49,10,260,0
+27,Tabasco,ente,50+,50,73760,0
+29,Tlaxcala,area,1-4,3089,5000,0
+29,Tlaxcala,area,5-9,490,3170,0
+29,Tlaxcala,area,10-49,314,5750,0
+29,Tlaxcala,area,50+,19,1560,0
+29,Tlaxcala,ente,1-4,1,,1
+29,Tlaxcala,ente,5-9,0,0,0
+29,Tlaxcala,ente,10-49,3,120,0
+29,Tlaxcala,ente,50+,68,15350,0
+30,Veracruz de Ignacio de la Llave,area,1-4,471,580,0
+30,Veracruz de Ignacio de la Llave,area,5-9,11,70,0
+30,Veracruz de Ignacio de la Llave,area,10-49,5,80,0
+30,Veracruz de Ignacio de la Llave,area,50+,0,0,0
+30,Veracruz de Ignacio de la Llave,ente,1-4,26,50,0
+30,Veracruz de Ignacio de la Llave,ente,5-9,6,30,0
+30,Veracruz de Ignacio de la Llave,ente,10-49,15,240,0
+30,Veracruz de Ignacio de la Llave,ente,50+,4,390,0
+32,Zacatecas,area,1-4,16529,22810,0
+32,Zacatecas,area,5-9,1188,7660,0
+32,Zacatecas,area,10-49,848,16090,0
+32,Zacatecas,area,50+,107,16400,0
+32,Zacatecas,ente,1-4,109,160,0
+32,Zacatecas,ente,5-9,7,50,0
+32,Zacatecas,ente,10-49,20,570,0
+32,Zacatecas,ente,50+,99,62190,0

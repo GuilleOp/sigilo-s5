@@ -1,0 +1,756 @@
+{
+  "schemaVersion": 1,
+  "tool": {
+    "name": "sigilo-validar",
+    "version": "0.1.0",
+    "userAgent": "sigilo-validar/0.1.0 (Datatón 2026)"
+  },
+  "mode": "conformidad",
+  "target": {
+    "url": "http://127.0.0.1:8799/",
+    "pages": [
+      {
+        "label": "inicio",
+        "url": "http://127.0.0.1:8799/"
+      },
+      {
+        "label": "formulario",
+        "url": "http://127.0.0.1:8799/denunciar"
+      }
+    ]
+  },
+  "startedAt": "2026-11-05T08:18:54.528Z",
+  "finishedAt": "2026-11-05T08:19:06.891Z",
+  "limits": {
+    "maxRequests": 400,
+    "navigationTimeoutMs": 30000,
+    "maxResourceBytes": 4194304
+  },
+  "summary": {
+    "cumple": 16,
+    "no_cumple": 0,
+    "advertencia": 0,
+    "no_aplica": 13
+  },
+  "checks": [
+    {
+      "id": "PRV-01",
+      "title": "Cero peticiones a terceros",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Ninguna petición a terceros durante la carga del inicio y del formulario.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Se registraron 13 peticiones (13 al propio origen)."
+        }
+      ],
+      "references": [
+        "LGRA art. 91",
+        "SESNA S-04",
+        "BPDN Seguridad de la Información"
+      ]
+    },
+    {
+      "id": "PRV-02",
+      "title": "CSP estricta como cabecera",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "CSP como cabecera, restrictiva para scripts.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "CSP enviada como cabecera.",
+          "url": "http://127.0.0.1:8799/",
+          "name": "content-security-policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        },
+        {
+          "kind": "cabecera",
+          "description": "CSP enviada como cabecera.",
+          "url": "http://127.0.0.1:8799/denunciar",
+          "name": "content-security-policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.3",
+        "BPDN Seguridad de la Información"
+      ]
+    },
+    {
+      "id": "PRV-03",
+      "title": "HSTS",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Sitio local por HTTP: HSTS solo aplica sobre HTTPS (verificar en el despliegue).",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "HSTS del documento.",
+          "url": "http://127.0.0.1:8799/",
+          "name": "strict-transport-security",
+          "value": "(ausente)"
+        },
+        {
+          "kind": "cabecera",
+          "description": "HSTS del documento.",
+          "url": "http://127.0.0.1:8799/denunciar",
+          "name": "strict-transport-security",
+          "value": "(ausente)"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.5",
+        "ASVS V9.1.1"
+      ]
+    },
+    {
+      "id": "PRV-04",
+      "title": "Protección contra marcos",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "La página no puede incrustarse en marcos.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "Protección contra marcos (antigua).",
+          "url": "http://127.0.0.1:8799/",
+          "name": "x-frame-options",
+          "value": "DENY"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Directiva frame-ancestors de la CSP.",
+          "url": "http://127.0.0.1:8799/",
+          "name": "content-security-policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Protección contra marcos (antigua).",
+          "url": "http://127.0.0.1:8799/denunciar",
+          "name": "x-frame-options",
+          "value": "DENY"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Directiva frame-ancestors de la CSP.",
+          "url": "http://127.0.0.1:8799/denunciar",
+          "name": "content-security-policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.7"
+      ]
+    },
+    {
+      "id": "PRV-05",
+      "title": "Sin Referer",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Referrer-Policy: no-referrer.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "Política de referente.",
+          "url": "http://127.0.0.1:8799/",
+          "name": "referrer-policy",
+          "value": "no-referrer"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Política de referente.",
+          "url": "http://127.0.0.1:8799/denunciar",
+          "name": "referrer-policy",
+          "value": "no-referrer"
+        }
+      ],
+      "references": [
+        "ASVS V14.4.6",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-06",
+      "title": "Permissions-Policy restrictiva",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Geolocalización, micrófono y cámara restringidos.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "cabecera",
+          "description": "Política de permisos.",
+          "url": "http://127.0.0.1:8799/",
+          "name": "permissions-policy",
+          "value": "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+        },
+        {
+          "kind": "cabecera",
+          "description": "Política de permisos.",
+          "url": "http://127.0.0.1:8799/denunciar",
+          "name": "permissions-policy",
+          "value": "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+        }
+      ],
+      "references": [
+        "ASVS V14.4",
+        "SESNA S-02",
+        "SESNA S-04",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-07",
+      "title": "Sin recursos de terceros en el HTML",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "El HTML y la carga solo usan scripts, estilos y fuentes del propio sitio.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "BPDN Seguridad de la Información",
+        "ASVS V14.2.3"
+      ]
+    },
+    {
+      "id": "PRV-08",
+      "title": "Sin reconocimiento de voz remoto",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "No se encontraron referencias a SpeechRecognition en el código descargado.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 10 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "LGRA art. 91",
+        "SESNA S-07"
+      ]
+    },
+    {
+      "id": "PRV-09",
+      "title": "Folio no secuencial ni predecible",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Folios de envíos consecutivos sin secuencia, año ni prefijo común.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "respuesta",
+          "description": "Folios de 3 envíos consecutivos.",
+          "value": "K5W8-NK9P-FNRW, S92E-R6MF-2VS8, JCQ1-A98V-788T"
+        },
+        {
+          "kind": "nota",
+          "description": "Heurística: descarta contadores, año visible y prefijos comunes; no demuestra la calidad del generador aleatorio."
+        }
+      ],
+      "references": [
+        "ASVS V6.3.1",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-10",
+      "title": "Sin borradores en el almacenamiento del navegador",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Lo escrito en el formulario no aparece en localStorage, sessionStorage, IndexedDB ni cookies.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Se escribió una marca sintética en 4 campo(s) del formulario, sin enviarlo. Entradas de almacenamiento al terminar: 0.",
+          "url": "http://127.0.0.1:8799/denunciar"
+        },
+        {
+          "kind": "nota",
+          "description": "Indicio del análisis estático: Indicios de que el formulario guarda un borrador en el navegador; sin cifrar, queda legible para quien use el mismo equipo."
+        },
+        {
+          "kind": "codigo",
+          "description": "Guarda un objeto serializado en el almacenamiento del navegador.",
+          "url": "http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js",
+          "snippet": "…son:void 0,text:void 0,data:e}}function Pn(e,t){try{let n=e.sessionStorage.getItem(vt);if(n){let e=JSON.parse(n);for(let[n,r]of Object…"
+        },
+        {
+          "kind": "codigo",
+          "description": "Guarda un objeto serializado en el almacenamiento del navegador.",
+          "url": "http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js",
+          "snippet": "…t){if(t.size>0){let n={};for(let[e,r]of t)n[e]=[...r];try{e.sessionStorage.setItem(vt,JSON.stringify(n))}catch(e){g(!1,`Failed to save…"
+        }
+      ],
+      "references": [
+        "ASVS V8.2.2",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-11",
+      "title": "Sin mapas ni geocodificación externos",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "No se encontraron mapas ni geocodificación de terceros en la red ni en el código.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 10 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "SESNA S-02",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-12",
+      "title": "Cookies seguras y sin rastreo",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "El sitio no fijó ninguna cookie durante la carga.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Sin Set-Cookie ni cookies en el navegador."
+        }
+      ],
+      "references": [
+        "ASVS V3.4.1",
+        "ASVS V3.4.2",
+        "ASVS V3.4.3"
+      ]
+    },
+    {
+      "id": "PRV-13",
+      "title": "Sin analítica ni rastreadores",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "No se encontraron analítica ni rastreadores en la red ni en el código.",
+      "isHeuristic": true,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Análisis estático de 10 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar."
+        }
+      ],
+      "references": [
+        "LGRA art. 91",
+        "LGPDPPSO finalidad"
+      ]
+    },
+    {
+      "id": "PRV-14",
+      "title": "Identidad cifrada en el navegador",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Llaves publicadas y fijadas en la web; la identidad viaja en un sobre HPKE con comprobante firmado y el nodo rechaza el modo sellado sin sobre.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "respuesta",
+          "description": "Llaves públicas publicadas. (GET → 200, 1 ms)",
+          "url": "http://127.0.0.1:8799/api/v1/keys",
+          "snippet": "{\"server\":{\"keyId\":\"0d6f24c09be834fd\",\"signingPublicKey\":\"VakEYenAb5_R_MqBqmhOMA7SBM0yLS_uQ0cdsqMHOpo\"},\"authority\":{\"keyId\":\"127b1c8c897d1666\",\"boxPublicKey\":\"HP3Um6S07kvnE3Tpx0t-IDyRL9w0bn-CYdP1vIgTe0Q\",\"signingPublicKey\":\"2A0bOdzJIi1JW9Nzb1hAzEUvqZD24xZUEmKUeynPrFA\"}}"
+        },
+        {
+          "kind": "codigo",
+          "description": "La llave pública de la autoridad está fijada en el paquete de la web.",
+          "url": "http://127.0.0.1:8799/assets/pinned-keys-BeDuDNHG.js",
+          "value": "HP3Um6S07kvnE3Tpx0t-IDyRL9w0bn-CYdP1vIgTe0Q"
+        },
+        {
+          "kind": "respuesta",
+          "description": "Envío de una denuncia con la identidad en un sobre HPKE. (POST → 201, 18 ms)",
+          "url": "http://127.0.0.1:8799/api/v1/complaints",
+          "snippet": "{\"folio\":\"K5W8-NK9P-FNRW\",\"receipt\":{\"folio\":\"K5W8-NK9P-FNRW\",\"submissionDigest\":\"c67c63862def281130682c0c0286a0f50f7b327fd60d6015904bc9e6ae831663\",\"receivedOn\":\"2026-11-05\",\"payloadDigest\":\"af4c854cdb417b28ba2c87577acd7597830f87cfc827f962ec74f471568e25dc\",\"serverKeyId\":\"0d6f24c09be834fd\",\"signature\":\"kIzW1uYEjhzfXt-Ru-yDr7iFFlDT7IAfZXITgcVmFRE5576plrS_T_LjaH00RnlaqJMf63PpdvQhtdMpFSuTCg\"}}"
+        },
+        {
+          "kind": "nota",
+          "description": "Sobre enviado: suite DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305, keyId 127b1c8c897d1666, 5483 caracteres de texto cifrado; el nombre sintético no viaja en claro."
+        },
+        {
+          "kind": "respuesta",
+          "description": "Envío en modo sellado sin sobre HPKE. (POST → 400, 2 ms)",
+          "url": "http://127.0.0.1:8799/api/v1/complaints",
+          "snippet": "{\"error\":{\"code\":\"bad_request\",\"message\":\"La solicitud no es válida.\"}}"
+        },
+        {
+          "kind": "nota",
+          "description": "Límite: el sobre lo arma el cliente sintético del validador con las llaves publicadas; el cifrado dentro de la interfaz lo cubren las pruebas E2E de la implementación."
+        }
+      ],
+      "references": [
+        "LGRA art. 91",
+        "LGRA art. 64 fr. III",
+        "SESNA S-04",
+        "ASVS V6.2.7"
+      ]
+    },
+    {
+      "id": "PRV-15",
+      "title": "Respuesta indistinguible ante folio o secreto inválidos",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Folio inexistente y secreto equivocado producen la misma respuesta.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "respuesta",
+          "description": "Folio existente, secreto equivocado. (POST → 404, 1 ms)",
+          "url": "http://127.0.0.1:8799/api/v1/tracking",
+          "snippet": "{\"error\":{\"code\":\"not_found\",\"message\":\"No encontrado.\"}}"
+        },
+        {
+          "kind": "respuesta",
+          "description": "Folio inexistente. (POST → 404, 1 ms)",
+          "url": "http://127.0.0.1:8799/api/v1/tracking",
+          "snippet": "{\"error\":{\"code\":\"not_found\",\"message\":\"No encontrado.\"}}"
+        },
+        {
+          "kind": "nota",
+          "description": "Mediana de tiempo: 0.5 ms (secreto equivocado) frente a 1 ms (folio inexistente), 2 muestras de cada caso. Las mediciones por red son ruidosas."
+        }
+      ],
+      "references": [
+        "ASVS V6.2.8",
+        "API2:2023",
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-16",
+      "title": "Enlaces externos sin fuga de origen",
+      "severity": "recomendada",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-17",
+      "title": "Sin caché",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V8.1.1",
+        "ASVS V8.2.1"
+      ]
+    },
+    {
+      "id": "PRV-18",
+      "title": "Sin traducción ni indexación remotas",
+      "severity": "recomendada",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-19",
+      "title": "Fechas públicas sin hora exacta",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91"
+      ]
+    },
+    {
+      "id": "PRV-20",
+      "title": "Pruebas sin metadatos aceptadas por el nodo",
+      "severity": "recomendada",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "SESNA S-03",
+        "ASVS V12.2.1",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-21",
+      "title": "Denuncia sin datos personales",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "LGRA art. 91",
+        "LGPDPPSO proporcionalidad"
+      ]
+    },
+    {
+      "id": "PRV-22",
+      "title": "Datos abiertos sin celdas pequeñas",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "SESNA S-06",
+        "BPDN art. 60",
+        "BPDN art. 61"
+      ]
+    },
+    {
+      "id": "PRV-23",
+      "title": "Caracteres invisibles en los hechos",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "SESNA S-03"
+      ]
+    },
+    {
+      "id": "API-01",
+      "title": "Conformidad con el contrato",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Las 29 respuestas corresponden a la especificación (ruta, estatus, tipo y esquema).",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Especificación /Users/guilegut/proyectos/sigilo-s5/.claude/worktrees/agent-a30ba3cb77049a2b2/estandar/openapi.yaml (OpenAPI 3.1.0); 29 intercambios sobre 14 operaciones."
+        }
+      ],
+      "references": [
+        "API9:2023",
+        "SESNA S-11",
+        "BPDN especificación por sistema"
+      ]
+    },
+    {
+      "id": "API-02",
+      "title": "Errores comunes sin datos sensibles",
+      "severity": "obligatoria",
+      "status": "cumple",
+      "summary": "Las 18 respuestas de error usan el esquema común, sin trazas ni reflejo de la entrada.",
+      "isHeuristic": false,
+      "evidence": [
+        {
+          "kind": "nota",
+          "description": "Se revisaron 18 respuestas de error (estatus 400, 401, 404, 415, 428)."
+        },
+        {
+          "kind": "respuesta",
+          "description": "Ejemplo: Denuncia sellada sin sobre (debe rechazarse). (POST → 400, 2 ms)",
+          "url": "http://127.0.0.1:8799/api/v1/complaints",
+          "snippet": "{\"error\":{\"code\":\"bad_request\",\"message\":\"La solicitud no es válida.\"}}"
+        }
+      ],
+      "references": [
+        "ASVS V7.4.1",
+        "API8:2023"
+      ]
+    },
+    {
+      "id": "SEC-31",
+      "title": "TLS y HSTS",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V9.1.1",
+        "ASVS V9.1.2",
+        "ASVS V9.1.3"
+      ]
+    },
+    {
+      "id": "SEC-32",
+      "title": "Cabeceras de seguridad",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V14.4.1",
+        "ASVS V14.4.4"
+      ]
+    },
+    {
+      "id": "SEC-33",
+      "title": "CORS cerrado",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V14.5.3",
+        "API8:2023"
+      ]
+    },
+    {
+      "id": "SEC-34",
+      "title": "Sin divulgación de versión",
+      "severity": "obligatoria",
+      "status": "no_aplica",
+      "summary": "Verificación no automatizada en esta versión.",
+      "isHeuristic": false,
+      "evidence": [],
+      "references": [
+        "ASVS V14.3.3"
+      ]
+    }
+  ],
+  "observations": [],
+  "network": {
+    "requestCount": 53,
+    "isRequestLimitReached": false,
+    "requests": [
+      {
+        "url": "http://127.0.0.1:8799/",
+        "method": "GET",
+        "resourceType": "document",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/rolldown-runtime-W7wSyTde.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/index-DefQtYGQ.css",
+        "method": "GET",
+        "resourceType": "stylesheet",
+        "page": "inicio",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/denunciar",
+        "method": "GET",
+        "resourceType": "document",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/rolldown-runtime-W7wSyTde.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/index-DefQtYGQ.css",
+        "method": "GET",
+        "resourceType": "stylesheet",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/ReportPage-BnkO9lIe.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/format-BviFwI1B.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/pinned-keys-BeDuDNHG.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/digest-c5_6c4Gt.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      },
+      {
+        "url": "http://127.0.0.1:8799/assets/proof-of-work-DG4_pqrK.js",
+        "method": "GET",
+        "resourceType": "script",
+        "page": "formulario",
+        "party": "propio",
+        "status": 200,
+        "isBlocked": false
+      }
+    ]
+  },
+  "errors": []
+}

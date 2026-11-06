@@ -1,0 +1,22 @@
+[
+  {
+    "folio": "K7Q2-M9XP-4RTD",
+    "mode": "sealed",
+    "status": "investigating",
+    "receivedOn": "2026-11-05",
+    "stateCode": "22",
+    "offenseCode": "LGRA-52",
+    "protectionRequested": true,
+    "managementState": "accepted",
+    "assignedAuthorityId": "authority.oic-iffe"
+  },
+  {
+    "folio": "H3VN-8C2W-QZ5B",
+    "mode": "anonymous",
+    "status": "received",
+    "receivedOn": "2026-11-04",
+    "stateCode": "09",
+    "offenseCode": "LGRA-54",
+    "protectionRequested": false
+  }
+]

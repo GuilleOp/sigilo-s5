@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ROUTES } from '@sigilo/contracts';
 import { PublicKeySetSchema } from '@sigilo/contracts';
 import { errorBody } from './http/errors.ts';
-import { API_CSP, WEB_CSP } from './security/headers.ts';
+import { API_CSP, PERMISSIONS_POLICY, WEB_CSP } from './security/headers.ts';
 import {
   buildComplaintRequest,
   createReporter,
@@ -36,6 +36,7 @@ describe('aplicación', () => {
     ]) {
       expect(response.headers.get('Content-Security-Policy')).toContain("default-src 'none'");
       expect(response.headers.get('Referrer-Policy')).toBe('no-referrer');
+      expect(response.headers.get('Permissions-Policy')).toBe(PERMISSIONS_POLICY);
       expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
       expect(response.headers.get('Cache-Control')).toBe('no-store');
     }
@@ -128,6 +129,7 @@ describe('web en el mismo origen', () => {
       expect(page.headers.get('Content-Security-Policy')).toBe(WEB_CSP);
       expect(page.headers.get('X-Frame-Options')).toBe('DENY');
       expect(page.headers.get('Referrer-Policy')).toBe('no-referrer');
+      expect(page.headers.get('Permissions-Policy')).toContain('geolocation=()');
       expect(page.headers.get('X-Content-Type-Options')).toBe('nosniff');
       expect(page.headers.get('Cache-Control')).toBe('no-store');
       expect(page.headers.get('Strict-Transport-Security')).toBe('max-age=600; includeSubDomains');

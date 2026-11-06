@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Reporte del Estándar S5 · 127.0.0.1:8799</title>
+<style>
+:root{color-scheme:light dark;--bg:#ffffff;--fg:#1a1f24;--muted:#4a5560;--line:#c9d1d8;--accent:#0f6b5d;--code:#f2f5f7;
+--ok-bg:#e3f4e8;--ok-fg:#0b5320;--bad-bg:#fde8e8;--bad-fg:#8a1414;--warn-bg:#fff1cc;--warn-fg:#5c3d00;--na-bg:#eceff2;--na-fg:#36404a}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1917;--fg:#e8eeec;--muted:#b4c2be;--line:#2f4541;--accent:#5fd3bf;--code:#132824;
+--ok-bg:#123d22;--ok-fg:#b7f0c8;--bad-bg:#4a1414;--bad-fg:#ffd1d1;--warn-bg:#3f3000;--warn-fg:#ffe7a3;--na-bg:#25302e;--na-fg:#d5dedb}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem}
+h1{font-size:1.6rem;margin:.2rem 0 1rem;color:var(--accent)}
+h2{font-size:1.25rem;margin-top:2.2rem;border-bottom:2px solid var(--line);padding-bottom:.3rem}
+h3{font-size:1.05rem;margin:0 0 .4rem}
+h4{font-size:.95rem;margin:1rem 0 .3rem;color:var(--muted)}
+a{color:var(--accent)}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px}.skip:focus{left:1rem;top:1rem;background:var(--bg);padding:.5rem;z-index:1}
+dl.facts{display:grid;grid-template-columns:max-content 1fr;gap:.25rem 1rem;margin:0}
+dl.facts dt{font-weight:600}dl.facts dd{margin:0;overflow-wrap:anywhere}
+.summary{display:flex;flex-wrap:wrap;gap:.6rem;list-style:none;padding:0}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:40rem}
+caption{text-align:left;font-weight:600;padding:.4rem 0}
+th,td{border:1px solid var(--line);padding:.5rem .6rem;text-align:left;vertical-align:top}
+thead th{background:var(--code)}
+.badge{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-weight:700;white-space:nowrap;border:1px solid currentColor}
+.badge-cumple{background:var(--ok-bg);color:var(--ok-fg)}.badge-no_cumple{background:var(--bad-bg);color:var(--bad-fg)}
+.badge-advertencia{background:var(--warn-bg);color:var(--warn-fg)}.badge-no_aplica{background:var(--na-bg);color:var(--na-fg)}
+.icon{display:inline-block;min-width:1ch;text-align:center}
+.tag{font-size:.85rem;color:var(--muted)}
+.check{border:1px solid var(--line);border-radius:1rem;padding:1rem;margin:1rem 0}
+ul.evidence{padding-left:1.1rem}ul.evidence li{margin:.5rem 0;overflow-wrap:anywhere}
+.kind{font-weight:700}
+.meta{font-size:.9rem;color:var(--muted)}
+pre{background:var(--code);padding:.5rem;border-radius:.5rem;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#resultados">Saltar a los resultados</a>
+<main>
+<p class="tag">Prototipo para el Datatón 2026 · no es el sistema oficial</p>
+<h1>Reporte de verificación del Estándar S5</h1>
+<dl class="facts">
+  <dt>Sitio</dt><dd><code>http://127.0.0.1:8799/</code></dd>
+  <dt>Páginas</dt><dd>inicio: <code>http://127.0.0.1:8799/</code><br>formulario: <code>http://127.0.0.1:8799/denunciar</code></dd>
+  <dt>Modo</dt><dd>Conformidad (envía denuncias sintéticas)</dd>
+  <dt>Fecha</dt><dd><time datetime="2026-11-05T08:18:54.528Z">2026-11-05T08:18:54.528Z</time></dd>
+  <dt>Herramienta</dt><dd>sigilo-validar 0.1.0 · User-Agent <code>sigilo-validar/0.1.0 (Datatón 2026)</code></dd>
+  <dt>Peticiones</dt><dd>53 de un máximo de 400</dd>
+</dl>
+<h2>Resumen</h2>
+<ul class="summary" aria-label="Conteo por resultado"><li><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <strong>16</strong></li><li><span class="badge badge-no_cumple"><span class="icon" aria-hidden="true">✗</span> No cumple</span> <strong>0</strong></li><li><span class="badge badge-advertencia"><span class="icon" aria-hidden="true">!</span> Advertencia</span> <strong>0</strong></li><li><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <strong>13</strong></li></ul>
+<p class="tag">«Inferencia» señala resultados del análisis estático del código descargado: son indicios, no certeza. «Observación» señala lo visto directamente en cabeceras, red o respuestas.</p>
+<h2 id="resultados">Resultados por verificación</h2>
+<div class="table-wrap">
+<table>
+<caption>Verificaciones del Estándar S5 y su resultado</caption>
+<thead><tr><th scope="col">Id</th><th scope="col">Verificación</th><th scope="col">Severidad</th><th scope="col">Resultado</th><th scope="col">Conclusión</th><th scope="col">Tipo</th></tr></thead>
+<tbody>
+<tr>
+  <th scope="row"><a href="#PRV-01">PRV-01</a></th>
+  <td>Cero peticiones a terceros</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Ninguna petición a terceros durante la carga del inicio y del formulario.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-02">PRV-02</a></th>
+  <td>CSP estricta como cabecera</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>CSP como cabecera, restrictiva para scripts.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-03">PRV-03</a></th>
+  <td>HSTS</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Sitio local por HTTP: HSTS solo aplica sobre HTTPS (verificar en el despliegue).</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-04">PRV-04</a></th>
+  <td>Protección contra marcos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>La página no puede incrustarse en marcos.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-05">PRV-05</a></th>
+  <td>Sin Referer</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Referrer-Policy: no-referrer.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-06">PRV-06</a></th>
+  <td>Permissions-Policy restrictiva</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Geolocalización, micrófono y cámara restringidos.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-07">PRV-07</a></th>
+  <td>Sin recursos de terceros en el HTML</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>El HTML y la carga solo usan scripts, estilos y fuentes del propio sitio.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-08">PRV-08</a></th>
+  <td>Sin reconocimiento de voz remoto</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>No se encontraron referencias a SpeechRecognition en el código descargado.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-09">PRV-09</a></th>
+  <td>Folio no secuencial ni predecible</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Folios de envíos consecutivos sin secuencia, año ni prefijo común.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-10">PRV-10</a></th>
+  <td>Sin borradores en el almacenamiento del navegador</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Lo escrito en el formulario no aparece en localStorage, sessionStorage, IndexedDB ni cookies.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-11">PRV-11</a></th>
+  <td>Sin mapas ni geocodificación externos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>No se encontraron mapas ni geocodificación de terceros en la red ni en el código.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-12">PRV-12</a></th>
+  <td>Cookies seguras y sin rastreo</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>El sitio no fijó ninguna cookie durante la carga.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-13">PRV-13</a></th>
+  <td>Sin analítica ni rastreadores</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>No se encontraron analítica ni rastreadores en la red ni en el código.</td>
+  <td>Inferencia</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-14">PRV-14</a></th>
+  <td>Identidad cifrada en el navegador</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Llaves publicadas y fijadas en la web; la identidad viaja en un sobre HPKE con comprobante firmado y el nodo rechaza el modo sellado sin sobre.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-15">PRV-15</a></th>
+  <td>Respuesta indistinguible ante folio o secreto inválidos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Folio inexistente y secreto equivocado producen la misma respuesta.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-16">PRV-16</a></th>
+  <td>Enlaces externos sin fuga de origen</td>
+  <td>Recomendada</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-17">PRV-17</a></th>
+  <td>Sin caché</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-18">PRV-18</a></th>
+  <td>Sin traducción ni indexación remotas</td>
+  <td>Recomendada</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-19">PRV-19</a></th>
+  <td>Fechas públicas sin hora exacta</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-20">PRV-20</a></th>
+  <td>Pruebas sin metadatos aceptadas por el nodo</td>
+  <td>Recomendada</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-21">PRV-21</a></th>
+  <td>Denuncia sin datos personales</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-22">PRV-22</a></th>
+  <td>Datos abiertos sin celdas pequeñas</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#PRV-23">PRV-23</a></th>
+  <td>Caracteres invisibles en los hechos</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#API-01">API-01</a></th>
+  <td>Conformidad con el contrato</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Las 29 respuestas corresponden a la especificación (ruta, estatus, tipo y esquema).</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#API-02">API-02</a></th>
+  <td>Errores comunes sin datos sensibles</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span></td>
+  <td>Las 18 respuestas de error usan el esquema común, sin trazas ni reflejo de la entrada.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-31">SEC-31</a></th>
+  <td>TLS y HSTS</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-32">SEC-32</a></th>
+  <td>Cabeceras de seguridad</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-33">SEC-33</a></th>
+  <td>CORS cerrado</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+<tr>
+  <th scope="row"><a href="#SEC-34">SEC-34</a></th>
+  <td>Sin divulgación de versión</td>
+  <td>Obligatoria</td>
+  <td><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span></td>
+  <td>Verificación no automatizada en esta versión.</td>
+  <td>Observación</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2>Detalle y evidencia</h2>
+<section class="check" id="PRV-01" aria-labelledby="PRV-01-title">
+  <h3 id="PRV-01-title">PRV-01 · Cero peticiones a terceros</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Ninguna petición a terceros durante la carga del inicio y del formulario.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Se registraron 13 peticiones (13 al propio origen).</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>SESNA S-04</li><li>BPDN Seguridad de la Información</li></ul>
+</section>
+<section class="check" id="PRV-02" aria-labelledby="PRV-02-title">
+  <h3 id="PRV-02-title">PRV-02 · CSP estricta como cabecera</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>CSP como cabecera, restrictiva para scripts.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> CSP enviada como cabecera.<div class="meta">URL: <code>http://127.0.0.1:8799/</code></div><div class="meta">content-security-policy: <code>default-src &#39;self&#39;; script-src &#39;self&#39;; style-src &#39;self&#39;; img-src &#39;self&#39; blob: data:; connect-src &#39;self&#39;; worker-src &#39;self&#39; blob:; object-src &#39;none&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; frame-ancestors &#39;none&#39;</code></div></li><li><span class="kind">Cabecera</span> CSP enviada como cabecera.<div class="meta">URL: <code>http://127.0.0.1:8799/denunciar</code></div><div class="meta">content-security-policy: <code>default-src &#39;self&#39;; script-src &#39;self&#39;; style-src &#39;self&#39;; img-src &#39;self&#39; blob: data:; connect-src &#39;self&#39;; worker-src &#39;self&#39; blob:; object-src &#39;none&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; frame-ancestors &#39;none&#39;</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.3</li><li>BPDN Seguridad de la Información</li></ul>
+</section>
+<section class="check" id="PRV-03" aria-labelledby="PRV-03-title">
+  <h3 id="PRV-03-title">PRV-03 · HSTS</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Sitio local por HTTP: HSTS solo aplica sobre HTTPS (verificar en el despliegue).</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> HSTS del documento.<div class="meta">URL: <code>http://127.0.0.1:8799/</code></div><div class="meta">strict-transport-security: <code>(ausente)</code></div></li><li><span class="kind">Cabecera</span> HSTS del documento.<div class="meta">URL: <code>http://127.0.0.1:8799/denunciar</code></div><div class="meta">strict-transport-security: <code>(ausente)</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.5</li><li>ASVS V9.1.1</li></ul>
+</section>
+<section class="check" id="PRV-04" aria-labelledby="PRV-04-title">
+  <h3 id="PRV-04-title">PRV-04 · Protección contra marcos</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>La página no puede incrustarse en marcos.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> Protección contra marcos (antigua).<div class="meta">URL: <code>http://127.0.0.1:8799/</code></div><div class="meta">x-frame-options: <code>DENY</code></div></li><li><span class="kind">Cabecera</span> Directiva frame-ancestors de la CSP.<div class="meta">URL: <code>http://127.0.0.1:8799/</code></div><div class="meta">content-security-policy: <code>default-src &#39;self&#39;; script-src &#39;self&#39;; style-src &#39;self&#39;; img-src &#39;self&#39; blob: data:; connect-src &#39;self&#39;; worker-src &#39;self&#39; blob:; object-src &#39;none&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; frame-ancestors &#39;none&#39;</code></div></li><li><span class="kind">Cabecera</span> Protección contra marcos (antigua).<div class="meta">URL: <code>http://127.0.0.1:8799/denunciar</code></div><div class="meta">x-frame-options: <code>DENY</code></div></li><li><span class="kind">Cabecera</span> Directiva frame-ancestors de la CSP.<div class="meta">URL: <code>http://127.0.0.1:8799/denunciar</code></div><div class="meta">content-security-policy: <code>default-src &#39;self&#39;; script-src &#39;self&#39;; style-src &#39;self&#39;; img-src &#39;self&#39; blob: data:; connect-src &#39;self&#39;; worker-src &#39;self&#39; blob:; object-src &#39;none&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; frame-ancestors &#39;none&#39;</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.7</li></ul>
+</section>
+<section class="check" id="PRV-05" aria-labelledby="PRV-05-title">
+  <h3 id="PRV-05-title">PRV-05 · Sin Referer</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Referrer-Policy: no-referrer.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> Política de referente.<div class="meta">URL: <code>http://127.0.0.1:8799/</code></div><div class="meta">referrer-policy: <code>no-referrer</code></div></li><li><span class="kind">Cabecera</span> Política de referente.<div class="meta">URL: <code>http://127.0.0.1:8799/denunciar</code></div><div class="meta">referrer-policy: <code>no-referrer</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.6</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-06" aria-labelledby="PRV-06-title">
+  <h3 id="PRV-06-title">PRV-06 · Permissions-Policy restrictiva</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Geolocalización, micrófono y cámara restringidos.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Cabecera</span> Política de permisos.<div class="meta">URL: <code>http://127.0.0.1:8799/</code></div><div class="meta">permissions-policy: <code>geolocation=(), microphone=(), camera=(), payment=(), usb=()</code></div></li><li><span class="kind">Cabecera</span> Política de permisos.<div class="meta">URL: <code>http://127.0.0.1:8799/denunciar</code></div><div class="meta">permissions-policy: <code>geolocation=(), microphone=(), camera=(), payment=(), usb=()</code></div></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4</li><li>SESNA S-02</li><li>SESNA S-04</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-07" aria-labelledby="PRV-07-title">
+  <h3 id="PRV-07-title">PRV-07 · Sin recursos de terceros en el HTML</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>El HTML y la carga solo usan scripts, estilos y fuentes del propio sitio.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>BPDN Seguridad de la Información</li><li>ASVS V14.2.3</li></ul>
+</section>
+<section class="check" id="PRV-08" aria-labelledby="PRV-08-title">
+  <h3 id="PRV-08-title">PRV-08 · Sin reconocimiento de voz remoto</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>No se encontraron referencias a SpeechRecognition en el código descargado.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Análisis estático de 10 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>SESNA S-07</li></ul>
+</section>
+<section class="check" id="PRV-09" aria-labelledby="PRV-09-title">
+  <h3 id="PRV-09-title">PRV-09 · Folio no secuencial ni predecible</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>Folios de envíos consecutivos sin secuencia, año ni prefijo común.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Respuesta</span> Folios de 3 envíos consecutivos.<div class="meta">Valor: <code>K5W8-NK9P-FNRW, S92E-R6MF-2VS8, JCQ1-A98V-788T</code></div></li><li><span class="kind">Nota</span> Heurística: descarta contadores, año visible y prefijos comunes; no demuestra la calidad del generador aleatorio.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V6.3.1</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-10" aria-labelledby="PRV-10-title">
+  <h3 id="PRV-10-title">PRV-10 · Sin borradores en el almacenamiento del navegador</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Lo escrito en el formulario no aparece en localStorage, sessionStorage, IndexedDB ni cookies.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Se escribió una marca sintética en 4 campo(s) del formulario, sin enviarlo. Entradas de almacenamiento al terminar: 0.<div class="meta">URL: <code>http://127.0.0.1:8799/denunciar</code></div></li><li><span class="kind">Nota</span> Indicio del análisis estático: Indicios de que el formulario guarda un borrador en el navegador; sin cifrar, queda legible para quien use el mismo equipo.</li><li><span class="kind">Código</span> Guarda un objeto serializado en el almacenamiento del navegador.<div class="meta">URL: <code>http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js</code></div><pre><code>…son:void 0,text:void 0,data:e}}function Pn(e,t){try{let n=e.sessionStorage.getItem(vt);if(n){let e=JSON.parse(n);for(let[n,r]of Object…</code></pre></li><li><span class="kind">Código</span> Guarda un objeto serializado en el almacenamiento del navegador.<div class="meta">URL: <code>http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js</code></div><pre><code>…t){if(t.size&gt;0){let n={};for(let[e,r]of t)n[e]=[...r];try{e.sessionStorage.setItem(vt,JSON.stringify(n))}catch(e){g(!1,`Failed to save…</code></pre></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V8.2.2</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-11" aria-labelledby="PRV-11-title">
+  <h3 id="PRV-11-title">PRV-11 · Sin mapas ni geocodificación externos</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>No se encontraron mapas ni geocodificación de terceros en la red ni en el código.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Análisis estático de 10 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-02</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-12" aria-labelledby="PRV-12-title">
+  <h3 id="PRV-12-title">PRV-12 · Cookies seguras y sin rastreo</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>El sitio no fijó ninguna cookie durante la carga.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Sin Set-Cookie ni cookies en el navegador.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V3.4.1</li><li>ASVS V3.4.2</li><li>ASVS V3.4.3</li></ul>
+</section>
+<section class="check" id="PRV-13" aria-labelledby="PRV-13-title">
+  <h3 id="PRV-13-title">PRV-13 · Sin analítica ni rastreadores</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Inferencia por análisis estático</span></p>
+  <p>No se encontraron analítica ni rastreadores en la red ni en el código.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Análisis estático de 10 recurso(s) de texto descargados durante la carga. No cubre fragmentos que solo se cargan al interactuar.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>LGPDPPSO finalidad</li></ul>
+</section>
+<section class="check" id="PRV-14" aria-labelledby="PRV-14-title">
+  <h3 id="PRV-14-title">PRV-14 · Identidad cifrada en el navegador</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Llaves publicadas y fijadas en la web; la identidad viaja en un sobre HPKE con comprobante firmado y el nodo rechaza el modo sellado sin sobre.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Respuesta</span> Llaves públicas publicadas. (GET → 200, 1 ms)<div class="meta">URL: <code>http://127.0.0.1:8799/api/v1/keys</code></div><pre><code>{&quot;server&quot;:{&quot;keyId&quot;:&quot;0d6f24c09be834fd&quot;,&quot;signingPublicKey&quot;:&quot;VakEYenAb5_R_MqBqmhOMA7SBM0yLS_uQ0cdsqMHOpo&quot;},&quot;authority&quot;:{&quot;keyId&quot;:&quot;127b1c8c897d1666&quot;,&quot;boxPublicKey&quot;:&quot;HP3Um6S07kvnE3Tpx0t-IDyRL9w0bn-CYdP1vIgTe0Q&quot;,&quot;signingPublicKey&quot;:&quot;2A0bOdzJIi1JW9Nzb1hAzEUvqZD24xZUEmKUeynPrFA&quot;}}</code></pre></li><li><span class="kind">Código</span> La llave pública de la autoridad está fijada en el paquete de la web.<div class="meta">URL: <code>http://127.0.0.1:8799/assets/pinned-keys-BeDuDNHG.js</code></div><div class="meta">Valor: <code>HP3Um6S07kvnE3Tpx0t-IDyRL9w0bn-CYdP1vIgTe0Q</code></div></li><li><span class="kind">Respuesta</span> Envío de una denuncia con la identidad en un sobre HPKE. (POST → 201, 18 ms)<div class="meta">URL: <code>http://127.0.0.1:8799/api/v1/complaints</code></div><pre><code>{&quot;folio&quot;:&quot;K5W8-NK9P-FNRW&quot;,&quot;receipt&quot;:{&quot;folio&quot;:&quot;K5W8-NK9P-FNRW&quot;,&quot;submissionDigest&quot;:&quot;c67c63862def281130682c0c0286a0f50f7b327fd60d6015904bc9e6ae831663&quot;,&quot;receivedOn&quot;:&quot;2026-11-05&quot;,&quot;payloadDigest&quot;:&quot;af4c854cdb417b28ba2c87577acd7597830f87cfc827f962ec74f471568e25dc&quot;,&quot;serverKeyId&quot;:&quot;0d6f24c09be834fd&quot;,&quot;signature&quot;:&quot;kIzW1uYEjhzfXt-Ru-yDr7iFFlDT7IAfZXITgcVmFRE5576plrS_T_LjaH00RnlaqJMf63PpdvQhtdMpFSuTCg&quot;}}</code></pre></li><li><span class="kind">Nota</span> Sobre enviado: suite DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305, keyId 127b1c8c897d1666, 5483 caracteres de texto cifrado; el nombre sintético no viaja en claro.</li><li><span class="kind">Respuesta</span> Envío en modo sellado sin sobre HPKE. (POST → 400, 2 ms)<div class="meta">URL: <code>http://127.0.0.1:8799/api/v1/complaints</code></div><pre><code>{&quot;error&quot;:{&quot;code&quot;:&quot;bad_request&quot;,&quot;message&quot;:&quot;La solicitud no es válida.&quot;}}</code></pre></li><li><span class="kind">Nota</span> Límite: el sobre lo arma el cliente sintético del validador con las llaves publicadas; el cifrado dentro de la interfaz lo cubren las pruebas E2E de la implementación.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>LGRA art. 64 fr. III</li><li>SESNA S-04</li><li>ASVS V6.2.7</li></ul>
+</section>
+<section class="check" id="PRV-15" aria-labelledby="PRV-15-title">
+  <h3 id="PRV-15-title">PRV-15 · Respuesta indistinguible ante folio o secreto inválidos</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Folio inexistente y secreto equivocado producen la misma respuesta.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Respuesta</span> Folio existente, secreto equivocado. (POST → 404, 1 ms)<div class="meta">URL: <code>http://127.0.0.1:8799/api/v1/tracking</code></div><pre><code>{&quot;error&quot;:{&quot;code&quot;:&quot;not_found&quot;,&quot;message&quot;:&quot;No encontrado.&quot;}}</code></pre></li><li><span class="kind">Respuesta</span> Folio inexistente. (POST → 404, 1 ms)<div class="meta">URL: <code>http://127.0.0.1:8799/api/v1/tracking</code></div><pre><code>{&quot;error&quot;:{&quot;code&quot;:&quot;not_found&quot;,&quot;message&quot;:&quot;No encontrado.&quot;}}</code></pre></li><li><span class="kind">Nota</span> Mediana de tiempo: 0.5 ms (secreto equivocado) frente a 1 ms (folio inexistente), 2 muestras de cada caso. Las mediciones por red son ruidosas.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V6.2.8</li><li>API2:2023</li><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-16" aria-labelledby="PRV-16-title">
+  <h3 id="PRV-16-title">PRV-16 · Enlaces externos sin fuga de origen</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Recomendada (DEBERÍA)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-17" aria-labelledby="PRV-17-title">
+  <h3 id="PRV-17-title">PRV-17 · Sin caché</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V8.1.1</li><li>ASVS V8.2.1</li></ul>
+</section>
+<section class="check" id="PRV-18" aria-labelledby="PRV-18-title">
+  <h3 id="PRV-18-title">PRV-18 · Sin traducción ni indexación remotas</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Recomendada (DEBERÍA)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-19" aria-labelledby="PRV-19-title">
+  <h3 id="PRV-19-title">PRV-19 · Fechas públicas sin hora exacta</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li></ul>
+</section>
+<section class="check" id="PRV-20" aria-labelledby="PRV-20-title">
+  <h3 id="PRV-20-title">PRV-20 · Pruebas sin metadatos aceptadas por el nodo</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Recomendada (DEBERÍA)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-03</li><li>ASVS V12.2.1</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-21" aria-labelledby="PRV-21-title">
+  <h3 id="PRV-21-title">PRV-21 · Denuncia sin datos personales</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>LGRA art. 91</li><li>LGPDPPSO proporcionalidad</li></ul>
+</section>
+<section class="check" id="PRV-22" aria-labelledby="PRV-22-title">
+  <h3 id="PRV-22-title">PRV-22 · Datos abiertos sin celdas pequeñas</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-06</li><li>BPDN art. 60</li><li>BPDN art. 61</li></ul>
+</section>
+<section class="check" id="PRV-23" aria-labelledby="PRV-23-title">
+  <h3 id="PRV-23-title">PRV-23 · Caracteres invisibles en los hechos</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>SESNA S-03</li></ul>
+</section>
+<section class="check" id="API-01" aria-labelledby="API-01-title">
+  <h3 id="API-01-title">API-01 · Conformidad con el contrato</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Las 29 respuestas corresponden a la especificación (ruta, estatus, tipo y esquema).</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Especificación /Users/guilegut/proyectos/sigilo-s5/.claude/worktrees/agent-a30ba3cb77049a2b2/estandar/openapi.yaml (OpenAPI 3.1.0); 29 intercambios sobre 14 operaciones.</li></ul>
+  <h4>Referencias</h4>
+  <ul><li>API9:2023</li><li>SESNA S-11</li><li>BPDN especificación por sistema</li></ul>
+</section>
+<section class="check" id="API-02" aria-labelledby="API-02-title">
+  <h3 id="API-02-title">API-02 · Errores comunes sin datos sensibles</h3>
+  <p><span class="badge badge-cumple"><span class="icon" aria-hidden="true">✓</span> Cumple</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Las 18 respuestas de error usan el esquema común, sin trazas ni reflejo de la entrada.</p>
+  <h4>Evidencia</h4>
+  <ul class="evidence"><li><span class="kind">Nota</span> Se revisaron 18 respuestas de error (estatus 400, 401, 404, 415, 428).</li><li><span class="kind">Respuesta</span> Ejemplo: Denuncia sellada sin sobre (debe rechazarse). (POST → 400, 2 ms)<div class="meta">URL: <code>http://127.0.0.1:8799/api/v1/complaints</code></div><pre><code>{&quot;error&quot;:{&quot;code&quot;:&quot;bad_request&quot;,&quot;message&quot;:&quot;La solicitud no es válida.&quot;}}</code></pre></li></ul>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V7.4.1</li><li>API8:2023</li></ul>
+</section>
+<section class="check" id="SEC-31" aria-labelledby="SEC-31-title">
+  <h3 id="SEC-31-title">SEC-31 · TLS y HSTS</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V9.1.1</li><li>ASVS V9.1.2</li><li>ASVS V9.1.3</li></ul>
+</section>
+<section class="check" id="SEC-32" aria-labelledby="SEC-32-title">
+  <h3 id="SEC-32-title">SEC-32 · Cabeceras de seguridad</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.4.1</li><li>ASVS V14.4.4</li></ul>
+</section>
+<section class="check" id="SEC-33" aria-labelledby="SEC-33-title">
+  <h3 id="SEC-33-title">SEC-33 · CORS cerrado</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.5.3</li><li>API8:2023</li></ul>
+</section>
+<section class="check" id="SEC-34" aria-labelledby="SEC-34-title">
+  <h3 id="SEC-34-title">SEC-34 · Sin divulgación de versión</h3>
+  <p><span class="badge badge-no_aplica"><span class="icon" aria-hidden="true">–</span> No aplica</span> <span class="tag">Obligatoria (DEBE)</span> · <span class="tag">Observación directa</span></p>
+  <p>Verificación no automatizada en esta versión.</p>
+  <h4>Evidencia</h4>
+  <p>Sin evidencia adicional.</p>
+  <h4>Referencias</h4>
+  <ul><li>ASVS V14.3.3</li></ul>
+</section>
+<h2>Observaciones</h2>
+<p>Sin observaciones.</p>
+
+<h2>Peticiones de red registradas</h2>
+<details>
+<summary>Ver las 13 peticiones</summary>
+<div class="table-wrap">
+<table>
+<caption>Peticiones del navegador durante la carga</caption>
+<thead><tr><th scope="col">Página</th><th scope="col">Método</th><th scope="col">Tipo</th><th scope="col">Origen</th><th scope="col">Resultado</th><th scope="col">URL</th></tr></thead>
+<tbody>
+<tr><td>inicio</td><td>GET</td><td>document</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/rolldown-runtime-W7wSyTde.js</code></td></tr>
+<tr><td>inicio</td><td>GET</td><td>stylesheet</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/index-DefQtYGQ.css</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>document</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/denunciar</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/index-D1nnZ_Jc.js</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/rolldown-runtime-W7wSyTde.js</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>stylesheet</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/index-DefQtYGQ.css</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/ReportPage-BnkO9lIe.js</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/format-BviFwI1B.js</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/pinned-keys-BeDuDNHG.js</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/digest-c5_6c4Gt.js</code></td></tr>
+<tr><td>formulario</td><td>GET</td><td>script</td><td>propio</td><td>200</td><td><code>http://127.0.0.1:8799/assets/proof-of-work-DG4_pqrK.js</code></td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</main>
+</body>
+</html>

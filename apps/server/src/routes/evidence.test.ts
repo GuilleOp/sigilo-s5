@@ -38,6 +38,7 @@ import {
   submitComplaint,
   TEST_TOKEN,
   uploadEvidence,
+  moveTo,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
 
@@ -215,7 +216,7 @@ describe('retención de pruebas sin atender', () => {
     expect(evidenceDeletionDay('2026-10-20', 0)).toBeNull();
     expect((await detail(first)).evidenceDeletionOn).toBe('2026-11-20');
     expect(purge(server, new Date('2026-11-19T23:59:00Z'), 30)).toBe(0);
-    await postJson(server.app, ROUTES.authorityStatus(second), { status: 'routing' }, TEST_TOKEN);
+    await moveTo(server, second, 'routing');
     expect((await detail(second)).evidenceDeletionOn).toBeUndefined();
     expect(purge(server, new Date('2026-11-20T00:01:00Z'), 30)).toBe(1);
     // Ya sin archivos guardados, no hay nada que avisar.
@@ -242,7 +243,7 @@ describe('retención de pruebas sin atender', () => {
   it('también borra las de denuncias archivadas: archivar el spam no bloquea la cuota', async () => {
     const { server, folios } = await scenario();
     for (const folio of folios) {
-      await postJson(server.app, ROUTES.authorityStatus(folio), { status: 'archived' }, TEST_TOKEN);
+      await moveTo(server, folio, 'archived');
     }
     const detail = ComplaintDetailSchema.parse(
       await (await getAsAuthority(server.app, ROUTES.authorityComplaint(folios[0] ?? ''))).json(),
@@ -255,12 +256,7 @@ describe('retención de pruebas sin atender', () => {
   it('respeta las denuncias que la autoridad ya atendió', async () => {
     const { server, otherEvidence, folios } = await scenario();
     const [, otherFolio] = folios;
-    await postJson(
-      server.app,
-      ROUTES.authorityStatus(otherFolio ?? ''),
-      { status: 'routing' },
-      TEST_TOKEN,
-    );
+    await moveTo(server, otherFolio ?? '', 'routing');
     expect(purge(server, new Date('2026-12-01T00:00:00Z'), 30)).toBe(1);
     expect(server.evidenceStore.read(otherEvidence.evidenceId)).not.toBeNull();
   });

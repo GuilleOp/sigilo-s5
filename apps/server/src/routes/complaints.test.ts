@@ -127,6 +127,26 @@ describe('POST complaints', () => {
     expect(await response.json()).toEqual(errorBody('bad_request'));
   });
 
+  it('rechaza caracteres invisibles en el texto libre (PRV-23), que la web siempre quita', async () => {
+    const server = createTestServer();
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+    });
+    // Espacio de ancho cero y control de dirección: marcas típicas de un documento filtrado.
+    for (const facts of [
+      {
+        ...request.facts,
+        description: `${request.facts.description}${String.fromCodePoint(0x200b)}`,
+      },
+      { ...request.facts, accused: `Titular${String.fromCodePoint(0x202e)} del área ficticia` },
+    ]) {
+      const response = await postJson(server.app, ROUTES.complaints, { ...request, facts });
+      expect(response.status).toBe(400);
+    }
+    expect((await postJson(server.app, ROUTES.complaints, request)).status).toBe(201);
+  });
+
   it('rechaza claves fuera de catálogo en los campos que se publican', async () => {
     const server = createTestServer();
     const request = await buildComplaintRequest(server, {

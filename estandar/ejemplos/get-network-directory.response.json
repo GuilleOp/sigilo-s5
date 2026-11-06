@@ -1,0 +1,66 @@
+{
+  "directory": {
+    "format": 1,
+    "serial": 1,
+    "issuedOn": "2026-11-09",
+    "previousDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "operator": {
+      "name": "Operación ficticia de la ventanilla única (demostración)",
+      "signingKeyId": "5d1c2a9e8b7f3c40",
+      "signingPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv"
+    },
+    "nodes": [
+      {
+        "id": "node.queretaro",
+        "name": "Nodo estatal Querétaro",
+        "baseUrl": "https://denuncias.queretaro.example",
+        "isCommonNode": false,
+        "boxKeyId": "9a0be41c77d25f13",
+        "boxPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f",
+        "signingKeyId": "c3f8e2a1b0d94756",
+        "signingPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv"
+      }
+    ],
+    "authorities": [
+      {
+        "id": "authority.comptroller-queretaro",
+        "name": "Contraloría Estatal Ficticia de Querétaro",
+        "nodeId": "node.queretaro",
+        "governmentLevel": "estatal",
+        "stateCode": "22",
+        "role": "investigating",
+        "competence": {
+          "governmentLevels": ["estatal"],
+          "stateCodes": ["22"],
+          "entityIds": [],
+          "laws": ["LGRA"]
+        },
+        "keyId": "9a0be41c77d25f13",
+        "boxPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f",
+        "signingPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv",
+        "supervisorId": null,
+        "validFrom": "2026-11-09",
+        "validUntil": null
+      }
+    ],
+    "observers": [
+      {
+        "id": "observer.cpc-queretaro",
+        "name": "Comité de Participación Ciudadana Ficticio de Querétaro",
+        "kind": "cpc",
+        "signingKeyId": "c3f8e2a1b0d94756",
+        "signingPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f"
+      }
+    ],
+    "witnessPolicy": { "threshold": 1, "witnessIds": ["observer.cpc-queretaro", "node.queretaro"] }
+  },
+  "digest": "3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9f0a2b4c6d8e0f1a2b",
+  "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+  "witnessSignatures": [
+    {
+      "witnessId": "observer.cpc-queretaro",
+      "keyId": "c3f8e2a1b0d94756",
+      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+    }
+  ]
+}

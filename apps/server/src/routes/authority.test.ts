@@ -6,7 +6,6 @@ import {
   ComplaintSummarySchema,
   LedgerPageSchema,
   MailboxMessageSchema,
-  OpenIdentityResponseSchema,
   ROUTES,
   TrackingViewSchema,
 } from '@sigilo/contracts';
@@ -32,22 +31,22 @@ import {
 } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 import { z } from 'zod';
-import { createContext } from '../context.ts';
-import { ApiFailure } from '../http/errors.ts';
-import { changeStatus } from '../services/complaint-service.ts';
 import {
   buildComplaintRequest,
   createReporter,
   createTestServer,
   credentialsFor,
   getAsAuthority,
+  messageBody,
   NEXT_DAY,
   postJson,
   reporterRecipient,
   samplePng,
   submitComplaint,
   SYNTHETIC_IDENTITY,
+  TEST_AUTHORITIES,
   TEST_TOKEN,
+  openIdentityTwoOfThree,
   uploadEvidence,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
@@ -91,14 +90,8 @@ async function fetchDetail(server: TestServer, folio: string): Promise<Complaint
   return ComplaintDetailSchema.parse(await response.json());
 }
 
-async function requestIdentity(server: TestServer, folio: string) {
-  const response = await postJson(
-    server.app,
-    ROUTES.authorityIdentity(folio),
-    { legalBasis: LEGAL_BASIS },
-    TEST_TOKEN,
-  );
-  return OpenIdentityResponseSchema.parse(await response.json());
+function requestIdentity(server: TestServer, folio: string) {
+  return openIdentityTwoOfThree(server, folio, LEGAL_BASIS);
 }
 
 describe('autenticación de la autoridad', () => {
@@ -110,7 +103,7 @@ describe('autenticación de la autoridad', () => {
       server.app.request(ROUTES.authorityComplaints, {
         headers: { Authorization: `Basic ${TEST_TOKEN}` },
       }),
-      postJson(server.app, ROUTES.authorityStatus('AAAA-AAAA-AAAA'), { status: 'routing' }),
+      postJson(server.app, ROUTES.authorityProcedure('AAAA-AAAA-AAAA'), { action: 'accept' }),
     ];
     for (const response of await Promise.all(attempts)) {
       expect(response.status).toBe(401);
@@ -134,6 +127,8 @@ describe('listado y detalle', () => {
         stateCode: '22',
         offenseCode: 'LGRA-52',
         protectionRequested: true,
+        managementState: 'received_in_inbox',
+        assignedAuthorityId: TEST_AUTHORITIES.inbox,
       },
     ]);
     expect(raw).not.toContain('sealedIdentity');
@@ -231,6 +226,7 @@ describe('apertura de identidad', () => {
         actorRole: 'authority',
         legalBasis: LEGAL_BASIS,
         openingId: opened.openingId,
+        approvalCount: 2,
       },
     ]);
     expect((await fetchDetail(server, folio)).identityOpenedCount).toBe(1);
@@ -330,7 +326,7 @@ describe('apertura de identidad', () => {
     const anonymous = await setup('anonymous');
     const response = await postJson(
       anonymous.server.app,
-      ROUTES.authorityIdentity(anonymous.folio),
+      ROUTES.authorityIdentityRequests(anonymous.folio),
       { legalBasis: LEGAL_BASIS },
       TEST_TOKEN,
     );
@@ -338,59 +334,11 @@ describe('apertura de identidad', () => {
     const sealed = await setup();
     const short = await postJson(
       sealed.server.app,
-      ROUTES.authorityIdentity(sealed.folio),
+      ROUTES.authorityIdentityRequests(sealed.folio),
       { legalBasis: 'corto' },
       TEST_TOKEN,
     );
     expect(short.status).toBe(400);
-  });
-});
-
-describe('cambio de estatus', () => {
-  it('agrega el cambio a la línea de tiempo y rechaza repetir el estatus actual', async () => {
-    const scenario = await setup();
-    const { server, folio } = scenario;
-    await server.advanceTo(new Date('2026-10-23T23:59:59Z'));
-    const response = await postJson(
-      server.app,
-      ROUTES.authorityStatus(folio),
-      { status: 'routing' },
-      TEST_TOKEN,
-    );
-    expect(response.status).toBe(200);
-    expect(ComplaintSummarySchema.parse(await response.json()).status).toBe('routing');
-    const repeated = await postJson(
-      server.app,
-      ROUTES.authorityStatus(folio),
-      { status: 'routing' },
-      TEST_TOKEN,
-    );
-    expect(repeated.status).toBe(400);
-    const view = await trackingView(scenario);
-    expect(view.status).toBe('routing');
-    expect(view.timeline).toEqual([
-      { status: 'received', on: '2026-10-20' },
-      { status: 'routing', on: '2026-10-23' },
-    ]);
-  });
-
-  it('vuelve a leer el estatus dentro de la transacción y no duplica el evento', async () => {
-    const scenario = await setup();
-    const { server, folio } = scenario;
-    // Otra petición cambia el estatus después de que esta leyó el registro (ya obsoleto).
-    const ctx = createContext({
-      db: server.db,
-      keys: server.keys,
-      evidenceStore: server.evidenceStore,
-      authorityToken: TEST_TOKEN,
-      now: () => new Date('2026-10-20T16:00:00Z'),
-    });
-    const stale = ctx.complaints.find(folio);
-    expect(stale?.status).toBe('received');
-    await postJson(server.app, ROUTES.authorityStatus(folio), { status: 'routing' }, TEST_TOKEN);
-    expect(() => changeStatus(ctx, folio, 'routing')).toThrow(ApiFailure);
-    expect((await trackingView(scenario)).timeline).toHaveLength(2);
-    expect(() => changeStatus(ctx, 'ZZZZ-ZZZZ-ZZZZ', 'routed')).toThrow(ApiFailure);
   });
 });
 
@@ -402,11 +350,13 @@ describe('buzón de la autoridad', () => {
     text = 'Pregunta sintética de la autoridad.',
   ) {
     const { reporter, folio } = scenario;
-    return sealMailboxMessage(text, reporterRecipient(reporter), signingKey, {
-      folio,
-      from: 'authority',
-      sequence,
-    });
+    return messageBody(
+      await sealMailboxMessage(text, reporterRecipient(reporter), signingKey, {
+        folio,
+        from: 'authority',
+        sequence,
+      }),
+    );
   }
 
   it('guarda un mensaje firmado que la persona denunciante puede abrir', async () => {

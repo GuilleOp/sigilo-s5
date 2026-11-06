@@ -1,0 +1,32 @@
+{
+  "events": [
+    {
+      "seq": 41,
+      "type": "complaint.received",
+      "folioDigest": "1cadc826d104014d2ed7b5bb2fef5c22b8d940aeaa2f14d9f65fec049aa9e292",
+      "at": "2026-11-05",
+      "actorRole": "system",
+      "payloadDigest": "06070e6e2bc7be88a3beecfb1b7ec80e2ee8d8fae2ae612e28e1c6347dc3d797",
+      "prevHash": "b7936c8777a5a5368179decf6377c150b30784676a633ff2229174d2852111b2",
+      "hash": "cb37babe6ca52df9e33e426166e0ab21696e6fb2a7c51cdc2a49bbd103b69e8c"
+    },
+    {
+      "seq": 42,
+      "type": "identity.opened",
+      "folioDigest": "1cadc826d104014d2ed7b5bb2fef5c22b8d940aeaa2f14d9f65fec049aa9e292",
+      "at": "2026-11-12",
+      "actorRole": "authority",
+      "payloadDigest": "1c7384ae5d390020a47bd3cc14875e4575ff2d1d78cbb5dce6c038c92c9ef935",
+      "receiptTag": "a2ac084c5fcf7fee50433c408248020dd7f0908de5beff4d22867d68bab0ed82",
+      "prevHash": "cb37babe6ca52df9e33e426166e0ab21696e6fb2a7c51cdc2a49bbd103b69e8c",
+      "hash": "55facaf606de06709ae5317fc22d0986f8c9d64723817cf39865a38c6561d4ed"
+    }
+  ],
+  "head": {
+    "seq": 42,
+    "hash": "55facaf606de06709ae5317fc22d0986f8c9d64723817cf39865a38c6561d4ed",
+    "at": "2026-11-12",
+    "serverKeyId": "c64189c912bb3ce1",
+    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+  }
+}

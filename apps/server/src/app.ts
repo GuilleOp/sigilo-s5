@@ -4,20 +4,22 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { API_PREFIX, POW_HEADER } from '@sigilo/contracts';
 import { createContext } from './context.ts';
-import type { AppDeps } from './context.ts';
+import type { AppContext, AppDeps } from './context.ts';
 import { ApiFailure, errorResponse } from './http/errors.ts';
 import { loadWebAssets } from './http/web-assets.ts';
+import { registerAuthRoutes } from './routes/auth.ts';
 import { registerAuthorityRoutes } from './routes/authority.ts';
 import { registerComplaintRoutes } from './routes/complaints.ts';
 import { registerEvidenceRoutes } from './routes/evidence.ts';
 import { registerKeysRoutes } from './routes/keys.ts';
 import { registerLedgerRoutes } from './routes/ledger.ts';
+import { registerNetworkRoutes } from './routes/network.ts';
 import { registerOpenDataRoutes } from './routes/open-data.ts';
 import { registerPowRoutes } from './routes/pow.ts';
 import { registerTrackingRoutes } from './routes/tracking.ts';
 import { isApiPath, securityHeaders } from './security/headers.ts';
 
-export type { AppDeps, RateLimitConfig, RequestLogEntry } from './context.ts';
+export type { AppContext, AppDeps, RateLimitConfig, RequestLogEntry } from './context.ts';
 export type { RequestLogLine } from './http/request-log.ts';
 
 /**
@@ -36,11 +38,19 @@ function registerWebRoutes(app: Hono, distDir: string): void {
 }
 
 /**
- * Crea la aplicación con las dependencias inyectadas (base, llaves, almacén, reloj, token, prueba
- * de trabajo y registro).
+ * Crea la aplicación con las dependencias inyectadas (base, llaves, almacén, reloj, cuentas de la
+ * autoridad, prueba de trabajo y registro).
  */
 export function createApp(deps: AppDeps): Hono {
-  const ctx = createContext(deps);
+  return createAppFromContext(createContext(deps));
+}
+
+/**
+ * Crea la aplicación sobre un contexto ya construido, para que las tareas programadas (cierre de
+ * la bitácora, reglas de escalamiento) usen los mismos servicios que las rutas.
+ */
+export function createAppFromContext(ctx: AppContext): Hono {
+  const { deps } = ctx;
   const app = new Hono();
   const servesWeb = deps.webDistDir !== undefined;
 
@@ -64,9 +74,11 @@ export function createApp(deps: AppDeps): Hono {
   registerEvidenceRoutes(app, ctx);
   registerComplaintRoutes(app, ctx);
   registerTrackingRoutes(app, ctx);
+  registerAuthRoutes(app, ctx);
   registerAuthorityRoutes(app, ctx);
   registerLedgerRoutes(app, ctx);
   registerOpenDataRoutes(app, ctx);
+  registerNetworkRoutes(app, ctx);
   if (deps.webDistDir !== undefined) registerWebRoutes(app, deps.webDistDir);
 
   app.notFound((c) => errorResponse(c, 'not_found'));

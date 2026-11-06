@@ -1,0 +1,23 @@
+# Contexto de construcción de las imágenes: solo el código. Nunca llaves, bases, .env ni la red de
+# demostración (sus llaves públicas entran por el contexto adicional `node-keys` de compose).
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/*.test.ts
+**/*.test.tsx
+.git
+.github
+.claude
+.red-demo
+apps/server/data
+apps/enrutador/data
+anchors
+e2e
+estandar
+playwright-report
+test-results
+docs
+*.log
+.DS_Store

@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "to": "authority.comptroller-queretaro",
+  "sealed": {
+    "v": 1,
+    "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+    "keyId": "9a0be41c77d25f13",
+    "enc": "mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0",
+    "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw"
+  }
+}

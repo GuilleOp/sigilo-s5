@@ -5,6 +5,7 @@ import { RECEIPT_WORD_COUNT } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
 import { ErrorSummary } from '../../components/ErrorSummary.tsx';
 import { TextField } from '../../components/Field.tsx';
+import { focusElement } from '../../lib/focus.ts';
 import { isCompleteFolio, normalizeFolioInput } from '../../lib/folio-input.ts';
 import { distributePastedWords, resolvedWord } from '../../lib/receipt-words.ts';
 import type { FieldErrors } from '../../state/report-validation.ts';
@@ -47,6 +48,36 @@ export function TrackingLogin({
 
   function setWord(position: number, value: string): void {
     setWords((current) => current.map((word, index) => (index === position ? value : word)));
+  }
+
+  /** Pasa el foco a una casilla de inmediato: si se esperara al siguiente cuadro, las letras que
+   * se siguen tecleando caerían en la casilla anterior. */
+  function focusWord(position: number): void {
+    const input = document.getElementById(wordInputId(position));
+    if (input !== null) focusElement(input);
+  }
+
+  /**
+   * Al escribir un espacio (o una coma) se reparte igual que al pegar: varias palabras van a las
+   * casillas siguientes y una sola palabra con espacio pasa el foco a la siguiente casilla.
+   */
+  function typeWord(position: number, value: string): void {
+    if (!/[\s,;]/u.test(value)) {
+      setWord(position, value);
+      return;
+    }
+    const next = distributePastedWords(words, position, value);
+    if (next !== null) {
+      setWords(next);
+      const filled = value.split(/[\s,.;:]+/u).filter(Boolean).length;
+      const target = Math.min(position + filled, RECEIPT_WORD_COUNT - 1);
+      focusWord(target);
+      return;
+    }
+    setWord(position, value.replace(/[\s,;]+/gu, ''));
+    if (position < RECEIPT_WORD_COUNT - 1 && value.trim() !== '') {
+      focusWord(position + 1);
+    }
   }
 
   function submit(event: FormEvent): void {
@@ -96,7 +127,8 @@ export function TrackingLogin({
       <fieldset>
         <legend>Las 8 palabras de tu recibo</legend>
         <p className="field__hint">
-          Cuida que nadie vea tu pantalla. Puedes pegar las 8 palabras en la primera casilla.
+          Cuida que nadie vea tu pantalla. Puedes pegar o escribir las 8 palabras, separadas por
+          espacios, en la primera casilla.
         </p>
         <div className="word-grid">
           {words.map((word, position) => (
@@ -106,7 +138,7 @@ export function TrackingLogin({
               value={word}
               showErrors={showErrors}
               isRejected={invalidWordPosition === position + 1}
-              onChange={(value) => setWord(position, value)}
+              onChange={(value) => typeWord(position, value)}
               onPaste={(event) => {
                 const next = distributePastedWords(
                   words,

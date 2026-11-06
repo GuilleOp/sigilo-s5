@@ -14,6 +14,7 @@ Especificación normativa de los formatos de SIGILO versión 1. Las decisiones s
 | Derivación              | HKDF-SHA256                                                                               | `@noble/hashes`                                              |
 | Aleatoriedad            | `crypto.getRandomValues`; `randomInt` por muestreo con rechazo y `shuffle` (Fisher-Yates) | Plataforma y `@sigilo/core`                                  |
 | Prueba de trabajo       | Hashcash sobre SHA-256; retos firmados con HMAC-SHA256                                    | `@sigilo/core` y servidor                                    |
+| Corroboración ciega     | VOPRF de RFC 9497, ristretto255-SHA512 (modo 0x01), con prueba DLEQ                       | `@noble/curves` (`ristretto255_oprf`)                        |
 
 `Math.random` no debe usarse en ningún caso.
 
@@ -114,6 +115,51 @@ AAD, en modo `sealed` abrir la identidad prueba también que las llaves del buz�
 servidor son las de la persona denunciante. En ambos modos el panel verifica además las llaves
 contra el registro público (ver «Comprobante firmado»).
 
+## Apertura de identidad 2 de 3
+
+- Una persona de la autoridad competente (investigación o supervisión) crea una solicitud con su
+  fundamento: `requestId` de 16 bytes aleatorios, que también es el `openingId` de la apertura.
+  Cuenta como la primera aprobación.
+- Cada aprobación registra `identity.approved` con
+  `{ folio, requestId, approvalId, legalBasis, actor }`, donde `actor` es el seudónimo de la cuenta.
+  Una cuenta aprueba una sola vez por solicitud (índice único en la base) y la solicitud vence a
+  los 7 días naturales.
+- Al llegar a `IDENTITY_APPROVAL_THRESHOLD` = 2 aprobaciones distintas se registra
+  `identity.opened` con los mismos datos que antes (`{ folio, openingId, legalBasis, receiptTag }`,
+  con el fundamento de la solicitud), así que la conciliación de aperturas de la persona
+  denunciante (`reconcileIdentityOpenings`) no cambia. El seguimiento agrega `approvalCount`.
+- Solo entonces el nodo entrega el sobre, y solo a una cuenta que aprobó. El sobre y su AAD son
+  los de «Identidad sellada»: el navegador de la autoridad lo abre con su llave y el contexto
+  recalculado desde el detalle. El servidor nunca descifra.
+- Límite: el umbral es un control de política del nodo, no criptográfico; la llave de descifrado
+  sigue en un solo navegador. Ver «Trabajo futuro».
+- **Apertura para el recurso de inconformidad.** Contra la calificación de no grave la persona
+  puede inconformarse (LGRA, arts. 102 a 110), y la ley pide su nombre, domicilio y firma
+  (art. 109). Al presentar el recurso desde su seguimiento (`POST tracking/appeal`, autenticada con
+  la llave derivada de su recibo), acepta abrir su identidad solo para el recurso: el nodo registra
+  `appeal.filed` (con el digesto de sus motivos y del acuerdo de calificación) e `identity.opened`
+  con su `receiptTag`, y la apertura aparece en su seguimiento con `actorRole: reporter`. La
+  autoridad investigadora que calificó (investigación o supervisión) puede pedir el sobre sin la
+  aprobación 2 de 3, que existe para las aperturas que la persona no pidió, y sin el vencimiento
+  de 7 días. El servidor sigue sin descifrar. La firma autógrafa queda fuera del sistema.
+
+## Sobre de escalamiento (segunda llave)
+
+- Texto en claro: forma canónica de `EscalationContent` (`{ version, mode, facts, evidence,
+protectionRequested }`) en UTF-8, rellenado a exactamente `ESCALATION_PADDED_SIZE` = 49 152 bytes.
+  Nunca lleva la identidad sellada.
+- Destinatario: llave X25519 de la supervisora fijada en el bundle (`PublicKeySet.supervisor`).
+  El servidor rechaza un sobre hacia otra llave o de otro tamaño.
+- AAD: `sigilo/v1/escalation:` + `canonicalize({ authVerifier, reporterKeys })`. No incluye el
+  `contentDigest`, porque la supervisora recibe los hechos dentro del sobre.
+- El digesto del sobre entra al `submissionDigest` (ver «Comprobante firmado»). Después de
+  abrirlo, la supervisora recalcula el digesto del envío con `submissionDigestFromEscalation` y lo
+  compara con el `payloadDigest` del evento `complaint.received` publicado: si coincide, el nodo
+  no sustituyó el sobre ni los hechos.
+- El nodo lo entrega (`POST authority/escalations/{folio}/envelope`) solo a la supervisión de la
+  supervisora y solo si una regla de escalamiento se cumplió; cada entrega queda en el registro
+  de seguridad.
+
 ## Buzón
 
 - Texto en claro: mensaje en UTF-8 con prefijo de longitud, rellenado a exactamente
@@ -137,7 +183,9 @@ contra el registro público (ver «Comprobante firmado»).
 - El sobre de identidad se resume antes de calcular el digesto del envío:
   `sealedIdentityDigest = sha256Hex(canonicalize(sobre))`.
 - `submissionDigest = sha256Hex(canonicalize(solicitud))`, con `sealedIdentity` sustituido por
-  `sealedIdentityDigest` (`submissionDigestInput`, `computeSubmissionDigest`). Así la autoridad lo
+  `sealedIdentityDigest` y, si viene, `escalationEnvelope` por
+  `escalationEnvelopeDigest = sha256Hex(canonicalize(sobre))` (`submissionDigestInput`,
+  `computeSubmissionDigest`). Una solicitud sin segunda llave tiene el mismo digesto que antes. Así la autoridad lo
   recalcula desde `ComplaintDetail`, que trae `sealedIdentityDigest` y no el sobre
   (`submissionDigestFromDetail`).
 - `payloadDigest = sha256Hex(canonicalize({ folio, submissionDigest }))` identifica el evento
@@ -158,13 +206,20 @@ contra el registro público (ver «Comprobante firmado»).
   público solo de `identity.opened`, va también en sus datos y entra en el `hash` del evento.
 - `payloadDigest = sha256Hex(canonicalize(datos del evento))`. Los datos siempre incluyen el folio:
 
-  | Evento                     | Datos                                          |
-  | -------------------------- | ---------------------------------------------- |
-  | `complaint.received`       | `{ folio, submissionDigest }`                  |
-  | `complaint.status_changed` | `{ folio, status, changeId }`                  |
-  | `identity.opened`          | `{ folio, openingId, legalBasis, receiptTag }` |
-  | `message.sent`             | `{ folio, messageId, from, envelopeDigest }`   |
-  | `evidence.discarded`       | `{ folio, count, discardId }`                  |
+  | Evento                     | Datos                                                                                                                     |
+  | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+  | `complaint.received`       | `{ folio, submissionDigest }`                                                                                             |
+  | `complaint.status_changed` | `{ folio, status, changeId, action, managementState, authorityId, actor, legalStage?, closureReason?, agreementDigest? }` |
+  | `identity.approved`        | `{ folio, requestId, approvalId, legalBasis, actor }`                                                                     |
+  | `identity.opened`          | `{ folio, openingId, legalBasis, receiptTag }`                                                                            |
+  | `message.sent`             | `{ folio, messageId, from, sequence, envelopeDigest, actor? }` (`actor` en los de la autoridad)                           |
+  | `evidence.discarded`       | `{ folio, count, discardId, actor }`                                                                                      |
+  | `rule.triggered`           | `{ folio, ruleKey, rulesVersion, effect, anchorOn, dueOn, triggerId, supervisorId? }`                                     |
+
+  `actor` es el seudónimo estable de la cuenta individual (`acct-` y 16 hexadecimales aleatorios),
+  nunca un nombre. Va solo en los datos, que son privados del nodo: el evento público lleva su
+  digesto, así que el actor queda comprometido sin publicarse (y sin revelar qué autoridad atiende
+  qué folio). `agreementDigest` es el SHA-256 del acuerdo de cierre en versión pública.
 
   `changeId`, `openingId` y `discardId` son aleatorios, para que dos eventos con los mismos datos
   tengan digestos distintos. `evidence.discarded` lo registra la autoridad al descartar las pruebas
@@ -292,6 +347,249 @@ con el AAD anterior ya no abren.
   denuncia objetivo. Una celda con una sola denuncia real se publica como 5 con probabilidad 1/5,
   lo que revela que no está vacía; una celda vacía nunca aparece.
 
+## Corroboración ciega (VOPRF)
+
+Decisión en el [ADR 0006](adr/0006-corroboracion-ciega.md) y las señales de independencia en el
+[ADR 0010](adr/0010-integridad-de-las-denuncias.md). Código: `@sigilo/corroboracion` (funciones
+puras para navegador y Node) y `@sigilo/corroboracion-servicio` (`apps/corroboracion`: evaluador e
+índice). Rutas: grupo «Corroboración» del Estándar S5.
+
+### Protocolo
+
+1. **Identificador.** El navegador normaliza el identificador según su tipo y antepone la etiqueta
+   de dominio `sigilo/v1/corroboration/<tipo>:<valor>`:
+   - `servidor`: `textKey(nombre)` de `@sigilo/anonimato` (sin acentos ni signos, mayúsculas, sin
+     palabras vacías, espacios simples; al menos dos palabras) + `|` + clave del ente en
+     mayúsculas.
+   - `rfc`: mayúsculas sin espacios ni guiones; conserva `Ñ` y `&`; 12 o 13 caracteres.
+   - `ocid`: mayúsculas sin espacios, con la forma `OCDS-xxxxxx-…`.
+2. **Cegado.** `voprf.blind(entrada)` de `ristretto255_oprf` (@noble/curves 2.4.0), suite
+   `ristretto255-SHA512`, modo VOPRF (0x01) de RFC 9497. El navegador envía
+   `{ v, keyId, blinded }` a `POST /api/v1/corroboracion/evaluador/evaluaciones` con la cabecera
+   `X-Sigilo-Pow` de un reto del propio evaluador.
+3. **Evaluación.** El evaluador responde `{ v, suite, epoch, keyId, evaluated, proof }`, con la
+   prueba DLEQ (RFC 9497, sección 2.2).
+4. **Verificación.** El navegador rechaza la respuesta si la suite, la época o el `keyId` no son los
+   de la llave publicada en `corroboration.evaluator` del **directorio firmado y cofirmado**, y si
+   la prueba DLEQ no verifica contra esa llave (`voprf.finalize` lanza). La llave que sirve el
+   propio evaluador (`GET …/evaluador/llave`) es informativa y no se usa para verificar.
+5. **Etiqueta.** De la salida VOPRF de 64 bytes se derivan con HKDF-SHA256 (sal vacía) la
+   **etiqueta** (`info = sigilo/v1/corroboration/tag`, 32 bytes en hexadecimal) y la **llave de
+   similitud** (`info = sigilo/v1/corroboration/similarity`, 32 bytes, nunca sale del navegador).
+6. **Registro.** La etiqueta viaja dentro de la denuncia cifrada hacia el nodo. El nodo la registra
+   en el índice con `POST …/indice/registros`, firmado con su llave Ed25519 del directorio sobre
+   `sigilo/corroboracion/index-registration/v1:` + JSON canónico: `{ nodeId, epoch, tag,
+folioDigest, receivedAt, entry, similarity }`. `folioDigest = HMAC-SHA256(secreto del nodo,
+"sigilo/v1/corroboration/folio:" + folio)`; `receivedAt` va redondeado a 10 minutos; `entry` es
+   `relay` (ventanilla única) o `direct` (entrada propia del nodo).
+7. **Estado y avisos.** El índice responde el estado del grupo (`complaints`,
+   `independentSources`, `sameOriginCount`, `flags`, `signals` y un `groupId` aleatorio) y deja un
+   aviso a cada nodo cuyo estado cambió (`POST …/indice/avisos`, firmado sobre
+   `sigilo/corroboracion/index-notices/v1:`, con `requestedAt` a no más de 20 minutos del reloj del
+   índice). Los avisos nunca dicen qué otros nodos ni qué folios forman el grupo.
+8. **Confirmación, gracia y baja (H3).** Una denuncia registrada empieza `pending`: no cuenta para
+   las demás y su estado es el de una denuncia sola (`isRevealed: false`, `independentSources: 1`,
+   `confirmedOtherSources: 0`, un `groupId` propio), haya o no otras denuncias con la etiqueta.
+   Pasa a contar y a ver su grupo cuando:
+   - el nodo la **confirma** porque la autoridad la aceptó (`POST …/indice/confirmaciones`,
+     firmado sobre `sigilo/corroboracion/index-confirmation/v1:`; el nodo lo deja en su bitácora);
+   - o pasan **30 días naturales** (`CORROBORATION_CONFIRMATION_GRACE_DAYS`) desde su registro,
+     contados con el reloj del índice y no con `receivedAt`, sin confirmación ni baja (`aged`);
+   - o el registro trae `custody: true` (ve `confirmedOtherSources`, ver custodia).
+     El nodo **da de baja** las denuncias que cierra como spam, improcedentes o acumuladas
+     (`POST …/indice/bajas`, firmado sobre `sigilo/corroboracion/index-withdrawal/v1:`, motivo
+     `spam`, `inadmissible` o `duplicate`): el índice borra el registro, recalcula el grupo y guarda
+     solo el folio opaco para no aceptarlo de nuevo. `independentSources` es siempre esta fuente más
+     las otras **confirmadas**; las marcas de mismo origen y campaña se devuelven aunque la denuncia
+     esté pendiente, porque solo se forman con relatos parecidos o con la misma ráfaga, nodo y
+     entrada. Lado del nodo (pendiente de su dueño): confirmar al aceptar, dar de baja al cerrar como
+     spam o improcedente, y marcar `custody` solo en custodias reales.
+
+Vectores: `packages/corroboracion/src/oprf.test.ts` reproduce **byte por byte** los vectores
+oficiales del apéndice A.1.2 de RFC 9497 (ristretto255-SHA512, VOPRF): `DeriveKeyPair` (skSm,
+pkSm), A.1.2.1 y A.1.2.2 completos (Blind, BlindedElement, EvaluationElement, Proof con su
+ProofRandomScalar y Output) y el lote A.1.2.3 con una sola prueba. Se tomaron del texto publicado
+en rfc-editor.org (`rfc9497.txt`, SHA-256 `95160517617374655fe23af2c6cec311eae326deb7689239f97641fd5a560432`).
+Para fijar los escalares se inyecta un generador que hace que `RandomScalar` devuelva el valor del
+vector (`fixedScalarSource`). Las pruebas de manipulación cubren prueba con un bit cambiado,
+elemento evaluado cambiado, llave distinta de la publicada (también si la respuesta anuncia la
+llave nueva o otra época), punto inválido o identidad, y la separación por tipo de identificador.
+
+### Llaves y rotación
+
+- **Llave OPRF** (escalar ristretto255) y **llave de firma** Ed25519 del evaluador, en
+  `evaluator-key.json` (permisos `0600`). `npm run evaluador:llave -w @sigilo/corroboracion-servicio`
+  la genera, nunca sobrescribe una existente e imprime el `CorroborationEvaluatorKey` que la
+  operación agrega al directorio (`corroboration`, campo opcional) antes de firmarlo.
+- **Época.** La llave se rota solo por compromiso: época nueva en el directorio. Las etiquetas de
+  épocas distintas no coinciden; el índice agrupa por `(época, etiqueta)`. Para no perder la
+  corroboración de la época anterior, el navegador puede pedir la etiqueta en las dos épocas
+  mientras ambas estén vigentes (pendiente, nivel C), a costa de duplicar las consultas.
+- **Retos.** Firmados con HMAC-SHA256 con un secreto aleatorio por proceso, de un solo uso, vigentes
+  10 minutos. El evaluador guarda solo el nonce aleatorio del reto gastado y su vencimiento
+  redondeado a 10 minutos.
+- **Conteos.** `GET …/evaluador/conteos` devuelve, firmado por día cerrado
+  (`sigilo/corroboracion/evaluation-count/v1:`), el número de evaluaciones, incluidos los días en
+  cero. Nunca el día en curso: un contador en vivo delataría el momento de cada consulta.
+
+### Qué ve cada servicio
+
+| Servicio                | Ve                                                                                     | No ve nunca                                                                   | Guarda                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Navegador               | Identificador, salida VOPRF, etiqueta, llave de similitud, relato                      | La llave privada del evaluador                                                | Nada (memoria de la pestaña)                                      |
+| Evaluador OPRF          | Elementos cegados (puntos uniformes), su dirección de red al llegar                    | Identificador, etiqueta, relato, folio, nodo, autoridad                       | Conteo por día y época; nonces de retos gastados hasta que vencen |
+| Nodo                    | Denuncia completa (identificador incluido, como hoy), etiqueta, resumen difuso, estado | La llave del evaluador, los folios y nodos de las demás denuncias del grupo   | Lo de hoy más la etiqueta y el estado de corroboración            |
+| Índice de coincidencias | Etiqueta, nodo, folio opaco, hora a 10 minutos, entrada, resumen difuso                | Identificador, relato, folio público, llave del evaluador, llave de similitud | Exactamente lo que ve, más el estado calculado y los avisos       |
+
+La prueba `apps/corroboracion/src/scenario.test.ts` lo comprueba sobre el escenario: lee los
+bytes de la base del evaluador y de su WAL y no encuentra los elementos cegados, las etiquetas, la
+llave de similitud ni el identificador en ninguna forma (bytes, hexadecimal o Base64URL); y en la
+base del índice no hay identificadores, nombres ni folios públicos, ni coincide ninguna etiqueta
+con un diccionario de los identificadores verdaderos calculado sin el evaluador (SHA-256, HKDF o
+un VOPRF con otra llave).
+
+### Resumen difuso del relato
+
+Sirve para la señal «textos muy parecidos» entre nodos distintos sin mandar el texto.
+
+- **Cálculo.** En el navegador, sobre el relato ya revisado con Huella Cero: `textKey` y espacios
+  como `_`; fragmentos de 5 caracteres; cada fragmento se resume con
+  `HMAC-SHA256(llave de similitud, fragmento)`; 512 permutaciones por doble resumen
+  (`mix32(h1 + i·h2)`); el bit i es el bit menos significativo del mínimo de la permutación i
+  (MinHash de un bit). Resultado: 64 bytes. Con menos de 30 fragmentos no se manda resumen (`null`).
+- **Estimación.** `J ≈ 2·(bits iguales / 512) − 1`; el error típico es de unos 0.04 a 0.06.
+- **Análisis de privacidad.**
+  - _Reconstrucción._ 512 bits no alcanzan para reconstruir un relato de cientos de caracteres:
+    cada bit es la paridad de un mínimo, no un fragmento. No hay inversión posible del texto.
+  - _Prueba de frases._ Con la llave, se podría probar si un relato contiene una frase candidata
+    (un fragmento con resumen muy bajo fija bits). Por eso la llave sale de la salida VOPRF: el
+    índice, que solo ve la etiqueta, no puede derivarla (HKDF con otro contexto) y para obtenerla
+    necesita el identificador **y** una consulta en línea al evaluador, que ya es el riesgo de
+    consulta dirigida de abajo. El nodo podría calcularla con el identificador, pero ya tiene el
+    relato completo.
+  - _Enlace entre denuncias._ La llave es distinta por etiqueta, así que los resúmenes de una misma
+    persona sobre acusados distintos no se pueden comparar: el resumen no sirve para seguir a
+    quien denuncia entre grupos.
+  - _Confirmación._ Quien ya tenga un relato candidato y la llave puede confirmar si es parecido al
+    registrado. Ese adversario ya es la autoridad o alguien que conoce el texto.
+  - _Decisión._ Se adopta (nivel A) con esas condiciones. Si una autoridad lo considerara excesivo,
+    el nodo puede mandar `similarity: null`: la señal de texto se pierde y queda solo la de ráfaga
+    con mismo nodo y entrada.
+
+### Una persona = una corroboración
+
+`assessIndependence` agrupa las denuncias de una etiqueta (componentes conexos) cuando:
+
+- los relatos se estiman con similitud ≥ 0.6, a cualquier hora (`similar_text`);
+- o caen en la misma ventana de 120 minutos (`burst`) con similitud ≥ 0.25;
+- o caen en la misma ventana sin resumen de alguna y con el mismo nodo y la misma entrada.
+
+Cada grupo cuenta como **una** fuente. Con dos o más denuncias el grupo lleva
+`possible_same_origin`; con tres o más en 24 horas, también `possible_campaign`. No hay huella de
+dispositivo: no se recolecta. Los umbrales son del prototipo y se publican con la regla. Nada se
+descarta ni se llama «falso»; la marca solo evita contar de más y se informa a la autoridad.
+En el escenario: Marta (día 0, ventanilla única) y Luis (día 3, entrada propia del nodo Federal)
+dan **2 fuentes**; las tres denuncias del atacante (día 2, 40 minutos, textos parecidos) dan
+**1 fuente** con `possible_same_origin` y `possible_campaign`.
+
+### Custodia opcional (nivel B)
+
+Formato `CustodyRecord` y máquina de estados en `packages/corroboracion/src/custody.ts`:
+
+- La denuncia ya cifrada hacia la autoridad se vuelve a cifrar con HPKE hacia la llave del
+  custodio (`sealForCustody`, AAD `sigilo/v1/custody:<custodyId>`). El nodo guarda la custodia y no
+  puede abrirla; el custodio solo obtiene otro sobre hacia la autoridad y se niega a abrir una
+  custodia retenida.
+- Fecha límite: `mínimo(fecha elegida, primer día del periodo de los hechos + 3 años − 12 meses)`.
+  Si ya llegó, la custodia nace liberada.
+- Estados `held → released`, final. Eventos: `match_reported` (lleva `confirmedOtherSources` del
+  estado del índice y libera cuando esta denuncia más las otras fuentes **confirmadas** suman
+  `requiredSources`, 2 por omisión; una denuncia de sondeo o spam sin confirmar no libera), `reporter_release` (firma Ed25519 sobre
+  `sigilo/v1/custody-release:<custodyId>` con una llave derivada del recibo,
+  `info = sigilo/v1/custody-release-key`, no ligable con las del buzón) y `clock`. Cualquier evento
+  con fecha igual o posterior a la fecha límite libera por fecha límite.
+
+### Riesgos
+
+- **Oráculo «¿hay denuncias contra X?» (consulta dirigida).** Quien vea etiquetas (la operación
+  del índice o un nodo) y adivine un identificador puede pedir su etiqueta al evaluador y buscarla.
+  Mitigaciones: el evaluador lo opera alguien distinto del índice y de los nodos; cada consulta es
+  en línea, con prueba de trabajo de un solo uso y tope diario opcional
+  (`SIGILO_EVALUATOR_MAX_DAILY`); el conteo diario firmado se publica junto al de denuncias, de modo
+  que una enumeración masiva se nota; y las fichas de unicidad del ADR 0010 (nivel C) la
+  reducirían. No se impide: un atacante paciente con pocos nombres candidatos puede confirmarlos.
+  La prueba «la consulta dirigida solo es posible en línea» del escenario lo documenta.
+- **Sondeo a través de un nodo (G03, H3).** Conocer una etiqueta **sí** basta para preguntar por
+  ella: cualquiera puede enviar una denuncia de sondeo con la etiqueta de un identificador (la web
+  la calcula para cualquier texto), y el nodo la registra firmada en el índice. Antes de H3, el
+  estado de esa denuncia, visible para quien la recibe en el buzón del nodo, decía cuántas
+  denuncias había contra ese identificador en toda la red, y el sondeo sumaba una fuente
+  «independiente» a la denuncia real. Mitigación: el índice no cuenta ni revela nada para una
+  denuncia sin confirmar (`oracle.test.ts` comprueba que el estado del sondeo es idéntico haya o
+  no denuncias, y que la denuncia real no cambia), y el nodo da de baja el spam. Riesgo residual:
+  una persona del nodo que **acepta** un sondeo (acto que queda en la bitácora del nodo y a la
+  vista del auditor), o que lo deja **30 días** sin darlo de baja, o que lo marca como custodia,
+  aprende si hay otras fuentes confirmadas y lo suma como fuente. Un sondeo aceptado o envejecido
+  infla en uno el conteo de la denuncia real. Lo acotan la bitácora del nodo, el auditor de
+  cierres (ADR 0009) y que la cuenta del sondeo sea por fuentes, no por denuncias.
+- **Colusión evaluador e índice.** Juntos recuperan el diccionario gratuito y silencioso. Solo lo
+  evita la operación separada; el evaluador por umbral (nivel C) lo dificultaría.
+- **Compromiso de la llave OPRF.** Expone las etiquetas de su época a un diccionario. Se rota con
+  época nueva.
+- **Evaluador que marca personas.** Con VOPRF y la llave fijada en el directorio cofirmado, una
+  llave por persona se detecta; usar la misma llave y negarse a responder a alguien sigue siendo
+  posible (denegación de servicio, no marcado).
+- **Dirección de red ante el evaluador.** El navegador llama al evaluador directo: el evaluador ve
+  su dirección y la hora, pero no qué identificador ni a qué nodo va la denuncia. Pasar las
+  evaluaciones por el enrutador ciego lo evitaría (pendiente).
+- **Falsos positivos y negativos de independencia.** Dos personas que describen lo mismo con
+  palabras parecidas en la misma ventana se cuentan como una; una persona cuidadosa que varía el
+  texto y el día cuenta como varias. Las señales encarecen, no impiden.
+- **Normalización.** Variantes de un nombre no coinciden y dos homónimos en el mismo ente sí.
+
+### Integración
+
+El nodo, la red y la demostración ya usan la corroboración; queda lo marcado como pendiente:
+
+- **Web (`apps/web`).** Paso opcional «¿Contra qué contrato, proveedor o persona?» con
+  `blindCorroboration` → reto y evaluación (en un Web Worker, como la prueba de trabajo) →
+  `finalizeCorroboration` con la llave del directorio verificado (`evaluatorKeyFromDirectory`) →
+  `similarityDigest` sobre el relato final. La etiqueta, la época y el resumen viajan dentro de la
+  denuncia cifrada; el identificador no sale de los hechos que ya ve la autoridad. Si el evaluador
+  no responde o la prueba falla, la denuncia se envía igual, sin corroboración. Opción de custodia
+  con fecha elegida y su explicación.
+- **Nodo (`apps/server`), integrado.** Campo `corroboration` en el envío; el nodo firma el
+  registro en el índice con su llave del directorio y un folio opaco (`folioDigestFor` con un
+  secreto propio de 32 bytes en el directorio de datos), consulta los avisos en la tarea
+  periódica, suma «coincide con otras N denuncias independientes» a la ficha de contexto y marca
+  «posible nuevo indicio» si el folio está archivado (LGRA, art. 100). Pendiente: confirmar en el
+  índice al aceptar y dar de baja al cerrar como spam, improcedente o acumulada (H3; el arnés de
+  pruebas del nodo usa `requireConfirmation: false` hasta entonces), y la guarda de custodias con
+  su evento en la bitácora y en el seguimiento (nivel B: formato y estados).
+- **Enrutador (`apps/enrutador`).** Entrada de la bitácora nacional con los conteos diarios del
+  evaluador junto al número de denuncias; opcionalmente, reenvío ciego de las evaluaciones.
+- **Red (`packages/red`), integrado.** `buildDemoDirectory` acepta `corroboration`; `npm run
+red:demo` genera la llave del evaluador y la publica en el directorio, y `compose.yaml` levanta
+  el evaluador y el índice.
+- **Custodio.** Servicio que tenga la llave del custodio y abra solo custodias liberadas; aún no
+  existe (nivel B: formato y estados con pruebas).
+
+### Turnado entre nodos (SEC-19)
+
+El navegador de recepción y turnado descifra la denuncia con la llave de su autoridad y la vuelve
+a cifrar en un sobre del enrutador hacia el nodo de la autoridad destino (`sealRoutedRequest`),
+conservando las llaves de seguimiento de la persona denunciante. El nodo de origen solo lleva ese
+sobre al enrutador y registra `complaint.transferred` con el SHA-256 canónico del sobre y de la
+respuesta; nunca ve el contenido re-cifrado. El comprobante del nodo destino se verifica con la
+llave de firma de ese nodo en el directorio antes de avisar a la persona del folio nuevo. La
+segunda llave del nodo de origen no viaja: la supervisora es otra en el destino.
+
+### Testigo en el nodo
+
+Un nodo que el directorio nombra testigo cofirma la cabeza nacional desde su tarea periódica con
+su llave de firma del directorio, con el mismo código que el proceso testigo
+(`@sigilo/red/witness`): solo cofirma lo que verificó.
+
 ## Riesgos residuales
 
 - Relleno de celdas en datos abiertos: el redondeo aleatorio lo vuelve probabilístico, pero no lo
@@ -310,6 +608,8 @@ con el AAD anterior ya no abren.
 
 ## Trabajo futuro
 
-- Revelación por umbral 2 de 3 de una llave por denuncia.
+- Revelación por umbral 2 de 3 criptográfica (una llave por denuncia repartida entre custodios),
+  para que la apertura no dependa de la política del nodo; hoy el umbral lo aplica el servidor.
+- Una llave de supervisora por autoridad tomada del directorio firmado (hoy, una por nodo).
 - Cifrado híbrido X25519 + ML-KEM para conservación de largo plazo.
 - Llaves de autoridad protegidas con WebAuthn PRF.

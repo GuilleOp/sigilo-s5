@@ -1,4 +1,5 @@
-// Pruebas de la configuración: token obligatorio, CORS desactivado por omisión, web y HSTS.
+// Pruebas de la configuración: token compartido retirado, archivo de cuentas, CORS desactivado por
+// omisión, web y HSTS con valor mínimo.
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,15 +17,13 @@ import {
   DEFAULT_EVIDENCE_RETENTION_DAYS,
 } from './services/evidence-service.ts';
 
-const TOKEN = 'token-de-prueba-0123456789-abcdefghijkl';
-
 describe('loadConfig', () => {
   it('usa valores seguros por omisión: CORS desactivado, sin web ni HSTS', () => {
-    expect(loadConfig({ SIGILO_AUTHORITY_TOKEN: TOKEN })).toEqual({
+    expect(loadConfig({})).toEqual({
       host: '127.0.0.1',
       port: 8787,
       dataDir: DEFAULT_DATA_DIR,
-      authorityToken: TOKEN,
+      accountsFile: join(DEFAULT_DATA_DIR, 'authority-accounts.json'),
       allowedOrigin: '',
       webDistDir: null,
       hstsMaxAgeSeconds: null,
@@ -34,12 +33,68 @@ describe('loadConfig', () => {
       evidenceQuotaBytes: DEFAULT_EVIDENCE_QUOTA_BYTES,
       evidenceRetentionDays: DEFAULT_EVIDENCE_RETENTION_DAYS,
       requestLogMode: 'aggregate',
+      network: null,
+      pdn: { kind: 'off' },
+      corroborationIndexUrl: null,
+      isAuditEnabled: true,
     });
+  });
+
+  it('lee la red, las fuentes de la PDN, el índice y el auditor', () => {
+    const config = loadConfig({
+      SIGILO_DATA_DIR: '/datos',
+      SIGILO_NODE_ID: 'node.federal',
+      SIGILO_ROUTER_URL: 'http://enrutador:8790/',
+      SIGILO_PDN_SOURCES: 'sqlite',
+      SIGILO_PDN_S3_PATH: '/pdn/s3.sqlite',
+      SIGILO_PDN_S6_PATH: '/pdn/s6.sqlite',
+      SIGILO_PDN_COVERAGE_FILE: '/pdn/matriz.json',
+      SIGILO_CORROBORATION_INDEX_URL: 'http://indice:8792',
+      SIGILO_AUDIT: '0',
+    });
+    expect(config.network).toEqual({
+      nodeId: 'node.federal',
+      nodeBoxKeyFile: '/datos/red-node-key.json',
+      directoryFile: '/datos/directory.json',
+      trustFile: '/datos/network-trust.json',
+      relaySecretFile: '/datos/relay-secret.json',
+      routerUrl: 'http://enrutador:8790',
+      witnessStateFile: '/datos/witness-state.json',
+    });
+    expect(config.pdn).toEqual({
+      kind: 'sqlite',
+      s3Path: '/pdn/s3.sqlite',
+      s6Path: '/pdn/s6.sqlite',
+      coverageFile: '/pdn/matriz.json',
+    });
+    expect(config.corroborationIndexUrl).toBe('http://indice:8792');
+    expect(config.isAuditEnabled).toBe(false);
+  });
+
+  it('rechaza una red, unas fuentes o un índice mal configurados', () => {
+    expect(() => loadConfig({ SIGILO_NODE_ID: 'federal' })).toThrow(/node\.<nombre>/u);
+    expect(() =>
+      loadConfig({ SIGILO_NODE_ID: 'node.federal', SIGILO_ROUTER_URL: 'ftp://x' }),
+    ).toThrow(/origen/u);
+    expect(() => loadConfig({ SIGILO_PDN_SOURCES: 'todas' })).toThrow(/off, synthetic o sqlite/u);
+    expect(() => loadConfig({ SIGILO_PDN_SOURCES: 'sqlite' })).toThrow(/SIGILO_PDN_S3_PATH/u);
+    expect(() => loadConfig({ SIGILO_PDN_SOURCES: 'synthetic', NODE_ENV: 'production' })).toThrow(
+      /demostración/u,
+    );
+    expect(loadConfig({ SIGILO_PDN_SOURCES: 'synthetic' }).pdn).toEqual({
+      kind: 'synthetic',
+      dayZero: null,
+    });
+    expect(
+      loadConfig({ SIGILO_PDN_SOURCES: 'synthetic', SIGILO_DEMO_DAY_ZERO: '2026-11-09' }).pdn,
+    ).toEqual({ kind: 'synthetic', dayZero: '2026-11-09' });
+    expect(() =>
+      loadConfig({ SIGILO_PDN_SOURCES: 'synthetic', SIGILO_DEMO_DAY_ZERO: 'mañana' }),
+    ).toThrow(/AAAA-MM-DD/u);
   });
 
   it('lee la prueba de trabajo, la cuota, la retención y el registro', () => {
     const config = loadConfig({
-      SIGILO_AUTHORITY_TOKEN: TOKEN,
       SIGILO_POW_BITS: '0',
       SIGILO_EVIDENCE_QUOTA_BYTES: '1048576',
       SIGILO_EVIDENCE_RETENTION_DAYS: '90',
@@ -53,7 +108,7 @@ describe('loadConfig', () => {
       evidenceRetentionDays: 90,
       requestLogMode: 'off',
     });
-    const env = { SIGILO_AUTHORITY_TOKEN: TOKEN };
+    const env = {};
     expect(() => loadConfig({ ...env, SIGILO_POW_BITS: '33' })).toThrow('SIGILO_POW_BITS');
     expect(() => loadConfig({ ...env, SIGILO_POW_MAX_BITS: '10' })).toThrow('SIGILO_POW_MAX_BITS');
     expect(() => loadConfig({ ...env, SIGILO_POW_MAX_BITS: '33' })).toThrow('SIGILO_POW_MAX_BITS');
@@ -75,15 +130,20 @@ describe('loadConfig', () => {
     ).toThrow('desarrollo');
   });
 
-  it('exige un token de al menos 32 caracteres', () => {
-    expect(() => loadConfig({})).toThrow('SIGILO_AUTHORITY_TOKEN');
-    expect(() => loadConfig({ SIGILO_AUTHORITY_TOKEN: 'x'.repeat(31) })).toThrow('32 caracteres');
-    expect(loadConfig({ SIGILO_AUTHORITY_TOKEN: 'x'.repeat(32) }).authorityToken).toHaveLength(32);
+  it('rechaza el token compartido retirado y ubica el archivo de cuentas', () => {
+    expect(() => loadConfig({ SIGILO_AUTHORITY_TOKEN: 'x'.repeat(40) })).toThrow(
+      'cuentas individuales',
+    );
+    expect(loadConfig({ SIGILO_DATA_DIR: '/tmp/sigilo-datos' }).accountsFile).toBe(
+      join('/tmp', 'sigilo-datos', 'authority-accounts.json'),
+    );
+    expect(loadConfig({ SIGILO_ACCOUNTS_FILE: '/tmp/cuentas.json' }).accountsFile).toBe(
+      join('/tmp', 'cuentas.json'),
+    );
   });
 
   it('lee puerto, datos, CORS, web y HSTS configurados', () => {
     const config = loadConfig({
-      SIGILO_AUTHORITY_TOKEN: TOKEN,
       SIGILO_PORT: '9000',
       SIGILO_DATA_DIR: '/tmp/sigilo-datos',
       SIGILO_ALLOWED_ORIGIN: 'http://localhost:5173',
@@ -101,13 +161,18 @@ describe('loadConfig', () => {
 
   it('rechaza puertos y HSTS inválidos', () => {
     for (const port of ['0', '70000', 'abc']) {
-      expect(() => loadConfig({ SIGILO_AUTHORITY_TOKEN: TOKEN, SIGILO_PORT: port })).toThrow(
-        'SIGILO_PORT',
-      );
+      expect(() => loadConfig({ SIGILO_PORT: port })).toThrow('SIGILO_PORT');
     }
-    expect(() => loadConfig({ SIGILO_AUTHORITY_TOKEN: TOKEN, SIGILO_HSTS_MAX_AGE: '-1' })).toThrow(
-      'SIGILO_HSTS_MAX_AGE',
-    );
+    expect(() => loadConfig({ SIGILO_HSTS_MAX_AGE: '-1' })).toThrow('SIGILO_HSTS_MAX_AGE');
+  });
+
+  it('exige un año de HSTS como mínimo y lo envía por omisión detrás de HTTPS (SEC-31)', () => {
+    expect(() => loadConfig({ SIGILO_HSTS_MAX_AGE: '86400' })).toThrow('al menos 31536000');
+    expect(loadConfig({ SIGILO_HTTPS: '1' }).hstsMaxAgeSeconds).toBe(31_536_000);
+    expect(
+      loadConfig({ SIGILO_HTTPS: '1', SIGILO_HSTS_MAX_AGE: '63072000' }).hstsMaxAgeSeconds,
+    ).toBe(63_072_000);
+    expect(loadConfig({}).hstsMaxAgeSeconds).toBeNull();
   });
 });
 
@@ -120,7 +185,7 @@ describe('reloj de pruebas', () => {
 
   it('solo se acepta con SIGILO_E2E=1 o NODE_ENV=test, nunca en producción', () => {
     const file = clockFile();
-    const env = { SIGILO_AUTHORITY_TOKEN: TOKEN, SIGILO_TEST_CLOCK_FILE: file };
+    const env = { SIGILO_TEST_CLOCK_FILE: file };
     expect(() => loadConfig(env)).toThrow('solo puede usarse en pruebas');
     expect(() => loadConfig({ ...env, NODE_ENV: 'development' })).toThrow('solo puede usarse');
     expect(loadConfig({ ...env, SIGILO_E2E: '1' }).testClockFile).toBe(file);
@@ -133,7 +198,7 @@ describe('reloj de pruebas', () => {
   it('rechaza un archivo escribible por el grupo o por otros', () => {
     const file = clockFile('0');
     chmodSync(file, 0o620);
-    const env = { SIGILO_AUTHORITY_TOKEN: TOKEN, SIGILO_TEST_CLOCK_FILE: file, SIGILO_E2E: '1' };
+    const env = { SIGILO_TEST_CLOCK_FILE: file, SIGILO_E2E: '1' };
     expect(() => loadConfig(env)).toThrow('escribible');
     chmodSync(file, 0o602);
     expect(() => createOffsetClock(file)()).toThrow('escribible');

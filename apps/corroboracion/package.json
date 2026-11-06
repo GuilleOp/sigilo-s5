@@ -1,0 +1,27 @@
+{
+  "name": "@sigilo/corroboracion-servicio",
+  "version": "1.0.0",
+  "description": "Servicios de la corroboracion ciega: evaluador OPRF (RFC 9497) e indice de coincidencias, operados por partes distintas.",
+  "license": "CC-BY-NC-4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:evaluador": "node --env-file-if-exists=.env --watch src/evaluator-main.ts",
+    "dev:indice": "node --env-file-if-exists=.env --watch src/index-main.ts",
+    "evaluador": "node --env-file-if-exists=.env src/evaluator-main.ts",
+    "indice": "node --env-file-if-exists=.env src/index-main.ts",
+    "evaluador:llave": "node src/generate-evaluator-key.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
+    "@sigilo/contracts": "1.0.0",
+    "@sigilo/core": "1.0.0",
+    "@sigilo/corroboracion": "1.0.0",
+    "@sigilo/red": "1.0.0",
+    "hono": "^4.13.13",
+    "zod": "^4.6.5"
+  }
+}

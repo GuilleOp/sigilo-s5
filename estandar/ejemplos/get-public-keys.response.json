@@ -1,0 +1,11 @@
+{
+  "server": {
+    "keyId": "c64189c912bb3ce1",
+    "signingPublicKey": "koU17lKEjuOFp0wedjlrUX_6_zjY4J6NAqum-6bZbV4"
+  },
+  "authority": {
+    "keyId": "f7bc219ff223a248",
+    "boxPublicKey": "59DzqAXh0GayVcyOxLXOPdmS40vlacHXPTju6YOEksA",
+    "signingPublicKey": "LwOm2CURiB03_1by-45eeVVwt3X8LbWBghACfl8oU-I"
+  }
+}

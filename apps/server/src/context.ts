@@ -14,13 +14,35 @@ import { createOpenDataRepository } from './db/open-data-repository.ts';
 import type { OpenDataRepository } from './db/open-data-repository.ts';
 import { createStatusRepository } from './db/status-repository.ts';
 import type { StatusRepository } from './db/status-repository.ts';
+import { createIdentityRequestsRepository } from './db/identity-requests-repository.ts';
+import type { IdentityRequestsRepository } from './db/identity-requests-repository.ts';
+import { createProcedureRepository } from './db/procedure-repository.ts';
+import type { ProcedureRepository } from './db/procedure-repository.ts';
+import { createSecurityLogRepository } from './db/security-log-repository.ts';
+import type { SecurityLogRepository } from './db/security-log-repository.ts';
+import { createIntegrationRepository } from './db/integration-repository.ts';
+import type { IntegrationRepository } from './db/integration-repository.ts';
+import { createQualificationRepository } from './db/qualification-repository.ts';
+import type { QualificationRepository } from './db/qualification-repository.ts';
+import type { NodeNetwork } from './network/network-context.ts';
+import type { CorroborationConfig } from './services/corroboration-service.ts';
+import type { PdnSourcesProvider } from './services/pdn-context.ts';
+import { emptyAuthorityRegistry } from './security/authority-registry.ts';
+import type { AuthorityRegistry } from './security/authority-registry.ts';
+import { createSessionStore, DEFAULT_SESSION_TIMEOUTS } from './security/sessions.ts';
+import type { SessionStore, SessionTimeouts } from './security/sessions.ts';
 import type { PowPurpose } from '@sigilo/contracts';
 import type { RequestLog } from './http/request-log.ts';
 import type { ServerKeys } from './keys-file.ts';
 import { createLedgerService } from './ledger-service.ts';
 import type { LedgerService } from './ledger-service.ts';
 import { createRateLimiter, createThrottle } from './security/rate-limiter.ts';
-import type { RateLimiter, RateLimitRule, ThrottleRule } from './security/rate-limiter.ts';
+import type {
+  RateLimiter,
+  RateLimitRule,
+  Throttle,
+  ThrottleRule,
+} from './security/rate-limiter.ts';
 import { createPowGuard } from './security/proof-of-work.ts';
 import type { PowGuard } from './security/proof-of-work.ts';
 import { createReporterAuthenticator } from './security/reporter-auth.ts';
@@ -48,6 +70,13 @@ export interface RateLimitConfig {
   authFailuresGlobal: ThrottleRule;
   /** Mensajes confirmados de la persona denunciante por folio. */
   reporterMessagesPerFolio: RateLimitRule;
+  /**
+   * Inicios de sesión fallidos por usuario; al agotarse, ese usuario responde 429 hasta que vence
+   * la ventana. Los usuarios no se publican (la bitácora usa el seudónimo de la cuenta).
+   */
+  loginFailuresPerUser: RateLimitRule;
+  /** Inicios de sesión fallidos en total; al excederse, cada intento se retrasa. */
+  loginFailuresGlobal: ThrottleRule;
 }
 
 /** Dependencias externas de la aplicación; se inyectan para poder probarla. */
@@ -56,7 +85,23 @@ export interface AppDeps {
   db: DatabaseSync;
   keys: ServerKeys;
   evidenceStore: EvidenceStore;
-  authorityToken: string;
+  /**
+   * Autoridades del nodo y cuentas individuales (`authority-accounts.json`). Ausente, el panel
+   * queda cerrado: ninguna cuenta puede iniciar sesión.
+   */
+  authorities?: AuthorityRegistry;
+  /** Almacén de sesiones; las pruebas lo inyectan para abrir sesiones sin contraseña. */
+  sessions?: SessionStore;
+  /** Vencimientos de las sesiones (`DEFAULT_SESSION_TIMEOUTS`). */
+  sessionTimeouts?: SessionTimeouts;
+  /** Nodo dentro de la red federada (directorio verificado y llave de red); ausente, nodo único. */
+  network?: NodeNetwork;
+  /** Fuentes de la PDN para la ficha de contexto, el conflicto y las sanciones; ausente, sin ficha. */
+  pdnSources?: PdnSourcesProvider;
+  /** Índice de corroboración ciega; ausente, la corroboración no se registra. */
+  corroboration?: CorroborationConfig;
+  /** Corre el auditor en la tarea periódica (por omisión, sí). */
+  isAuditEnabled?: boolean;
   now: () => Date;
   /** Espera usada por el freno global; por omisión, `setTimeout`. */
   sleep?: (ms: number) => Promise<void>;
@@ -94,6 +139,8 @@ export interface AppDeps {
 /** Limitadores compartidos por las rutas. */
 export interface AppLimiters {
   reporterMessages: RateLimiter;
+  loginFailures: RateLimiter;
+  loginThrottle: Throttle;
 }
 
 /** Servicios compartidos por las rutas. */
@@ -104,6 +151,14 @@ export interface AppContext {
   messages: MessagesRepository;
   ledgerRepository: LedgerRepository;
   identityOpenings: IdentityOpeningsRepository;
+  identityRequests: IdentityRequestsRepository;
+  procedure: ProcedureRepository;
+  integration: IntegrationRepository;
+  /** Calificaciones de la falta e inconformidades (migración 9). */
+  qualifications: QualificationRepository;
+  securityLog: SecurityLogRepository;
+  authorities: AuthorityRegistry;
+  sessions: SessionStore;
   statusHistory: StatusRepository;
   openData: OpenDataRepository;
   ledger: LedgerService;
@@ -120,12 +175,15 @@ const HOUR_MS = 60 * MINUTE_MS;
 /**
  * Límites por omisión. Los accesos legítimos al seguimiento no cuentan; 10 fallos por folio por
  * hora; más de 600 fallos por minuto en total frenan hasta 2 s cada intento; 30 mensajes de la
- * persona denunciante por folio por hora.
+ * persona denunciante por folio por hora; 10 inicios de sesión fallidos por usuario cada 15
+ * minutos, y más de 100 por minuto en total frenan hasta 2 s cada intento.
  */
 export const DEFAULT_RATE_LIMITS: RateLimitConfig = {
   authFailuresPerFolio: { limit: 10, windowMs: HOUR_MS },
   authFailuresGlobal: { limit: 600, windowMs: MINUTE_MS, stepMs: 10, maxDelayMs: 2000 },
   reporterMessagesPerFolio: { limit: 30, windowMs: HOUR_MS },
+  loginFailuresPerUser: { limit: 10, windowMs: 15 * MINUTE_MS },
+  loginFailuresGlobal: { limit: 100, windowMs: MINUTE_MS, stepMs: 20, maxDelayMs: 2000 },
 };
 
 function defaultSleep(ms: number): Promise<void> {
@@ -144,6 +202,15 @@ export function createContext(deps: AppDeps): AppContext {
     messages: createMessagesRepository(deps.db),
     ledgerRepository,
     identityOpenings: createIdentityOpeningsRepository(deps.db),
+    identityRequests: createIdentityRequestsRepository(deps.db),
+    procedure: createProcedureRepository(deps.db),
+    integration: createIntegrationRepository(deps.db),
+    qualifications: createQualificationRepository(deps.db),
+    securityLog: createSecurityLogRepository(deps.db),
+    authorities: deps.authorities ?? emptyAuthorityRegistry(),
+    sessions:
+      deps.sessions ??
+      createSessionStore(deps.now, deps.sessionTimeouts ?? DEFAULT_SESSION_TIMEOUTS),
     statusHistory: createStatusRepository(deps.db),
     openData: createOpenDataRepository(deps.db),
     ledger: createLedgerService({
@@ -164,6 +231,8 @@ export function createContext(deps: AppDeps): AppContext {
     }),
     limiters: {
       reporterMessages: createRateLimiter(limits.reporterMessagesPerFolio, deps.now),
+      loginFailures: createRateLimiter(limits.loginFailuresPerUser, deps.now),
+      loginThrottle: createThrottle(limits.loginFailuresGlobal, deps.now),
     },
     pow: createPowGuard({
       bits: deps.powBits ?? 0,

@@ -1,0 +1,11 @@
+{
+  "folio": "K7Q2-M9XP-4RTD",
+  "receipt": {
+    "folio": "K7Q2-M9XP-4RTD",
+    "submissionDigest": "ccaf46406392ac527c992cdb4592f757519c398359ddd0ae89474357e96be6f2",
+    "receivedOn": "2026-11-05",
+    "payloadDigest": "06070e6e2bc7be88a3beecfb1b7ec80e2ee8d8fae2ae612e28e1c6347dc3d797",
+    "serverKeyId": "c64189c912bb3ce1",
+    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+  }
+}

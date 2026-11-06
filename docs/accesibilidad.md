@@ -5,9 +5,12 @@ SIGILO se compromete con el nivel AA de las Pautas de Accesibilidad para el Cont
 La protección de la identidad no debe excluir a personas con discapacidad, personas adultas mayores
 ni personas con poca experiencia en internet.
 
-Una auditoría interna encontró 5 bloqueantes AA (barra fija que tapaba el foco, pérdida de foco,
-mensajes que no se anunciaban, obligatorios sin marcar y periodo sin agrupar). Todos están corregidos
-y cubiertos por pruebas automáticas.
+Una primera auditoría interna encontró 5 bloqueantes AA (barra fija que tapaba el foco, pérdida de
+foco, mensajes que no se anunciaban, obligatorios sin marcar y periodo sin agrupar). La auditoría de
+la Etapa 5 encontró 18 hallazgos más (H1 a H18), uno crítico: el recibo mostraba las 8 palabras
+aunque decía que estaban ocultas. Cada corrección tiene su prueba en `e2e/a11y-audit.spec.ts`. Que
+axe no reporte errores **no prueba la conformidad**: axe revisa una parte de los criterios; el
+estado real está en la tabla de conformidad de abajo.
 
 ## Lo que se cumple
 
@@ -20,9 +23,13 @@ y cubiertos por pruebas automáticas.
       obligatorios llevan `aria-required` (1.3.1, 3.3.2).
 - [x] El semáforo de riesgo no depende del color: nivel en texto, forma distinta y puntaje; los
       subrayados del revisor usan fondo, onda y número (1.4.1).
-- [x] Contraste AA en los temas claro y oscuro, incluido el foco y el botón de salida rápida (1.4.3).
-- [x] Zoom al 200 % y ancho de 320 px sin desplazamiento horizontal; la barra fija mide unos 60 px y
-      deja de ser fija con poca altura (1.4.4).
+- [x] Contraste AA en los temas claro, oscuro y alto contraste de la dirección visual A («Puente
+      PDN → S5», en el verde del S5), incluido el foco, el encabezado en degradado y el botón de
+      salida rápida (1.4.3). Texto normal desde 5.06:1 (título sobre el fondo claro); el texto blanco
+      del encabezado, desde 5.24:1. Los valores están en `apps/web/src/styles/tokens.css`.
+- [x] Zoom al 200 % y ancho de 320 px sin desplazamiento horizontal de la página; las tablas anchas
+      se desplazan dentro de una región enfocable con nombre (su `caption`) y no parten las palabras
+      letra por letra; la barra fija mide unos 60 px y deja de ser fija con poca altura (1.4.4).
 
 ### Operable
 
@@ -55,6 +62,30 @@ y cubiertos por pruebas automáticas.
 ### Además
 
 - Reglas para `forced-colors` (modo de alto contraste de Windows) y `prefers-reduced-motion`.
+- Tema de alto contraste (negro, blanco y amarillo) cuando el sistema pide más contraste
+  (`prefers-contrast: more`); el tema oscuro sigue a `prefers-color-scheme`. Ambos también se
+  pueden fijar con `data-theme="dark"` o `data-theme="contrast"` en `<html>`.
+- Selector de tema y modos de uso en la sección «Preferencias», al final de cada pantalla, con un
+  enlace «Preferencias» en la barra fija que lleva el foco ahí (claro, oscuro, alto contraste o
+  «como mi sistema»), hecho con botones de opción nativos. La elección se recuerda en el navegador
+  (`localStorage`, llave `sigilo-tema`, solo el nombre del tema y con `try/catch`); en modo quiosco
+  no se guarda. Es la única preferencia que se guarda: nada de la denuncia (PRV-10).
+- Mulish autoalojada (OFL, `apps/web/src/assets/fonts/mulish/`) con `font-display: swap`: el texto se
+  ve de inmediato con la fuente del sistema y no se pide nada a terceros.
+- Los componentes de la dirección A (distintivos de sistema, anillo de tres llaves, constelaciones,
+  ruta de etapas) son decorativos (`aria-hidden`): su significado siempre está en texto. Los estados
+  usan píldoras con ícono y texto. La animación del inicio se apaga con `prefers-reduced-motion`.
+- El navegador de pasos inferior es fijo solo con altura y ancho suficientes (no por debajo de
+  360 px). Su altura real se mide con un `ResizeObserver` y fija el margen inferior de
+  desplazamiento; la prueba H7 comprueba que el campo enfocado no queda detrás.
+- Piezas de B y C en el lenguaje de A: el talón del recibo (al imprimir solo sale el talón), los
+  sellos fechados con nota al margen para «turnada», la regla del plazo («Han pasado X de N días» en
+  texto), el sello de lacre con su libro de aperturas (tabla con encabezados), el grafo del
+  conflicto y el mapa de nodos de la cobertura. El grafo y el mapa son `aria-hidden` y cada uno tiene
+  su tabla equivalente; la leyenda del mapa usa ícono y texto. Los sellos dejan de inclinarse con
+  `prefers-reduced-motion`.
+- «Saltar al contenido» se oculta con recorte, no con una posición negativa, para que no asome bajo
+  la barra fija en celular.
 - Objetivos táctiles de al menos 44 px, incluido el botón del campo de archivo.
 
 ## Lenguaje claro y lectura fácil
@@ -68,21 +99,58 @@ y cubiertos por pruebas automáticas.
 - «Escuchar» lee el folio por grupos y deletrea cada palabra, usa solo voces locales del sistema y
   tiene botón «Detener».
 
+## Conformidad con WCAG 2.0 AA (tras la auditoría de la Etapa 5)
+
+Estado de los criterios que la auditoría encontró sin cumplir, después de las correcciones. «Cumple»
+significa que la corrección está hecha y probada en Chromium; no sustituye las pruebas pendientes
+de la sección siguiente.
+
+| Criterio                                  | Antes      | Ahora     | Hallazgo y prueba                                                                                                                                                  |
+| ----------------------------------------- | ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.3.1 Información y relaciones            | No cumplía | Cumple    | H8, H17, H18: errores asociados a su campo, ayuda de los modos en `aria-describedby`, franja dentro de un punto de referencia                                      |
+| 1.4.3 Contraste mínimo                    | No cumplía | Cumple    | H6: texto marcado por el revisor en alto contraste (antes 1.65:1, ahora usa `--color-on-mark`)                                                                     |
+| 1.4.4 Cambio de tamaño del texto          | No cumplía | Cumple    | H5/H11: tablas y botones no se parten letra por letra al 200 %                                                                                                     |
+| 2.2.1 Tiempo ajustable                    | No cumplía | Cumple    | H2: aviso al minuto 13 con «Seguir conectada»; al vencer, nuevo acceso sin perder lo escrito                                                                       |
+| 2.2.2 Pausar, detener, ocultar            | No cumplía | Cumple    | H10: la animación del inicio es una sola pulsación de 3 s (y se apaga con `prefers-reduced-motion`)                                                                |
+| 2.4.3 Orden del foco                      | No cumplía | Cumple    | H3, H7: el foco va al resultado tras «Registrar respuesta» y «Aplicar»; el navegador de pasos no tapa el campo enfocado                                            |
+| 3.3.1 Identificación de errores           | No cumplía | Cumple    | H8, H9: errores del panel y de la inconformidad junto a su campo, con `aria-invalid` y foco al primero; el resumen se anuncia una vez por intento                  |
+| 4.1.2 Nombre, función y valor             | No cumplía | Cumple    | H1: el recibo ya no expone palabras ocultas (`aria-expanded` y lo que se ve coinciden); la lista impresa es `aria-hidden`                                          |
+| 1.4.10 Reajuste (WCAG 2.1, de referencia) | No cumplía | Cumple    | H5/H11: a 320 px solo se desplazan las tablas, dentro de su región                                                                                                 |
+| 1.3.5 Propósito de los campos (WCAG 2.1)  | —          | Excepción | Deliberada: el nombre y el contacto de la identidad sellada llevan `autocomplete="off"`, para que el navegador no guarde ni sugiera la identidad de quien denuncia |
+
+Otros hallazgos corregidos (no son fallas AA, pero afectaban el uso): H4 talón impreso con palabras
+numeradas en una columna de cuatro y el folio sin cruzar la perforación; H12 etiquetas del grafo y
+del mapa sin recortes; H13 espacios entre el plazo y su situación y entre el sello y su fecha; H14
+periodos legibles («Sin fecha», «2020 a 2023»); H15 los modos de uso hacen y dicen exactamente lo
+mismo (poca conexión: hasta 4 reintentos con más espera); H16 la respuesta al conflicto no viene
+preseleccionada y pide confirmar antes de registrarse en la bitácora; y la confirmación vacía del
+recibo dice «Escribe la palabra N».
+
+### Lo que no se ha probado
+
+- Lectores de pantalla reales (NVDA, JAWS, VoiceOver en macOS e iOS, TalkBack).
+- Navegadores distintos de Chromium: Safari, Firefox y los navegadores de iOS y Android.
+- Espaciado de texto (1.4.12, WCAG 2.1): solo una prueba automática que aplica el espaciado de la
+  norma con `bypassCSP` de Playwright y revisa que la página no se desborde; falta revisión visual.
+- Usabilidad con personas.
+
 ## Cómo se valida
 
-| Validación                  | Herramienta                                                                                     | Estado    |
-| --------------------------- | ----------------------------------------------------------------------------------------------- | --------- |
-| Automática WCAG 2.0 A y AA  | axe-core en `e2e/accessibility.spec.ts`: cada pantalla, cada paso y estado del asistente, panel | 0 errores |
-| Control del analizador      | La misma prueba inyecta una violación y comprueba que axe la detecta                            | Pasa      |
-| Teclado                     | Recorrido del asistente solo con teclado y atajo de salida rápida (`accessibility.spec.ts`)     | Pasa      |
-| Foco y barra fija           | `e2e/focus.spec.ts` en 320×568: el foco nunca cae en `body` y no queda debajo de la barra       | Pasa      |
-| Lectores de pantalla reales | NVDA (Windows) y VoiceOver (macOS, iOS) en el flujo de denuncia y seguimiento                   | Pendiente |
-| Usabilidad con personas     | 5 personas sobre un caso ficticio, con tiempos y hallazgos                                      | Pendiente |
+| Validación                  | Herramienta                                                                                                                                                   | Estado                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Automática WCAG 2.0 A y AA  | axe-core en `e2e/accessibility.spec.ts`: cada pantalla, cada paso y estado del asistente, panel. Detecta una parte de los criterios; no prueba la conformidad | Sin violaciones de axe |
+| Temas y anchos              | Inicio, denunciar (revisión), seguimiento, panel y observatorio en los 3 temas a 390 y 1280 px, sin desplazamiento horizontal                                 | Pasa                   |
+| Hallazgos de la auditoría   | `e2e/a11y-audit.spec.ts`: una prueba por cada corrección (H1 a H18)                                                                                           | Pasa                   |
+| Control del analizador      | La misma prueba inyecta una violación y comprueba que axe la detecta                                                                                          | Pasa                   |
+| Teclado                     | Recorrido del asistente solo con teclado y atajo de salida rápida (`accessibility.spec.ts`)                                                                   | Pasa                   |
+| Foco y barra fija           | `e2e/focus.spec.ts` en 320×568: el foco nunca cae en `body` y no queda debajo de la barra                                                                     | Pasa                   |
+| Lectores de pantalla reales | NVDA (Windows) y VoiceOver (macOS, iOS) en el flujo de denuncia y seguimiento                                                                                 | Pendiente              |
+| Usabilidad con personas     | 5 personas sobre un caso ficticio, con tiempos y hallazgos                                                                                                    | Pendiente              |
 
 Las pruebas con lectores de pantalla reales y con personas no se han hecho. Hasta entonces, el
 comportamiento con lector se basa en el código y en patrones conocidos, no en una verificación
 directa.
 
 ```sh
-npm run test:e2e -- e2e/accessibility.spec.ts e2e/focus.spec.ts
+npm run test:e2e -- e2e/accessibility.spec.ts e2e/focus.spec.ts e2e/a11y-audit.spec.ts
 ```

@@ -2,6 +2,7 @@
 // constantes y la lógica del formato vienen de @sigilo/core para no duplicarlas.
 import type { HpkeEnvelope } from '@sigilo/contracts';
 import {
+  ESCALATION_PADDED_SIZE,
   envelopePlaintextLength,
   fromBase64Url,
   IDENTITY_PADDED_SIZE,
@@ -33,4 +34,12 @@ export function hasIdentityShape(envelope: HpkeEnvelope): boolean {
  */
 export function hasMailboxShape(envelope: HpkeEnvelope): boolean {
   return envelopePlaintextLength(envelope) === MAILBOX_PADDED_SIZE;
+}
+
+/**
+ * Indica si el sobre tiene el tamaño fijo del sobre de escalamiento (`ESCALATION_PADDED_SIZE`).
+ * Seguridad: todos miden lo mismo, así que su tamaño no revela la longitud del relato.
+ */
+export function hasEscalationShape(envelope: HpkeEnvelope): boolean {
+  return envelopePlaintextLength(envelope) === ESCALATION_PADDED_SIZE;
 }

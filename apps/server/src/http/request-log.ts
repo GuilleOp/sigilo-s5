@@ -2,7 +2,7 @@
 // (solo desarrollo). Nunca IP, agente de usuario, cabeceras, cuerpos ni identificadores.
 import type { MiddlewareHandler } from 'hono';
 import { routePath } from 'hono/route';
-import { ROUTES } from '@sigilo/contracts';
+import { CORROBORATION_ROUTES, NETWORK_ROUTES, ROUTES } from '@sigilo/contracts';
 import { toHourDate } from '@sigilo/core';
 
 /**
@@ -62,7 +62,21 @@ export const UNCOUNTED_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.evidenceUpload,
   ROUTES.tracking,
   ROUTES.trackingMessages,
+  ROUTES.trackingAppeal,
   ROUTES.powChallenge,
+  // Red y corroboración: también son pasos de quien denuncia (su sobre, su directorio, su OPRF).
+  NETWORK_ROUTES.nodeInbox,
+  NETWORK_ROUTES.relay,
+  NETWORK_ROUTES.directory,
+  NETWORK_ROUTES.nationalHead,
+  NETWORK_ROUTES.nationalPending,
+  NETWORK_ROUTES.nationalCosignatures,
+  NETWORK_ROUTES.nationalEntries,
+  NETWORK_ROUTES.nationalInclusion,
+  CORROBORATION_ROUTES.evaluationCounts,
+  CORROBORATION_ROUTES.evaluatorKey,
+  CORROBORATION_ROUTES.evaluatorChallenge,
+  CORROBORATION_ROUTES.evaluations,
   ROUTES.keys,
   ROUTES.ledgerHead,
   ROUTES.ledgerEvents,

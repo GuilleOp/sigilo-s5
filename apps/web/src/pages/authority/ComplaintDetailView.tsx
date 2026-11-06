@@ -1,4 +1,6 @@
-// Detalle de una denuncia en el panel: hechos, pruebas y su descarte, identidad, estatus y buzón.
+// Detalle de una denuncia en el panel: hechos, ficha de contexto con prioridad explicable, alerta
+// de conflicto, corroboración, señales del auditor, pruebas, trámite, turnado entre nodos, identidad
+// y buzón.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
 import type { ComplaintDetail } from '@sigilo/contracts';
@@ -6,13 +8,19 @@ import { Alert } from '../../components/Alert.tsx';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate, formatMonthPeriod, STATUS_LABELS } from '../../lib/format.ts';
 import { api } from '../../services/api.ts';
-import { describeError } from '../../services/api-client.ts';
+import { ApiRequestError, describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
 import { AuthorityMailbox } from './AuthorityMailbox.tsx';
 import { DiscardEvidencePanel } from './DiscardEvidencePanel.tsx';
 import { EvidenceGallery } from './EvidenceGallery.tsx';
 import { OpenIdentityPanel } from './OpenIdentityPanel.tsx';
-import { StatusPanel } from './StatusPanel.tsx';
+import { ProcedurePanel } from './ProcedurePanel.tsx';
+import { AuditSignalsPanel } from './AuditSignalsPanel.tsx';
+import { ConflictPanel } from './ConflictPanel.tsx';
+import { ContextSheetPanel } from './ContextSheetPanel.tsx';
+import { CorroborationPanel } from './CorroborationPanel.tsx';
+import { TransferPanel } from './TransferPanel.tsx';
+import { useNetworkState } from '../../network/use-network-state.ts';
 
 interface ComplaintDetailViewProps {
   session: AuthoritySession;
@@ -23,6 +31,7 @@ interface ComplaintDetailViewProps {
 /** Vista de detalle. */
 export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailViewProps) {
   const [detail, setDetail] = useState<ComplaintDetail | null>(null);
+  const network = useNetworkState();
   const [error, setError] = useState('');
   /** Solo la última carga puede actualizar la vista; las respuestas tardías se ignoran. */
   const loadId = useRef(0);
@@ -37,7 +46,10 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         return loaded;
       },
       (failure: unknown) => {
-        if (id === loadId.current) {
+        // H2: con la sesión vencida, el detalle se queda en pantalla (lo escrito no se pierde) y
+        // SessionGuard pide volver a entrar.
+        const isExpired = failure instanceof ApiRequestError && failure.code === 'session_expired';
+        if (id === loadId.current && !isExpired) {
           setError(describeError(failure, 'No pudimos cargar la denuncia. Inténtalo de nuevo.'));
         }
         return null;
@@ -83,8 +95,18 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
       <dl className="definition-list card">
         <dt>Recibida</dt>
         <dd>{formatDayDate(summary.receivedOn)}</dd>
-        <dt>Estatus</dt>
-        <dd data-testid="detail-status">{STATUS_LABELS[summary.status]}</dd>
+        <dt>Estado</dt>
+        {/* El mismo estado que el trámite (antes decía «Turnada» mientras el trámite decía
+            «Aceptada»); sin trámite (nodos anteriores), el estatus heredado. */}
+        <dd data-testid="detail-status">
+          {detail.procedure === undefined
+            ? STATUS_LABELS[summary.status]
+            : `${detail.procedure.managementStateName}${
+                detail.procedure.legalStageName
+                  ? ` · Etapa: ${detail.procedure.legalStageName}`
+                  : ''
+              }`}
+        </dd>
         <dt>Identidad</dt>
         <dd>
           {summary.mode === 'sealed'
@@ -109,6 +131,21 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <dt>Descripción</dt>
         <dd className="review-text">{facts.description}</dd>
       </dl>
+      {detail.contextSheet !== undefined && <ContextSheetPanel sheet={detail.contextSheet} />}
+      {detail.conflictReview !== undefined && (
+        <ConflictPanel
+          session={session}
+          detail={detail}
+          review={detail.conflictReview}
+          onChanged={() => void reload()}
+        />
+      )}
+      {detail.corroboration !== undefined && (
+        <CorroborationPanel corroboration={detail.corroboration} />
+      )}
+      {detail.auditSignals !== undefined && detail.auditSignals.length > 0 && (
+        <AuditSignalsPanel signals={detail.auditSignals} />
+      )}
       <h3>Pruebas</h3>
       {detail.evidenceDeletionOn !== undefined && (
         <Alert
@@ -121,10 +158,10 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
             los de toda denuncia sin atender o archivada, para que el espacio no se llene.
           </p>
           <p>
-            Si la denuncia merece atención, cámbiala a un estatus de trámite (por ejemplo, «Buscando
-            a la autoridad que debe atenderla»): sus pruebas se guardan mientras siga en trámite. Si
-            después la archivas, se borrarán en la fecha de retención o de inmediato si ya pasó. Si
-            es spam, descarta sus pruebas para liberar el espacio ahora.
+            Si la denuncia merece atención, túrnala a la autoridad que debe atenderla: sus pruebas
+            se guardan mientras siga en trámite. Si después la archivas, se borrarán en la fecha de
+            retención o de inmediato si ya pasó. Si es spam, descarta sus pruebas para liberar el
+            espacio ahora.
           </p>
         </Alert>
       )}
@@ -137,13 +174,15 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
           onDiscarded={() => void reload()}
         />
       )}
-      <StatusPanel
-        key={summary.status}
-        token={session.token}
-        folio={folio}
-        current={summary.status}
+      <ProcedurePanel
+        key={`${summary.managementState ?? ''}-${detail.procedure?.legalStage ?? ''}`}
+        session={session}
+        detail={detail}
         onChanged={() => void reload()}
       />
+      {network.kind === 'verified' && (
+        <TransferPanel session={session} detail={detail} directory={network.directory} />
+      )}
       {summary.mode === 'sealed' && (
         <OpenIdentityPanel session={session} detail={detail} onOpened={() => void reload()} />
       )}

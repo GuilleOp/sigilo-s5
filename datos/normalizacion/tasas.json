@@ -1,0 +1,604 @@
+{
+  "S2": {
+    "00": {
+      "instituciones": 277,
+      "exacto": 245,
+      "municipio": 0,
+      "similitud": 2,
+      "sin_coincidencia": 30,
+      "tasaInstituciones": 89.17,
+      "tasaRegistros": 96.45
+    },
+    "01": {
+      "instituciones": 94,
+      "exacto": 66,
+      "municipio": 1,
+      "similitud": 3,
+      "sin_coincidencia": 24,
+      "tasaInstituciones": 74.47,
+      "tasaRegistros": 79.89
+    },
+    "03": {
+      "instituciones": 8,
+      "exacto": 7,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 87.5,
+      "tasaRegistros": 92.68
+    },
+    "04": {
+      "instituciones": 19,
+      "exacto": 4,
+      "municipio": 2,
+      "similitud": 0,
+      "sin_coincidencia": 13,
+      "tasaInstituciones": 31.58,
+      "tasaRegistros": 19.68
+    },
+    "05": {
+      "instituciones": 22,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 22,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "07": {
+      "instituciones": 50,
+      "exacto": 24,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 25,
+      "tasaInstituciones": 50.0,
+      "tasaRegistros": 72.56
+    },
+    "08": {
+      "instituciones": 70,
+      "exacto": 9,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 60,
+      "tasaInstituciones": 14.29,
+      "tasaRegistros": 10.72
+    },
+    "10": {
+      "instituciones": 204,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 204,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "11": {
+      "instituciones": 26,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 26,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "12": {
+      "instituciones": 11,
+      "exacto": 7,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 4,
+      "tasaInstituciones": 63.64,
+      "tasaRegistros": 89.04
+    },
+    "14": {
+      "instituciones": 123,
+      "exacto": 62,
+      "municipio": 0,
+      "similitud": 19,
+      "sin_coincidencia": 42,
+      "tasaInstituciones": 65.85,
+      "tasaRegistros": 65.78
+    },
+    "15": {
+      "instituciones": 327,
+      "exacto": 5,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 322,
+      "tasaInstituciones": 1.53,
+      "tasaRegistros": 7.63
+    },
+    "16": {
+      "instituciones": 57,
+      "exacto": 14,
+      "municipio": 15,
+      "similitud": 0,
+      "sin_coincidencia": 28,
+      "tasaInstituciones": 50.88,
+      "tasaRegistros": 42.6
+    },
+    "17": {
+      "instituciones": 172,
+      "exacto": 8,
+      "municipio": 0,
+      "similitud": 6,
+      "sin_coincidencia": 158,
+      "tasaInstituciones": 8.14,
+      "tasaRegistros": 5.91
+    },
+    "19": {
+      "instituciones": 4,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 4,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "21": {
+      "instituciones": 109,
+      "exacto": 102,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 6,
+      "tasaInstituciones": 94.5,
+      "tasaRegistros": 98.56
+    },
+    "22": {
+      "instituciones": 33,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 33,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "23": {
+      "instituciones": 8,
+      "exacto": 7,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 87.5,
+      "tasaRegistros": 88.89
+    },
+    "24": {
+      "instituciones": 30,
+      "exacto": 26,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 4,
+      "tasaInstituciones": 86.67,
+      "tasaRegistros": 97.52
+    },
+    "25": {
+      "instituciones": 27,
+      "exacto": 4,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 23,
+      "tasaInstituciones": 14.81,
+      "tasaRegistros": 7.42
+    },
+    "27": {
+      "instituciones": 82,
+      "exacto": 43,
+      "municipio": 0,
+      "similitud": 2,
+      "sin_coincidencia": 37,
+      "tasaInstituciones": 54.88,
+      "tasaRegistros": 47.44
+    },
+    "29": {
+      "instituciones": 4,
+      "exacto": 2,
+      "municipio": 2,
+      "similitud": 0,
+      "sin_coincidencia": 0,
+      "tasaInstituciones": 100.0,
+      "tasaRegistros": 100.0
+    },
+    "30": {
+      "instituciones": 15,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 15,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "31": {
+      "instituciones": 2,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 2,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "32": {
+      "instituciones": 67,
+      "exacto": 59,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 7,
+      "tasaInstituciones": 89.55,
+      "tasaRegistros": 91.99
+    },
+    "estatal": {
+      "instituciones": 1564,
+      "exacto": 449,
+      "municipio": 20,
+      "similitud": 34,
+      "sin_coincidencia": 1061,
+      "tasaInstituciones": 32.16,
+      "tasaRegistros": 33.45
+    },
+    "estatal_con_s1": {
+      "instituciones": 1273,
+      "exacto": 449,
+      "municipio": 20,
+      "similitud": 34,
+      "sin_coincidencia": 770,
+      "tasaInstituciones": 39.51,
+      "tasaRegistros": 39.43
+    },
+    "federal": {
+      "instituciones": 277,
+      "exacto": 245,
+      "municipio": 0,
+      "similitud": 2,
+      "sin_coincidencia": 30,
+      "tasaInstituciones": 89.17,
+      "tasaRegistros": 96.45
+    },
+    "total": {
+      "instituciones": 1841,
+      "exacto": 694,
+      "municipio": 20,
+      "similitud": 36,
+      "sin_coincidencia": 1091,
+      "tasaInstituciones": 40.74,
+      "tasaRegistros": 90.13
+    }
+  },
+  "S3P": {
+    "06": {
+      "instituciones": 1,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "08": {
+      "instituciones": 5,
+      "exacto": 1,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 4,
+      "tasaInstituciones": 20.0,
+      "tasaRegistros": 12.5
+    },
+    "11": {
+      "instituciones": 1,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "14": {
+      "instituciones": 1,
+      "exacto": 1,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 0,
+      "tasaInstituciones": 100.0,
+      "tasaRegistros": 100.0
+    },
+    "15": {
+      "instituciones": 4,
+      "exacto": 1,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 3,
+      "tasaInstituciones": 25.0,
+      "tasaRegistros": 28.57
+    },
+    "16": {
+      "instituciones": 1,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "23": {
+      "instituciones": 2,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 2,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "28": {
+      "instituciones": 1,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "30": {
+      "instituciones": 1,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "32": {
+      "instituciones": 2,
+      "exacto": 2,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 0,
+      "tasaInstituciones": 100.0,
+      "tasaRegistros": 100.0
+    },
+    "estatal": {
+      "instituciones": 19,
+      "exacto": 5,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 14,
+      "tasaInstituciones": 26.32,
+      "tasaRegistros": 35.29
+    },
+    "estatal_con_s1": {
+      "instituciones": 16,
+      "exacto": 5,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 11,
+      "tasaInstituciones": 31.25,
+      "tasaRegistros": 38.71
+    },
+    "total": {
+      "instituciones": 19,
+      "exacto": 5,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 14,
+      "tasaInstituciones": 26.32,
+      "tasaRegistros": 35.29
+    }
+  },
+  "S3S": {
+    "01": {
+      "instituciones": 54,
+      "exacto": 37,
+      "municipio": 1,
+      "similitud": 0,
+      "sin_coincidencia": 16,
+      "tasaInstituciones": 70.37,
+      "tasaRegistros": 61.63
+    },
+    "03": {
+      "instituciones": 19,
+      "exacto": 15,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 3,
+      "tasaInstituciones": 84.21,
+      "tasaRegistros": 92.55
+    },
+    "08": {
+      "instituciones": 36,
+      "exacto": 7,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 28,
+      "tasaInstituciones": 22.22,
+      "tasaRegistros": 21.36
+    },
+    "10": {
+      "instituciones": 4,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 4,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "11": {
+      "instituciones": 24,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 24,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "12": {
+      "instituciones": 6,
+      "exacto": 2,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 4,
+      "tasaInstituciones": 33.33,
+      "tasaRegistros": 65.38
+    },
+    "14": {
+      "instituciones": 141,
+      "exacto": 81,
+      "municipio": 0,
+      "similitud": 16,
+      "sin_coincidencia": 44,
+      "tasaInstituciones": 68.79,
+      "tasaRegistros": 86.19
+    },
+    "15": {
+      "instituciones": 325,
+      "exacto": 6,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 319,
+      "tasaInstituciones": 1.85,
+      "tasaRegistros": 17.1
+    },
+    "16": {
+      "instituciones": 25,
+      "exacto": 3,
+      "municipio": 2,
+      "similitud": 0,
+      "sin_coincidencia": 20,
+      "tasaInstituciones": 20.0,
+      "tasaRegistros": 20.75
+    },
+    "17": {
+      "instituciones": 25,
+      "exacto": 2,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 23,
+      "tasaInstituciones": 8.0,
+      "tasaRegistros": 3.85
+    },
+    "21": {
+      "instituciones": 16,
+      "exacto": 13,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 3,
+      "tasaInstituciones": 81.25,
+      "tasaRegistros": 84.21
+    },
+    "23": {
+      "instituciones": 37,
+      "exacto": 9,
+      "municipio": 1,
+      "similitud": 2,
+      "sin_coincidencia": 25,
+      "tasaInstituciones": 32.43,
+      "tasaRegistros": 66.67
+    },
+    "25": {
+      "instituciones": 8,
+      "exacto": 2,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 6,
+      "tasaInstituciones": 25.0,
+      "tasaRegistros": 0.23
+    },
+    "28": {
+      "instituciones": 3,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 3,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "29": {
+      "instituciones": 4,
+      "exacto": 3,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 1,
+      "tasaInstituciones": 75.0,
+      "tasaRegistros": 7.79
+    },
+    "30": {
+      "instituciones": 14,
+      "exacto": 2,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 12,
+      "tasaInstituciones": 14.29,
+      "tasaRegistros": 2.3
+    },
+    "31": {
+      "instituciones": 4,
+      "exacto": 0,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 4,
+      "tasaInstituciones": 0.0,
+      "tasaRegistros": 0.0
+    },
+    "32": {
+      "instituciones": 36,
+      "exacto": 34,
+      "municipio": 0,
+      "similitud": 0,
+      "sin_coincidencia": 2,
+      "tasaInstituciones": 94.44,
+      "tasaRegistros": 90.32
+    },
+    "estatal": {
+      "instituciones": 781,
+      "exacto": 216,
+      "municipio": 4,
+      "similitud": 20,
+      "sin_coincidencia": 541,
+      "tasaInstituciones": 30.73,
+      "tasaRegistros": 33.13
+    },
+    "estatal_con_s1": {
+      "instituciones": 746,
+      "exacto": 216,
+      "municipio": 4,
+      "similitud": 20,
+      "sin_coincidencia": 506,
+      "tasaInstituciones": 32.17,
+      "tasaRegistros": 33.27
+    },
+    "total": {
+      "instituciones": 781,
+      "exacto": 216,
+      "municipio": 4,
+      "similitud": 20,
+      "sin_coincidencia": 541,
+      "tasaInstituciones": 30.73,
+      "tasaRegistros": 33.13
+    }
+  },
+  "S6": {
+    "00": {
+      "instituciones": 284,
+      "exacto": 254,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 29,
+      "tasaInstituciones": 89.79,
+      "tasaRegistros": 97.72
+    },
+    "federal": {
+      "instituciones": 284,
+      "exacto": 254,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 29,
+      "tasaInstituciones": 89.79,
+      "tasaRegistros": 97.72
+    },
+    "total": {
+      "instituciones": 284,
+      "exacto": 254,
+      "municipio": 0,
+      "similitud": 1,
+      "sin_coincidencia": 29,
+      "tasaInstituciones": 89.79,
+      "tasaRegistros": 97.72
+    }
+  }
+}

@@ -7,12 +7,16 @@ import type { OffenseLaw, OffenseOption } from './offenses.ts';
 import { PUBLIC_ENTITIES } from './public-entities.ts';
 import type { PublicEntityOption } from './public-entities.ts';
 import { STATES } from './states.ts';
+import type { OffenseSeverity } from '../procedure.ts';
 import type { StateOption } from './states.ts';
 
 export * from './states.ts';
 export * from './municipalities.ts';
 export * from './public-entities.ts';
 export * from './offenses.ts';
+export * from './procedure.ts';
+export * from './rest-days.ts';
+export * from './escalation.ts';
 
 const STATE_BY_CODE: ReadonlyMap<string, StateOption> = new Map(
   STATES.map((state) => [state.code, state]),
@@ -86,4 +90,19 @@ export function offenseReference(code: string): { law: OffenseLaw; article: stri
   const match = /^(LGRA|CPF)-(\d+)$/u.exec(code);
   if (match === null || !isOffenseCode(code)) return undefined;
   return { law: match[1] as OffenseLaw, article: match[2] ?? '' };
+}
+
+/**
+ * Gravedad legal de una conducta según el artículo de su clave principal: LGRA arts. 49 y 50 (no
+ * graves), 51 a 64 (graves) y 65 a 72 (de particulares); el Código Penal Federal, delitos por
+ * hechos de corrupción. `undefined` si la clave no existe.
+ */
+export function offenseSeverity(code: string): OffenseSeverity | undefined {
+  const primary = primaryOffenseCode(code);
+  const reference = primary === undefined ? undefined : offenseReference(primary);
+  if (reference === undefined) return undefined;
+  if (reference.law === 'CPF') return 'crime';
+  const article = Number(reference.article);
+  if (article <= 50) return 'non_serious';
+  return article <= 64 ? 'serious' : 'private_party';
 }

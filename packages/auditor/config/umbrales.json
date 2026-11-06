@@ -1,0 +1,33 @@
+{
+  "version": "1.1.0",
+  "templateClosure": {
+    "shingleSize": 3,
+    "similarityPermille": 750,
+    "minMatches": 5,
+    "windowDays": 365,
+    "excludedReasons": ["joined", "channeled"],
+    "repeatedSharePermille": 500
+  },
+  "archiveAgainstEvidence": {
+    "minIndependentReporters": 2
+  },
+  "deadlines": {
+    "emptyActivityAfterMonths": 4,
+    "prolongedInactivityMonths": 6,
+    "inactivityWarningDays": 30
+  },
+  "corroboratedArchiveRate": {
+    "windowDays": 365,
+    "minCases": 5,
+    "minRatePermille": 500
+  },
+  "archiveConcentration": {
+    "windowDays": 365,
+    "minArchives": 3,
+    "minArchiveRatePermille": 800
+  },
+  "prePrescription": {
+    "windowDays": 60,
+    "minPriorGapMonths": 4
+  }
+}

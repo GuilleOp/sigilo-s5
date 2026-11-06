@@ -1,8 +1,10 @@
-// Entorno compartido de las pruebas E2E: puertos, token sintético y directorio temporal de datos.
+// Entorno compartido de las pruebas E2E: puertos, cuentas sintéticas de la autoridad y directorio
+// temporal de datos.
 // Seguridad: todo es sintético; nunca se usan la base ni las pruebas del despliegue local.
-import { copyFileSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { buildDemoAccounts } from '../../apps/server/src/security/demo-accounts.ts';
 
 /** Raíz del repositorio. */
 export const REPO_ROOT = resolve(import.meta.dirname, '../..');
@@ -16,8 +18,26 @@ export const WEB_ORIGIN = `http://127.0.0.1:${PREVIEW_PORT}`;
 /** Origen directo de la API, para las comprobaciones desde Node. */
 export const API_ORIGIN = `http://127.0.0.1:${SERVER_PORT}`;
 
-/** Token bearer de prueba (más de 32 caracteres, sin valor fuera de estas pruebas). */
-export const AUTHORITY_TOKEN = 'token-e2e-sintetico-0123456789-abcdefghijklmnop';
+/**
+ * Contraseña sintética de cada cuenta de demostración en E2E (sin valor fuera de estas pruebas).
+ * Las cuentas son las de `npm run accounts:generate` (docs/demo-escenario.md).
+ */
+export function e2ePassword(username: string): string {
+  return `contrasena-e2e-${username}`;
+}
+
+/** Cuentas de las pruebas: una por persona, con su autoridad y su función. */
+export const E2E_ACCOUNTS = {
+  inboxIntake: 'recepcion.buzon',
+  iffeIntake: 'recepcion.iffe',
+  iffeInvestigator: 'investigacion.iffe.uno',
+  iffeInvestigator2: 'investigacion.iffe.dos',
+  iffeSupervision: 'supervision.iffe',
+  supervisor: 'supervision.federal.uno',
+} as const;
+
+/** Autoridad investigadora de las pruebas. */
+export const E2E_AUTHORITY = 'authority.oic-iffe';
 
 const WORKSPACE_VARIABLE = 'SIGILO_E2E_WORKSPACE';
 
@@ -70,5 +90,10 @@ export function ensureWorkspace(): string {
   // Seguridad: el directorio de datos guarda una llave privada; solo lo recorre su dueño.
   mkdirSync(join(dir, 'data'), { recursive: true, mode: 0o700 });
   copyFileSync(join(REPO_ROOT, 'apps/server/data/keys.json'), join(dir, 'data', 'keys.json'));
+  // Cuentas individuales con contraseñas conocidas por las pruebas; costo mínimo de scrypt (2^14).
+  const { file } = buildDemoAccounts({ passwordFor: e2ePassword, logN: 14 });
+  writeFileSync(join(dir, 'data', 'authority-accounts.json'), JSON.stringify(file), {
+    mode: 0o600,
+  });
   return dir;
 }

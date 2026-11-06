@@ -16,6 +16,7 @@ import {
   isStateCode,
   municipalitiesOf,
   offenseReference,
+  offenseSeverity,
   primaryOffenseCode,
 } from './index.ts';
 
@@ -104,5 +105,25 @@ describe('primaryOffenseCode', () => {
       for (const code of offense.equivalentCodes)
         expect(primaryOffenseCode(code)).toBe(offense.code);
     }
+  });
+});
+
+describe('gravedad de las conductas', () => {
+  it('distingue faltas no graves, graves, de particulares y delitos', () => {
+    expect(offenseSeverity('LGRA-49')).toBe('non_serious');
+    expect(offenseSeverity('LGRA-50')).toBe('non_serious');
+    expect(offenseSeverity('LGRA-52')).toBe('serious');
+    expect(offenseSeverity('LGRA-59')).toBe('serious');
+    expect(offenseSeverity('LGRA-64')).toBe('serious');
+    expect(offenseSeverity('LGRA-66')).toBe('private_party');
+    expect(offenseSeverity('LGRA-72')).toBe('private_party');
+    expect(offenseSeverity('CPF-218')).toBe('crime');
+    // Una equivalente del CPF toma la gravedad de su clave principal de la LGRA.
+    expect(offenseSeverity('CPF-222')).toBe('serious');
+    expect(offenseSeverity('LGRA-999')).toBeUndefined();
+  });
+
+  it('toda conducta del catálogo tiene gravedad', () => {
+    for (const offense of OFFENSES) expect(offenseSeverity(offense.code)).toBeDefined();
   });
 });

@@ -1,0 +1,10 @@
+{
+  "sealedIdentity": {
+    "v": 1,
+    "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+    "keyId": "f7bc219ff223a248",
+    "enc": "fsOie5ivq9VBIaT8pAwSTHn5gXsdDbKhlGG6xR-D0mc",
+    "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+  },
+  "openingId": "345568f4c2d3291f6b1aa0d66a134f8e"
+}

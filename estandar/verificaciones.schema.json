@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sigilo-s5:estandar:verificaciones",
+  "title": "Verificaciones del Estándar S5",
+  "description": "Lista de las verificaciones automatizables de los perfiles de seguridad y privacidad. El validador la usa como fuente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "verificaciones"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "description": "Versión SemVer de la lista.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "verificaciones": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/verificacion" }
+    }
+  },
+  "$defs": {
+    "verificacion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "perfil", "titulo", "modos", "severidad", "referencias", "descripcion"],
+      "properties": {
+        "id": {
+          "description": "Identificador estable: PRV-nn y API-nn (perfil de privacidad) o SEC-nn (perfil de seguridad).",
+          "type": "string",
+          "pattern": "^(PRV|API|SEC)-\\d{2}$"
+        },
+        "perfil": { "type": "string", "enum": ["privacidad", "seguridad"] },
+        "titulo": { "type": "string", "minLength": 3, "maxLength": 80 },
+        "modos": {
+          "description": "pasivo: solo GET a recursos públicos; conformidad: puede enviar denuncias sintéticas.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "type": "string", "enum": ["pasivo", "conformidad"] }
+        },
+        "severidad": {
+          "description": "obligatoria (DEBE) o recomendada (DEBERÍA).",
+          "type": "string",
+          "enum": ["obligatoria", "recomendada"]
+        },
+        "referencias": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 2 }
+        },
+        "descripcion": { "type": "string", "minLength": 10, "maxLength": 200 }
+      }
+    }
+  }
+}

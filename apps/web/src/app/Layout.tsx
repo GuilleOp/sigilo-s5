@@ -5,6 +5,8 @@ import type { MouseEvent } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { LeaveDialog } from '../components/LeaveDialog.tsx';
 import { QuickExitButton } from '../components/QuickExitButton.tsx';
+import { ThemeSwitcher } from '../components/ThemeSwitcher.tsx';
+import { KioskBar, UsageModesPanel } from '../components/UsageModesPanel.tsx';
 import { SHOW_DEMO_NOTICE } from '../config/app-config.ts';
 import { ANNOUNCER_ID } from '../lib/announce.ts';
 import { focusAfterRender, focusElement } from '../lib/focus.ts';
@@ -16,6 +18,7 @@ const NAV_ITEMS = [
   { to: PATHS.home, label: 'Inicio' },
   { to: PATHS.report, label: 'Denunciar' },
   { to: PATHS.tracking, label: 'Dar seguimiento' },
+  { to: PATHS.observatory, label: 'Observatorio' },
   { to: PATHS.openData, label: 'Datos abiertos' },
 ] as const;
 
@@ -33,6 +36,13 @@ function skipToContent(event: MouseEvent<HTMLAnchorElement>): void {
   event.preventDefault();
   const main = document.getElementById('contenido');
   if (main !== null) focusElement(main);
+}
+
+/** Lleva el foco a «Preferencias» (tema y modos de uso) sin agregar entradas al historial. */
+function goToPreferences(event: MouseEvent<HTMLAnchorElement>): void {
+  event.preventDefault();
+  const section = document.getElementById('preferencias');
+  if (section !== null) focusElement(section);
 }
 
 /** Layout de todas las pantallas. Al cambiar de ruta, el foco va al `h1` de la pantalla nueva. */
@@ -78,7 +88,11 @@ export function Layout() {
     );
   }
 
-  const isWide = location.pathname === PATHS.authority || location.pathname === PATHS.openData;
+  const isWide =
+    location.pathname === PATHS.home ||
+    location.pathname === PATHS.authority ||
+    location.pathname === PATHS.openData ||
+    location.pathname === PATHS.observatory;
 
   return (
     <>
@@ -87,6 +101,14 @@ export function Layout() {
           <QuickExitButton />
           <a className="skip-link" href="#contenido" onClick={skipToContent}>
             Saltar al contenido
+          </a>
+          <a
+            className="preferences-link"
+            href="#preferencias"
+            onClick={goToPreferences}
+            data-testid="preferences-link"
+          >
+            Preferencias
           </a>
           <NavLink
             to={PATHS.home}
@@ -98,7 +120,11 @@ export function Layout() {
         </div>
       </header>
       {SHOW_DEMO_NOTICE && (
-        <p className="demo-notice no-print">Demostración: no envíes denuncias reales.</p>
+        <aside className="no-print" aria-label="Aviso del prototipo">
+          <p className="demo-notice" data-testid="prototype-notice">
+            Prototipo para el Datatón 2026 · no es el sistema oficial. No envíes denuncias reales.
+          </p>
+        </aside>
       )}
       <nav className="site-nav no-print" aria-label="Principal">
         <details className="site-nav__menu" ref={menuRef}>
@@ -107,16 +133,31 @@ export function Layout() {
         </details>
         <ul className="site-nav__list">{NAV_ITEMS.map(navLink)}</ul>
       </nav>
+      <KioskBar />
       <main id="contenido" tabIndex={-1} className={isWide ? 'wide' : undefined}>
         <Outlet />
       </main>
+      <section
+        id="preferencias"
+        className="preferences no-print"
+        aria-labelledby="preferences-title"
+        tabIndex={-1}
+        data-testid="preferences"
+      >
+        <h2 id="preferences-title">Preferencias</h2>
+        <div className="preferences__grid">
+          <ThemeSwitcher />
+          <UsageModesPanel />
+        </div>
+      </section>
       <footer className="site-footer no-print">
         <nav aria-label="Otros enlaces">
           <ul>{FOOTER_ITEMS.map(navLink)}</ul>
         </nav>
         <p>
-          SIGILO no usa cookies ni guarda nada en tu navegador. Todo lo que escribes se borra al
-          cerrar o recargar la página.
+          SIGILO no usa cookies. Lo único que recuerda tu navegador es el tema de colores que elijas
+          (salvo en un equipo compartido). Todo lo que escribes se borra al cerrar o recargar la
+          página.
         </p>
       </footer>
       {/* Anunciador global: existe desde el inicio para que los lectores lean sus cambios. */}

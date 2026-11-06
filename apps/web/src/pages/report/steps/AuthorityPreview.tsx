@@ -22,7 +22,7 @@ export function AuthorityPreview({ draft }: AuthorityPreviewProps) {
         <dt>Identidad</dt>
         <dd data-testid="preview-identity">
           {draft.mode === 'sealed'
-            ? 'Identidad sellada. Bajo llave. Solo la autoridad puede abrirla y debe decir por qué. Tú verás cada vez que la abran.'
+            ? 'Identidad sellada, bajo llave. Solo la abre la autoridad competente con dos aprobaciones y un fundamento, o tú si decides inconformarte. Tú verás cada vez que la abran.'
             : 'No proporcionada (denuncia anónima).'}
         </dd>
         {draft.mode === 'sealed' && (

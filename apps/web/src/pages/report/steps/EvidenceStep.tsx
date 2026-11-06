@@ -1,6 +1,7 @@
 // Paso 3: pruebas. Se limpian en el navegador y solo se envían las copias limpias.
 import { MAX_EVIDENCE_ITEMS } from '@sigilo/contracts';
 import { Alert } from '../../../components/Alert.tsx';
+import { CorroborationFields } from './CorroborationFields.tsx';
 import { focusAfterRender } from '../../../lib/focus.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
 import type { FieldErrors } from '../../../state/report-validation.ts';
@@ -106,6 +107,11 @@ export function EvidenceStep({ draft, errors }: EvidenceStepProps) {
           />
         ))}
       </ul>
+      <CorroborationFields
+        corroboration={draft.corroboration}
+        entityId={draft.facts.entityId}
+        errors={errors}
+      />
     </>
   );
 }

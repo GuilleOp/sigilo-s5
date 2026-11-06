@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 import {
   API_ORIGIN,
-  AUTHORITY_TOKEN,
   clockFilePath,
   ensureWorkspace,
   REPO_ROOT,
@@ -42,7 +41,6 @@ export default defineConfig({
       timeout: 30_000,
       env: {
         SIGILO_DATA_DIR: join(workspace, 'data'),
-        SIGILO_AUTHORITY_TOKEN: AUTHORITY_TOKEN,
         // Vacío desactiva CORS: la web y la API comparten origen a través del proxy.
         SIGILO_ALLOWED_ORIGIN: '',
         // Reloj de solo pruebas: la bitácora y los datos abiertos publican solo días y meses
@@ -52,6 +50,9 @@ export default defineConfig({
         SIGILO_TEST_CLOCK_FILE: clockFilePath(workspace),
         // Dificultad baja pero real: la web la resuelve en su Web Worker en cada envío.
         SIGILO_POW_BITS: '8',
+        // Fuentes PDN sintéticas del escenario: ficha de contexto, conflicto de interés y
+        // verificación de sanciones en el panel (solo pruebas y demostración).
+        SIGILO_PDN_SOURCES: 'synthetic',
       },
     },
     {

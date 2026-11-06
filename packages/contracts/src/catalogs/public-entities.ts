@@ -32,6 +32,11 @@ export const PUBLIC_ENTITIES: readonly PublicEntityOption[] = [
   { id: 'VE-MOVILIDAD', name: 'Instituto de Movilidad Estatal Ficticio', level: 'estatal' },
   { id: 'VE-ADUANA', name: 'Oficina Federal Ficticia de Aduanas', level: 'federal' },
   {
+    id: 'VE-INSTITUTO',
+    name: 'Instituto Federal Ficticio de Equipamiento',
+    level: 'federal',
+  },
+  {
     id: 'VE-PROGRAMAS',
     name: 'Delegación Federal Ficticia de Programas Sociales',
     level: 'federal',

@@ -1,0 +1,52 @@
+{
+  "version": "1.0.0",
+  "levels": {
+    "high": 60,
+    "medium": 30
+  },
+  "largeAmountMxn": 1000000,
+  "factors": {
+    "offense-grave": {
+      "label": "Falta grave o hecho de corrupción",
+      "weight": 30,
+      "description": "La conducta es falta grave (LGRA, arts. 51 a 64 y 65 a 72) o delito por hechos de corrupción (CPF)."
+    },
+    "contract-direct-award": {
+      "label": "Adjudicación directa",
+      "weight": 15,
+      "description": "El S6 registra el contrato citado como adjudicación directa."
+    },
+    "contract-large-amount": {
+      "label": "Monto alto",
+      "weight": 10,
+      "description": "El S6 registra un monto adjudicado igual o mayor que el umbral publicado."
+    },
+    "supplier-tax-list-69b": {
+      "label": "Proveedor en la lista tipo 69-B",
+      "weight": 20,
+      "description": "Un proveedor adjudicado aparece en la lista de operaciones presuntamente inexistentes."
+    },
+    "independent-corroboration": {
+      "label": "Corroboración independiente",
+      "weight": 10,
+      "perUnit": true,
+      "maxWeight": 30,
+      "description": "Cada persona independiente adicional que denuncia lo mismo (corroboración ciega y señales de independencia; dato externo)."
+    },
+    "possible-campaign": {
+      "label": "Posible campaña coordinada",
+      "weight": 0,
+      "description": "No resta: las denuncias del grupo cuentan como una sola fuente en la corroboración."
+    },
+    "public-record-inconsistency": {
+      "label": "Inconsistente con registros públicos",
+      "weight": 0,
+      "description": "No resta: la autoridad revisa la diferencia; nunca se etiqueta una denuncia como falsa."
+    },
+    "conflict-of-interest": {
+      "label": "Posible conflicto de interés en la autoridad",
+      "weight": 0,
+      "description": "No cambia la prioridad: genera una alerta y la regla de escalamiento."
+    }
+  }
+}

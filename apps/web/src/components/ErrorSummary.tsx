@@ -24,6 +24,9 @@ export function focusField(id: string): boolean {
   return true;
 }
 
+/** Tiempo en que el resumen se comporta como alerta tras un intento. */
+const ALERT_WINDOW_MS = 1500;
+
 /** Lista de errores con enlaces a los campos. */
 export function ErrorSummary({ errors, fieldIds = {}, attempt }: ErrorSummaryProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -40,6 +43,15 @@ export function ErrorSummary({ errors, fieldIds = {}, attempt }: ErrorSummaryPro
     }
   }, [attempt, hasErrors]);
 
+  // H9: se anuncia una vez por intento. Después deja de ser una alerta, para que corregir cada
+  // campo no vuelva a leer la lista completa. Cada intento monta un resumen nuevo (`key`).
+  useEffect(() => {
+    if (!hasErrors) return;
+    const element = ref.current;
+    const timer = setTimeout(() => element?.removeAttribute('role'), ALERT_WINDOW_MS);
+    return () => clearTimeout(timer);
+  }, [attempt, hasErrors]);
+
   /** Seguridad: no se sigue el enlace `#campo` para no agregar entradas al historial. */
   function goToField(event: MouseEvent<HTMLAnchorElement>, id: string): void {
     event.preventDefault();
@@ -49,6 +61,7 @@ export function ErrorSummary({ errors, fieldIds = {}, attempt }: ErrorSummaryPro
   if (!hasErrors) return null;
   return (
     <div
+      key={attempt}
       className="alert alert--danger"
       role="alert"
       tabIndex={-1}

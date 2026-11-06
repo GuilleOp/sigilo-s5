@@ -1,15 +1,23 @@
-// Ayudantes del panel de autoridad: inicio de sesión con token y llave, y apertura de una denuncia.
+// Ayudantes del panel de autoridad: inicio de sesión con una cuenta individual y la llave, y
+// apertura de una denuncia.
 import type { Page } from '@playwright/test';
-import { AUTHORITY_TOKEN } from './environment.ts';
+import { E2E_ACCOUNTS, e2ePassword } from './environment.ts';
 import { expect } from './fixtures.ts';
 import { fixturePath } from './report-wizard.ts';
 import { FIXTURE_FILES } from './synthetic-files.ts';
 
-/** Inicia sesión en /autoridad con el token de prueba y `authority-demo-key.json`. */
-export async function loginAsAuthority(page: Page): Promise<void> {
+/**
+ * Inicia sesión en /autoridad con la cuenta `username` (por omisión, la recepción del buzón
+ * general, donde llegan las denuncias nuevas) y `authority-demo-key.json`.
+ */
+export async function loginAsAuthority(
+  page: Page,
+  username: string = E2E_ACCOUNTS.inboxIntake,
+): Promise<void> {
   await page.goto('/autoridad');
   const form = page.getByTestId('authority-login');
-  await form.getByTestId('authority-token').fill(AUTHORITY_TOKEN);
+  await form.getByTestId('authority-username').fill(username);
+  await form.getByTestId('authority-password').fill(e2ePassword(username));
   await form
     .getByTestId('authority-key-file')
     .setInputFiles(fixturePath(FIXTURE_FILES.authorityKey));

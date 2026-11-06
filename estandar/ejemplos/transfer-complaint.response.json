@@ -1,0 +1,13 @@
+{
+  "relay": {
+    "v": 1,
+    "sealed": {
+      "v": 1,
+      "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+      "keyId": "e07d9c3b5a1f2846",
+      "enc": "fD2h8rS0q9Jw3kZb7nT1uYc6vX4mL5aEoP8gH2iR0sQ",
+      "ct": "Ue7Q0yZb5lTnV2cXk9Wm3jR8hD1fA6oS4gP0qL7tE2iN5uB8wC3vY9xK6zM1rJ4h"
+    }
+  },
+  "transferId": "5b1e0c9d8a7f6e5d4c3b2a1908f7e6d5"
+}

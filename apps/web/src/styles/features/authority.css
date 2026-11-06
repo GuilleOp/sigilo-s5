@@ -1,0 +1,160 @@
+/* Panel de la autoridad: ficha de contexto con prioridad, tablas de datos, conflicto de interés,
+   señales del auditor con evidencia lado a lado, corroboración y turnado. Solo usa tokens. */
+.priority {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 1.15rem;
+}
+
+.priority__icon {
+  border-radius: 2px;
+  color: var(--color-primary);
+}
+
+.priority__icon[data-level='high']::before {
+  content: '▲';
+  font-size: 0.75em;
+}
+
+.priority__icon[data-level='medium']::before {
+  content: '■';
+  font-size: 0.7em;
+}
+
+.priority__icon[data-level='low']::before {
+  content: '▼';
+  font-size: 0.75em;
+}
+
+.data-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  margin-block: var(--space-3);
+  font-size: 0.95rem;
+}
+
+.data-table caption {
+  text-align: start;
+  font-weight: 700;
+  padding-bottom: var(--space-2);
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2);
+  text-align: start;
+  vertical-align: top;
+}
+
+.data-table thead th {
+  background: var(--color-surface-strong);
+}
+
+.data-table .numeric {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Tablas anchas en celular: se desplazan dentro de su caja, nunca la página completa. */
+.table-scroll {
+  overflow-x: auto;
+  max-inline-size: 100%;
+}
+
+.conflict[data-outcome='possible-conflict'] {
+  border-color: var(--status-warning);
+  border-width: 2px;
+}
+
+.conflict__alert {
+  margin-block: var(--space-3);
+}
+
+.conflict__rule {
+  font-weight: 700;
+}
+
+.conflict__law summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-block-size: var(--target-min);
+  display: flex;
+  align-items: center;
+}
+
+.conflict__form {
+  border: 0;
+  padding: 0;
+}
+
+.audit-signal {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.audit-signal__note,
+.audit-signal__on {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.evidence-compare td {
+  inline-size: 40%;
+}
+
+.sanction-fields {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+/* Factores de la prioridad: tarjetas en celular, tabla en pantallas anchas (una sola a la vez). */
+.factor-cards__list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.factor-card {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.factor-card p {
+  margin: var(--space-1) 0;
+}
+
+.factor-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.factor-card__points {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.factor-table {
+  display: none;
+}
+
+@media (min-width: 36rem) {
+  .factor-cards {
+    display: none;
+  }
+
+  .factor-table {
+    display: block;
+  }
+}

@@ -1,0 +1,536 @@
+/* Piezas de las direcciones B (expediente) y C (constelación) en el lenguaje y la paleta de A:
+   talón perforado e impresión del talón, sellos fechados con nota al margen, regla del plazo, sello
+   de lacre con su libro de aperturas, grafo del conflicto y mapa de nodos de la cobertura. Solo usa
+   tokens de tokens.css. */
+
+/* Estado vigente del seguimiento. */
+.procedure__current {
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 6px solid var(--color-protect);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+}
+
+.procedure__current > :last-child {
+  margin-bottom: 0;
+}
+
+/* Sellos fechados (B): doble filete, mayúsculas y una leve inclinación. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  inline-size: fit-content;
+  padding: 3px 10px;
+  border: 3px double currentColor;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  transform: rotate(-1.5deg);
+}
+
+.stamp small {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.stamp .icon {
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+}
+
+.stamp--ink {
+  color: var(--color-primary);
+}
+
+.stamp--protect {
+  color: var(--color-protect);
+  border-width: 4px;
+}
+
+.stamp--idle {
+  color: var(--color-text-muted);
+  border: 2px dashed var(--color-border);
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp {
+    transform: none;
+  }
+}
+
+.route--stamps .route__head {
+  padding-top: 0;
+}
+
+.route__title {
+  margin: var(--space-1) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Nota al margen (B): explica lo que más confunde, como «turnada». */
+.margin-note {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 4px solid var(--color-primary);
+  background: var(--color-surface-strong);
+  font-size: var(--text-sm);
+}
+
+.margin-note p {
+  margin: 0;
+}
+
+.margin-note__title {
+  font-size: var(--text-xs);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+/* Regla del plazo (B). */
+.deadline__ruler {
+  margin: var(--space-2) 0;
+}
+
+.deadline__ruler p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+}
+
+.ruler {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 36rem;
+  block-size: auto;
+  aspect-ratio: 300 / 52;
+  overflow: visible;
+}
+
+.ruler__tick {
+  stroke: var(--color-text);
+  stroke-width: 1.2;
+}
+
+.ruler__used {
+  fill: var(--color-primary);
+  opacity: 0.25;
+}
+
+.ruler[data-overdue] .ruler__used {
+  fill: var(--color-danger);
+}
+
+.ruler__now {
+  stroke: var(--color-protect);
+  stroke-width: 3;
+}
+
+.ruler__label {
+  fill: var(--color-text);
+  font: 700 12px var(--font-body);
+}
+
+.ruler__now-label {
+  fill: var(--color-protect);
+  font: 900 12px var(--font-body);
+}
+
+/* Talón perforado (B): folio a un lado, palabras al otro, con la línea de corte. */
+.stub {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-block: var(--space-4);
+  border: 2px solid var(--color-text);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.stub__left {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px dashed var(--color-text);
+  background: var(--color-surface-strong);
+}
+
+.stub__left::before,
+.stub__left::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  inline-size: 16px;
+  block-size: 16px;
+  border: 2px solid var(--color-text);
+  border-radius: 50%;
+  background: var(--color-bg);
+}
+
+.stub__left::before {
+  left: -9px;
+}
+
+.stub__left::after {
+  right: -9px;
+}
+
+@media (min-width: 36rem) {
+  .stub {
+    grid-template-columns: 13rem minmax(0, 1fr);
+  }
+
+  .stub__left {
+    border-bottom: 0;
+    border-right: 2px dashed var(--color-text);
+  }
+
+  .stub__left::before,
+  .stub__left::after {
+    left: auto;
+    right: -9px;
+  }
+
+  .stub__left::before {
+    top: -9px;
+    bottom: auto;
+  }
+
+  .stub__left::after {
+    bottom: -9px;
+  }
+}
+
+.stub__right {
+  padding: var(--space-3) var(--space-4);
+}
+
+.stub__key {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.stub__folio {
+  font-size: var(--text-xl);
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.stub__hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Al imprimir desde el recibo, solo sale el talón, en blanco y negro. */
+@media print {
+  body:has(.stub) * {
+    visibility: hidden;
+  }
+
+  body:has(.stub) .stub,
+  body:has(.stub) .stub * {
+    visibility: visible;
+  }
+
+  body:has(.stub) .stub {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    color: #000000;
+    background: #ffffff;
+    border-color: #000000;
+  }
+
+  .stub__left {
+    background: #ffffff;
+  }
+
+  /* H4: palabras numeradas en orden inequívoco: de arriba abajo, cuatro por columna. */
+  .stub .receipt-words.print-only {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(4, auto);
+    gap: 4px 24px;
+    counter-reset: receipt-word;
+    font: 700 14pt var(--font-mono);
+  }
+
+  .stub .receipt-words.print-only li {
+    counter-increment: receipt-word;
+  }
+
+  .stub .receipt-words.print-only li::before {
+    content: counter(receipt-word) '. ';
+    font-weight: 400;
+  }
+
+  .stub {
+    grid-template-columns: 11rem minmax(0, 1fr);
+  }
+
+  .stub__folio {
+    font-size: 12pt;
+  }
+}
+
+/* Sello de lacre (B) con su libro de aperturas. */
+.sealed__ledger-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sealed__ledger-head p {
+  margin: 0;
+}
+
+.wax-seal {
+  inline-size: 3.25rem;
+  block-size: 3.25rem;
+  flex: none;
+}
+
+.wax-seal__wax {
+  fill: var(--color-primary);
+}
+
+.wax-seal__ring {
+  fill: none;
+  stroke: var(--color-on-primary);
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.wax-seal__mark {
+  fill: none;
+  stroke: var(--color-on-primary);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.wax-seal__crack {
+  fill: none;
+  stroke: var(--color-surface);
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.book caption {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.book__empty {
+  font-style: italic;
+  text-align: center;
+}
+
+.book__note {
+  display: block;
+  margin-top: var(--space-1);
+  font-weight: 700;
+}
+
+/* Grafo del conflicto de interés (C). */
+.conflict__figure {
+  margin: var(--space-3) 0;
+}
+
+.conflict-graph {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 40rem;
+  block-size: auto;
+}
+
+.conflict-graph__edge {
+  stroke: var(--color-warning);
+  stroke-width: 2;
+}
+
+.conflict-graph__person {
+  fill: var(--color-surface);
+  stroke: var(--color-text);
+  stroke-width: 2.5;
+}
+
+.conflict-graph__person--accused {
+  stroke-dasharray: 4 3;
+}
+
+.conflict-graph__org {
+  fill: var(--color-warning-bg);
+  stroke: var(--color-warning);
+  stroke-width: 2;
+}
+
+.conflict-graph__org-label,
+.conflict-graph__label {
+  fill: var(--color-text);
+  font: 800 13px var(--font-body);
+}
+
+.conflict-graph__label {
+  font-size: 12px;
+}
+
+/* Mapa de nodos de la cobertura (C). */
+.coverage-figure {
+  margin: var(--space-4) 0;
+}
+
+.coverage-map {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 40rem;
+  block-size: auto;
+}
+
+.coverage-map__link {
+  stroke: var(--color-node);
+  stroke-width: 0.6;
+  opacity: 0.6;
+}
+
+.coverage-map__link--own {
+  stroke: var(--color-node-protect);
+  stroke-width: 2.5;
+  opacity: 1;
+}
+
+.coverage-map__node[data-level='full'] {
+  fill: var(--color-node-cyan);
+  stroke: var(--color-text);
+  stroke-width: 1.2;
+}
+
+.coverage-map__node[data-level='partial'] {
+  fill: var(--color-surface-strong);
+  stroke: var(--color-node);
+  stroke-width: 1.4;
+}
+
+.coverage-map__node[data-level='none'] {
+  fill: none;
+  stroke: var(--color-no-coverage);
+  stroke-width: 1.8;
+  stroke-dasharray: 2.5 2;
+}
+
+.coverage-map__node[data-own] {
+  fill: var(--color-protect-fill);
+  stroke: var(--color-text);
+  stroke-width: 1.5;
+  stroke-dasharray: none;
+}
+
+.coverage-map__hub {
+  fill: var(--color-primary);
+  stroke: var(--color-text);
+  stroke-width: 1.5;
+}
+
+.coverage-map__label {
+  fill: var(--color-text);
+  font: 800 9px var(--font-body);
+  paint-order: stroke;
+  stroke: var(--color-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.coverage-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  padding: 0;
+  font-size: var(--text-sm);
+}
+
+.coverage-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.coverage-legend__dot {
+  inline-size: 0.9rem;
+  block-size: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid var(--color-text);
+}
+
+.coverage-legend__dot[data-level='full'] {
+  background: var(--color-node-cyan);
+}
+
+.coverage-legend__dot[data-level='partial'] {
+  background: var(--color-surface-strong);
+  border-color: var(--color-node);
+}
+
+.coverage-legend__dot[data-level='none'] {
+  border-style: dashed;
+  border-color: var(--color-no-coverage);
+}
+
+.coverage-legend__dot[data-own] {
+  background: var(--color-protect-fill);
+}
+
+/* Anclajes, opcionales y plegados al final del seguimiento. */
+.anchors-details summary {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (forced-colors: active) {
+  .stamp {
+    border-color: CanvasText;
+  }
+
+  .ruler__tick,
+  .ruler__now,
+  .conflict-graph__edge,
+  .conflict-graph__person,
+  .conflict-graph__org,
+  .coverage-map__link,
+  .coverage-map__node,
+  .coverage-map__hub,
+  .wax-seal__ring,
+  .wax-seal__mark {
+    stroke: CanvasText;
+  }
+
+  .wax-seal__wax,
+  .coverage-map__hub,
+  .coverage-map__node[data-own] {
+    fill: Highlight;
+  }
+
+  .coverage-map__node[data-level='full'] {
+    fill: CanvasText;
+  }
+}

@@ -2,6 +2,7 @@
 import { ComplaintFactsSchema, MAX_EVIDENCE_ITEMS } from '@sigilo/contracts';
 import type { ComplaintFacts } from '@sigilo/contracts';
 import { stripInvisibleCharacters } from '@sigilo/huella';
+import { identifierFromDraft } from '../corroboration/blind-corroboration.ts';
 import { identityFitsEnvelope } from '../crypto/submission.ts';
 import type { ReportDraft } from './report-draft.ts';
 
@@ -101,6 +102,12 @@ export function validateEvidenceStep(draft: ReportDraft): FieldErrors {
   } else if (cleanImageCount(draft) > MAX_EVIDENCE_ITEMS) {
     errors['evidence'] =
       `Puedes enviar hasta ${MAX_EVIDENCE_ITEMS} imágenes (cada página de un PDF cuenta).`;
+  }
+  const corroboration = identifierFromDraft(draft.corroboration, draft.facts.entityId);
+  if (corroboration !== null && 'error' in corroboration) {
+    const key =
+      draft.corroboration.kind === 'servidor' ? 'corroboration-person' : 'corroboration-value';
+    errors[key] = `${corroboration.error} Corrígelo o elige «No, gracias».`;
   }
   return errors;
 }

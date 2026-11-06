@@ -41,6 +41,12 @@ export function createAppRouter(initialPath: string = PATHS.home) {
             }),
           },
           {
+            path: PATHS.observatory,
+            lazy: async () => ({
+              Component: (await import('../pages/observatory/ObservatoryPage.tsx')).ObservatoryPage,
+            }),
+          },
+          {
             path: PATHS.verify,
             lazy: async () => ({
               Component: (await import('../pages/verify/VerifyPage.tsx')).VerifyPage,

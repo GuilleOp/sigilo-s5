@@ -1,0 +1,27 @@
+{
+  "folio": "K7Q2-M9XP-4RTD",
+  "escalationEnvelope": {
+    "v": 1,
+    "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+    "keyId": "a71c03d5e9f2b648",
+    "enc": "Q1b3x9dW0eR5tY7uI2oP4aS6dF8gH0jK1lZ3xC5vB7n",
+    "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+  },
+  "authVerifier": "6H9gCXCtBR7tRa2GGz5vvMxJ5x3oaqb0mNjkfPnUav0",
+  "reporterKeys": {
+    "boxPublicKey": "PCLP94gM6QhqKrW5rUxRyOkjYp_c20X88FzkKeeBPeE",
+    "signingPublicKey": "5C-TWh-HnoKNmmiGagV86aRffsRIHL0GRv7TbrS-CBU"
+  },
+  "sealedIdentityDigest": "9015d201942088281d9f674cb0dac7e2180d135935478dd35b0a4289730abf35",
+  "receivedEventSeq": 41,
+  "rules": [
+    {
+      "on": "2026-12-06",
+      "ruleKey": "escalation.grave-stalled",
+      "name": "Falta grave sin iniciar el procedimiento a los 30 días",
+      "explanation": "Si la autoridad no inicia el procedimiento correspondiente ante una posible falta grave en 30 días naturales, pasa a la autoridad supervisora.",
+      "effect": "escalate",
+      "dueOn": "2026-12-05"
+    }
+  ]
+}

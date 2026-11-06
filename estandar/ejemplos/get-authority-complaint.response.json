@@ -1,0 +1,142 @@
+{
+  "summary": {
+    "folio": "K7Q2-M9XP-4RTD",
+    "mode": "sealed",
+    "status": "investigating",
+    "receivedOn": "2026-11-05",
+    "stateCode": "22",
+    "offenseCode": "LGRA-52",
+    "protectionRequested": true,
+    "managementState": "accepted",
+    "assignedAuthorityId": "authority.oic-iffe"
+  },
+  "version": 1,
+  "facts": {
+    "stateCode": "22",
+    "municipalityCode": "014",
+    "entityId": "VE-OBRAS",
+    "offenseCode": "LGRA-52",
+    "occurredPeriod": "2026-09",
+    "accused": "Servidor Ficticio Dos, jefe de licencias de la Secretaría de Obras de Villa Ejemplo",
+    "description": "Para agilizar un permiso de construcción pidieron un pago en efectivo fuera de la ventanilla. El pago no tenía recibo."
+  },
+  "evidence": [
+    {
+      "evidenceId": "16ed88d6f3ea7c6c4841645c43cd2c79",
+      "mediaType": "image/jpeg",
+      "sha256": "2fba3e8225db3948a2560e78ff0f3c161472b03d83f6505ee3b124ecc19405ed",
+      "sizeBytes": 482113
+    }
+  ],
+  "reporterKeys": {
+    "boxPublicKey": "PCLP94gM6QhqKrW5rUxRyOkjYp_c20X88FzkKeeBPeE",
+    "signingPublicKey": "5C-TWh-HnoKNmmiGagV86aRffsRIHL0GRv7TbrS-CBU"
+  },
+  "authVerifier": "6H9gCXCtBR7tRa2GGz5vvMxJ5x3oaqb0mNjkfPnUav0",
+  "sealedIdentityDigest": "9015d201942088281d9f674cb0dac7e2180d135935478dd35b0a4289730abf35",
+  "receivedEventSeq": 41,
+  "storedEvidenceCount": 1,
+  "messages": [
+    {
+      "messageId": "f5be9aeda0aeee53fc6931ef3a7a7d99",
+      "from": "authority",
+      "sequence": 0,
+      "sentOn": "2026-11-09T17:00Z",
+      "envelope": {
+        "v": 1,
+        "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+        "keyId": "f7bc219ff223a248",
+        "enc": "HqeQ13nw2-w2vRlVp7ccmEQsI9CmpwCJnrSSV6FVt0E",
+        "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+      },
+      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+    },
+    {
+      "messageId": "786d36e4b9d5bf4415896de8add7334d",
+      "from": "reporter",
+      "sequence": 0,
+      "sentOn": "2026-11-10T02:00Z",
+      "envelope": {
+        "v": 1,
+        "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+        "keyId": "f7bc219ff223a248",
+        "enc": "VR2RaKqXnAoOBwAnmH1PIPvsg6mOC-SpPlUvZxx3kuM",
+        "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw1vvJ1TjyUFrjYzPjclJ0TaijqeyK5AOGlUB0iLJiatCZI4ds_k7PJdQime6RP4AmC3nEvo2Aoy8KfxbXQu-g"
+      },
+      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+    }
+  ],
+  "identityOpenedCount": 1,
+  "procedure": {
+    "managementState": "accepted",
+    "managementStateName": "Aceptada",
+    "explanation": "La institución revisó tu denuncia y aceptó que le corresponde atenderla. Desde aquí empieza la investigación y corren los plazos legales.",
+    "legalStage": "investigation",
+    "legalStageName": "Investigación",
+    "steps": [
+      {
+        "on": "2026-11-05",
+        "legalOn": "2026-11-05",
+        "action": "received",
+        "managementState": "received_in_inbox",
+        "title": "Recibida",
+        "explanation": "Tu denuncia llegó al buzón general del sistema. Ahí se revisa para saber qué institución debe atenderla. Todavía nadie la investiga."
+      },
+      {
+        "on": "2026-11-06",
+        "legalOn": "2026-11-06",
+        "action": "routed",
+        "managementState": "routed",
+        "title": "Turnada a Órgano Interno de Control Ficticio",
+        "explanation": "Turnar significa enviar tu denuncia a la institución que puede investigarla. Esa institución todavía tiene que aceptarla."
+      },
+      {
+        "on": "2026-11-09",
+        "legalOn": "2026-11-09",
+        "action": "stage_advanced",
+        "managementState": "accepted",
+        "legalStage": "investigation",
+        "title": "Etapa: Investigación",
+        "explanation": "La autoridad investigadora reúne información y pruebas.",
+        "note": "Se pidió información a la unidad compradora ficticia."
+      }
+    ],
+    "deadlines": [
+      {
+        "key": "prescription_serious",
+        "name": "Prescripción de faltas graves",
+        "explanation": "La facultad para sancionar una falta grave o una falta de particulares prescribe en 7 años.",
+        "startsOn": "2026-09-01",
+        "dueOn": "2033-09-01",
+        "status": "running",
+        "remaining": 2492,
+        "remainingUnit": "natural_days",
+        "legalBasis": ["Ley General de Responsabilidades Administrativas, art. 74"]
+      }
+    ],
+    "rules": []
+  },
+  "identityRequests": [
+    {
+      "requestId": "345568f4c2d3291f6b1aa0d66a134f8e",
+      "requestedOn": "2026-11-12",
+      "legalBasis": "LGRA art. 91: se requiere la identidad para ofrecerla como testigo en el procedimiento del expediente sintético.",
+      "status": "approved",
+      "approvals": [
+        {
+          "accountId": "acct-5f0c2a9d1e7b3c44",
+          "on": "2026-11-12",
+          "legalBasis": "LGRA art. 91: se requiere la identidad para ofrecerla como testigo en el procedimiento del expediente sintético."
+        },
+        {
+          "accountId": "acct-9b21e07c4d6a8f13",
+          "on": "2026-11-12",
+          "legalBasis": "Coincido: el testimonio es necesario en el expediente sintético (LGRA, art. 91)."
+        }
+      ],
+      "threshold": 2,
+      "expiresOn": "2026-11-19",
+      "purpose": "authority"
+    }
+  ]
+}

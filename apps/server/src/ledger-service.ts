@@ -49,7 +49,7 @@ export interface LedgerService {
    * fecha junto al evento debe usar la del resultado. Debe llamarse dentro de una transacción junto con los demás escritos. Lanza
    * `ledger_day_full` si el día ya tiene el máximo de pendientes, salvo para la autoridad.
    */
-  record(input: LedgerEventInput): PendingLedgerEvent;
+  record(input: LedgerEventInput, options?: RecordOptions): PendingLedgerEvent;
   /**
    * Encadena los pendientes de los días ya cerrados (UTC), cada día en orden barajado y por lotes
    * de a lo más `PUBLISH_BATCH_SIZE` eventos, cada lote en su transacción, cediendo el event loop
@@ -66,6 +66,15 @@ export interface LedgerService {
    * tramo) o, si no hay ninguno, en el génesis.
    */
   pageSince(day: string, limit: number): LedgerPage;
+}
+
+/** Opciones de un registro. */
+export interface RecordOptions {
+  /**
+   * Exenta del tope diario un evento del sistema acotado por diseño (una regla pública se registra
+   * a lo más una vez por denuncia y plazo), como los de la autoridad.
+   */
+  isExemptFromDailyCap?: boolean;
 }
 
 /** Dependencias del servicio de bitácora. */
@@ -239,10 +248,11 @@ export function createLedgerService(deps: LedgerServiceDeps): LedgerService {
   }
 
   return {
-    record: (input) => {
+    record: (input, options = {}) => {
       const event = pendingEventFor({ ...input, at: eventDay(input.at) });
       // La autoridad no compite con el volumen anónimo: sus eventos no cuentan para el tope.
-      if (input.actorRole !== 'authority') assertDayCapacity(event.at);
+      const isExempt = input.actorRole === 'authority' || options.isExemptFromDailyCap === true;
+      if (!isExempt) assertDayCapacity(event.at);
       // El identificador es aleatorio: no conserva el orden de llegada.
       repository.insertPending(toHex(randomBytes(16)), event, canonicalize(input.payload));
       return event;

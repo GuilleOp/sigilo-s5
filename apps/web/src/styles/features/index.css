@@ -1,0 +1,10 @@
+/* Estilos de los componentes de la Etapa 4 (red, anonimato, corroboración, trámite, panel,
+   observatorio e inclusión). Cada archivo usa solo tokens de tokens.css y clases propias. */
+@import './status.css';
+@import './report.css';
+@import './procedure.css';
+@import './authority.css';
+@import './observatory.css';
+@import './inclusion.css';
+@import './direction-a.css';
+@import './pieces-bc.css';

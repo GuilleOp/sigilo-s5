@@ -1,0 +1,21 @@
+{
+  "requestId": "345568f4c2d3291f6b1aa0d66a134f8e",
+  "requestedOn": "2026-11-12",
+  "legalBasis": "LGRA art. 91: se requiere la identidad para ofrecerla como testigo en el procedimiento del expediente sintético.",
+  "status": "approved",
+  "approvals": [
+    {
+      "accountId": "acct-5f0c2a9d1e7b3c44",
+      "on": "2026-11-12",
+      "legalBasis": "LGRA art. 91: se requiere la identidad para ofrecerla como testigo en el procedimiento del expediente sintético."
+    },
+    {
+      "accountId": "acct-9b21e07c4d6a8f13",
+      "on": "2026-11-12",
+      "legalBasis": "Coincido: el testimonio es necesario en el expediente sintético (LGRA, art. 91)."
+    }
+  ],
+  "threshold": 2,
+  "expiresOn": "2026-11-19",
+  "purpose": "authority"
+}

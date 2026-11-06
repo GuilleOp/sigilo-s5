@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/core",
-  "version": "0.9.1",
+  "version": "1.0.0",
   "description": "Criptografia de SIGILO: sobres HPKE, recibo, derivacion de llaves, firmas y cadena de hashes.",
   "license": "CC-BY-NC-4.0",
   "type": "module",
@@ -17,6 +17,6 @@
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "@scure/bip39": "^2.4.0",
-    "@sigilo/contracts": "0.9.1"
+    "@sigilo/contracts": "1.0.0"
   }
 }

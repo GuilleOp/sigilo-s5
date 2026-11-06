@@ -1,35 +1,14 @@
 // Errores de la API con formato uniforme (`ApiErrorSchema`) y mensajes fijos.
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import { API_ERROR_HTTP_STATUS, API_ERROR_MESSAGES } from '@sigilo/contracts';
 import type { ApiError, ApiErrorCode } from '@sigilo/contracts';
 
-const STATUS_BY_CODE: Record<ApiErrorCode, ContentfulStatusCode> = {
-  bad_request: 400,
-  unauthorized: 401,
-  not_found: 404,
-  payload_too_large: 413,
-  unsupported_media_type: 415,
-  rate_limited: 429,
-  proof_required: 428,
-  storage_full: 507,
-  ledger_day_full: 503,
-  internal: 500,
-};
-
-// Seguridad: los mensajes son fijos; nunca incluyen detalles internos ni datos de la solicitud.
-const MESSAGE_BY_CODE: Record<ApiErrorCode, string> = {
-  bad_request: 'La solicitud no es válida.',
-  unauthorized: 'No autorizado.',
-  not_found: 'No encontrado.',
-  payload_too_large: 'El contenido excede el tamaño permitido.',
-  unsupported_media_type: 'Tipo de contenido no admitido.',
-  rate_limited: 'Demasiados intentos. Intenta más tarde.',
-  proof_required: 'Falta una prueba de trabajo válida y vigente.',
-  storage_full: 'No hay espacio para más pruebas por ahora. Intenta más tarde.',
-  ledger_day_full:
-    'El registro público alcanzó el máximo de eventos de hoy. Intenta de nuevo mañana.',
-  internal: 'Error interno del servidor.',
-};
+// El estatus y el mensaje de cada código vienen del contrato, que también los publica en el
+// estándar. Seguridad: los mensajes son fijos; nunca incluyen detalles internos ni datos de la
+// solicitud.
+const STATUS_BY_CODE: Readonly<Record<ApiErrorCode, ContentfulStatusCode>> = API_ERROR_HTTP_STATUS;
+const MESSAGE_BY_CODE = API_ERROR_MESSAGES;
 
 /** Error de la API que se traduce a una respuesta con su código y estatus HTTP. */
 export class ApiFailure extends Error {

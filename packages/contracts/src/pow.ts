@@ -7,7 +7,10 @@ import { z } from 'zod';
  * subidas de pruebas y después para el envío de la denuncia). `message`: respuesta de la persona
  * denunciante por el buzón.
  */
-export const PowPurposeSchema = z.enum(['complaint', 'message']);
+export const PowPurposeSchema = z.enum(['complaint', 'message']).meta({
+  description:
+    'Propósito del reto: complaint (una denuncia con sus pruebas) o message (un mensaje del buzón).',
+});
 export type PowPurpose = z.infer<typeof PowPurposeSchema>;
 
 /** Dificultad máxima admitida, en bits en cero al inicio del digesto. */
@@ -20,13 +23,19 @@ export const MAX_POW_BITS = 32;
  * reciente del propósito y vuelve a bajar cuando cede; un reto resuelto deja de aceptarse si la
  * dificultad vigente lo supera por más de un bit.
  */
-export const PowChallengeSchema = z.object({
-  token: z
-    .string()
-    .max(512)
-    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, 'Reto inválido'),
-  bits: z.number().int().min(0).max(MAX_POW_BITS),
-});
+export const PowChallengeSchema = z
+  .object({
+    token: z
+      .string()
+      .max(512)
+      .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, 'Reto inválido')
+      .meta({ description: 'Reto opaco firmado por el servidor; vence a los pocos minutos.' }),
+    bits: z.number().int().min(0).max(MAX_POW_BITS).meta({
+      description:
+        'Bits en cero que debe tener al inicio el digesto de la solución; 0 = sin prueba.',
+    }),
+  })
+  .meta({ description: 'Reto de prueba de trabajo de un solo propósito.' });
 export type PowChallenge = z.infer<typeof PowChallengeSchema>;
 
 /**

@@ -1,0 +1,110 @@
+# Matriz de requisitos
+
+Fuente única para verificar que el proyecto atiende el reto del Datatón Anticorrupción 2026, los
+criterios de evaluación, lo que la SESNA expuso en el taller del S5 y el marco legal. Cada requisito se
+liga a una función, su nivel de entrega y la evidencia que lo demuestra. La revisión de cierre de cada
+etapa recorre esta tabla.
+
+Niveles: **A** funcionando con pruebas y en la demostración; **B** prototipo con datos sintéticos;
+**C** diseño documentado. Estado: pendiente, en curso, cumplido.
+
+## Fuentes
+
+| Clave | Fuente                                                                                         |
+| ----- | ---------------------------------------------------------------------------------------------- |
+| BAS   | Bases del Datatón Anticorrupción 2026, quinta a octava (reto, especificaciones y criterios)    |
+| CRI   | Criterios de evaluación 1 a 8 de las bases                                                     |
+| SES   | Taller "Explotación de datos de la PDN" del 27 de octubre de 2026 (recorrido del S5 de prueba) |
+| DEN   | Conferencia "Denuncia ciudadana" del 21 de octubre de 2026                                     |
+| LGRA  | Ley General de Responsabilidades Administrativas, texto vigente (reforma DOF 15-12-2025)       |
+| LGSNA | Ley General del Sistema Nacional Anticorrupción, texto vigente (reforma DOF 20-05-2021)        |
+| BPDN  | Bases para el Funcionamiento de la Plataforma Digital Nacional (DOF 23-10-2018)                |
+
+## Reto y eje obligatorio
+
+| ID   | Fuente     | Requisito                                                    | Función                                                                                 | Nivel | Evidencia                                                                                                                                                                                                                              | Etapa | Estado   |
+| ---- | ---------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
+| R-01 | BAS        | Partir de la versión de pruebas del S5                       | Validador contra el demo oficial; mismo flujo de 5 pasos; componentes con sus variables | A     | Reporte `estandar/reportes/demo-oficial-2026-11-05.json`; 5 pasos en `apps/web/src/pages/report/steps/` (`ModeStep` a `SubmitStep`); componentes en `apps/web/src/components/a/` con las variables de `apps/web/src/styles/tokens.css` | 1, 4  | cumplido |
+| R-02 | BAS        | Identificar y atender áreas de oportunidad                   | Auditoría del demo (terceros, folio, cabeceras, pruebas, permisos) con su corrección    | A     | `estandar/`, `estandar/reportes/` (demo oficial y referencia); falta la presentación                                                                                                                                                   | 1     | en curso |
+| R-03 | BAS, CRI 1 | Anonimato en la **recepción**                                | Huella Cero, revisor de texto, grupo de anonimato, cero terceros, enrutador ciego       | A     | E2E `no-third-party`, `submit-complaint` y `stage4-flows` (grupo de anonimato); pruebas de `packages/anonimato` y `apps/enrutador` (`relay.test.ts`)                                                                                   | 2, 3  | cumplido |
+| R-04 | BAS, CRI 1 | Anonimato en el **trámite**                                  | Identidad sellada, apertura 2 de 3, turnado que vuelve a cifrar, corroboración ciega    | A     | E2E `sealed-complaint` (apertura 2 de 3); turnado entre nodos en `apps/server/src/network-scenario.test.ts`; `packages/corroboracion/src/oprf.test.ts` (vectores de RFC 9497)                                                          | 2, 4  | cumplido |
+| R-05 | BAS, CRI 1 | Anonimato en el **seguimiento**                              | Recibo de 8 palabras, buzón anónimo, aviso de cada apertura                             | A     | E2E `tracking`, conciliación de aperturas                                                                                                                                                                                              | 2     | cumplido |
+| R-06 | BAS        | Código abierto, licencia CC BY-NC, repositorio público       | Licencia y repositorio                                                                  | A     | `LICENSE`, repositorio                                                                                                                                                                                                                 | 6     | cumplido |
+| R-07 | BAS        | Sin código malicioso                                         | Dependencias auditadas, sin binarios, CI                                                | A     | CI en `.github/workflows/ci.yml`; dependencias revisadas (zod 4.6.7 por GHSA-mrhx-c7xc-m3w5); `npm audit --omit=dev --audit-level=high` en CI (0 vulnerabilidades en producción)                                                       | 5     | cumplido |
+| R-08 | BAS        | Sin datos personales sensibles, reservados ni confidenciales | Solo datos sintéticos; datos de la PDN solo agregados                                   | A     | `docs/datos-sinteticos.md`, `docs/demo-escenario.md`, revisión                                                                                                                                                                         | 0, 3  | en curso |
+| R-09 | BAS        | Declarar el uso de IA, su finalidad y alcance                | Declaración actualizada con el auditor y la clasificación                               | A     | `docs/uso-de-ia.md` (desarrollo, auditor y modelo local opcional), ADR 0009                                                                                                                                                            | 6     | cumplido |
+| R-10 | BAS        | Disponible para la SESNA y otras autoridades                 | Despliegue con un comando y guía para estados                                           | A     | `compose.yaml` y `npm run demo:todo` (guía en `docs/demo.md`, probada en un clon limpio); `docs/guia-conecta-tu-estado.md`                                                                                                             | 2, 6  | cumplido |
+
+## Ejes opcionales y adicional
+
+| ID   | Fuente     | Requisito                                                       | Función                                                                    | Nivel | Evidencia                                                                                                                                                                                                        | Etapa | Estado   |
+| ---- | ---------- | --------------------------------------------------------------- | -------------------------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
+| E-01 | BAS, CRI 5 | WCAG 2.0 AA                                                     | Interfaz accesible en las tres superficies                                 | A     | E2E con axe, auditoría de teclado y lector de pantalla                                                                                                                                                           | 5     | en curso |
+| E-02 | BAS        | Personas con discapacidad y adultas mayores                     | Tres temas con alto contraste, lectura fácil, texto grande                 | A     | E2E `accessibility.spec.ts` (AA en los temas claro, oscuro y alto contraste a 390 y 1280 px) y lectura fácil en `stage4-flows`; faltan lectores de pantalla reales y personas usuarias (`docs/accesibilidad.md`) | 2, 5  | en curso |
+| E-03 | BAS, SES   | Distintos niveles de experiencia en Internet; conexión limitada | Denuncia asistida, modo quiosco, modo de poca conexión                     | A     | Modos en `apps/web/src/state/usage-modes.ts`; E2E del quiosco en `stage4-flows`; falta la prueba con red lenta                                                                                                   | 2     | en curso |
+| E-04 | BAS, CRI 4 | Generar datos abiertos útiles para decidir                      | Observatorio y conjuntos de datos nuevos con privacidad formal             | A     | `datos/abiertos/`, diccionarios, E2E `open-data` y observatorio en `stage4-flows`                                                                                                                                | 3, 4  | cumplido |
+| E-05 | BAS        | Certeza sobre el estatus de la denuncia                         | Línea de tiempo con etapas legales, plazos y reloj                         | A     | E2E `stage4-flows` (turnada, plazo con su unidad y calificación de no grave) y la demostración (`docs/demo.md`)                                                                                                  | 2     | cumplido |
+| E-06 | BAS, CRI 4 | Explotar datos de la PDN                                        | Grupo de anonimato, contexto, conflicto de interés, verificación contra S3 | A     | Proceso reproducible en `datos/`, pruebas de `packages/contexto-pdn`, `apps/server/src/network-scenario.test.ts`, E2E `stage4-flows` (ficha de contexto y conflicto)                                             | 3, 4  | cumplido |
+
+### Evidencia de E-04 y E-06 (Etapa 3)
+
+Proceso reproducible `python3 datos/proceso/ejecutar.py` sobre las descargas masivas de la PDN del
+2026-11-05 (sha256 verificado contra el inventario), probado con `npm run data:test`. Detalle,
+cifras, decisiones y limitaciones en [`datos/README.md`](../datos/README.md).
+
+| ID   | Evidencia                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E-04 | Tres conjuntos nuevos en `datos/abiertos/`, cada uno con `diccionario.csv` y `metodologia.md`: grupos de anonimato (nacional y por entidad, en cubetas, con supresión de 1 a 4), matriz de cobertura (entidad x sistema x año) e indicadores de contratación por comprador federal (284 compradores, 2018-2022).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| E-06 | Grupos de anonimato desde S1 (unos 1.54 millones de personas; 38.0 % en áreas con k < 10 y 0.5 % en entes con k < 10) con generalización jerárquica y fragmentos por entidad en `datos/grupos-anonimato/`; S2 marca 699 entes y 89 áreas de contratación; matriz de cobertura en `datos/cobertura/`; equivalencias de instituciones S1-S2-S3-S6 con tasas en `datos/normalizacion/`; S3 normalizado y subconjunto APF de S6 solo en una carpeta privada fuera del repositorio. `@sigilo/anonimato` evalúa el grupo de anonimato en el navegador con un solo fragmento por denuncia; `@sigilo/contexto-pdn` da verificaciones con tres resultados, conflicto de interés, lista tipo 69-B y prioridad explicable. La web usa el primero en `AnonymityNotice.tsx` y el nodo el segundo en `apps/server/src/services/pdn-context.ts`. |
+
+## Criterios de evaluación
+
+| ID   | Criterio                        | Cómo se atiende                                                                           | Evidencia                          |
+| ---- | ------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------- |
+| C-01 | 1. Confidencialidad             | R-03, R-04, R-05 y el modelo de amenazas actualizado                                      | `docs/modelo-de-amenazas.md`, E2E  |
+| C-02 | 2. Valor público y priorización | Prioridad explicable, corroboración, rendición de cuentas de la autoridad, canal único    | Panel de autoridad, observatorio   |
+| C-03 | 3. Funcionalidad                | Red de varios nodos funcionando, pruebas automáticas, validador                           | `npm run check`, E2E, demostración |
+| C-04 | 4. Datos de la PDN              | E-04, E-06 y la matriz de cobertura                                                       | `datos/`                           |
+| C-05 | 5. Experiencia y accesibilidad  | E-01 a E-03, E-05 y el diseño visual de la familia del S5                                 | Auditoría, capturas                |
+| C-06 | 6. Innovación                   | Primer estándar del S5, PDN para proteger, corroboración ciega, auditoría de la autoridad | ADR 0005 a 0010                    |
+| C-07 | 7. Presentación                 | Caso de principio a fin, comparación antes y después, matriz de cumplimiento              | Presentación ejecutiva, guion      |
+| C-08 | 8. Documentación replicable     | Instalación con un comando, guía de replicación probada en entorno limpio                 | README, prueba de replicación      |
+
+## Lo que expuso la SESNA sobre el S5 de prueba
+
+| ID   | Fuente | Planteamiento                                                         | Función                                                              | Nivel | Etapa |
+| ---- | ------ | --------------------------------------------------------------------- | -------------------------------------------------------------------- | ----- | ----- |
+| S-01 | SES    | Dos experiencias conectadas: ciudadana e institucional                | Ventanilla y panel de autoridad sobre el mismo estándar              | A     | 2     |
+| S-02 | SES    | El mapa externo no es preciso; corregir la ubicación sugerida         | Mapa privado por entidad y municipio, con confirmación               | A     | 2     |
+| S-03 | SES    | El anonimato no se reduce a una casilla: relato y pruebas identifican | Huella Cero, revisor de texto, grupo de anonimato                    | A     | 2, 3  |
+| S-04 | SES    | Los permisos no equivalen a garantía de privacidad                    | Cifrado de extremo a extremo y apertura 2 de 3 registrada            | A     | 2     |
+| S-05 | SES    | Explicar qué significa que una denuncia fue turnada                   | Línea de tiempo y descripción de cada estado                         | A     | 2     |
+| S-06 | SES    | Qué información agregada aprovechar sin revelar identidades           | Datos abiertos con privacidad formal                                 | A     | 3, 4  |
+| S-07 | SES    | Lector de pantalla, conexión limitada, poca experiencia digital       | E-01, E-03                                                           | A     | 2, 5  |
+| S-08 | SES    | Flujo actual: aceptar, reasignar, devolver; seis tipos de cierre      | Catálogo de estados del estándar                                     | A     | 1     |
+| S-09 | SES    | Clasificación con IA como oportunidad                                 | Clasificación orientativa con modelo local                           | B     | 4     |
+| S-10 | SES    | Replicable en local, con herramientas libres y sin costo              | `docker compose up`, sin servicios de pago                           | A     | 2, 5  |
+| S-11 | SES    | Especificación del S5 aún en construcción                             | Diccionario de datos y OpenAPI en el formato de la PDN               | A     | 1     |
+| S-12 | DEN    | Inutilidad aprendida: "no pasa nada"                                  | Observatorio "¿Sirvió denunciar?" y casos resueltos agregados        | A     | 4     |
+| S-13 | DEN    | Las personas denuncian más cuando no están solas                      | Corroboración ciega, denuncia asistida, organizaciones que acompañan | A, B  | 2, 4  |
+| S-14 | DEN    | Presunción de buena fe; errores razonables no son mala fe             | Integridad: "inconsistente", nunca "falsa"                           | A     | 4     |
+| S-15 | DEN    | Trazabilidad: folio, plazos ciertos, notificación del cierre          | E-05 y bitácora                                                      | A     | 2     |
+| S-16 | DEN    | Protección frente a represalias                                       | Señal de posible represalia, solicitud de medidas (LGRA art. 64)     | B     | 4     |
+
+## Marco legal
+
+| ID   | Fuente        | Disposición                                                              | Cómo se refleja                                                         | Nivel | Etapa |
+| ---- | ------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- | ----- | ----- |
+| L-01 | BPDN 56-57    | Canal único y ventanilla única, también para autoridades                 | Red federada con ventanilla única y registro por autoridades            | A     | 2     |
+| L-02 | BPDN 58       | Protocolos de turno; registrar denuncias recibidas por otros medios      | Catálogo de estados, adaptador para sistemas que no cumplen el estándar | A, B  | 1, 2  |
+| L-03 | BPDN 59-61    | Seguimiento, estadística para el Comité Coordinador, portal agregado     | Seguimiento, observatorio, datos abiertos                               | A     | 2, 4  |
+| L-04 | BPDN (def.)   | Seguridad: confidencialidad, integridad, trazabilidad y no repudio       | Cifrado, bitácora firmada, anclas                                       | A     | 2     |
+| L-05 | LGSNA 56      | El S5 lo implementan las autoridades competentes                         | Nodos por autoridad y directorio                                        | A     | 2     |
+| L-06 | LGSNA 21      | CPC: acceso a información, propuestas de mejora, registro de OSC         | Observadores intercambiables                                            | A     | 2, 4  |
+| L-07 | LGRA 91       | Denuncias anónimas y confidencialidad de la identidad                    | Modo anónimo e identidad sellada                                        | A     | 2     |
+| L-08 | LGRA 64       | Obstrucción: simular no graves, no iniciar en 30 días, revelar identidad | Plazos, señales del auditor, apertura registrada                        | A     | 2, 4  |
+| L-09 | LGRA 74       | Prescripción de 3 y 7 años; caducidad por 6 meses de inactividad         | Alerta de prescripción; fecha límite de la custodia                     | A     | 2, 4  |
+| L-10 | LGRA 100      | Archivo notificado en 10 días hábiles; reapertura con nuevos indicios    | Aviso de nuevos indicios por corroboración                              | A     | 4     |
+| L-11 | LGRA 101-110  | Inconformidad en 5 días hábiles; exige nombre y firma                    | Aviso del plazo; inconformidad solo revelando la identidad sellada      | A     | 2     |
+| L-12 | LGRA 58       | Conflicto de interés y excusa                                            | Alerta de conflicto antes de turnar, registro de la excusa              | A     | 3     |
+| L-13 | LGPDPPSO 2025 | Protección de datos personales en el sector público                      | Minimización, modelo de privacidad                                      | A     | 5     |

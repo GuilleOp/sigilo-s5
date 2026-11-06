@@ -1,0 +1,12 @@
+{
+  "head": {
+    "v": 1,
+    "seq": 1,
+    "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+    "at": "2026-11-09",
+    "directorySerial": 1,
+    "operatorKeyId": "5d1c2a9e8b7f3c40"
+  },
+  "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+  "cosignatures": []
+}

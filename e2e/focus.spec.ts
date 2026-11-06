@@ -175,7 +175,7 @@ test('el foco no se pierde cuando desaparece el botón pulsado', async ({ page }
   const form = page.getByTestId('receipt-confirmation');
   await page.getByTestId('confirm-receipt').click();
   await expect(form.locator('#confirm-word-0')).toBeFocused();
-  await expect(form).toContainText(/La palabra número \d no coincide/u);
+  await expect(form).toContainText(/Escribe la palabra \d/u);
   await expectFocusVisible(page, 'confirmar con palabras vacías');
 
   // Basta con las primeras 4 letras.

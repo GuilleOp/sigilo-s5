@@ -4,6 +4,8 @@ SIGILO es una capa de anonimato para un sistema de denuncias. Todo lo que puede 
 persona denunciante se procesa en su navegador; el servidor almacena hechos, sobres cifrados y una
 bitácora, y no puede leer identidades.
 
+El estándar S5 y la red federada se deciden en los [ADR 0005 a 0010](adr/).
+
 ## Componentes
 
 | Componente               | Ubicación            | Responsabilidad                                                                |
@@ -26,7 +28,7 @@ flowchart LR
     K[(Llave privada de la autoridad)]
   end
   W -- mismo origen: hechos, pruebas limpias, sobres --> S[apps/server]
-  P -- mismo origen, con token --> S
+  P -- mismo origen, sesión de una cuenta individual --> S
   S --> DB[(SQLite: hechos, sobres, bitácora)]
   DB -- npm run ledger:anchor --> A[(anchors/ en el repositorio público)]
 ```
@@ -90,23 +92,59 @@ de protección). Así no puede moverse a otra denuncia. Ver [criptografia.md](cr
 
 ### Trámite
 
+El servidor es un **nodo de varias autoridades**. Cada persona de la autoridad entra con su cuenta
+individual (`authority-accounts.json`, fuera del repositorio), que tiene una autoridad y una
+función:
+
+| Función                         | Puede                                                                                                         | No puede                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Recepción y turnado (`intake`)  | Turnar desde el buzón general, aceptar, reasignar, devolver, cerrar lo improcedente del buzón, descartar spam | Solicitar ni aprobar aperturas de identidad |
+| Investigación (`investigation`) | Avanzar etapas legales, cerrar con fundamento, escribir por el buzón, solicitar y aprobar aperturas           | Turnar                                      |
+| Supervisión (`supervision`)     | Aprobar aperturas, leer los acuerdos de cierre (auditor) y, en la supervisora, recibir escalamientos          | Acciones del trámite                        |
+
+Cada denuncia la tiene una autoridad (el buzón general hasta que se turna). Solo las cuentas de esa
+autoridad la ven: otra recibe `404`, igual que con un folio inexistente. La sesión vence a los 15
+minutos sin actividad o a las 8 horas y se cierra en el servidor.
+
 ```mermaid
 sequenceDiagram
-  actor A as Autoridad
-  participant P as Panel de autoridad
-  participant S as Servidor
-  A->>P: Inicia sesión con token e importa su llave
-  P->>S: GET /authority/complaints
-  S-->>P: Resúmenes (sin identidad)
+  actor R as Recepción del buzón
+  actor I as Investigación de la autoridad
+  participant P as Panel
+  participant S as Nodo
+  actor D as Persona denunciante
+  R->>S: POST auth/login (cuenta propia)
+  R->>S: POST procedure { route, authorityId }
+  S->>S: complaint.status_changed con el seudónimo de la cuenta en sus datos
+  Note over S: La recepción de la autoridad turnada acepta, reasigna o devuelve
+  I->>P: Inicia sesión e importa su llave
   P->>S: GET /authority/complaints/{folio}
-  S-->>P: Hechos, pruebas, llaves públicas del denunciante, digesto del sobre, mensajes
-  P->>S: GET /ledger/events (evento complaint.received publicado)
+  S-->>P: Hechos, pruebas, llaves del denunciante, digestos, trámite, mensajes
   P->>P: Recalcula el digesto del envío y verifica las llaves del denunciante
-  A->>P: Cambia estatus o envía pregunta por el buzón
-  P->>P: Cifra la pregunta hacia el buzón del denunciante, con la siguiente secuencia, y la firma
-  P->>S: POST status / messages
-  S->>S: Exige la secuencia esperada y registra el evento en la bitácora
+  I->>S: POST procedure { advance_stage } / mensajes cifrados en el navegador
+  I->>S: POST procedure { close, reason, legalBasis, agreement }
+  S->>S: Guarda el acuerdo en versión pública (para el auditor) y registra el evento
+  D->>S: Seguimiento: pasos explicados, notas públicas, cierre, plazos y reglas cumplidas
 ```
+
+Los plazos se cuentan con el día civil en la hora del centro de México (`legalOn`), no con el día
+UTC que se publica por privacidad. Cada paso guarda ambos.
+
+### Motor de plazos y escalamiento
+
+Una tarea periódica (la misma que cierra los días de la bitácora) evalúa las reglas públicas de
+`ESCALATION_RULES` con `evaluateEscalationRules` de `@sigilo/core`: posible falta grave sin iniciar
+el procedimiento correspondiente a los 30 días naturales (LGRA, art. 64, fr. II), archivo de una
+persona identificable sin aviso por el buzón en 10 días hábiles, acto resolutivo con conflicto sin
+excusa (art. 58), archivo o calificación de no grave con dos o más señales del auditor, alertas de
+prescripción a 12, 6 y 3 meses e inactividad a los 5 y 6 meses. Durante la investigación la
+inactividad es solo una alerta; la caducidad de la instancia (art. 74) se alerta únicamente después
+de admitido el informe. La calificación de no grave se notifica por el buzón y la persona puede
+inconformarse desde su seguimiento (arts. 102 a 110), abriendo su identidad solo para el recurso. Cada regla
+cumplida se registra una vez (`rule.triggered`, actor `system`) y aparece en el seguimiento. Las de
+escalamiento dejan la denuncia disponible para la autoridad supervisora, que recibe la **segunda
+llave**: el sobre de hechos y pruebas (nunca la identidad) que la web cifró al enviar hacia la
+llave fijada de la supervisora. Antes de que se cumpla una regla, el nodo no lo entrega.
 
 ### Seguimiento
 
@@ -138,31 +176,34 @@ sequenceDiagram
 - Solo los fallos de autenticación consumen el límite por folio; los mensajes tienen su propio
   límite.
 
-### Apertura de identidad
+### Apertura de identidad (2 de 3)
 
 ```mermaid
 sequenceDiagram
-  actor A as Autoridad
-  participant P as Panel
-  participant S as Servidor
+  actor A as Investigación A
+  actor B as Otra persona de la autoridad
+  participant S as Nodo
   actor D as Persona denunciante
-  A->>P: Solicita abrir identidad con fundamento legal
-  P->>S: POST /authority/complaints/{folio}/identity
-  S->>S: Registra identity.opened (pendiente) con fundamento, openingId y receiptTag
-  S-->>P: Sobre de identidad
-  P->>P: Recalcula el contexto desde el detalle y descifra con la llave de la autoridad
+  A->>S: POST identity/requests { legalBasis }
+  S->>S: identity.approved (A, con su fundamento)
+  B->>S: POST identity/requests/{id}/approvals { legalBasis }
+  S->>S: identity.approved (B) e identity.opened con openingId y receiptTag
+  A->>S: POST identity/requests/{id}/envelope
+  S-->>A: Sobre de identidad (solo a quien aprobó)
+  A->>A: Recalcula el contexto desde el detalle y descifra en su navegador
   D->>S: Consulta su seguimiento
-  S-->>D: Historial de aperturas con fecha y fundamento
+  S-->>D: Apertura con fecha, fundamento y número de aprobaciones
 ```
 
-El servidor solo entrega el sobre de identidad a través de esta ruta, que siempre registra el evento.
-Los listados y el detalle nunca lo incluyen. Es un control de política: quien tenga la llave de la
+Una misma persona no cuenta dos veces, quien turna no participa y la solicitud vence a los 7 días.
+El servidor nunca descifra: solo decide a quién y cuándo entregar el sobre, y cada entrega queda en
+el registro de seguridad. Sigue siendo un control de política: quien tenga la llave de la
 autoridad y una copia de la base puede descifrar sin pasar por la ruta.
 
 ## Bitácora
 
-- Cada evento (`complaint.received`, `complaint.status_changed`, `identity.opened`, `message.sent`,
-  `evidence.discarded`) se encadena con el hash del anterior. Triggers de SQLite impiden modificar o borrar eventos.
+- Cada evento (`complaint.received`, `complaint.status_changed`, `identity.approved`,
+  `identity.opened`, `message.sent`, `evidence.discarded`, `rule.triggered`) se encadena con el hash del anterior. Triggers de SQLite impiden modificar o borrar eventos.
 - **Cierre diario barajado.** Un evento nuevo queda pendiente, sin `seq`, con una fecha que nunca
   es anterior a la del último evento. Una tarea programada (cada 10 minutos; las lecturas no
   publican) baraja los pendientes de cada día cerrado (UTC) con aleatoriedad criptográfica y los
@@ -179,6 +220,78 @@ autoridad y una copia de la base puede descifrar sin pasar por la ruta.
 
 Ver [criptografia.md](criptografia.md).
 
+## Red federada
+
+La red «un S5, muchas llaves» ([ADR 0005](adr/0005-estandar-s5-federado.md)) agrega tres piezas
+sin cambiar la API v1 del nodo:
+
+| Pieza                 | Ubicación                    | Responsabilidad                                                                                         |
+| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Red (funciones puras) | `packages/red`               | Directorio firmado y cofirmado, autoridad competente, sobres de red, bitácora nacional, cliente de nodo |
+| Enrutador ciego       | `apps/enrutador`             | Publica el directorio, reenvía sobres opacos, lleva la bitácora nacional                                |
+| Testigos              | `apps/enrutador/src/witness` | Verifican que la bitácora nacional solo creció y cofirman su cabeza (m de n)                            |
+
+```mermaid
+flowchart LR
+  N[Navegador] -- 1. directorio firmado --> R[Enrutador ciego]
+  N -- 2. sobre HPKE al nodo, solo con la autoridad destino --> R
+  R -- 3. mismo sobre, sin cabeceras de la persona --> Q[Nodo Querétaro]
+  R --> F[Nodo Federal / común]
+  Q -- cabeza firmada --> R
+  F -- cabeza firmada --> R
+  T1[Testigo CPC] -- cofirma --> R
+  T2[Testigo academia] -- cofirma --> R
+  Q -- cofirma como testigo --> R
+  F -- registro firmado, folio opaco --> I[Índice de coincidencias]
+  N -- elemento cegado OPRF --> E[Evaluador]
+```
+
+- **Directorio.** Documento canónico versionado (`AuthorityDirectory`) con nodos, autoridades
+  (entidad, orden de gobierno, competencia por órdenes, entidades, entes y leyes, llaves X25519 y
+  Ed25519, vigencia y supervisora) y observadores. Lo firma la operación sobre su digesto
+  (`sigilo/red/directory/operator/v1:`) y lo cofirman los testigos (`.../witness/v1:`). El
+  navegador fija solo la llave de la operación y las de los testigos (`NetworkTrustAnchor`) y exige
+  m cofirmas válidas de testigos fijados distintos. Una versión nueva debe encadenar el digesto
+  anterior y llevar m cofirmas de los testigos de la anterior.
+- **Autoridad competente.** `proposeCompetentAuthority` corre en el navegador: la conducta define
+  la ley (LGRA o CPF), el ente el orden de gobierno, y gana quien atiende al ente por nombre sobre
+  quien atiende a todo su orden en la entidad. Devuelve el razonamiento en lenguaje claro. Las
+  supervisoras nunca se proponen; un ente municipal sin órgano municipal cae en la contraloría
+  estatal, marcado como respaldo.
+- **Enrutador ciego.** El navegador cifra con HPKE hacia la llave del nodo una petición de la API
+  v1 (`RoutedRequest`) rellenada a un tramo fijo (4 KiB, 64 KiB, 1 MiB o 16 MiB) e incluye una
+  llave efímera para la respuesta. El encabezado externo solo dice la autoridad destino. El
+  enrutador no guarda el sobre, no lee la IP ni reenvía cabeceras, y responde con la misma forma
+  para cualquier destino (relleno si no pudo entregar). Qué ve y qué no: `apps/enrutador/README.md`.
+- **Bitácora nacional.** Entradas encadenadas por hash con cada cabeza firmada de nodo y cada
+  versión del directorio. El enrutador recoge las cabezas en `GET /api/v1/ledger/head` de cada
+  nodo (o el nodo las publica) y rechaza las que retroceden o se bifurcan. La cabeza nacional la
+  firma la operación y vale con m cofirmas; cada testigo cofirma solo después de recalcular el
+  tramo desde su última cofirma. `GET /api/v1/red/national/inclusion` entrega la prueba de que una
+  cabeza de nodo quedó incluida, que el navegador verifica con `verifyNodeHeadInclusion`.
+- **El nodo en la red.** El servidor de referencia monta el buzón de red, se registra ante el
+  enrutador (acepta sobres), publica su cabeza después de cada cierre y, si el directorio lo nombra
+  testigo, cofirma la cabeza nacional. Aloja varias autoridades con sus llaves del directorio
+  verificado. Una denuncia que llega por el enrutador queda turnada a la autoridad que eligió el
+  navegador; el turnado a otro nodo lo re-cifra el navegador de la autoridad y el nodo solo lo
+  transporta (SEC-19), con `complaint.transferred` en la bitácora y el folio nuevo en el
+  seguimiento.
+- **Contexto, auditor y corroboración en el nodo.** Al turnar, el nodo revisa el conflicto de
+  interés de la persona titular con S1 y S2 (alerta y pide excusa o justificación; nunca bloquea).
+  El detalle de la autoridad trae la ficha con prioridad explicable, las señales del auditor y las
+  fuentes independientes del índice. La tarea periódica corre el auditor sobre los acuerdos del
+  nodo y los importados (`audit.signal`), reverifica sanciones contra S3 y aplica las reglas
+  públicas, entre ellas `escalation.conflict` (resolver con conflicto sin excusa, LGRA art. 58) y
+  `escalation.archive-signals` (archivo con dos o más señales AUD-01 y AUD-02). Las fuentes son
+  sintéticas en la demostración o las bases SQLite descargadas; ninguna consulta sale del nodo.
+- **Despliegue local.** `npm run red:demo` genera llaves y cuentas sintéticas en `.red-demo/` y
+  `docker compose up` levanta el enrutador, los nodos Querétaro y Federal (el servidor de
+  referencia tal cual, con su web en el mismo origen), el evaluador, el índice y dos testigos
+  observadores. `npm run demo:seed` siembra el escenario. Guía:
+  [conecta tu estado](guia-conecta-tu-estado.md).
+- **Pendiente.** La web sigue en el perfil de nodo único (ventanilla única, panel con la ficha y
+  turnado re-cifrado en el navegador) y la guarda de custodias de la corroboración (nivel B).
+
 ## Despliegue
 
 - **Un solo origen.** En desarrollo, el proxy de Vite sirve web y API desde `127.0.0.1:5173`. En
@@ -186,7 +299,8 @@ Ver [criptografia.md](criptografia.md).
   `index.html`. CORS está desactivado salvo que `SIGILO_ALLOWED_ORIGIN` lo configure.
 - **Cabeceras de la web:** CSP como cabecera con `frame-ancestors 'none'`, `X-Frame-Options: DENY`,
   `Referrer-Policy: no-referrer`, `nosniff`, `Cache-Control: no-store` y
-  `Strict-Transport-Security` cuando se define `SIGILO_HSTS_MAX_AGE`.
+  `Strict-Transport-Security` (al menos un año, con `includeSubDomains`) con `SIGILO_HTTPS=1` o
+  `SIGILO_HSTS_MAX_AGE`.
 - **Cabeceras de la API:** `Content-Security-Policy: default-src 'none'`, `no-store` y `nosniff`.
 - **Sin terceros.** La web no hace peticiones fuera de su origen; una prueba E2E lo comprueba.
 - **Historial.** La web usa un router en memoria: no deja rutas ni entradas nuevas en el historial.
@@ -205,6 +319,10 @@ Ver [criptografia.md](criptografia.md).
   ni folios.
 - **Un solo servidor por base.** `server.lock` en el directorio de datos, creado con `wx` y
   renovado cada 10 minutos.
+- **Cuentas.** `authority-accounts.json` en el directorio de datos (no se versiona) declara las
+  autoridades del nodo, el buzón general y una cuenta por persona con su digesto scrypt;
+  `npm run accounts:generate` crea las sintéticas de la demostración. Los fallos de acceso, las
+  sesiones vencidas y las entregas de sobres quedan en `authority_security_events`, sin IP.
 - **Llaves.** Las llaves privadas viven en `apps/server/data/` y no se versionan. Las públicas se
   fijan en `apps/web/src/config/pinned-keys.json`.
 - **Reloj de pruebas.** `SIGILO_TEST_CLOCK_FILE` desplaza el reloj del servidor solo en pruebas

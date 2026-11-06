@@ -1,4 +1,5 @@
-// Acceso al panel: token bearer e importación local de authority-demo-key.json.
+// Acceso al panel: cuenta individual (usuario y contraseña) e importación local de
+// authority-demo-key.json.
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Alert } from '../../components/Alert.tsx';
@@ -14,11 +15,12 @@ interface AuthorityLoginProps {
   onReady: (session: AuthoritySession) => void;
 }
 
-const MIN_TOKEN_LENGTH = 32;
+const MIN_PASSWORD_LENGTH = 12;
 
 /** Formulario de acceso de la autoridad. */
 export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
-  const [token, setToken] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isBusy, setBusy] = useState(false);
@@ -35,8 +37,8 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
     event.preventDefault();
     if (isBusy) return;
     setError('');
-    if (token.trim().length < MIN_TOKEN_LENGTH) {
-      setError(`El token debe tener al menos ${MIN_TOKEN_LENGTH} caracteres.`);
+    if (username.trim() === '' || password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Escribe tu usuario y tu contraseña (al menos ${MIN_PASSWORD_LENGTH} caracteres).`);
       return;
     }
     if (file === null) {
@@ -47,14 +49,16 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
     let keys: AuthorityKeys | null = null;
     try {
       keys = importAuthorityKey(await file.text(), PINNED_KEYS);
-      // Comprueba el token antes de abrir el panel.
-      await api.listComplaints(token.trim());
-      // Seguridad: si la pantalla se cerró mientras tanto, la llave no se queda en memoria.
+      const session = await api.login(username.trim(), password);
+      setPassword('');
+      // Seguridad: si la pantalla se cerró mientras tanto, la llave no se queda en memoria y la
+      // sesión se cierra en el servidor.
       if (!isMounted.current) {
         wipeAuthorityKeys(keys);
+        void api.logout(session.token).catch(() => undefined);
         return;
       }
-      onReady({ token: token.trim(), keys });
+      onReady({ token: session.token, account: session.account, keys });
     } catch (failure) {
       if (keys !== null) wipeAuthorityKeys(keys);
       if (isMounted.current) {
@@ -74,6 +78,10 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
     <form onSubmit={(event) => void submit(event)} noValidate data-testid="authority-login">
       <Alert tone="info" title="Panel de demostración">
         <p>
+          Entra con tu cuenta personal: cada acción queda registrada con tu cuenta. La sesión se
+          cierra sola tras 15 minutos sin actividad.
+        </p>
+        <p>
           La llave privada se lee en tu navegador y se queda en memoria: no se sube ni se guarda. Al
           recargar la página tendrás que importarla de nuevo.
         </p>
@@ -89,14 +97,23 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
         </Alert>
       )}
       <TextField
-        id="authority-token"
-        label="Token de acceso"
+        id="authority-username"
+        label="Usuario"
+        required
+        autoComplete="username"
+        value={username}
+        onChange={(event) => setUsername(event.target.value)}
+        data-testid="authority-username"
+      />
+      <TextField
+        id="authority-password"
+        label="Contraseña"
         required
         type="password"
-        autoComplete="off"
-        value={token}
-        onChange={(event) => setToken(event.target.value)}
-        data-testid="authority-token"
+        autoComplete="current-password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        data-testid="authority-password"
       />
       <div className="field">
         <label htmlFor="authority-key">Llave de la autoridad (authority-demo-key.json)</label>

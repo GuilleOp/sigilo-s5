@@ -8,6 +8,7 @@ import type { ReportDraft } from '../../../state/report-draft.ts';
 import type { FieldErrors } from '../../../state/report-validation.ts';
 import { CatalogFields } from './CatalogFields.tsx';
 import { LocationFields } from './LocationFields.tsx';
+import { WorkplaceFields } from './WorkplaceFields.tsx';
 
 interface FactsStepProps {
   draft: ReportDraft;
@@ -31,6 +32,7 @@ export function FactsStep({ draft, errors }: FactsStepProps) {
     <>
       <LocationFields facts={facts} errors={errors} />
       <CatalogFields facts={facts} errors={errors} />
+      <WorkplaceFields workplace={draft.workplace} />
       <fieldset id="period" data-group-field className="field">
         <legend>¿Cuándo pasó? (mes y año, aproximados)</legend>
         <p id="period-hint" className="field__hint">

@@ -260,7 +260,7 @@ export function purgeUnattendedEvidence(deps: UnattendedRetentionDeps): number {
  * a la vista de la persona denunciante y en la bitácora pública: la autoridad no puede borrar
  * pruebas en silencio.
  */
-export function discardEvidence(ctx: AppContext, folio: string): number {
+export function discardEvidence(ctx: AppContext, folio: string, actorId: string): number {
   const discarded = withTransaction(ctx.deps.db, () => {
     const evidenceIds = ctx.evidence.listStoredIdsForFolio(folio);
     if (evidenceIds.length === 0) return evidenceIds;
@@ -271,7 +271,12 @@ export function discardEvidence(ctx: AppContext, folio: string): number {
       actorRole: 'authority',
       // Seguridad: como en los cambios de estatus, un identificador aleatorio hace único el
       // digesto y el folio impide adivinarlo probando cantidades.
-      payload: { folio, count: evidenceIds.length, discardId: toHex(randomBytes(16)) },
+      payload: {
+        folio,
+        count: evidenceIds.length,
+        discardId: toHex(randomBytes(16)),
+        actor: actorId,
+      },
     });
     for (const evidenceId of evidenceIds) ctx.evidence.markUnstored(evidenceId);
     ctx.evidence.insertDiscard(folio, discardedOn, evidenceIds.length);

@@ -1,0 +1,24 @@
+{
+  "name": "@sigilo/validador",
+  "version": "0.1.0",
+  "description": "Validador del Estándar S5: verificaciones pasivas de privacidad y de conformidad de un nodo.",
+  "license": "CC-BY-NC-4.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "sigilo-validar": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.63.0",
+    "@sigilo/contracts": "1.0.0",
+    "@sigilo/core": "1.0.0",
+    "ajv": "^8.20.0",
+    "yaml": "^2.9.1"
+  }
+}

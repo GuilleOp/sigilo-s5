@@ -3,6 +3,15 @@
 import type { MiddlewareHandler } from 'hono';
 import { API_PREFIX } from '@sigilo/contracts';
 
+/** Funciones del navegador que ninguna página del sistema necesita. */
+export const PERMISSIONS_POLICY = [
+  'geolocation=()',
+  'microphone=()',
+  'camera=()',
+  'payment=()',
+  'usb=()',
+].join(', ');
+
 const COMMON_HEADERS: Readonly<Record<string, string>> = {
   'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
@@ -10,6 +19,9 @@ const COMMON_HEADERS: Readonly<Record<string, string>> = {
   // Seguridad: nada se guarda en cachés intermedias ni del navegador.
   'Cache-Control': 'no-store',
   'Cross-Origin-Opener-Policy': 'same-origin',
+  // Seguridad: ninguna página pide ubicación, micrófono ni cámara; el mapa es por entidad y municipio
+  // y no hay dictado remoto (PRV-06 del perfil de privacidad).
+  'Permissions-Policy': PERMISSIONS_POLICY,
 };
 
 /** CSP de la API: no sirve documentos; ningún recurso puede cargarse ni enmarcarse. */

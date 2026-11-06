@@ -1,5 +1,6 @@
 // Borrador de la denuncia en memoria: modo, identidad, hechos y pruebas procesadas.
 import type { ImageMetadataReport } from '@sigilo/huella';
+import { resetAnonymityLoader } from '../anonymity/report-anonymity.ts';
 import { createMemoryStore } from './memory-store.ts';
 
 /** Imagen limpia lista para subir. */
@@ -49,6 +50,32 @@ export interface FactsDraft {
   description: string;
 }
 
+/**
+ * Relación de quien denuncia con el ente, para estimar su grupo de anonimato. Nunca sale del
+ * navegador: solo decide qué aviso se muestra.
+ */
+export interface WorkplaceDraft {
+  /** `yes`: trabaja o trabajó ahí; `no`: no; `''`: no respondió. */
+  worksThere: 'yes' | 'no' | '';
+  /** Área en texto libre (opcional). */
+  area: string;
+}
+
+/** Tipo de identificador para la corroboración ciega, o `''` si la persona no quiere usarla. */
+export type CorroborationKindDraft = '' | 'ocid' | 'rfc' | 'servidor';
+
+/**
+ * Corroboración ciega opcional. El identificador nunca viaja: solo una etiqueta que el navegador
+ * calcula con el evaluador sin revelárselo.
+ */
+export interface CorroborationDraft {
+  kind: CorroborationKindDraft;
+  /** Contrato (ocid) o RFC del proveedor. */
+  value: string;
+  /** Nombre de la persona servidora pública (con `servidor`; el ente es el de los hechos). */
+  personName: string;
+}
+
 /** Borrador completo. */
 export interface ReportDraft {
   mode: 'anonymous' | 'sealed' | null;
@@ -57,6 +84,13 @@ export interface ReportDraft {
   facts: FactsDraft;
   evidence: EvidenceItem[];
   rejected: RejectedFile[];
+  workplace: WorkplaceDraft;
+  corroboration: CorroborationDraft;
+  /**
+   * Autoridad de la red elegida por la persona; `''` significa «la que propone el sistema».
+   * Solo existe con la red; con un solo nodo la denuncia llega al buzón general.
+   */
+  destinationAuthorityId: string;
 }
 
 /** Borrador vacío. */
@@ -77,6 +111,9 @@ export function emptyDraft(): ReportDraft {
     },
     evidence: [],
     rejected: [],
+    workplace: { worksThere: '', area: '' },
+    corroboration: { kind: '', value: '', personName: '' },
+    destinationAuthorityId: '',
   };
 }
 
@@ -86,10 +123,14 @@ export function revokeEvidenceUrls(item: EvidenceItem): void {
   item.clean.forEach((image) => URL.revokeObjectURL(image.url));
 }
 
-/** Borrador global; sobrevive a la navegación interna, no a una recarga. */
-export const reportDraftStore = createMemoryStore(emptyDraft, (previous) =>
-  previous.evidence.forEach(revokeEvidenceUrls),
-);
+/**
+ * Borrador global; sobrevive a la navegación interna, no a una recarga. Al reiniciarlo empieza otra
+ * denuncia, con su propio cargador del grupo de anonimato.
+ */
+export const reportDraftStore = createMemoryStore(emptyDraft, (previous) => {
+  previous.evidence.forEach(revokeEvidenceUrls);
+  resetAnonymityLoader();
+});
 
 /** Identificador local aleatorio (no sale del navegador). */
 export function localId(): string {

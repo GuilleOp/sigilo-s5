@@ -23,6 +23,7 @@ import {
   generateReceiptPhrase,
   IDENTITY_PADDED_SIZE,
   identityContextFor,
+  sealEscalation,
   sealIdentity,
   toBase64Url,
   utf8Encode,
@@ -106,7 +107,18 @@ export function identityFitsEnvelope(identity: IdentityInput): boolean {
  * que deben ser idénticos a los de la solicitud final.
  */
 export function normalizeSubmissionInput(input: SubmissionInput): SubmissionInput {
-  const facts = ComplaintFactsSchema.safeParse(input.facts);
+  // El contrato rechaza campos desconocidos: se toman solo los de los hechos antes de validar.
+  const source = input.facts;
+  const known = {
+    stateCode: source.stateCode,
+    ...(source.municipalityCode === undefined ? {} : { municipalityCode: source.municipalityCode }),
+    entityId: source.entityId,
+    offenseCode: source.offenseCode,
+    occurredPeriod: source.occurredPeriod,
+    accused: source.accused,
+    description: source.description,
+  };
+  const facts = ComplaintFactsSchema.safeParse(known);
   const evidence = EvidenceDescriptorSchema.array()
     .max(MAX_EVIDENCE_ITEMS)
     .safeParse(input.evidence);
@@ -154,6 +166,28 @@ export function sealReporterIdentity(
 }
 
 /**
+ * Sella la segunda llave (ADR 0007): hechos y pruebas, nunca la identidad, hacia la llave FIJADA de
+ * la supervisora, ligados por el AAD al recibo y a las llaves del buzón. Devuelve `undefined` si
+ * el despliegue no tiene supervisora. El nodo lo guarda sin poder leerlo y solo lo entrega si una
+ * regla pública de escalamiento se cumple.
+ */
+export function sealReporterEscalation(
+  input: SubmissionInput,
+  keys: ReceiptKeys,
+  pinned: PinnedKeys,
+): Promise<HpkeEnvelope> | undefined {
+  const supervisor = pinned.set.supervisor;
+  const publicKey = pinned.supervisorBoxPublicKey;
+  if (supervisor === undefined || publicKey === undefined) return undefined;
+  const content = normalizeSubmissionInput(input);
+  return sealEscalation(
+    { version: 1, ...content },
+    { keyId: supervisor.keyId, publicKey },
+    { authVerifier: keys.authVerifier, reporterKeys: reporterKeysOf(keys) },
+  );
+}
+
+/**
  * Arma `SubmitComplaintRequest` y lo valida con el esquema del contrato.
  * Seguridad: se eliminan campos sobrantes porque el comprobante firma el digesto de la solicitud
  * validada; en modo anónimo nunca viaja identidad ni solicitud de protección.
@@ -162,6 +196,8 @@ export function buildSubmitRequest(
   input: SubmissionInput,
   keys: ReceiptKeys,
   sealedIdentity: HpkeEnvelope | undefined,
+  escalationEnvelope?: HpkeEnvelope,
+  corroboration?: { epoch: number; tag: string; similarity: string | null },
 ): SubmitComplaintRequest {
   const content = normalizeSubmissionInput(input);
   const isSealed = content.mode === 'sealed';
@@ -174,7 +210,9 @@ export function buildSubmitRequest(
     facts: content.facts,
     evidence: content.evidence,
     ...(isSealed && sealedIdentity !== undefined ? { sealedIdentity } : {}),
+    ...(escalationEnvelope === undefined ? {} : { escalationEnvelope }),
     protectionRequested: content.protectionRequested,
+    ...(corroboration === undefined ? {} : { corroboration }),
     reporterKeys: reporterKeysOf(keys),
     authVerifier: keys.authVerifier,
   };

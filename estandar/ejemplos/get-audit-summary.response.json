@@ -1,0 +1,4 @@
+[
+  { "authorityId": "authority.oic-iffe", "ruleId": "AUD-01", "count": 3 },
+  { "authorityId": "authority.oic-iffe", "ruleId": "AUD-02", "count": 1 }
+]

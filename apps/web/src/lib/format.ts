@@ -1,5 +1,6 @@
 // Formatos para mostrar fechas, periodos y estatus en español claro. Las horas se muestran en la
 // hora del centro de México, sin depender de la zona horaria del equipo.
+import { COMPLAINT_STATUSES } from '@sigilo/contracts';
 import type { ComplaintStatus } from '@sigilo/contracts';
 import { SPANISH_MONTHS } from '@sigilo/huella';
 
@@ -49,27 +50,15 @@ export function formatMonthPeriod(value: string): string {
   return `${month} de ${match[1]}`;
 }
 
-/** Nombre de cada estatus, en lenguaje claro. */
-export const STATUS_LABELS: Readonly<Record<ComplaintStatus, string>> = {
-  received: 'Recibida',
-  routing: 'Buscando a la autoridad que debe atenderla',
-  routed: 'Turnada a la autoridad competente',
-  investigating: 'En investigación',
-  classified: 'Revisada: la autoridad decidió si la falta es grave',
-  archived: 'Archivada',
-  resolved: 'Concluida',
-};
+/** Nombre de cada estatus, en lenguaje claro (del catálogo `COMPLAINT_STATUSES`). */
+export const STATUS_LABELS: Readonly<Record<ComplaintStatus, string>> = Object.fromEntries(
+  COMPLAINT_STATUSES.map((status) => [status.key, status.name]),
+) as Record<ComplaintStatus, string>;
 
-/** Explicación breve de cada estatus. */
-export const STATUS_HINTS: Readonly<Record<ComplaintStatus, string>> = {
-  received: 'Tu denuncia llegó y está en espera de revisión.',
-  routing: 'Estamos buscando qué autoridad debe atender tu denuncia.',
-  routed: 'La autoridad competente ya la tiene.',
-  investigating: 'La autoridad está investigando los hechos.',
-  classified: 'La autoridad ya decidió si la falta es grave o no.',
-  archived: 'Se cerró por ahora; puede reabrirse si hay nuevos elementos.',
-  resolved: 'La autoridad terminó el trámite.',
-};
+/** Explicación breve de cada estatus (del catálogo `COMPLAINT_STATUSES`). */
+export const STATUS_HINTS: Readonly<Record<ComplaintStatus, string>> = Object.fromEntries(
+  COMPLAINT_STATUSES.map((status) => [status.key, status.explanation]),
+) as Record<ComplaintStatus, string>;
 
 /** Tamaño legible: «1.4 MB», «820 KB». */
 export function formatBytes(bytes: number): string {

@@ -1,6 +1,6 @@
 # Historial de seguridad
 
-Resumen de las cinco rondas de revisión y corrección de SIGILO antes de la versión v1, pensado para
+Resumen de las seis rondas de revisión y corrección de SIGILO antes de la versión v1, pensado para
 la presentación. El detalle de cada hallazgo y su estado vigente está en el
 [modelo de amenazas](modelo-de-amenazas.md) (sección «Historial de seguridad») y en el
 [registro de cambios](../CHANGELOG.md). Los identificadores entre paréntesis (A09, C05…) remiten a
@@ -33,6 +33,34 @@ después de corregir.
 | R5-3 | «Coincide con los anclajes» sin haberlos comparado                       | `anchor-not-comparable`; descarga desde el ancla más antigua y frase honesta en el seguimiento y el buzón de la autoridad | `r5-anchor-vacuous`: el ancla contradictoria pasa de `valid` a `anchor-not-comparable`; `ledger.test.ts`, `crypto-flow.test.ts`               |
 | R5-4 | Un salto del reloj hacia adelante dejaba la bitácora detenida            | Fecha mínima = día siguiente al último encadenado; aviso al operador si hay pendientes con fecha futura                   | `r5-clockforward`: de `503` y cabeza en seq 0 a fechas del día real y cabeza que avanza; `r4-clockback` sin cambios; `ledger-service.test.ts` |
 | R5-5 | Separación de bits sin tope, `sentOn` del reloj, retos gastados en balde | `SIGILO_POW_MAX_BITS` ≤ base + 2 al arrancar; `sentOn` con la fecha del evento; el uso se gasta tras validar el cuerpo    | `config.test.ts`, `tracking.test.ts`, `proof-of-work.test.ts`; `r5-inflight` muestra por qué la separación debe ser de a lo más 2 bits        |
+
+## Sexta ronda (Etapa 5, red y rendición de cuentas)
+
+Revisión de la red federada, la corroboración ciega y las reglas de rendición de cuentas de la
+autoridad. Cada hallazgo tiene su fila en la sección G del
+[modelo de amenazas](modelo-de-amenazas.md) y una prueba de concepto; la coordinación actualiza el
+estado al integrar cada corrección.
+
+| #   | Hallazgo                                                                                                      | Severidad  | Fila | Corrección propuesta                                                                                            | Estado    |
+| --- | ------------------------------------------------------------------------------------------------------------- | ---------- | ---- | --------------------------------------------------------------------------------------------------------------- | --------- |
+| H1  | El turnado entre nodos acepta un comprobante ajeno: se puede enterrar la denuncia o avisar otro folio         | Alta       | G01  | Comprobante del nodo destino ligado al folio y a la denuncia                                                    | M         |
+| H2  | Un cierre o una calificación que declina una falta grave no llega a la supervisora                            | Alta       | G02  | Regla pública de escalamiento con segunda llave de la supervisora                                               | M         |
+| H3  | La corroboración funciona como oráculo de «¿hay denuncias contra X?» y una denuncia de sondeo suma fuentes    | Media      | G03  | Solo cuentan y se revelan las coincidencias confirmadas o envejecidas; confirmación y baja firmadas por el nodo | M parcial |
+| H4  | La bitácora nacional y los testigos aceptan una historia reescrita del nodo con secuencia mayor               | Media      | G04  | El enrutador y los testigos verifican el tramo de `ledgerEvents` entre cabezas; rechazo registrado              | M         |
+| H5  | La autoridad con conflicto de interés se autojustifica y apaga la regla de escalamiento                       | Media      | G05  | La justificación la valida otra persona o la supervisora                                                        | M         |
+| H6  | La notificación se compara por día y no por instante: un aviso anterior al acto cuenta como notificación      | Media      | G06  | Comparar por orden en la bitácora                                                                               | M parcial |
+| H7  | La identidad para el recurso de inconformidad se entrega a una sola cuenta, sin vencimiento ni evento público | Media      | G07  | Dos aprobaciones, vencimiento y evento público                                                                  | M         |
+| H8  | Se puede bloquear la cuenta de una persona custodia con intentos fallidos                                     | Media-baja | G08  | Freno sin bloqueo o desbloqueo por la supervisora, con aviso                                                    | M         |
+| H9  | El conteo por hora incluye rutas de red, de inconformidad y de corroboración                                  | Baja       | G09  | Excluirlas del conteo                                                                                           | M         |
+| H10 | Se puede volver a servir una versión anterior del directorio                                                  | Baja       | G10  | Serial mínimo y frescura en la verificación del directorio                                                      | M         |
+| H11 | El buzón de red de un nodo acepta sobres que no pasaron por el enrutador                                      | Baja       | G11  | Aceptar solo peticiones del enrutador                                                                           | M         |
+
+Residuales: H3 (M parcial) conserva el oráculo inherente a la corroboración ciega para quien
+adivina un identificador y tiene acceso al panel de la autoridad competente (ver G03); H6 (M parcial)
+compara la notificación por número de secuencia del buzón, pero aún no la marca como aviso dentro
+del AAD firmado. Las pruebas de regresión están en `apps/server/src/security-regressions.test.ts`,
+`apps/corroboracion/src/oracle.test.ts`, `packages/red/src/node-history.test.ts` y
+`packages/red/src/directory.test.ts`.
 
 ## Lo que queda (residuales inherentes)
 

@@ -1,0 +1,6 @@
+{
+  "fullName": "Persona Denunciante Uno",
+  "contact": "nadie@example.org",
+  "witnesses": ["Persona Testigo Tres, ventanilla de licencias"],
+  "originalEvidenceSha256": ["772eb534f39e6363695c70f180aff6846e8b6a603c18d31a702104ce9a38429d"]
+}

@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { staticData } from './static-data.ts';
 
 /** Servidor de la API en desarrollo; el proxy lo vuelve del mismo origen. */
 const API_TARGET = 'http://127.0.0.1:8787';
@@ -29,7 +30,7 @@ function developmentCsp(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), developmentCsp()],
+  plugins: [react(), developmentCsp(), staticData(process.env.VITE_ANONYMITY_DATA)],
   server: { host: '127.0.0.1', port: 5173, strictPort: true, proxy: API_PROXY },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true, proxy: API_PROXY },
   build: {

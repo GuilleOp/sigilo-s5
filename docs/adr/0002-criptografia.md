@@ -2,6 +2,7 @@
 
 - Estado: aceptada
 - Fecha: 2026-10-06
+- Complementado por: 0005 (directorio firmado de llaves), 0006 (OPRF)
 
 ## Contexto
 

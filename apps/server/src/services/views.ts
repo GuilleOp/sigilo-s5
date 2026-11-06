@@ -1,13 +1,25 @@
 // Vistas de lectura: seguimiento de la persona denunciante y detalle para la autoridad.
 import type { ComplaintDetail, ComplaintSummary, TrackingView } from '@sigilo/contracts';
 import { primaryOffenseCode } from '@sigilo/contracts';
-import { sealedIdentityDigest } from '@sigilo/core';
+import {
+  escalationEnvelopeDigest,
+  randomBytes,
+  sealedIdentityDigest,
+  toDayDate,
+  toHex,
+} from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
+import type { AuthorityAccount } from '../security/authority-registry.ts';
 import { DEFAULT_EVIDENCE_RETENTION_DAYS, evidenceDeletionDay } from './evidence-service.ts';
+import { listIdentityRequests } from './identity-service.ts';
+import { assignedAuthorityOf } from './procedure-service.ts';
+import { buildProcedureView } from './procedure-view.ts';
+import { auditSignalViews } from './audit-service.ts';
+import { conflictReview, contextSheetView } from './pdn-context.ts';
 
 /** Resumen de la denuncia con la clave principal de la conducta; nunca incluye el sobre. */
-export function toSummary(complaint: ComplaintRecord): ComplaintSummary {
+export function toSummary(ctx: AppContext, complaint: ComplaintRecord): ComplaintSummary {
   return {
     folio: complaint.folio,
     mode: complaint.mode,
@@ -16,6 +28,8 @@ export function toSummary(complaint: ComplaintRecord): ComplaintSummary {
     stateCode: complaint.facts.stateCode,
     offenseCode: primaryOffenseCode(complaint.facts.offenseCode) ?? complaint.facts.offenseCode,
     protectionRequested: complaint.protectionRequested,
+    managementState: complaint.managementState,
+    assignedAuthorityId: assignedAuthorityOf(ctx, complaint),
   };
 }
 
@@ -41,10 +55,14 @@ export function buildTrackingView(ctx: AppContext, complaint: ComplaintRecord): 
     status: complaint.status,
     timeline: ctx.statusHistory.listByFolio(complaint.folio),
     identityAccess: ctx.identityOpenings.listByFolio(complaint.folio),
+    identityReleases: ctx.qualifications
+      .listReleases(complaint.folio)
+      .map((release) => ({ on: release.releasedOn, openingId: release.openingId })),
     evidenceDiscards: ctx.evidence.listDiscardsByFolio(complaint.folio),
     messages: ctx.messages.listByFolio(complaint.folio),
     receipt: complaint.receipt,
     ...(receivedEvent === null ? {} : { receivedEvent }),
+    procedure: buildProcedureView(ctx, complaint),
   };
 }
 
@@ -63,11 +81,52 @@ function evidenceDeletionOn(ctx: AppContext, complaint: ComplaintRecord): string
  * archivada, el día en que se borrarán.
  * Seguridad: nunca incluye el sobre de identidad.
  */
-export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord): ComplaintDetail {
+/**
+ * Indica si la cuenta puede ver la corroboración de la denuncia: solo la autoridad competente (no
+ * el buzón general) y solo después de aceptarla (H3).
+ */
+export function canSeeCorroboration(
+  ctx: AppContext,
+  account: AuthorityAccount | null,
+  complaint: ComplaintRecord,
+): boolean {
+  if (account === null) return false;
+  const assigned = complaint.assignedAuthorityId ?? ctx.authorities.inboxAuthorityId;
+  return (
+    account.authorityId === assigned &&
+    assigned !== ctx.authorities.inboxAuthorityId &&
+    ctx.procedure.listSteps(complaint.folio).some((step) => step.action === 'accepted')
+  );
+}
+
+export function buildComplaintDetail(
+  ctx: AppContext,
+  complaint: ComplaintRecord,
+  account: AuthorityAccount | null = null,
+): ComplaintDetail {
+  const mayCorroborate = canSeeCorroboration(ctx, account, complaint);
+  const corroboration = mayCorroborate ? corroborationView(ctx, complaint.folio) : null;
+  // Cada consulta del detalle con corroboración queda en la bitácora con el seudónimo (H3).
+  if (corroboration !== null && account !== null) {
+    ctx.ledger.record(
+      {
+        type: 'corroboration.viewed',
+        folio: complaint.folio,
+        at: toDayDate(ctx.deps.now()),
+        actorRole: 'authority',
+        payload: {
+          folio: complaint.folio,
+          viewId: toHex(randomBytes(16)),
+          actor: account.accountId,
+        },
+      },
+      { isExemptFromDailyCap: true },
+    );
+  }
   const receivedEvent = publishedReceivedEvent(ctx, complaint);
   const deletionOn = evidenceDeletionOn(ctx, complaint);
   return {
-    summary: toSummary(complaint),
+    summary: toSummary(ctx, complaint),
     version: 1,
     facts: complaint.facts,
     evidence: ctx.evidence.listByFolio(complaint.folio),
@@ -76,10 +135,34 @@ export function buildComplaintDetail(ctx: AppContext, complaint: ComplaintRecord
     ...(complaint.sealedIdentity === null
       ? {}
       : { sealedIdentityDigest: sealedIdentityDigest(complaint.sealedIdentity) }),
+    ...(complaint.escalationEnvelope === null
+      ? {}
+      : { escalationEnvelopeDigest: escalationEnvelopeDigest(complaint.escalationEnvelope) }),
     ...(receivedEvent === null ? {} : { receivedEventSeq: receivedEvent.seq }),
     ...(deletionOn === null ? {} : { evidenceDeletionOn: deletionOn }),
     storedEvidenceCount: ctx.evidence.listStoredIdsForFolio(complaint.folio).length,
     messages: ctx.messages.listByFolio(complaint.folio),
     identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
+    procedure: buildProcedureView(ctx, complaint),
+    identityRequests: listIdentityRequests(ctx, complaint),
+    ...optional('contextSheet', contextSheetView(ctx, complaint, mayCorroborate)),
+    ...optional('conflictReview', conflictReview(ctx, complaint)),
+    ...optional('corroboration', corroboration),
+    auditSignals: auditSignalViews(ctx, complaint.folio),
+  };
+}
+
+function optional<K extends string, V>(key: K, value: V | null): Partial<Record<K, V>> {
+  return value === null ? {} : ({ [key]: value } as Partial<Record<K, V>>);
+}
+
+function corroborationView(ctx: AppContext, folio: string) {
+  const status = ctx.integration.lastCorroborationStatus(folio);
+  if (status === null) return null;
+  return {
+    sources: status.independentSources >= 2 ? ('two_or_more' as const) : ('one' as const),
+    isPossibleCampaign: status.isPossibleCampaign,
+    updatedOn: status.updatedOn,
+    ...(status.newIndicationOn === null ? {} : { newIndicationOn: status.newIndicationOn }),
   };
 }

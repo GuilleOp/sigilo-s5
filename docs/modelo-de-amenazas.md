@@ -4,6 +4,11 @@ Este documento enumera quién podría identificar a la persona denunciante, cóm
 SIGILO no promete anonimato absoluto: cada ataque se marca como mitigado, parcialmente mitigado,
 planeado o residual. El estado describe lo que hace el código del repositorio, no lo que se planea.
 
+Los requisitos que cualquier nodo, enrutador o ventanilla del Estándar S5 debe cumplir frente a
+estas amenazas están en el [perfil de seguridad](../estandar/perfil-seguridad.md) (SEC-xx) y el
+[perfil de privacidad](../estandar/perfil-privacidad.md) (PRV-xx, API-xx); las verificaciones
+automatizables, en [verificaciones.json](../estandar/verificaciones.json).
+
 ## Alcance
 
 Versión v1:
@@ -27,16 +32,18 @@ trabajo futuro.
 
 ## Actores
 
-| Id  | Actor                                                            | Capacidad                                                  |
-| --- | ---------------------------------------------------------------- | ---------------------------------------------------------- |
-| A1  | Persona denunciada y sus aliados en el ente                      | Conocen el contexto interno; leen la denuncia si se filtra |
-| A2  | Personal de la autoridad que recibe la denuncia                  | Accede al panel y a los hechos                             |
-| A3  | Operación del sistema (administración, base de datos, respaldos) | Acceso total al servidor y al almacenamiento               |
-| A4  | Atacante externo que compromete el servidor                      | Puede alterar datos y el código servido                    |
-| A5  | Observador de red (empleador, proveedor de internet)             | Ve tráfico, DNS y horarios                                 |
-| A6  | Quien accede al dispositivo de la persona denunciante            | Historial, caché, archivos, notas                          |
-| A7  | Cadena de suministro                                             | Dependencias, integración continua                         |
-| A8  | Adversario futuro                                                | Descifra hoy lo almacenado, con capacidades de mañana      |
+| Id  | Actor                                                                                       | Capacidad                                                                                                                            |
+| --- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| A1  | Persona denunciada y sus aliados en el ente                                                 | Conocen el contexto interno; leen la denuncia si se filtra                                                                           |
+| A2  | Personal de la autoridad que recibe la denuncia                                             | Accede al panel y a los hechos                                                                                                       |
+| A3  | Operación del sistema (administración, base de datos, respaldos)                            | Acceso total al servidor y al almacenamiento                                                                                         |
+| A4  | Atacante externo que compromete el servidor                                                 | Puede alterar datos y el código servido                                                                                              |
+| A5  | Observador de red (empleador, proveedor de internet)                                        | Ve tráfico, DNS y horarios                                                                                                           |
+| A6  | Quien accede al dispositivo de la persona denunciante                                       | Historial, caché, archivos, notas                                                                                                    |
+| A7  | Cadena de suministro                                                                        | Dependencias, integración continua                                                                                                   |
+| A8  | Adversario futuro                                                                           | Descifra hoy lo almacenado, con capacidades de mañana                                                                                |
+| A9  | Operación de una pieza de la red federada (otro nodo, enrutador, índice, evaluador)         | Firma con su llave del directorio; reescribe su propia bitácora; sirve copias viejas del directorio; registra etiquetas en el índice |
+| A10 | Persona de la autoridad que quiere enterrar la denuncia o protegerse (conflicto de interés) | Usa su cuenta y las funciones del panel: turna, cierra, califica, justifica, aprueba o bloquea cuentas                               |
 
 ## Categorías
 
@@ -115,10 +122,10 @@ entrada; la salida rápida lo reemplaza al navegar a la página neutra.
 | #   | Ataque                                                       | Categoría   | Mitigación                                                                                                                                                                                                                                                                                                                    | Estado    |
 | --- | ------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | C01 | Lectura de la base de datos o respaldos                      | STRIDE I    | Identidad y mensajes del buzón cifrados en el cliente; hechos y pruebas limpias en claro (ver F01)                                                                                                                                                                                                                            | M parcial |
-| C02 | Registro de direcciones IP o de la actividad de las personas | LINDDUN L   | Registro agregado por hora por omisión, sin las rutas de la persona denunciante ni `GET keys` y la bitácora; nunca IP, agente de usuario, cuerpos ni folios                                                                                                                                                                   | M         |
+| C02 | Registro de direcciones IP o de la actividad de las personas | LINDDUN L   | Registro agregado por hora por omisión, sin las rutas de la persona denunciante ni `GET keys` y la bitácora; nunca IP, agente de usuario, cuerpos ni folios. Las rutas de red, de inconformidad y de la corroboración todavía cuentan por hora (G09)                                                                          | M parcial |
 | C03 | Código JavaScript malicioso servido a víctimas específicas   | STRIDE T    | Ninguna en v1; hashes publicados por versión y verificador                                                                                                                                                                                                                                                                    | P; R      |
 | C04 | Sustitución de llaves públicas de la autoridad               | STRIDE S    | Llaves fijadas en el bundle y comparadas con `GET /keys` antes de subir nada                                                                                                                                                                                                                                                  | M         |
-| C05 | Reescritura de la bitácora                                   | STRIDE T, R | Cadena de hashes con fechas no decrecientes, triggers de solo agregar, cabeza firmada, anclaje con `npm run ledger:anchor` y verificación de pertenencia (`verifyEventInChain`)                                                                                                                                               | M parcial |
+| C05 | Reescritura de la bitácora                                   | STRIDE T, R | Cadena de hashes con fechas no decrecientes, triggers de solo agregar, cabeza firmada, anclaje con `npm run ledger:anchor` y verificación de pertenencia (`verifyEventInChain`); en la red, bitácora nacional con testigos m de n y verificación del tramo del nodo entre dos cabezas (G04)                                   | M parcial |
 | C06 | Pérdida o borrado de denuncias                               | STRIDE D, R | Comprobante firmado y evento de recepción verificable en poder de la persona denunciante                                                                                                                                                                                                                                      | M         |
 | C07 | Mover un sobre de identidad a otra denuncia (trasplante)     | STRIDE T    | AAD vinculado a `authVerifier`, `reporterKeys` y `contentDigest`; índice único de `authVerifier`                                                                                                                                                                                                                              | M         |
 | C08 | Enumeración de folios o recibos                              | LINDDUN D   | 60 bits de folio, 88 de recibo, respuesta idéntica, consulta ligera del verificador y límite de fallos por folio                                                                                                                                                                                                              | M         |
@@ -187,14 +194,14 @@ Notas:
 
 ## D. Autoridad y custodia de llaves
 
-| #   | Ataque                                             | Categoría  | Mitigación                                                                                                 | Estado    |
-| --- | -------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------- | --------- |
-| D01 | La autoridad abre la identidad sin motivo          | LINDDUN N2 | El sobre solo se entrega por una ruta que registra el fundamento; la apertura es visible en el seguimiento | M parcial |
-| D02 | Filtración posterior a la apertura                 | LINDDUN D2 | Registro de quién y cuándo (art. 64 LGRA)                                                                  | R         |
-| D03 | Robo de la llave privada de la autoridad           | STRIDE I   | La llave no vive en el servidor; se importa en memoria y se borra al cerrar sesión; rotación con `keyId`   | R         |
-| D04 | Una sola persona decide abrir                      | LINDDUN N2 | Revelación por umbral 2 de 3                                                                               | P         |
-| D05 | Identidad declarada falsa (suplantar a un tercero) | STRIDE S   | El panel muestra «Identidad declarada por la persona, no verificada»                                       | R         |
-| D06 | Cambio de administración y pérdida de llaves       | STRIDE D   | Procedimiento de rotación documentado                                                                      | P         |
+| #   | Ataque                                             | Categoría  | Mitigación                                                                                                                                                                                        | Estado    |
+| --- | -------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| D01 | La autoridad abre la identidad sin motivo          | LINDDUN N2 | El sobre solo se entrega por una ruta que registra el fundamento; la apertura es visible en el seguimiento. La entrega para el recurso de inconformidad va todavía a una sola cuenta (G07)        | M parcial |
+| D02 | Filtración posterior a la apertura                 | LINDDUN D2 | Registro de quién y cuándo (art. 64 LGRA)                                                                                                                                                         | R         |
+| D03 | Robo de la llave privada de la autoridad           | STRIDE I   | La llave no vive en el servidor; se importa en memoria y se borra al cerrar sesión; rotación con `keyId`                                                                                          | R         |
+| D04 | Una sola persona decide abrir                      | LINDDUN N2 | Aprobación de dos cuentas distintas de la autoridad competente (política del nodo, SEC-05); el umbral criptográfico 2 de 3 sigue planeado. Bloquear una cuenta custodia retrasa la apertura (G08) | M parcial |
+| D05 | Identidad declarada falsa (suplantar a un tercero) | STRIDE S   | El panel muestra «Identidad declarada por la persona, no verificada»                                                                                                                              | R         |
+| D06 | Cambio de administración y pérdida de llaves       | STRIDE D   | Procedimiento de rotación documentado                                                                                                                                                             | P         |
 
 Notas:
 
@@ -227,6 +234,43 @@ Notas:
 | F02 | Obligación de modificar el código servido | Hashes publicados y verificador                                   | P      |
 | F03 | Reducción de sospechosos e interrogatorio | Fuera del alcance técnico; medidas de protección de la LGRA       | R      |
 
+## G. Red federada y rendición de cuentas de la autoridad
+
+Hallazgos de la sexta ronda de revisión (Etapa 5). La coordinación actualiza el estado de cada uno
+al integrar su corrección; el resumen está en [historial-de-seguridad.md](historial-de-seguridad.md).
+
+| #   | Ataque                                                                                       | Actor   | Categoría    | Mitigación propuesta                                                                                                                                                                  | Severidad  | Estado    |
+| --- | -------------------------------------------------------------------------------------------- | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------- |
+| G01 | Turnar una denuncia a otro nodo con un comprobante ajeno para enterrarla o avisar otro folio | A10, A9 | STRIDE T, R  | El turnado exige el comprobante del nodo destino ligado al folio y a la denuncia; el aviso a la persona usa solo ese comprobante                                                      | Alta       | M         |
+| G02 | Cerrar o calificar de forma que se declina una falta grave sin que llegue a la supervisora   | A10     | LINDDUN N2   | Regla pública de escalamiento para los cierres que declinan una falta grave (improcedente, no grave), con segunda llave de la supervisora                                             | Alta       | M         |
+| G03 | Usar la corroboración como oráculo de «¿hay denuncias contra X?» e inflar las fuentes        | A2, A9  | LINDDUN D, L | El índice no cuenta ni revela nada para una denuncia sin confirmar; confirmación al aceptar y baja del spam firmadas por el nodo; custodia liberada solo con fuentes confirmadas (H3) | Media      | M parcial |
+| G04 | Publicar una historia reescrita del nodo con una secuencia mayor                             | A9      | STRIDE T, R  | El enrutador y cada testigo descargan `ledgerEvents` entre la cabeza anterior y la nueva y verifican la cadena; si no pueden, rechazan y lo registran (H4)                            | Media      | M         |
+| G05 | La autoridad con conflicto de interés se justifica a sí misma y desactiva la regla           | A10     | LINDDUN N2   | La justificación del conflicto la valida otra persona o la supervisora; la regla no se apaga con la palabra de quien tiene el conflicto                                               | Media      | M         |
+| G06 | Un aviso enviado el mismo día pero antes del archivo cuenta como notificación del archivo    | A10     | STRIDE R     | Comparar por instante (orden en la bitácora), no por día; el plazo corre desde el aviso posterior al acto                                                                             | Media      | M parcial |
+| G07 | La identidad para el recurso de inconformidad se entrega a una sola cuenta, sin vencimiento  | A10     | LINDDUN N2   | Entrega con aprobación de dos cuentas, vencimiento y evento público de la entrega                                                                                                     | Media      | M         |
+| G08 | Bloquear la cuenta de una persona custodia con intentos fallidos para impedir una aprobación | A10     | STRIDE D     | Límite que no bloquea a la persona legítima (freno sin rechazo o desbloqueo por la supervisora) y aviso del intento                                                                   | Media-baja | M         |
+| G09 | El conteo por hora incluye rutas de red, de inconformidad y de corroboración                 | A3      | LINDDUN L    | Excluir esas rutas del conteo por hora, como las de la persona denunciante                                                                                                            | Baja       | M         |
+| G10 | Volver a servir una versión anterior del directorio con llaves revocadas                     | A9      | STRIDE S     | Serial mínimo fijado en la raíz de confianza de la web y frescura (`issuedOn`, `validUntil`) al verificar (H10)                                                                       | Baja       | M         |
+| G11 | Entregar sobres al buzón de red de un nodo sin pasar por el enrutador                        | A9, A5  | STRIDE S, D  | El buzón de red acepta solo peticiones del enrutador (autenticación del enrutador o red interna), con la misma respuesta uniforme                                                     | Baja       | M         |
+
+Notas:
+
+- **G03.** Conocer una etiqueta basta para preguntar por ella: cualquiera puede enviar una denuncia
+  de sondeo con la etiqueta de un identificador, y el nodo la registra. Con la corrección, el
+  estado de una denuncia sin confirmar es idéntico haya o no otras denuncias, no cuenta para las
+  demás y el nodo da de baja el spam. Residual (riesgo 17): una persona del nodo que acepta un
+  sondeo, lo deja 30 días sin baja o lo marca como custodia aprende si hay fuentes confirmadas y
+  suma una fuente; queda en la bitácora del nodo.
+- **G04.** El enrutador ya rechazaba una cabeza que retrocede o que repite la secuencia con otro
+  hash, pero aceptaba cualquier secuencia mayor. Con la corrección, una cabeza nueva solo se acepta
+  si el nodo sirve el tramo que la une con la anterior. Residual (riesgo 18): la primera cabeza que
+  ve un testigo nuevo no tiene con qué compararse, y un nodo que no sirve su bitácora deja de
+  avanzar en la bitácora nacional.
+- **G10.** Una versión vieja del directorio sigue bien firmada y cofirmada. La raíz de confianza
+  admite `minDirectorySerial` y `maxDirectoryAgeDays`, y el directorio, `validUntil`. Residual
+  (riesgo 19): una web construida antes de una revocación acepta copias viejas hasta su
+  `validUntil` o hasta que se reconstruya con el serial nuevo.
+
 ## Riesgos residuales principales
 
 1. El contenido de los hechos puede identificar a la persona; el revisor ayuda pero no garantiza.
@@ -252,6 +296,13 @@ Notas:
 15. Sin anclas, el servidor puede mostrar bitácoras distintas a distintas personas.
 16. Las marcas legítimas sobre vocales (`LEGITIMATE_MARKS`) se conservan a propósito por las lenguas
     indígenas, y pueden servir de canal de marca.
+17. Una persona del nodo que acepta una denuncia de sondeo, la deja 30 días sin dar de baja o la
+    marca como custodia aprende si hay otras fuentes confirmadas contra el identificador y suma una
+    fuente (G03); lo acotan la bitácora del nodo y el auditor.
+18. La historia de un nodo solo se verifica si el nodo sirve su bitácora y desde la segunda cabeza
+    que ve cada verificador: la primera cabeza no tiene con qué compararse (G04).
+19. Hasta reconstruir la web con el serial nuevo o hasta el `validUntil` del directorio, una copia
+    anterior con llaves revocadas sigue verificando (G10).
 
 Residuales inherentes (no tienen corrección dentro del diseño; se aceptan y se documentan):
 

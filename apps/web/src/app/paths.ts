@@ -8,4 +8,5 @@ export const PATHS = {
   authority: '/autoridad',
   openData: '/datos-abiertos',
   verify: '/verificar',
+  observatory: '/observatorio',
 } as const;

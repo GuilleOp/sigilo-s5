@@ -19,25 +19,52 @@ Protege la identidad de la persona denunciante en las tres etapas del proceso:
 
 Lo que no resuelve y los riesgos residuales están en el [modelo de amenazas](docs/modelo-de-amenazas.md).
 
-## Inicio rápido
+## Demostración en un comando
 
-Requisitos: Node.js 22.18 o superior (ver `.nvmrc`; desde 22.18 Node ejecuta TypeScript sin
-compilar).
+Requisitos: Docker en marcha (Docker Desktop, o Docker Engine con Compose 2.17 o posterior) y
+Node.js 22.18 o posterior. Con un usuario normal, no root:
 
 ```sh
 npm ci
-npm run keys:generate   # llaves de demostración, llaves fijadas de la web y apps/server/.env
+npm run demo:todo     # genera llaves y cuentas sintéticas, construye, levanta, espera y siembra
+npm run demo:apagar   # baja la red y borra .red-demo/
+```
+
+Levanta la red federada completa (enrutador ciego, nodos Querétaro y Federal con su web, evaluador,
+índice y testigos) y siembra el escenario de [demo-escenario.md](docs/demo-escenario.md) hasta el
+día 35. Con caché tarda alrededor de un minuto; la primera vez descarga la imagen de Node y los
+paquetes de npm. Después abre <http://127.0.0.1:8782/> (nodo Federal) o <http://127.0.0.1:8781/>
+(nodo Querétaro); los folios y recibos están en `.red-demo/semilla.json` y las cuentas del panel en
+`.red-demo/nodos/<nodo>/credenciales.json`. Detalle, tiempos y problemas comunes (incluido Linux con
+otro UID) en el [guion de la demostración](docs/demo.md#red-federada-con-el-escenario-completo-docker-un-comando).
+
+## Inicio rápido
+
+Requisitos: Node.js 22.18 o superior (ver `.nvmrc`; desde 22.18 Node ejecuta TypeScript sin
+compilar) y Python 3.10 o superior (`npm run check` ejecuta con `python3` las pruebas del proceso de
+datos de la PDN).
+
+```sh
+npm ci
+npm run keys:generate      # llaves de demostración y llaves fijadas de la web
+npm run accounts:generate  # cuentas individuales sintéticas de la autoridad
 npm run dev:server      # API en http://127.0.0.1:8787
 npm run dev:web         # en otra terminal: http://127.0.0.1:5173
 ```
+
+`keys:generate` escribe las llaves privadas en `apps/server/data/` (no versionada) y las públicas en
+`apps/web/src/config/pinned-keys.json`, que sí está versionado, así que aparecerá como modificado.
+No confirmes ese cambio: son las llaves sintéticas de tu equipo.
 
 Abre `http://127.0.0.1:5173`. La web y la API comparten origen a través del proxy de Vite, así que
 CORS queda desactivado.
 
 Panel de la autoridad (enlace «Panel de autoridad» del pie, o `http://127.0.0.1:5173/autoridad`):
 
-- Token: el valor de `SIGILO_AUTHORITY_TOKEN` en `apps/server/.env`, que `keys:generate` crea con un
-  valor aleatorio si no existe.
+- Cuenta: un usuario y su contraseña de `apps/server/data/authority-demo-credentials.json`, que
+  `accounts:generate` crea (una cuenta por persona, con su autoridad y su función: recepción y
+  turnado, investigación o supervisión). Las denuncias nuevas llegan al buzón general
+  (`recepcion.buzon`), que las turna. Abrir una identidad exige dos personas de la autoridad.
 - Llave: importa el archivo `apps/server/data/authority-demo-key.json`.
 
 Otros comandos:
@@ -47,6 +74,7 @@ Otros comandos:
 | `npm run demo:reset -- --yes`                                   | Borra la base y las pruebas de la demostración y conserva las llaves. Se niega a correr con el servidor en marcha; sin `--yes` exige el marcador `.sigilo-demo` en `apps/server/data`. |
 | `SIGILO_ANCHOR_URL=http://127.0.0.1:8787 npm run ledger:anchor` | Forma preferida: escribe `anchors/AAAA-MM-DD.json` con la cabeza pública firmada, leída de la API. Sin la variable lee la base local en solo lectura (y avisa si no existe).           |
 | `npm run keys:generate -- --force`                              | Reemplaza las llaves; después reconstruye la web para fijar las nuevas.                                                                                                                |
+| `npm run validate -- <url> [--modo pasivo\|conformidad]`        | Valida un sitio contra el Estándar S5 y escribe el reporte JSON y HTML en `estandar/reportes` (ver [tools/validador](tools/validador/README.md)).                                      |
 
 Un solo origen sin Vite:
 
@@ -70,8 +98,11 @@ ejecutar `npm run demo:reset -- --yes` (con el servidor detenido).
 
 ## Pruebas
 
+Requisitos: los del inicio rápido, incluido Python 3.10 o superior para `npm run data:test`, que
+`npm run check` ejecuta al final.
+
 ```sh
-npm run check                         # formato, lint, tipos y pruebas unitarias (Vitest)
+npm run check                         # formato, lint, tipos, pruebas unitarias (Vitest) y del proceso de datos
 npx playwright install chromium       # una sola vez
 npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
 ```
@@ -88,9 +119,21 @@ sobres, foco y accesibilidad WCAG 2.0 AA.
 packages/contracts  Esquemas, catálogos y rutas de la API (fuente única de verdad)
 packages/core       Criptografía: HPKE, Ed25519, recibo, buzón, comprobante y bitácora
 packages/huella     Limpieza de pruebas, marcas invisibles y revisión de riesgo
-apps/server         Servidor de referencia (Hono + node:sqlite)
+packages/red        Red federada: directorio firmado, autoridad competente, sobres y bitácora nacional
+packages/anonimato  Grupo de anonimato en el navegador, con los fragmentos de datos/grupos-anonimato
+packages/contexto-pdn  Verificaciones contra la PDN, conflicto de interés y prioridad (nodo y panel)
+packages/auditor    Señales deterministas sobre las actuaciones de la autoridad (AUD-01 a AUD-08)
+packages/corroboracion  Corroboración ciega: cliente VOPRF, resumen difuso y señales de independencia
+apps/server         Servidor de referencia y nodo de la red (Hono + node:sqlite)
 apps/web            Aplicación de referencia (Vite + React)
-scripts/            Llaves, anclaje de la bitácora y reinicio de la demostración
+apps/enrutador      Enrutador ciego, directorio y bitácora nacional; incluye el proceso de testigo
+apps/corroboracion  Evaluador OPRF e índice de coincidencias de la corroboración ciega
+tools/validador     Validador del Estándar S5 (`npm run validate`)
+estandar/           Estándar S5: OpenAPI, diccionario de datos, catálogo, ejemplos y reportes
+datos/              Proceso reproducible de la PDN (Python) y sus productos agregados
+docker/             Dockerfile multietapa de los servicios de la red de demostración
+compose.yaml        Red federada de demostración en local (`npm run demo:todo`)
+scripts/            Llaves, cuentas, red y semilla de la demostración, anclaje y reinicio
 e2e/                Pruebas de extremo a extremo
 anchors/            Anclas publicadas de la bitácora (`ledger:anchor`)
 docs/               Arquitectura, decisiones, modelo de amenazas y guías
@@ -106,7 +149,9 @@ docs/               Arquitectura, decisiones, modelo de amenazas y guías
 - [Integración con el S5](docs/integracion-s5.md)
 - [Accesibilidad](docs/accesibilidad.md)
 - [Guion de la demostración](docs/demo.md)
+- [Guion de la presentación ante el jurado](docs/guion-presentacion.md)
 - [Datos sintéticos](docs/datos-sinteticos.md)
+- [Datos de la PDN: proceso y productos agregados](datos/README.md)
 - [Declaración de uso de IA](docs/uso-de-ia.md)
 - [Convenciones](docs/convenciones.md)
 - [Glosario](docs/glosario.md)

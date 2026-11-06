@@ -20,11 +20,15 @@ const UnsignedReceiptSchema = SignedReceiptSchema.omit({ signature: true });
 export type UnsignedReceipt = Omit<SignedReceipt, 'signature'>;
 
 /**
- * Solicitud tal como entra al digesto: igual a la enviada, pero con `sealedIdentity` sustituido
- * por `sha256Hex(canonicalize(sealedIdentity))`.
+ * Solicitud tal como entra al digesto: igual a la enviada, pero con `sealedIdentity` y
+ * `escalationEnvelope` sustituidos por el SHA-256 de su forma canónica.
  */
-export type SubmissionDigestInput = Omit<SubmitComplaintRequest, 'sealedIdentity'> & {
+export type SubmissionDigestInput = Omit<
+  SubmitComplaintRequest,
+  'sealedIdentity' | 'escalationEnvelope'
+> & {
   sealedIdentity?: string;
+  escalationEnvelope?: string;
 };
 
 function receiptMessage(receipt: UnsignedReceipt): Uint8Array {
@@ -46,12 +50,16 @@ export function sealedIdentityDigest(envelope: HpkeEnvelope): string {
  * `ComplaintDetail` sin recibir el sobre (que solo se entrega al abrir la identidad).
  */
 export function submissionDigestInput(request: SubmitComplaintRequest): SubmissionDigestInput {
-  const { sealedIdentity, ...rest } = request;
+  const { sealedIdentity, escalationEnvelope, ...rest } = request;
   return {
     ...rest,
     ...(sealedIdentity === undefined
       ? {}
       : { sealedIdentity: sealedIdentityDigest(sealedIdentity) }),
+    // Mismo digesto que `escalationEnvelopeDigest` (forma canónica del sobre).
+    ...(escalationEnvelope === undefined
+      ? {}
+      : { escalationEnvelope: sealedIdentityDigest(escalationEnvelope) }),
   };
 }
 
@@ -78,6 +86,9 @@ export function submissionDigestFromDetail(detail: ComplaintDetail): string {
     ...(detail.sealedIdentityDigest === undefined
       ? {}
       : { sealedIdentity: detail.sealedIdentityDigest }),
+    ...(detail.escalationEnvelopeDigest === undefined
+      ? {}
+      : { escalationEnvelope: detail.escalationEnvelopeDigest }),
     protectionRequested: detail.summary.protectionRequested,
     reporterKeys: {
       boxPublicKey: detail.reporterKeys.boxPublicKey,

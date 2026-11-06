@@ -1,0 +1,141 @@
+/* Íconos de estado y de resultado: cada uno con forma y glifo propios, para que el estado nunca
+   dependa solo del color (WCAG 1.4.1). La dirección visual cambia solo los tokens --status-*. */
+.status-icon,
+.verification__icon,
+.priority__icon,
+.anonymity__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.4em;
+  block-size: 1.4em;
+  margin-inline-end: var(--space-2);
+  border: 2px solid currentColor;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: -0.25em;
+  flex: none;
+}
+
+/* Plazos: en curso (círculo), por vencer (rombo con «!»), vencido (cuadrado con «×»). */
+.status-icon {
+  border-radius: 50%;
+  color: var(--status-running);
+}
+
+.status-icon::before {
+  content: '';
+}
+
+.status-icon[data-status='due_soon'],
+.status-icon[data-outcome='possible-conflict'] {
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.85);
+  color: var(--status-warning);
+}
+
+.status-icon[data-status='due_soon']::before,
+.status-icon[data-outcome='possible-conflict']::before {
+  content: '!';
+  transform: rotate(-45deg);
+}
+
+.status-icon[data-status='overdue'] {
+  border-radius: 2px;
+  color: var(--status-danger);
+}
+
+.status-icon[data-status='overdue']::before {
+  content: '×';
+}
+
+.status-icon[data-outcome='none-found']::before {
+  content: '–';
+}
+
+.status-icon[data-outcome='no_coverage'],
+.verification__icon[data-outcome='no_coverage'] {
+  border-style: dashed;
+  color: var(--status-no-coverage);
+}
+
+.status-icon[data-outcome='no_coverage']::before {
+  content: '?';
+}
+
+/* Verificación con tres resultados: confirmado (✓), contradicho (×), sin cobertura (?). */
+.verification {
+  border: 2px solid var(--color-border);
+  border-inline-start-width: 6px;
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0;
+  background: var(--color-surface);
+}
+
+.verification[data-outcome='confirmed'] {
+  border-color: var(--status-ok);
+}
+
+.verification[data-outcome='contradicted'] {
+  border-color: var(--status-danger);
+}
+
+.verification[data-outcome='no_coverage'] {
+  border-color: var(--status-no-coverage);
+  border-style: dashed;
+}
+
+.verification {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  align-items: start;
+}
+
+.verification__body > :last-child {
+  margin-bottom: 0;
+}
+
+.verification__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-1);
+}
+
+.verification__icon {
+  border-radius: 50%;
+}
+
+.verification__icon[data-outcome='confirmed'] {
+  color: var(--status-ok);
+}
+
+.verification__icon[data-outcome='confirmed']::before {
+  content: '✓';
+}
+
+.verification__icon[data-outcome='contradicted'] {
+  border-radius: 2px;
+  color: var(--status-danger);
+}
+
+.verification__icon[data-outcome='contradicted']::before {
+  content: '×';
+}
+
+.verification__icon[data-outcome='no_coverage']::before {
+  content: '?';
+}
+
+@media (forced-colors: active) {
+  .status-icon,
+  .verification__icon,
+  .priority__icon,
+  .anonymity__icon {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+}

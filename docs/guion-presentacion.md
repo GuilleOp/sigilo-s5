@@ -1,0 +1,67 @@
+# Guion de la presentación ante el jurado
+
+Guion de unos 13 minutos para la presentación del 17 y 18 de noviembre de 2026. Combina la
+presentación ejecutiva con la demostración en vivo de la red federada. Los pasos técnicos de cada
+acto están en [demo.md](demo.md); el escenario y sus datos sintéticos, en
+[demo-escenario.md](demo-escenario.md).
+
+## Antes de empezar
+
+- Una persona narra y otra opera. La que narra mira al jurado, no a la pantalla.
+- Una hora antes: `npm run demo:todo` (levanta la red en Docker y siembra el caso de Marta hasta el
+  día 35) y abrir en pestañas:
+  - la web del nodo Federal en `http://127.0.0.1:8782/`;
+  - el panel del OIC con `investigacion.iffe.uno` (credenciales en
+    `.red-demo/nodos/federal/credenciales.json`);
+  - el panel de la supervisora con `supervision.federal.uno`;
+  - el reporte del validador del demo oficial (`estandar/reportes/`) y el de la referencia.
+- Tema claro y zoom del navegador al 125 % para la transmisión.
+- Plan B: el video de la demostración y las capturas en la presentación ejecutiva.
+- Todo es sintético: no se muestra ninguna persona, ente ni empresa reales.
+
+## Minuto a minuto
+
+| Tiempo | Diapositiva o pantalla              | Qué se dice y qué se muestra                                                                                                                                                                                                                                    |
+| ------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0:00   | Portada                             | «Marta trabaja en un área de compras de cinco personas. Vio una adjudicación directa a una empresa de la lista 69-B. Si denuncia, la reconocen; y si el OIC tiene un interés con el proveedor, la denuncia muere en un cajón. Hoy le resolvemos las dos cosas.» |
+| 0:45   | El problema                         | Tres citas: el canal único de las Bases de la PDN, «el anonimato no se reduce a una casilla» del taller del S5 y «el Estado no puede exigir valentía si no ofrece protección».                                                                                  |
+| 1:30   | Áreas de oportunidad                | Reporte del validador sobre la versión de pruebas: cinco cabeceras de seguridad faltantes, ubicación y voz procesadas fuera del equipo, borrador sin cifrar. Reconocer lo que hace bien.                                                                        |
+| 2:15   | 38 %                                | «El 38 % de las personas servidoras públicas trabaja en un área de menos de 10. Lo calculamos con S1 completo y lo verificó un revisor independiente.»                                                                                                          |
+| 2:45   | Propuesta y red                     | Las cuatro capas y el diagrama: una ventanilla, un enrutador ciego, nodos por autoridad. «El centro solo enruta; no puede leer.»                                                                                                                                |
+| 3:45   | Demo: denunciar                     | En la web del nodo: aviso del grupo de anonimato («en tu área hay unas 5 personas»), revisor de frases, foto limpia con Huella Cero y el talón con las palabras ocultas. Pestaña de red: cero terceros.                                                         |
+| 5:30   | Demo: panel del OIC                 | Ficha de Marta: prioridad alta con sus factores (falta grave, adjudicación directa en S6, proveedor en la lista 69-B, «2 o más personas independientes») y el grafo del conflicto de interés.                                                                   |
+| 6:45   | Demo: el día 30                     | El OIC calificó la falta grave como no grave con un acuerdo de plantilla. Señales del auditor AUD-01 y AUD-03, con su evidencia. «El auditor no decide: lo decide una regla pública.»                                                                           |
+| 7:45   | Demo: supervisora                   | «Escalamientos que recibiste»: el caso de Marta por conflicto sin excusa y por calificación con señales. Recibió la segunda llave con los hechos, nunca la identidad.                                                                                           |
+| 8:30   | Demo: seguimiento de Marta          | Sellos fechados, el aviso de la calificación, el plazo de 5 días hábiles y su inconformidad: reveló su identidad solo para el recurso, y lo ve en su libro de aperturas.                                                                                        |
+| 9:30   | Que nada se entierre                | La tabla de reglas con su fundamento en la LGRA.                                                                                                                                                                                                                |
+| 10:15  | Datos abiertos, inclusión y calidad | Tres conjuntos nuevos; quiosco y poca conexión; 1,167 + 74 pruebas, seis rondas de seguridad, replicación limpia.                                                                                                                                               |
+| 11:30  | Adopción y criterios                | «Así se conecta el estado número 33»: estándar, validador y `docker compose`. Niveles A, B y C. Matriz de los ocho criterios.                                                                                                                                   |
+| 12:30  | Cierre                              | «La PDN siempre sirvió para encontrar a quien comete actos de corrupción. Con SIGILO también protege a quien los señala y vigila que nadie entierre su denuncia.»                                                                                               |
+
+## Si el tiempo es menor
+
+| Duración | Qué se quita                                                                          |
+| -------- | ------------------------------------------------------------------------------------- |
+| 10 min   | Los datos abiertos y la inclusión pasan a una sola frase; la adopción, a 30 segundos. |
+| 7 min    | La demo se reduce al panel del OIC, la supervisora y el seguimiento de Marta.         |
+| 5 min    | Problema, 38 %, panel del OIC, supervisora y cierre.                                  |
+
+## Plan B
+
+| Si falla            | Qué hacer                                                                        |
+| ------------------- | -------------------------------------------------------------------------------- |
+| Docker o la red     | Cambiar a las capturas de la presentación ejecutiva y al video, sin disculparse. |
+| Internet            | Nada depende de Internet: la red corre en la computadora.                        |
+| El inicio de sesión | Credenciales en `.red-demo/nodos/federal/credenciales.json`.                     |
+
+## Preguntas previstas
+
+| Pregunta                                         | Respuesta breve                                                                                                                                     |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ¿Y si la SESNA quiere leer?                      | No puede: el cifrado va directo a cada autoridad y cualquier apertura queda en la bitácora con testigos.                                            |
+| ¿La custodia es legal?                           | Es opcional y de nivel B: mientras está en custodia no es una denuncia, es un borrador cifrado que controla la persona. Se presenta para validarlo. |
+| ¿Por qué la inconformidad revela la identidad?   | La LGRA (art. 109) exige nombre, domicilio y firma. SIGILO la revela solo para el recurso, con dos aprobaciones, y la persona lo ve.                |
+| ¿Esto no se presta a denuncias falsas?           | Una persona cuenta una sola vez, lo que no cuadra con la PDN pierde peso, las campañas se detectan y nada público nombra a quien se denuncia.       |
+| ¿Funciona en un celular básico?                  | Sí: la prueba de trabajo está calibrada para gama baja y Huella Cero corre en el navegador.                                                         |
+| ¿Y los estados que no están conectados a la PDN? | Lo esencial no depende de la PDN; donde faltan datos, el sistema lo dice y nunca acusa por falta de cobertura.                                      |
+| ¿Qué falta?                                      | Probar con lectores de pantalla reales y con personas, la custodia completa y las fichas de unicidad (nivel C).                                     |

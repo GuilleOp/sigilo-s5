@@ -7,9 +7,8 @@ import {
   createReporter,
   createTestServer,
   NEXT_MONTH,
-  postJson,
   submitComplaint,
-  TEST_TOKEN,
+  moveTo,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
 
@@ -70,12 +69,7 @@ describe('GET open-data CSV', () => {
     server.setNow(NEXT_MONTH);
     const first = await readCsv(server);
     expect(first).toMatch(/^22,LGRA-52,2026-10,received,(5|10)$/mu);
-    await postJson(
-      server.app,
-      ROUTES.authorityStatus(folios[0] ?? ''),
-      { status: 'routing' },
-      TEST_TOKEN,
-    );
+    await moveTo(server, folios[0] ?? '', 'routing');
     await submitMany(server, 3, '22');
     expect(await readCsv(server)).toBe(first);
   });
@@ -102,7 +96,7 @@ describe('GET open-data CSV', () => {
     const frozen = await readCsv(server);
     expect(frozen).toContain('22,LGRA-52,2026-10,received,5');
     for (const folio of folios.slice(0, 3)) {
-      await postJson(server.app, ROUTES.authorityStatus(folio), { status: 'routing' }, TEST_TOKEN);
+      await moveTo(server, folio, 'routing');
     }
     expect(await readCsv(server)).toBe(frozen);
   });

@@ -1,0 +1,45 @@
+{
+  "fechaReferencia": "2026-11-05",
+  "fuentes": [
+    {
+      "sistema": "S1",
+      "archivo": "PDN_S1.zip",
+      "url": "https://drive.google.com/file/d/1RSYOwWabsWqtxt7VNHIjf-yt1P5bPSbE",
+      "bytes": 2329008840,
+      "fechaDescarga": "2026-11-05",
+      "sha256Inventario": "105d8711f2f3487c17aa355b0d6146f3b8c59b55418ee333b6402a0184506181",
+      "sha256Calculado": "105d8711f2f3487c17aa355b0d6146f3b8c59b55418ee333b6402a0184506181",
+      "coincide": true
+    },
+    {
+      "sistema": "S2",
+      "archivo": "PDN_S2.zip",
+      "url": "https://drive.google.com/file/d/1KWcst_YLI5YVlKnzmd3Xm5prAP4NVhAD",
+      "bytes": 19508703,
+      "fechaDescarga": "2026-11-05",
+      "sha256Inventario": "3f100b9ec27e0572cb27d2ed8dd8736eeba6e101eee92c9d32d74b5268cd1562",
+      "sha256Calculado": "3f100b9ec27e0572cb27d2ed8dd8736eeba6e101eee92c9d32d74b5268cd1562",
+      "coincide": true
+    },
+    {
+      "sistema": "S3",
+      "archivo": "PDN_S3v2.zip",
+      "url": "https://drive.google.com/file/d/1i-HjNju04xdKThHgGDAzHb97GdF_cqS8",
+      "bytes": 2746326,
+      "fechaDescarga": "2026-11-05",
+      "sha256Inventario": "2f65931a81389fb7a776deea4b1be6e41ba5983b58ab33ee8b164f1be86ef0e8",
+      "sha256Calculado": "2f65931a81389fb7a776deea4b1be6e41ba5983b58ab33ee8b164f1be86ef0e8",
+      "coincide": true
+    },
+    {
+      "sistema": "S6",
+      "archivo": "PDN_S6.zip",
+      "url": "https://drive.google.com/file/d/1OM-P1JAp7PKeGL_InRYOQ1UO5Vpcs9Oi",
+      "bytes": 1068032180,
+      "fechaDescarga": "2026-11-05",
+      "sha256Inventario": "fc7fc9c6340aefb0141294e3f70d65940443d0dfc653fe51aed62b678ce62b7a",
+      "sha256Calculado": "fc7fc9c6340aefb0141294e3f70d65940443d0dfc653fe51aed62b678ce62b7a",
+      "coincide": true
+    }
+  ]
+}

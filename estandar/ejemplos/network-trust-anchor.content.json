@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "operatorKeyId": "5d1c2a9e8b7f3c40",
+  "operatorSigningPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv",
+  "threshold": 2,
+  "witnesses": [
+    {
+      "id": "observer.cpc-queretaro",
+      "keyId": "c3f8e2a1b0d94756",
+      "signingPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f"
+    },
+    {
+      "id": "observer.university-ejemplo",
+      "keyId": "9a0be41c77d25f13",
+      "signingPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv"
+    },
+    {
+      "id": "node.queretaro",
+      "keyId": "5d1c2a9e8b7f3c40",
+      "signingPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f"
+    }
+  ]
+}

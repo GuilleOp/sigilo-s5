@@ -1,0 +1,22 @@
+{
+  "name": "@sigilo/enrutador",
+  "version": "1.0.0",
+  "description": "Enrutador ciego de la red federada de SIGILO: directorio firmado, reenvio de sobres opacos y bitacora nacional cofirmada.",
+  "license": "CC-BY-NC-4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/main.ts",
+    "start": "node --env-file-if-exists=.env src/main.ts",
+    "witness": "node src/witness/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "@sigilo/contracts": "1.0.0",
+    "@sigilo/core": "1.0.0",
+    "@sigilo/red": "1.0.0",
+    "hono": "^4.13.13",
+    "zod": "^4.6.5"
+  }
+}

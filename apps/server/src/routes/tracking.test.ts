@@ -25,6 +25,7 @@ import {
   createReporter,
   createTestServer,
   credentialsFor,
+  messageBody,
   postJson,
   submitComplaint,
   NEXT_DAY,
@@ -47,11 +48,13 @@ async function sealReporterMessage(
   folio: string,
   sequence = 0,
 ) {
-  return sealMailboxMessage(
-    'Respuesta sintética de la persona denunciante.',
-    authorityRecipient(server),
-    reporter.signing.privateKey,
-    { folio, from: 'reporter', sequence },
+  return messageBody(
+    await sealMailboxMessage(
+      'Respuesta sintética de la persona denunciante.',
+      authorityRecipient(server),
+      reporter.signing.privateKey,
+      { folio, from: 'reporter', sequence },
+    ),
   );
 }
 

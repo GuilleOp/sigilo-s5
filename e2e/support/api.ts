@@ -1,8 +1,11 @@
 // Ayudantes de API desde Node: siembra de denuncias anónimas y selladas con la misma criptografía
-// que usa la web y consultas de la autoridad con el token bearer de prueba.
+// que usa la web, sesiones de las cuentas de prueba, trámite y apertura de identidad 2 de 3.
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import {
+  AuthoritySessionSchema,
   ComplaintDetailSchema,
+  IdentityOpeningRequestViewSchema,
+  OpenIdentityResponseSchema,
   POW_HEADER,
   PowChallengeSchema,
   PublicKeySetSchema,
@@ -13,6 +16,8 @@ import type {
   ComplaintDetail,
   ComplaintFacts,
   HpkeEnvelope,
+  OpenIdentityResponse,
+  ProcedureActionRequest,
   SubmitComplaintRequest,
 } from '@sigilo/contracts';
 import { formatPowHeader, fromBase64Url, solvePow } from '@sigilo/core';
@@ -25,7 +30,7 @@ import {
   sealReporterIdentity,
 } from '../../apps/web/src/crypto/submission.ts';
 import type { FreshReceipt } from '../../apps/web/src/crypto/submission.ts';
-import { API_ORIGIN, AUTHORITY_TOKEN } from './environment.ts';
+import { API_ORIGIN, E2E_ACCOUNTS, E2E_AUTHORITY, e2ePassword } from './environment.ts';
 import type { Receipt } from './report-wizard.ts';
 
 /** Hechos sintéticos válidos para sembrar denuncias sin pasar por la interfaz. */
@@ -153,40 +158,117 @@ export function seedPreparedComplaint(
   return submitSeed(request, prepared.body, prepared.receipt);
 }
 
-const AUTHORITY_HEADERS = { Authorization: `Bearer ${AUTHORITY_TOKEN}` };
+/**
+ * Abre una sesión de la cuenta y devuelve sus cabeceras. Se inicia sesión en cada llamada: las
+ * pruebas adelantan el reloj del servidor y una sesión vieja vencería por inactividad.
+ */
+export async function sessionHeaders(
+  request: APIRequestContext,
+  username: string,
+): Promise<Record<string, string>> {
+  const response = await request.post(`${API_ORIGIN}${ROUTES.authLogin}`, {
+    data: { username, password: e2ePassword(username) },
+  });
+  if (!response.ok()) throw new Error(`No se pudo iniciar sesión: ${response.status()}`);
+  const { token } = AuthoritySessionSchema.parse(await response.json());
+  return { Authorization: `Bearer ${token}` };
+}
 
-/** Detalle de una denuncia tal como lo ve la autoridad. */
+/** Acción del trámite con la cuenta dada; falla si el servidor la rechaza. */
+export async function applyProcedure(
+  request: APIRequestContext,
+  username: string,
+  folio: string,
+  action: ProcedureActionRequest,
+): Promise<void> {
+  const response = await request.post(`${API_ORIGIN}${ROUTES.authorityProcedure(folio)}`, {
+    headers: await sessionHeaders(request, username),
+    data: action,
+  });
+  if (!response.ok()) throw new Error(`Acción rechazada: ${response.status()}`);
+}
+
+/** El buzón general turna la denuncia al OIC de prueba y su recepción la acepta. */
+export async function routeToInvestigation(
+  request: APIRequestContext,
+  folio: string,
+): Promise<void> {
+  await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
+    action: 'route',
+    authorityId: E2E_AUTHORITY,
+  });
+  await applyProcedure(request, E2E_ACCOUNTS.iffeIntake, folio, { action: 'accept' });
+}
+
+/** Detalle de una denuncia tal como lo ve la cuenta dada (por omisión, el buzón general). */
 export async function fetchComplaintDetail(
   request: APIRequestContext,
   folio: string,
+  username: string = E2E_ACCOUNTS.inboxIntake,
 ): Promise<ComplaintDetail> {
   const response = await request.get(`${API_ORIGIN}${ROUTES.authorityComplaint(folio)}`, {
-    headers: AUTHORITY_HEADERS,
+    headers: await sessionHeaders(request, username),
   });
   if (!response.ok()) throw new Error(`No se pudo leer la denuncia: ${response.status()}`);
   return ComplaintDetailSchema.parse(await response.json());
 }
 
-/** Descarga una prueba con el token de la autoridad, desde su ruta de evidencia. */
+/** Descarga una prueba con la sesión del buzón general, desde su ruta de evidencia. */
 export async function downloadEvidence(
   request: APIRequestContext,
   evidenceId: string,
 ): Promise<Buffer> {
   const response = await request.get(`${API_ORIGIN}${ROUTES.authorityEvidence(evidenceId)}`, {
-    headers: AUTHORITY_HEADERS,
+    headers: await sessionHeaders(request, E2E_ACCOUNTS.inboxIntake),
   });
   if (!response.ok()) throw new Error(`No se pudo descargar la prueba: ${response.status()}`);
   return response.body();
 }
 
-/** Pide a la autoridad abrir la identidad sellada (queda registrado) y devuelve la respuesta. */
-export function requestIdentityOpening(
+/** Solicitud de apertura de una cuenta; devuelve la respuesta cruda. */
+export async function requestIdentityOpening(
   request: APIRequestContext,
   folio: string,
   legalBasis: string,
+  username: string = E2E_ACCOUNTS.iffeInvestigator,
 ): Promise<APIResponse> {
-  return request.post(`${API_ORIGIN}${ROUTES.authorityIdentity(folio)}`, {
-    headers: AUTHORITY_HEADERS,
+  return request.post(`${API_ORIGIN}${ROUTES.authorityIdentityRequests(folio)}`, {
+    headers: await sessionHeaders(request, username),
     data: { legalBasis },
   });
+}
+
+/** Aprobación de otra cuenta a una solicitud de apertura; devuelve la respuesta cruda. */
+export async function approveIdentityOpening(
+  request: APIRequestContext,
+  folio: string,
+  requestId: string,
+  username: string = E2E_ACCOUNTS.iffeInvestigator2,
+): Promise<APIResponse> {
+  return request.post(`${API_ORIGIN}${ROUTES.authorityIdentityApprovals(folio, requestId)}`, {
+    headers: await sessionHeaders(request, username),
+    data: { legalBasis: 'Segunda aprobación sintética: coincido con el fundamento.' },
+  });
+}
+
+/**
+ * Apertura 2 de 3 completa por la API (la denuncia ya debe estar con el OIC de prueba): solicita la
+ * investigación uno, aprueba la dos y la uno recibe el sobre.
+ */
+export async function openIdentityTwoOfThree(
+  request: APIRequestContext,
+  folio: string,
+  legalBasis: string,
+): Promise<OpenIdentityResponse> {
+  const requested = await requestIdentityOpening(request, folio, legalBasis);
+  if (!requested.ok()) throw new Error(`Solicitud rechazada: ${requested.status()}`);
+  const { requestId } = IdentityOpeningRequestViewSchema.parse(await requested.json());
+  const approved = await approveIdentityOpening(request, folio, requestId);
+  if (!approved.ok()) throw new Error(`Aprobación rechazada: ${approved.status()}`);
+  const released = await request.post(
+    `${API_ORIGIN}${ROUTES.authorityIdentityEnvelope(folio, requestId)}`,
+    { headers: await sessionHeaders(request, E2E_ACCOUNTS.iffeInvestigator) },
+  );
+  if (!released.ok()) throw new Error(`Entrega rechazada: ${released.status()}`);
+  return OpenIdentityResponseSchema.parse(await released.json());
 }

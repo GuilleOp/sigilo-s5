@@ -16,7 +16,9 @@ import type { AppContext } from '../context.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import { withTransaction } from '../db/database.ts';
 import { ApiFailure } from '../http/errors.ts';
+import { authorityKeysFor } from './authority-keys.ts';
 import { hasMailboxShape } from './crypto-checks.ts';
+import { assignedAuthorityOf } from './procedure-service.ts';
 
 /** Mensaje entrante ya validado con el esquema. */
 export interface IncomingMessage {
@@ -24,11 +26,13 @@ export interface IncomingMessage {
   sequence: number;
   envelope: HpkeEnvelope;
   signature: string;
+  /** Seudónimo de la cuenta de la autoridad que escribe; solo en mensajes de la autoridad. */
+  actorId?: string;
 }
 
 function recipientKeyId(ctx: AppContext, complaint: ComplaintRecord, from: MailboxSender): string {
   return from === 'reporter'
-    ? ctx.deps.keys.publicKeySet.authority.keyId
+    ? authorityKeysFor(ctx, assignedAuthorityOf(ctx, complaint)).keyId
     : keyIdFor(fromBase64Url(complaint.reporterKeys.boxPublicKey));
 }
 
@@ -39,7 +43,7 @@ function signerPublicKey(
 ): Uint8Array {
   return from === 'reporter'
     ? fromBase64Url(complaint.reporterKeys.signingPublicKey)
-    : ctx.deps.keys.authoritySigningPublicKey;
+    : authorityKeysFor(ctx, assignedAuthorityOf(ctx, complaint)).signingPublicKey;
 }
 
 /**
@@ -92,6 +96,7 @@ export function recordMessage(
         from,
         sequence,
         envelopeDigest: sha256Hex(canonicalize(envelope)),
+        ...(incoming.actorId === undefined ? {} : { actor: incoming.actorId }),
       },
     });
     const message: MailboxMessage = {

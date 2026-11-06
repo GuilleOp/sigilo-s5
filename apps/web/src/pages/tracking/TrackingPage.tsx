@@ -1,10 +1,12 @@
-// Pantalla /seguimiento: acceso con folio y recibo, estatus, identidad, comprobante y buzón.
+// Pantalla /seguimiento: acceso con folio y recibo, trámite con plazos, identidad, comprobante y
+// buzón. Con la red, el folio se busca a la vez en todos los nodos por el enrutador ciego.
 import { useEffect, useRef, useState } from 'react';
 import type { LedgerAnchor, MailboxMessage, TrackingView } from '@sigilo/contracts';
 import { isMailboxSequenceComplete, ReceiptPhraseError } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
 import { AnchorsField } from '../../components/AnchorsField.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
+import type { PinnedKeys } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch, KeyMismatchError } from '../../crypto/key-pinning.ts';
 import { parseLedgerAnchors } from '../../crypto/ledger-verification.ts';
 import { createProofProvider, sendWithProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
@@ -30,13 +32,42 @@ import { announce } from '../../lib/announce.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate } from '../../lib/format.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
+import { networkState } from '../../network/directory.ts';
+import { decodeNetworkThread, trackAcrossNetwork } from '../../network/network-tracking.ts';
+import type { NetworkTrackingResult } from '../../network/network-tracking.ts';
+import { sameOriginRelaySender } from '../../network/relay-api.ts';
+import type { ReporterApi } from '../../network/relay-api.ts';
 import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
 import { IdentityStatus } from './IdentityStatus.tsx';
 import { wordInputId } from './ReceiptWordInput.tsx';
 import { ReporterMailbox } from './ReporterMailbox.tsx';
-import { StatusTimeline } from './StatusTimeline.tsx';
+import { ProcedureTimeline } from './ProcedureTimeline.tsx';
 import { TrackingLogin } from './TrackingLogin.tsx';
+
+/**
+ * Por dónde se sigue la denuncia: el nodo de este mismo origen con las llaves fijadas, o un nodo de
+ * la red (por el enrutador) con las llaves del directorio verificado.
+ */
+interface TrackingTransport {
+  api: ReporterApi;
+  /** Llaves para verificar el comprobante y, si se sabe, para responder a la autoridad. */
+  keys: PinnedKeys;
+  /** Llaves de la autoridad que firmó los mensajes; `null` por la red si aún no hay mensajes. */
+  replyKeys: PinnedKeys | null;
+  network: NetworkTrackingResult | null;
+}
+
+/** Folio no encontrado: el mismo error que da el nodo, sin decir si falló el folio o el recibo. */
+class FolioNotFoundError extends ApiRequestError {
+  constructor() {
+    super('not_found', 404);
+  }
+}
+
+/** Texto cuando la denuncia está en otro nodo de la red: no es una falla. */
+export const REMOTE_LEDGER_TEXT =
+  'Tu denuncia quedó anotada en el registro público del nodo que la atiende. Puedes comprobarlo en «Verificar bitácora» de ese nodo: este sistema no consulta registros de otros nodos para no revelar en cuál está tu denuncia.';
 
 /** Encabezado de la vista de seguimiento: recibe el foco al entrar. */
 const TRACKING_VIEW_TITLE_ID = 'tracking-view-title';
@@ -45,10 +76,13 @@ interface Loaded {
   view: TrackingView;
   messages: DecodedMessage[];
   check: TrackingReceiptCheck;
-  /** `unknown` si no se pudo consultar la bitácora pública. */
-  publication: PublicationStatus | 'unknown' | 'checking';
+  /**
+   * `unknown` si no se pudo consultar la bitácora pública; `remote` si la denuncia está en otro
+   * nodo de la red, cuya bitácora no se consulta desde aquí.
+   */
+  publication: PublicationStatus | 'unknown' | 'checking' | 'remote';
   /** Contraste de las aperturas de identidad con la bitácora pública; `null` si es anónima. */
-  openings: IdentityOpeningsCheck | 'checking' | null;
+  openings: IdentityOpeningsCheck | 'checking' | 'remote' | null;
 }
 
 /** Error del acceso y, si se sabe, la palabra (desde 1) que lo causó. */
@@ -77,6 +111,16 @@ function loginFailure(error: unknown): LoginFailure {
     message: describeError(error, 'No pudimos abrir tu seguimiento. Inténtalo de nuevo.'),
     wordPosition: null,
   };
+}
+
+/** Por la red, todavía no se sabe a qué autoridad responder hasta que escriba la primera vez. */
+class ReplyUnavailableError extends Error {
+  constructor() {
+    super(
+      'Podrás responder cuando la autoridad te escriba por primera vez: así sabemos a quién cerrar tu mensaje con llave.',
+    );
+    this.name = 'ReplyUnavailableError';
+  }
 }
 
 function ReceiptStatus({ loaded }: { loaded: Loaded }) {
@@ -124,6 +168,7 @@ function ReceiptStatus({ loaded }: { loaded: Loaded }) {
         {publication === 'pending' &&
           'Tu anotación está pendiente de publicar: el registro público se actualiza una vez al día, cuando el día termina.'}
         {publication === 'unknown' && 'Por ahora no pudimos consultar el registro público.'}
+        {publication === 'remote' && REMOTE_LEDGER_TEXT}
       </p>
       {publication === 'mismatch' && (
         <p className="field__error" data-testid="ledger-publication-mismatch">
@@ -154,6 +199,7 @@ function anchorsMessage(ledger: TrackingLedger): string {
 export function TrackingPage() {
   useDocumentTitle('Dar seguimiento');
   const sessionRef = useRef<TrackingSession | null>(null);
+  const transportRef = useRef<TrackingTransport | null>(null);
   const isMounted = useRef(true);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [isBusy, setBusy] = useState(false);
@@ -173,22 +219,78 @@ export function TrackingPage() {
     };
   }, []);
 
+  /**
+   * Busca la denuncia: por la red en todos los nodos (si esta web participa en la red) o en el nodo
+   * de este mismo origen.
+   */
+  async function fetchView(
+    session: TrackingSession,
+  ): Promise<{ view: TrackingView; transport: TrackingTransport }> {
+    const known = transportRef.current;
+    if (known !== null && known.network === null) {
+      return { view: await known.api.track(session.credentials), transport: known };
+    }
+    const state = await networkState();
+    if (state.kind !== 'verified') {
+      const transport = { api, keys: PINNED_KEYS, replyKeys: PINNED_KEYS, network: null };
+      return { view: await api.track(session.credentials), transport };
+    }
+    const found = await trackAcrossNetwork(
+      state.directory,
+      session.credentials,
+      sameOriginRelaySender(),
+    );
+    if (found === null) throw new FolioNotFoundError();
+    const decoded = await decodeNetworkThread(state.directory, found, found.view.messages, session);
+    return {
+      view: found.view,
+      transport: { api: found.api, keys: found.keys, replyKeys: decoded.replyKeys, network: found },
+    };
+  }
+
   async function load(session: TrackingSession): Promise<TrackingView> {
-    const view = await api.track(session.credentials);
-    const messages = await decodeReporterThread(view.messages, session, PINNED_KEYS);
+    const { view, transport } = await fetchView(session);
+    transportRef.current = transport;
+    const messageKeys = transport.replyKeys ?? transport.keys;
+    const messages = await decodeReporterThread(view.messages, session, messageKeys);
     if (!isMounted.current) return view;
-    const check = verifyTrackingReceipt(view, PINNED_KEYS);
-    const canCheck = check.isReceiptValid && check.event !== 'invalid';
+    const check = verifyTrackingReceipt(view, transport.keys);
+    const isLocal = transport.network === null;
+    // La bitácora del nodo de la red se publica en su propio origen: aquí no se consulta.
+    const canCheck = isLocal && check.isReceiptValid && check.event !== 'invalid';
     const isSealed = view.mode === 'sealed';
     setLoaded({
       view,
       messages,
       check,
-      publication: canCheck ? 'checking' : 'unknown',
-      openings: isSealed ? 'checking' : null,
+      publication: canCheck ? 'checking' : isLocal ? 'unknown' : 'remote',
+      openings: isSealed && isLocal ? 'checking' : isSealed ? 'remote' : null,
     });
-    if (canCheck || isSealed) void checkLedger(view, session, canCheck);
+    if (canCheck || (isSealed && isLocal)) void checkLedger(view, session, canCheck);
     return view;
+  }
+
+  /** Sigue la denuncia con el folio nuevo y las mismas llaves del recibo. */
+  async function followFolio(folio: string): Promise<void> {
+    const current = sessionRef.current;
+    if (current === null) return;
+    const session: TrackingSession = {
+      folio,
+      keys: current.keys,
+      credentials: { folio, authKey: current.credentials.authKey },
+    };
+    setBusy(true);
+    transportRef.current = null;
+    try {
+      await load(session);
+      sessionRef.current = session;
+      focusAfterRender(TRACKING_VIEW_TITLE_ID);
+      announce(`Abrimos tu denuncia con el folio ${folio}.`);
+    } catch (error) {
+      announce(describeError(error, 'No pudimos abrir el folio nuevo. Inténtalo más tarde.'));
+    } finally {
+      if (isMounted.current) setBusy(false);
+    }
   }
 
   /**
@@ -240,9 +342,11 @@ export function TrackingPage() {
     const ledger = await checkLedger(view, session, canCheck, anchors);
     if (!isMounted.current) return;
     const message =
-      ledger === null
-        ? 'Por ahora no pudimos consultar el registro público.'
-        : anchorsMessage(ledger);
+      transportRef.current?.network !== null
+        ? REMOTE_LEDGER_TEXT
+        : ledger === null
+          ? 'Por ahora no pudimos consultar el registro público.'
+          : anchorsMessage(ledger);
     setAnchorStatus(message);
     announce(message);
   }
@@ -259,6 +363,7 @@ export function TrackingPage() {
     setBusy(true);
     setFailure(null);
     let session: TrackingSession | null = null;
+    transportRef.current = null;
     try {
       session = startTrackingSession(folio, words);
       await load(session);
@@ -292,10 +397,13 @@ export function TrackingPage() {
   ): Promise<MailboxMessage> {
     // Cada intento lleva su propia prueba de trabajo (los retos `message` son de un solo uso); si
     // el reto venció o la dificultad subió, se resuelve otro una vez.
+    const transport = transportRef.current;
+    const replyKeys = transport?.replyKeys ?? null;
+    if (transport === null || replyKeys === null) throw new ReplyUnavailableError();
     const send = async (current: readonly MailboxMessage[]) => {
-      const request = await sealReporterReply(text, session, PINNED_KEYS, current);
-      const proofs = createProofProvider(api, 'message', workerPowSolver, setReplyStatus);
-      return sendWithProof(proofs, (proof) => api.sendReporterMessage(request, proof));
+      const request = await sealReporterReply(text, session, replyKeys, current);
+      const proofs = createProofProvider(transport.api, 'message', workerPowSolver, setReplyStatus);
+      return sendWithProof(proofs, (proof) => transport.api.sendReporterMessage(request, proof));
     };
     try {
       return await send(messages);
@@ -312,7 +420,9 @@ export function TrackingPage() {
     setBusy(true);
     setReplyStatus('Enviando tu respuesta.');
     try {
-      await assertServedKeysMatch(() => api.getKeys(), PINNED_KEYS.set);
+      if (transportRef.current?.network === null) {
+        await assertServedKeysMatch(() => api.getKeys(), PINNED_KEYS.set);
+      }
       const message = await sealAndSend(text, session, loaded.view.messages);
       if (!isMounted.current) return false;
       setSentTexts((current) => ({ ...current, [message.messageId]: text }));
@@ -324,7 +434,9 @@ export function TrackingPage() {
         setReplyStatus(
           error instanceof KeyMismatchError
             ? 'Por seguridad no enviamos nada. Alguien podría estar espiando esta conexión. Usa otra conexión, por ejemplo los datos de tu celular.'
-            : describeError(error, 'No pudimos enviar tu respuesta. Inténtalo de nuevo.'),
+            : error instanceof ReplyUnavailableError
+              ? error.message
+              : describeError(error, 'No pudimos enviar tu respuesta. Inténtalo de nuevo.'),
         );
       }
       return false;
@@ -333,9 +445,33 @@ export function TrackingPage() {
     }
   }
 
+  /**
+   * Presenta la inconformidad. Seguridad: la persona aceptó abrir su identidad solo para el
+   * recurso; la apertura queda en la bitácora y en este seguimiento.
+   */
+  async function fileAppeal(reasons: string): Promise<string | null> {
+    const session = sessionRef.current;
+    const transport = transportRef.current;
+    if (session === null || transport === null) return 'Vuelve a entrar a tu seguimiento.';
+    try {
+      const proofs = createProofProvider(transport.api, 'message', workerPowSolver, announce);
+      await sendWithProof(proofs, (proof) =>
+        transport.api.fileAppeal(
+          { ...session.credentials, reasons, revealIdentityForAppeal: true },
+          proof,
+        ),
+      );
+      await load(session);
+      return null;
+    } catch (error) {
+      return describeError(error, 'No pudimos presentar tu inconformidad. Inténtalo de nuevo.');
+    }
+  }
+
   function logout(): void {
     if (sessionRef.current) wipeTrackingSession(sessionRef.current);
     sessionRef.current = null;
+    transportRef.current = null;
     setLoaded(null);
     setSentTexts({});
     setAnchorText('');
@@ -362,8 +498,29 @@ export function TrackingPage() {
             Tu denuncia con folio <span className="mono folio">{loaded.view.folio}</span>
           </h2>
           <ReceiptStatus loaded={loaded} />
-          <section className="card" aria-labelledby="tracking-anchors-title">
-            <h3 id="tracking-anchors-title">Comparar con anclajes publicados (opcional)</h3>
+          <ProcedureTimeline
+            view={loaded.view}
+            onFollowFolio={(folio) => void followFolio(folio)}
+            onFileAppeal={fileAppeal}
+          />
+          <IdentityStatus view={loaded.view} openings={loaded.openings} />
+          {!isMailboxSequenceComplete(loaded.view.messages) && (
+            <Alert tone="danger" title="Faltan mensajes" testId="mailbox-incomplete">
+              <p>
+                Faltan, sobran o están desordenados algunos mensajes. El sistema podría estar
+                ocultando parte de la conversación.
+              </p>
+            </Alert>
+          )}
+          <ReporterMailbox
+            messages={loaded.messages}
+            sentTexts={sentTexts}
+            isSending={isBusy}
+            status={replyStatus}
+            onSend={sendReply}
+          />
+          <details className="card anchors-details" data-testid="tracking-anchors">
+            <summary>Comparar con anclajes publicados (opcional)</summary>
             <p>
               Si tienes anclajes del registro público publicados fuera del sistema, pégalos aquí.
               Comprobaremos que el registro donde aparece tu denuncia no se reescribió. Para eso
@@ -388,24 +545,7 @@ export function TrackingPage() {
             <p role="status" data-testid="tracking-anchors-status">
               {anchorStatus}
             </p>
-          </section>
-          <StatusTimeline view={loaded.view} />
-          <IdentityStatus view={loaded.view} openings={loaded.openings} />
-          {!isMailboxSequenceComplete(loaded.view.messages) && (
-            <Alert tone="danger" title="Faltan mensajes" testId="mailbox-incomplete">
-              <p>
-                Faltan, sobran o están desordenados algunos mensajes. El sistema podría estar
-                ocultando parte de la conversación.
-              </p>
-            </Alert>
-          )}
-          <ReporterMailbox
-            messages={loaded.messages}
-            sentTexts={sentTexts}
-            isSending={isBusy}
-            status={replyStatus}
-            onSend={sendReply}
-          />
+          </details>
           <button
             type="button"
             className="button button--secondary"

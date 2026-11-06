@@ -1,0 +1,267 @@
+{
+  "$schema": "./verificaciones.schema.json",
+  "version": "1.0.0",
+  "verificaciones": [
+    {
+      "id": "PRV-01",
+      "perfil": "privacidad",
+      "titulo": "Cero peticiones a terceros",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["LGRA art. 91", "SESNA S-04", "BPDN Seguridad de la Información"],
+      "descripcion": "Al cargar el inicio y el formulario no hay peticiones a dominios de terceros."
+    },
+    {
+      "id": "PRV-02",
+      "perfil": "privacidad",
+      "titulo": "CSP estricta como cabecera",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.4.3", "BPDN Seguridad de la Información"],
+      "descripcion": "Cabecera Content-Security-Policy con default-src 'self' o 'none' y scripts sin 'unsafe-inline' ni 'unsafe-eval'."
+    },
+    {
+      "id": "PRV-03",
+      "perfil": "privacidad",
+      "titulo": "HSTS",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.4.5", "ASVS V9.1.1"],
+      "descripcion": "Strict-Transport-Security con max-age de al menos 31536000 en sitios HTTPS, includeSubDomains recomendado; nunca HTTP fuera de localhost."
+    },
+    {
+      "id": "PRV-04",
+      "perfil": "privacidad",
+      "titulo": "Protección contra marcos",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.4.7"],
+      "descripcion": "frame-ancestors 'none' en la CSP de cabecera o X-Frame-Options: DENY."
+    },
+    {
+      "id": "PRV-05",
+      "perfil": "privacidad",
+      "titulo": "Sin Referer",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.4.6", "LGRA art. 91"],
+      "descripcion": "Cabecera Referrer-Policy: no-referrer."
+    },
+    {
+      "id": "PRV-06",
+      "perfil": "privacidad",
+      "titulo": "Permissions-Policy restrictiva",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.4", "SESNA S-02", "SESNA S-04", "LGPDPPSO proporcionalidad"],
+      "descripcion": "Permissions-Policy con geolocation=(), camera=() y microphone=() o microphone=(self)."
+    },
+    {
+      "id": "PRV-07",
+      "perfil": "privacidad",
+      "titulo": "Sin recursos de terceros en el HTML",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["BPDN Seguridad de la Información", "ASVS V14.2.3"],
+      "descripcion": "El HTML no refiere scripts, estilos, fuentes ni marcos de terceros."
+    },
+    {
+      "id": "PRV-08",
+      "perfil": "privacidad",
+      "titulo": "Sin reconocimiento de voz remoto",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["LGRA art. 91", "SESNA S-07"],
+      "descripcion": "Los scripts no usan webkitSpeechRecognition ni SpeechRecognition."
+    },
+    {
+      "id": "PRV-09",
+      "perfil": "privacidad",
+      "titulo": "Folio no secuencial ni predecible",
+      "modos": ["pasivo", "conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V6.3.1", "LGRA art. 91"],
+      "descripcion": "El folio admite al menos 60 bits aleatorios y no sigue un orden ni un contador."
+    },
+    {
+      "id": "PRV-10",
+      "perfil": "privacidad",
+      "titulo": "Sin borradores en el almacenamiento del navegador",
+      "modos": ["pasivo", "conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V8.2.2", "LGRA art. 91"],
+      "descripcion": "Ni hechos, ni identidad, ni recibo, ni llaves en localStorage, sessionStorage, IndexedDB, Cache Storage o cookies."
+    },
+    {
+      "id": "PRV-11",
+      "perfil": "privacidad",
+      "titulo": "Sin mapas ni geocodificación externos",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["SESNA S-02", "LGPDPPSO proporcionalidad"],
+      "descripcion": "Sin Mapbox, Google Maps, OpenStreetMap, Esri, HERE u otros servicios de mapas de terceros."
+    },
+    {
+      "id": "PRV-12",
+      "perfil": "privacidad",
+      "titulo": "Cookies seguras y sin rastreo",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V3.4.1", "ASVS V3.4.2", "ASVS V3.4.3"],
+      "descripcion": "Toda cookie con Secure, HttpOnly y SameSite; ninguna de rastreo o analítica."
+    },
+    {
+      "id": "PRV-13",
+      "perfil": "privacidad",
+      "titulo": "Sin analítica ni rastreadores",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["LGRA art. 91", "LGPDPPSO finalidad"],
+      "descripcion": "Sin gtag, GTM, Meta Pixel, Hotjar, Clarity, Sentry de terceros ni equivalentes."
+    },
+    {
+      "id": "PRV-14",
+      "perfil": "privacidad",
+      "titulo": "Identidad cifrada en el navegador",
+      "modos": ["conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["LGRA art. 91", "LGRA art. 64 fr. III", "SESNA S-04", "ASVS V6.2.7"],
+      "descripcion": "Llaves públicas publicadas y válidas; la identidad viaja solo en un sobre HPKE de tamaño fijo hacia una de ellas."
+    },
+    {
+      "id": "PRV-15",
+      "perfil": "privacidad",
+      "titulo": "Respuesta indistinguible ante folio o secreto inválidos",
+      "modos": ["conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V6.2.8", "API2:2023", "LGRA art. 91"],
+      "descripcion": "Folio inexistente y secreto incorrecto producen la misma respuesta y tiempos comparables."
+    },
+    {
+      "id": "PRV-16",
+      "perfil": "privacidad",
+      "titulo": "Enlaces externos sin fuga de origen",
+      "modos": ["pasivo"],
+      "severidad": "recomendada",
+      "referencias": ["LGRA art. 91"],
+      "descripcion": "Los enlaces a otros orígenes llevan rel=\"noreferrer\" y, si abren pestaña, noopener."
+    },
+    {
+      "id": "PRV-17",
+      "perfil": "privacidad",
+      "titulo": "Sin caché",
+      "modos": ["pasivo", "conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V8.1.1", "ASVS V8.2.1"],
+      "descripcion": "Cache-Control: no-store en las páginas y en las respuestas con datos de una denuncia."
+    },
+    {
+      "id": "PRV-18",
+      "perfil": "privacidad",
+      "titulo": "Sin traducción ni indexación remotas",
+      "modos": ["pasivo"],
+      "severidad": "recomendada",
+      "referencias": ["LGRA art. 91"],
+      "descripcion": "translate=\"no\" o notranslate, robots noindex y campos de texto sin corrector en la nube."
+    },
+    {
+      "id": "PRV-19",
+      "perfil": "privacidad",
+      "titulo": "Fechas públicas sin hora exacta",
+      "modos": ["pasivo", "conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["LGRA art. 91"],
+      "descripcion": "Bitácora, comprobante, seguimiento y datos abiertos con fechas por día; el buzón, a lo sumo por hora."
+    },
+    {
+      "id": "PRV-20",
+      "perfil": "privacidad",
+      "titulo": "Pruebas sin metadatos aceptadas por el nodo",
+      "modos": ["conformidad"],
+      "severidad": "recomendada",
+      "referencias": ["SESNA S-03", "ASVS V12.2.1", "LGPDPPSO proporcionalidad"],
+      "descripcion": "El nodo rechaza o recodifica imágenes con EXIF, XMP, IPTC o GPS."
+    },
+    {
+      "id": "PRV-21",
+      "perfil": "privacidad",
+      "titulo": "Denuncia sin datos personales",
+      "modos": ["conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["LGRA art. 91", "LGPDPPSO proporcionalidad"],
+      "descripcion": "Se puede denunciar sin ningún dato de identidad y sin crear una cuenta."
+    },
+    {
+      "id": "PRV-22",
+      "perfil": "privacidad",
+      "titulo": "Datos abiertos sin celdas pequeñas",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["SESNA S-06", "BPDN art. 60", "BPDN art. 61"],
+      "descripcion": "Ningún conteo publicado entre 1 y 4; sin folios, horas ni texto libre."
+    },
+    {
+      "id": "PRV-23",
+      "perfil": "privacidad",
+      "titulo": "Caracteres invisibles en los hechos",
+      "modos": ["conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["SESNA S-03"],
+      "descripcion": "La ventanilla elimina caracteres invisibles antes de enviar y el nodo los rechaza o normaliza."
+    },
+    {
+      "id": "API-01",
+      "perfil": "privacidad",
+      "titulo": "Conformidad con el contrato",
+      "modos": ["conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["API9:2023", "SESNA S-11", "BPDN especificación por sistema"],
+      "descripcion": "Las rutas responden conforme a estandar/openapi.yaml y no hay rutas públicas fuera de él."
+    },
+    {
+      "id": "API-02",
+      "perfil": "privacidad",
+      "titulo": "Errores comunes sin datos sensibles",
+      "modos": ["conformidad"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V7.4.1", "API8:2023"],
+      "descripcion": "Errores con el esquema común, sin trazas, rutas internas, versiones ni datos de la petición."
+    },
+    {
+      "id": "SEC-31",
+      "perfil": "seguridad",
+      "titulo": "TLS y HSTS",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V9.1.1", "ASVS V9.1.2", "ASVS V9.1.3"],
+      "descripcion": "Solo TLS 1.2 o 1.3 con suites fuertes y HSTS de al menos un año; includeSubDomains recomendado, como en PRV-03."
+    },
+    {
+      "id": "SEC-32",
+      "perfil": "seguridad",
+      "titulo": "Cabeceras de seguridad",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.4.1", "ASVS V14.4.4"],
+      "descripcion": "X-Content-Type-Options: nosniff y Content-Type con juego de caracteres; CSP, marcos, Referer y permisos se verifican en PRV-02 a PRV-06."
+    },
+    {
+      "id": "SEC-33",
+      "perfil": "seguridad",
+      "titulo": "CORS cerrado",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.5.3", "API8:2023"],
+      "descripcion": "Una petición con Origin de otro sitio no recibe Access-Control-Allow-Origin, ni * ni reflejado."
+    },
+    {
+      "id": "SEC-34",
+      "perfil": "seguridad",
+      "titulo": "Sin divulgación de versión",
+      "modos": ["pasivo"],
+      "severidad": "obligatoria",
+      "referencias": ["ASVS V14.3.3"],
+      "descripcion": "Sin cabecera Server con versión ni X-Powered-By."
+    }
+  ]
+}

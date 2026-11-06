@@ -1,0 +1,13 @@
+[
+  {
+    "authorityId": "authority.oic-iffe",
+    "name": "Órgano Interno de Control Ficticio",
+    "supervisorId": "authority.oversight-federal",
+    "isInbox": false
+  },
+  {
+    "authorityId": "authority.oversight-federal",
+    "name": "Unidad Ficticia de Supervisión",
+    "isInbox": false
+  }
+]

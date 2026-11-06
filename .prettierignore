@@ -4,6 +4,18 @@ coverage
 LICENSE
 package-lock.json
 apps/server/data
+apps/enrutador/data
+apps/corroboracion/data
+.red-demo
 anchors
 test-results
 playwright-report
+estandar/swagger/vendor
+.claude
+estandar/reportes
+
+# Productos generados por datos/proceso (JSON compacto por diseño)
+datos/grupos-anonimato
+datos/cobertura/matriz.json
+datos/normalizacion/tasas.json
+datos/fuentes.json

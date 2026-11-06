@@ -2,6 +2,7 @@
 
 - Estado: aceptada
 - Fecha: 2026-10-06
+- Complementado por: 0005 (red federada y turnado), 0007 (rendición de cuentas), 0009 (IA local)
 
 ## Contexto
 

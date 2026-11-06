@@ -1,7 +1,7 @@
 // Validación de los archivos de llaves del despliegue (`keys.json` y `authority-demo-key.json`),
 // cuyos esquemas están en @sigilo/contracts. La comparten el servidor y `scripts/generate-keys.ts`.
-import { AuthorityDemoKeySchema, KeysFileSchema } from '@sigilo/contracts';
-import type { AuthorityDemoKey, PublicKeySet } from '@sigilo/contracts';
+import { AuthorityDemoKeySchema, KeysFileSchema, SupervisorDemoKeySchema } from '@sigilo/contracts';
+import type { AuthorityDemoKey, PublicKeySet, SupervisorDemoKey } from '@sigilo/contracts';
 import {
   assertBoxKeyPair,
   assertSigningKeyPair,
@@ -30,7 +30,9 @@ function samePublicKeySet(left: PublicKeySet, right: PublicKeySet): boolean {
     left.server.signingPublicKey === right.server.signingPublicKey &&
     left.authority.keyId === right.authority.keyId &&
     left.authority.boxPublicKey === right.authority.boxPublicKey &&
-    left.authority.signingPublicKey === right.authority.signingPublicKey
+    left.authority.signingPublicKey === right.authority.signingPublicKey &&
+    left.supervisor?.keyId === right.supervisor?.keyId &&
+    left.supervisor?.boxPublicKey === right.supervisor?.boxPublicKey
   );
 }
 
@@ -45,10 +47,14 @@ export function parseKeysFile(raw: unknown): ServerKeys {
   const { publicKeys, server } = parsed.data;
   const serverSigningPublicKey = decodeKey(publicKeys.server.signingPublicKey);
   const authoritySigningPublicKey = decodeKey(publicKeys.authority.signingPublicKey);
+  const supervisor = publicKeys.supervisor;
   const expected = buildPublicKeySet({
     serverSigningPublicKey,
     authorityBoxPublicKey: decodeKey(publicKeys.authority.boxPublicKey),
     authoritySigningPublicKey,
+    ...(supervisor === undefined
+      ? {}
+      : { supervisorBoxPublicKey: decodeKey(supervisor.boxPublicKey) }),
   });
   // El keyId de la autoridad identifica su llave de buzón, que es la destinataria de los sobres.
   if (!samePublicKeySet(publicKeys, expected)) {
@@ -91,5 +97,25 @@ export function parseAuthorityDemoKey(raw: unknown, publicKeys: PublicKeySet): A
   if (!isSameAuthority) {
     throw new Error('La llave de la autoridad no corresponde a las llaves públicas.');
   }
+  return key;
+}
+
+/**
+ * Valida `supervisor-demo-key.json` contra la llave de la supervisora del despliegue.
+ * Lanza error si el formato es inválido, si la privada no corresponde a la pública o si no es la
+ * de `publicKeys.supervisor`.
+ */
+export function parseSupervisorDemoKey(raw: unknown, publicKeys: PublicKeySet): SupervisorDemoKey {
+  const parsed = SupervisorDemoKeySchema.safeParse(raw);
+  if (!parsed.success) throw new Error('La llave de la supervisora no tiene el formato esperado.');
+  const key = parsed.data;
+  assertBoxKeyPair({
+    publicKey: decodeKey(key.boxPublicKey),
+    privateKey: decodeKey(key.boxPrivateKey),
+  });
+  const isSame =
+    key.keyId === publicKeys.supervisor?.keyId &&
+    key.boxPublicKey === publicKeys.supervisor.boxPublicKey;
+  if (!isSame) throw new Error('La llave de la supervisora no corresponde a las llaves públicas.');
   return key;
 }

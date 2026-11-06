@@ -1,8 +1,19 @@
-/* Estructura de página: encabezado, navegación, contenido y pie. */
-.skip-link {
+/* Estructura de página: encabezado, navegación, contenido y pie (dirección visual A «Puente PDN → S5»). */
+/* Oculto con recorte (no con una posición negativa, que con la barra fija podía asomar bajo el
+   encabezado); aparece solo al recibir el foco. */
+.skip-link:not(:focus) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link:focus {
   position: absolute;
   left: var(--space-2);
-  top: -4rem;
+  top: var(--space-2);
   z-index: 10;
   padding: var(--space-2) var(--space-4);
   background: var(--color-primary);
@@ -10,13 +21,27 @@
   border-radius: var(--radius);
 }
 
-.skip-link:focus {
-  top: var(--space-2);
+/* Encabezado con el degradado verde del S5: de la plataforma a tu denuncia. */
+.site-header {
+  background: linear-gradient(
+    90deg,
+    var(--color-header-1) 0%,
+    var(--color-header-1) 30%,
+    var(--color-header-2) 65%,
+    var(--color-header-3) 100%
+  );
+  color: var(--color-on-header);
+  border-bottom: 1px solid var(--color-header-1);
 }
 
-.site-header {
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+/* Sobre el degradado, el anillo de foco usa el color del texto del encabezado para verse bien. */
+.site-header :focus-visible {
+  outline-color: var(--color-on-header);
+}
+
+/* La salida rápida se separa del degradado con un borde del color del texto del encabezado. */
+.site-header .quick-exit {
+  border-color: var(--color-on-header);
 }
 
 /*
@@ -46,19 +71,37 @@
 }
 
 .site-brand {
-  font-weight: 800;
+  font-weight: 900;
   font-size: 1.2rem;
-  letter-spacing: 0.08em;
-  color: var(--color-text);
+  letter-spacing: 0.12em;
+  color: var(--color-on-header);
   text-decoration: none;
   min-height: var(--target-min);
   display: inline-flex;
   align-items: center;
+  gap: var(--space-2);
+}
+
+.site-brand:hover {
+  color: var(--color-on-header);
+}
+
+/* Sello de la marca: tres nodos de la constelación y el nodo turquesa de tu denuncia. Decorativo. */
+.site-brand::before {
+  content: '';
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  flex: none;
+  background:
+    radial-gradient(circle at 18% 72%, currentColor 0 12%, transparent 13%),
+    radial-gradient(circle at 46% 22%, currentColor 0 12%, transparent 13%),
+    radial-gradient(circle at 84% 42%, currentColor 0 12%, transparent 13%),
+    radial-gradient(circle at 56% 84%, var(--color-protect-fill) 0 15%, transparent 16%);
 }
 
 .site-nav {
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-surface-strong);
 }
 
 .site-nav ul {
@@ -79,9 +122,15 @@
   padding: 0 var(--space-1);
 }
 
-.site-nav a[aria-current='page'] {
+.site-nav a {
+  color: var(--color-text);
   font-weight: 700;
+}
+
+.site-nav a[aria-current='page'] {
+  font-weight: 900;
   text-decoration-thickness: 3px;
+  text-decoration-color: var(--color-primary);
 }
 
 /* En pantallas angostas el menú se abre con «Menú»; en anchas se muestra la lista. */
@@ -100,7 +149,8 @@
   flex-direction: column;
 }
 
-.site-nav__list {
+/* Mismo peso que `.site-nav ul` para que en celular solo se vea el botón «Menú». */
+.site-nav .site-nav__list {
   display: none;
 }
 
@@ -109,18 +159,47 @@
     display: none;
   }
 
-  .site-nav__list {
-    display: block;
-    padding-top: var(--space-1);
+  /* Navegación en píldora blanca, con las secciones en mayúsculas y la actual subrayada. */
+  .site-nav .site-nav__list {
+    display: flex;
+    width: fit-content;
+    margin: var(--space-3) auto;
+    padding: var(--space-1) var(--space-2);
+    background: var(--color-surface);
+    border: 1px solid var(--color-surface-strong);
+    border-radius: var(--radius-pill);
+  }
+
+  .site-nav .site-nav__list a {
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-pill);
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .site-nav .site-nav__list a:hover {
+    background: var(--color-surface-strong);
+    color: var(--color-text);
+  }
+
+  .site-nav .site-nav__list a[aria-current='page'] {
+    box-shadow: inset 0 -3px 0 var(--color-primary);
+  }
+
+  .site-nav {
+    border-bottom: 0;
   }
 }
 
 .demo-notice {
   margin: 0;
   padding: var(--space-2) var(--space-4);
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  font-weight: 600;
+  background: var(--color-banner-bg);
+  color: var(--color-banner-text);
+  font-weight: 800;
   text-align: center;
 }
 

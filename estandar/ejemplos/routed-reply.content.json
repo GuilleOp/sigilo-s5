@@ -1,0 +1,5 @@
+{
+  "v": 1,
+  "status": 200,
+  "body": { "kind": "json", "value": { "token": "reto-ficticio", "bits": 18 } }
+}

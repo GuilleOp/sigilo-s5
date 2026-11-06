@@ -76,6 +76,23 @@ const EXPECTED_FUNCTIONS = [
   'formatPowHeader',
   'parsePowHeader',
   'powSolveSeconds',
+  'createBusinessCalendar',
+  'isBusinessDay',
+  'addNaturalDays',
+  'addBusinessDays',
+  'addCalendarMonths',
+  'computeDueDate',
+  'termForRule',
+  'remainingDays',
+  'deadlineStatus',
+  'evaluateDeadline',
+  'toMexicoCentralDay',
+  'sealEscalation',
+  'openEscalation',
+  'escalationEnvelopeDigest',
+  'submissionDigestFromEscalation',
+  'evaluateEscalationRules',
+  'activeDeadlines',
 ];
 
 describe('@sigilo/core', () => {
@@ -87,6 +104,7 @@ describe('@sigilo/core', () => {
     expect(core.RECEIPT_WORD_COUNT).toBe(8);
     expect(core.IDENTITY_PADDED_SIZE).toBe(4096);
     expect(core.MAILBOX_PADDED_SIZE).toBe(4096);
+    expect(core.ESCALATION_PADDED_SIZE).toBe(49_152);
     expect(core.MAX_MAILBOX_TEXT_LENGTH).toBe(1000);
     expect(core.SLOW_DEVICE_HASHES_PER_SECOND).toBe(50_000);
     expect(new core.ReceiptPhraseError('x', 1)).toBeInstanceOf(Error);

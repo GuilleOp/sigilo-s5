@@ -65,31 +65,52 @@ describe('createApiClient', () => {
   });
 
   it('reporta un fallo de red sin detalles', async () => {
-    const client = createApiClient(async () => {
-      throw new TypeError('Failed to fetch');
-    });
+    const client = createApiClient(
+      async () => {
+        throw new TypeError('Failed to fetch');
+      },
+      { delayMs: () => 0 },
+    );
     await expect(client.text(ROUTES.openDataCsv)).rejects.toMatchObject({ code: 'network' });
+  });
+
+  it('reintenta con aviso las consultas, pero nunca repite un envío', async () => {
+    let calls = 0;
+    const notices: string[] = [];
+    const flaky = async () => {
+      calls += 1;
+      if (calls < 3) throw new TypeError('Failed to fetch');
+      return new Response('ok', { status: 200 });
+    };
+    const client = createApiClient(flaky, {
+      delayMs: () => 0,
+      onRetry: (attempt, retries) => notices.push(`${attempt}/${retries}`),
+    });
+    await expect(client.text(ROUTES.openDataCsv)).resolves.toBe('ok');
+    expect(notices).toEqual(['1/2', '2/2']);
+    calls = 0;
+    await expect(client.text(ROUTES.tracking, { json: {} })).rejects.toMatchObject({
+      code: 'network',
+    });
+    expect(calls).toBe(1);
   });
 });
 
 describe('createSigiloApi', () => {
-  it('envía el token bearer y el JSON de estatus a la ruta de ROUTES', async () => {
+  it('envía el token de sesión y la acción del trámite a la ruta de ROUTES', async () => {
     const calls: { input: string; init: RequestInit }[] = [];
-    const summary = {
+    const state = {
       folio: 'AAAA-BBBB-CCCC',
-      mode: 'anonymous',
-      status: 'routing',
-      receivedOn: '2026-10-20',
-      stateCode: '22',
-      offenseCode: 'LGRA-52',
-      protectionRequested: false,
+      status: 'routed',
+      managementState: 'accepted',
+      assignedAuthorityId: 'authority.oic-prueba',
     };
-    const sigilo = createSigiloApi(createApiClient(fakeFetch(Response.json(summary), calls)));
-    await sigilo.updateStatus('token-de-prueba', 'AAAA-BBBB-CCCC', 'routing');
+    const sigilo = createSigiloApi(createApiClient(fakeFetch(Response.json(state), calls)));
+    await sigilo.applyProcedure('token-de-prueba', 'AAAA-BBBB-CCCC', { action: 'accept' });
     const call = calls[0];
-    expect(call?.input).toBe(ROUTES.authorityStatus('AAAA-BBBB-CCCC'));
+    expect(call?.input).toBe(ROUTES.authorityProcedure('AAAA-BBBB-CCCC'));
     expect(new Headers(call?.init.headers).get('Authorization')).toBe('Bearer token-de-prueba');
-    expect(call?.init.body).toBe('{"status":"routing"}');
+    expect(call?.init.body).toBe('{"action":"accept"}');
   });
 
   it('pagina el listado, pide la bitácora desde un día y envía la respuesta con su prueba', async () => {
