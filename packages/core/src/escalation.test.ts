@@ -15,7 +15,7 @@ import type { EscalationContext } from './escalation.ts';
 import { generateBoxKeyPair, keyIdFor } from './keys.ts';
 import { deriveReceiptKeys } from './receipt-keys.ts';
 import { randomBytes } from './random.ts';
-import { computeSubmissionDigest } from './signed-receipt.ts';
+import { computeSubmissionDigest, corroborationDigest } from './signed-receipt.ts';
 
 const OPEN_ERROR = 'No se pudo abrir el sobre.';
 
@@ -138,5 +138,19 @@ describe('sobre de escalamiento', () => {
     expect(
       submissionDigestFromEscalation(content, { ...context, escalationEnvelope: swapped }),
     ).not.toBe(computeSubmissionDigest(sent));
+  });
+
+  it('con corroboración ciega, la recalcula con el digesto de la etiqueta', async () => {
+    const { supervisor, recipient, request, context } = scenario();
+    const escalationEnvelope = await sealEscalation(request, recipient, context);
+    const corroboration = { epoch: 1, tag: 'AAAA', similarity: null };
+    const sent = { ...request, escalationEnvelope, corroboration };
+    const content = await openEscalation(escalationEnvelope, supervisor.privateKey, context);
+    const delivery = {
+      ...context,
+      escalationEnvelope,
+      corroborationDigest: corroborationDigest(corroboration),
+    };
+    expect(submissionDigestFromEscalation(content, delivery)).toBe(computeSubmissionDigest(sent));
   });
 });

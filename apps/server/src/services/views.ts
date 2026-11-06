@@ -138,6 +138,9 @@ export function buildComplaintDetail(
     ...(complaint.escalationEnvelope === null
       ? {}
       : { escalationEnvelopeDigest: escalationEnvelopeDigest(complaint.escalationEnvelope) }),
+    ...(complaint.corroborationDigest === null
+      ? {}
+      : { corroborationDigest: complaint.corroborationDigest }),
     ...(receivedEvent === null ? {} : { receivedEventSeq: receivedEvent.seq }),
     ...(deletionOn === null ? {} : { evidenceDeletionOn: deletionOn }),
     storedEvidenceCount: ctx.evidence.listStoredIdsForFolio(complaint.folio).length,

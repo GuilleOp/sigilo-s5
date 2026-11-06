@@ -7,6 +7,7 @@ import { canonicalize, sha256Hex } from './canonical-json.ts';
 import { receivedPayloadDigest } from './ledger.ts';
 import {
   computeSubmissionDigest,
+  corroborationDigest,
   sealedIdentityDigest,
   signReceipt,
   submissionDigestFromDetail,
@@ -82,6 +83,9 @@ function detailOf(request: SubmitComplaintRequest): ComplaintDetail {
     ...(request.sealedIdentity === undefined
       ? {}
       : { sealedIdentityDigest: sealedIdentityDigest(request.sealedIdentity) }),
+    ...(request.corroboration === undefined
+      ? {}
+      : { corroborationDigest: corroborationDigest(request.corroboration) }),
     messages: [],
     identityOpenedCount: 0,
   };
@@ -117,6 +121,23 @@ describe('computeSubmissionDigest', () => {
     const detail = detailOf(REQUEST);
     const swapped = { ...detail, reporterKeys: { ...detail.reporterKeys, boxPublicKey: 'ZZZZ' } };
     expect(submissionDigestFromDetail(swapped)).not.toBe(computeSubmissionDigest(REQUEST));
+  });
+
+  it('con corroboración ciega, la autoridad lo recalcula solo con el digesto de la etiqueta', () => {
+    const corroborated: SubmitComplaintRequest = {
+      ...REQUEST,
+      corroboration: { epoch: 3, tag: 'DDDD', similarity: null },
+    };
+    const detail = detailOf(corroborated);
+    expect(JSON.stringify(detail)).not.toContain('DDDD');
+    expect(submissionDigestFromDetail(detail)).toBe(computeSubmissionDigest(corroborated));
+    expect(computeSubmissionDigest(corroborated)).not.toBe(computeSubmissionDigest(REQUEST));
+    // Sin el digesto de la corroboración (el error que mostraba «las llaves no coinciden»).
+    const withoutDigest = { ...detail };
+    delete withoutDigest.corroborationDigest;
+    expect(submissionDigestFromDetail(withoutDigest)).not.toBe(
+      computeSubmissionDigest(corroborated),
+    );
   });
 
   it('no depende del orden de las propiedades', () => {

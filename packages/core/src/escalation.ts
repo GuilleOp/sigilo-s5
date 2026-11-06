@@ -100,6 +100,8 @@ export interface EscalationDeliveryContext extends EscalationContext {
   escalationEnvelope: HpkeEnvelope;
   /** Solo en modo `sealed`: digesto del sobre de identidad, que la supervisora nunca recibe. */
   sealedIdentityDigest?: string | undefined;
+  /** Digesto de la corroboración ciega, si la denuncia la trae (la etiqueta no se entrega). */
+  corroborationDigest?: string | undefined;
 }
 
 /**
@@ -121,6 +123,9 @@ export function submissionDigestFromEscalation(
         ? {}
         : { sealedIdentity: delivery.sealedIdentityDigest }),
       escalationEnvelope: escalationEnvelopeDigest(delivery.escalationEnvelope),
+      ...(delivery.corroborationDigest === undefined
+        ? {}
+        : { corroboration: delivery.corroborationDigest }),
       protectionRequested: content.protectionRequested,
       reporterKeys: {
         boxPublicKey: delivery.reporterKeys.boxPublicKey,

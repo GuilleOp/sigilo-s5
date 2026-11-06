@@ -175,6 +175,7 @@ ComplaintDetail,reporterKeys,reporterKeys,objeto (ReporterKeys),,sí,"Llaves pú
 ComplaintDetail,authVerifier,authVerifier,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Digesto de la llave de autenticación; forma parte del contexto de la identidad, no autentica.",,6H9gCXCtBR7tRa2GGz5vvMxJ5x3oaqb0mNjkfPnUav0
 ComplaintDetail,sealedIdentityDigest,sealedIdentityDigest,cadena,patrón ^[0-9a-f]{64}$,no,SHA-256 de la forma canónica del sobre de identidad; solo en modo sealed.,,9015d201942088281d9f674cb0dac7e2180d135935478dd…
 ComplaintDetail,escalationEnvelopeDigest,escalationEnvelopeDigest,cadena,patrón ^[0-9a-f]{64}$,no,"SHA-256 de la forma canónica del sobre de escalamiento (segunda llave), si la denuncia lo trae.",,
+ComplaintDetail,corroborationDigest,corroborationDigest,cadena,patrón ^[0-9a-f]{64}$,no,"SHA-256 de la forma canónica de la corroboración ciega, si la denuncia la trae; la etiqueta no se muestra.",,
 ComplaintDetail,receivedEventSeq,receivedEventSeq,entero,mínimo 0,no,Secuencia del evento complaint.received una vez publicado.,,41
 ComplaintDetail,evidenceDeletionOn,evidenceDeletionOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,no,"Día en que la retención borrará los archivos de las pruebas, si aplica.",,2026-11-05
 ComplaintDetail,storedEvidenceCount,storedEvidenceCount,entero,de 0 a 10,no,Pruebas cuyo archivo sigue guardado.,,1
@@ -270,6 +271,7 @@ EscalationDelivery,escalationEnvelope,escalationEnvelope,objeto (HpkeEnvelope),,
 EscalationDelivery,authVerifier,authVerifier,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Bytes en Base64URL sin relleno (RFC 4648, sección 5).",,6H9gCXCtBR7tRa2GGz5vvMxJ5x3oaqb0mNjkfPnUav0
 EscalationDelivery,reporterKeys,reporterKeys,objeto (ReporterKeys),,sí,"Llaves públicas de la persona denunciante, derivadas de su recibo de 8 palabras.",,
 EscalationDelivery,sealedIdentityDigest,sealedIdentityDigest,cadena,patrón ^[0-9a-f]{64}$,no,"SHA-256 del sobre de identidad (solo en modo sealed), para recalcular el digesto del envío; la supervisora nunca recibe la identidad.",,9015d201942088281d9f674cb0dac7e2180d135935478dd…
+EscalationDelivery,corroborationDigest,corroborationDigest,cadena,patrón ^[0-9a-f]{64}$,no,"SHA-256 de la corroboración ciega, si la denuncia la trae, para recalcular el digesto del envío; la etiqueta no se entrega.",,
 EscalationDelivery,receivedEventSeq,receivedEventSeq,entero,mínimo 0,no,Secuencia del evento complaint.received una vez publicado.,,41
 EscalationDelivery,rules,rules,arreglo de RuleTriggerView,,sí,Reglas de escalamiento que se cumplieron.,,
 AppealRequest,folio,folio,cadena,patrón ^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$,sí,Folio público aleatorio de la denuncia: 12 caracteres Base32 de Crockford (60 bits) en tres grupos de 4. No es secuencial.,,K7Q2-M9XP-4RTD

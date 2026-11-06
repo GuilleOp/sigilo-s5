@@ -8254,6 +8254,11 @@
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
           },
+          "corroborationDigest": {
+            "description": "SHA-256 de la forma canónica de la corroboración ciega, si la denuncia la trae; la etiqueta no se muestra.",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
           "receivedEventSeq": {
             "description": "Secuencia del evento complaint.received una vez publicado.",
             "type": "integer",
@@ -9002,6 +9007,11 @@
           "reporterKeys": { "$ref": "#/components/schemas/ReporterKeys" },
           "sealedIdentityDigest": {
             "description": "SHA-256 del sobre de identidad (solo en modo sealed), para recalcular el digesto del envío; la supervisora nunca recibe la identidad.",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "corroborationDigest": {
+            "description": "SHA-256 de la corroboración ciega, si la denuncia la trae, para recalcular el digesto del envío; la etiqueta no se entrega.",
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
           },

@@ -144,6 +144,11 @@ export const ComplaintDetailSchema = z
       description:
         'SHA-256 de la forma canónica del sobre de escalamiento (segunda llave), si la denuncia lo trae.',
     }),
+    /** `sha256Hex(canonicalize(corroboration))`, si la denuncia pidió corroboración ciega. */
+    corroborationDigest: Sha256HexSchema.optional().meta({
+      description:
+        'SHA-256 de la forma canónica de la corroboración ciega, si la denuncia la trae; la etiqueta no se muestra.',
+    }),
     /** Secuencia del evento `complaint.received` una vez publicado; falta mientras está pendiente. */
     receivedEventSeq: z
       .number()
@@ -271,6 +276,10 @@ export const EscalationDeliverySchema = z
     sealedIdentityDigest: Sha256HexSchema.optional().meta({
       description:
         'SHA-256 del sobre de identidad (solo en modo sealed), para recalcular el digesto del envío; la supervisora nunca recibe la identidad.',
+    }),
+    corroborationDigest: Sha256HexSchema.optional().meta({
+      description:
+        'SHA-256 de la corroboración ciega, si la denuncia la trae, para recalcular el digesto del envío; la etiqueta no se entrega.',
     }),
     receivedEventSeq: z
       .number()

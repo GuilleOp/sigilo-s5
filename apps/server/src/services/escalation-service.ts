@@ -90,6 +90,9 @@ export function deliverEscalationEnvelope(
     ...(complaint.sealedIdentity === null
       ? {}
       : { sealedIdentityDigest: sealedIdentityDigest(complaint.sealedIdentity) }),
+    ...(complaint.corroborationDigest === null
+      ? {}
+      : { corroborationDigest: complaint.corroborationDigest }),
     ...(received === null ? {} : { receivedEventSeq: received.seq }),
     rules: triggers.map(ruleTriggerView),
   };

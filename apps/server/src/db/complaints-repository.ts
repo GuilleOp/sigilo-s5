@@ -51,6 +51,8 @@ export interface ComplaintRecord {
   closureReason: ClosureReason | null;
   /** Segunda llave: sobre de escalamiento hacia la supervisora, si la persona lo envió. */
   escalationEnvelope: HpkeEnvelope | null;
+  /** Digesto de la corroboración ciega, si la persona la pidió (la etiqueta no se guarda aquí). */
+  corroborationDigest: string | null;
 }
 
 /** Estado del trámite que cambia con cada acción de la autoridad. */
@@ -164,6 +166,7 @@ function toRecord(row: Row): ComplaintRecord {
     escalationEnvelope: parseOptional(readOptionalText(row, 'escalation_envelope_json'), (text) =>
       HpkeEnvelopeSchema.parse(JSON.parse(text)),
     ),
+    corroborationDigest: readOptionalText(row, 'corroboration_digest'),
   };
 }
 
@@ -192,8 +195,9 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
     `INSERT INTO complaints (folio, mode, status, received_on, state_code, offense_code,
        protection_requested, facts_json, sealed_identity_json, reporter_box_public_key,
        reporter_signing_public_key, auth_verifier, receipt_json, received_legal_on,
-       assigned_authority, management_state, legal_stage, closure_reason, escalation_envelope_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       assigned_authority, management_state, legal_stage, closure_reason, escalation_envelope_json,
+       corroboration_digest)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const findStatement = db.prepare('SELECT * FROM complaints WHERE folio = ?');
   // Dentro del mismo día se ordena por folio (aleatorio) para no revelar el orden de llegada.
@@ -267,6 +271,7 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
         record.legalStage,
         record.closureReason,
         record.escalationEnvelope === null ? null : JSON.stringify(record.escalationEnvelope),
+        record.corroborationDigest,
       );
     },
     find: (folio) => {

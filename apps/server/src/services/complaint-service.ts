@@ -2,6 +2,7 @@
 import type { SubmitComplaintRequest, SubmitComplaintResponse } from '@sigilo/contracts';
 import {
   computeSubmissionDigest,
+  corroborationDigest,
   generateFolio,
   signReceipt,
   toDayDate,
@@ -183,6 +184,8 @@ export function submitComplaint(
       legalStage: null,
       closureReason: null,
       escalationEnvelope: request.escalationEnvelope ?? null,
+      corroborationDigest:
+        request.corroboration === undefined ? null : corroborationDigest(request.corroboration),
     });
     associateEvidence(ctx, request, folio);
     ctx.statusHistory.insert(folio, 'received', receivedOn);

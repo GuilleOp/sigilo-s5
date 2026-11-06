@@ -185,9 +185,14 @@ protectionRequested }`) en UTF-8, rellenado a exactamente `ESCALATION_PADDED_SIZ
 - `submissionDigest = sha256Hex(canonicalize(solicitud))`, con `sealedIdentity` sustituido por
   `sealedIdentityDigest` y, si viene, `escalationEnvelope` por
   `escalationEnvelopeDigest = sha256Hex(canonicalize(sobre))` (`submissionDigestInput`,
-  `computeSubmissionDigest`). Una solicitud sin segunda llave tiene el mismo digesto que antes. Así la autoridad lo
-  recalcula desde `ComplaintDetail`, que trae `sealedIdentityDigest` y no el sobre
-  (`submissionDigestFromDetail`).
+  `computeSubmissionDigest`), y, si viene, `corroboration` por
+  `corroborationDigest = sha256Hex(canonicalize(corroboración))`. Una solicitud sin segunda llave
+  ni corroboración tiene el mismo digesto que antes. Así la autoridad lo recalcula desde
+  `ComplaintDetail`, que trae `sealedIdentityDigest`, `escalationEnvelopeDigest` y
+  `corroborationDigest`, y no los sobres ni la etiqueta de corroboración
+  (`submissionDigestFromDetail`); la supervisora, desde la entrega de la segunda llave
+  (`submissionDigestFromEscalation`). Antes de la migración 13 la corroboración entraba completa
+  y el panel no podía recalcular el digesto de esas denuncias («las llaves no coinciden»).
 - `payloadDigest = sha256Hex(canonicalize({ folio, submissionDigest }))` identifica el evento
   `complaint.received` de la denuncia. El comprobante no lleva `seq`: el evento recibe su lugar en
   la cadena hasta que cierra su día.

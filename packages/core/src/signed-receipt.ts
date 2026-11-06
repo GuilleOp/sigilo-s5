@@ -20,15 +20,17 @@ const UnsignedReceiptSchema = SignedReceiptSchema.omit({ signature: true });
 export type UnsignedReceipt = Omit<SignedReceipt, 'signature'>;
 
 /**
- * Solicitud tal como entra al digesto: igual a la enviada, pero con `sealedIdentity` y
- * `escalationEnvelope` sustituidos por el SHA-256 de su forma canónica.
+ * Solicitud tal como entra al digesto: igual a la enviada, pero con `sealedIdentity`,
+ * `escalationEnvelope` y `corroboration` sustituidos por el SHA-256 de su forma canónica. Así la
+ * autoridad recalcula el digesto sin ver la etiqueta de corroboración (no sirve de oráculo).
  */
 export type SubmissionDigestInput = Omit<
   SubmitComplaintRequest,
-  'sealedIdentity' | 'escalationEnvelope'
+  'sealedIdentity' | 'escalationEnvelope' | 'corroboration'
 > & {
   sealedIdentity?: string;
   escalationEnvelope?: string;
+  corroboration?: string;
 };
 
 function receiptMessage(receipt: UnsignedReceipt): Uint8Array {
@@ -37,6 +39,13 @@ function receiptMessage(receipt: UnsignedReceipt): Uint8Array {
   return utf8Encode(
     canonicalize({ folio, submissionDigest, receivedOn, payloadDigest, serverKeyId }),
   );
+}
+
+/** `sha256Hex(canonicalize(corroboration))`: digesto de la corroboración ciega que entra al envío. */
+export function corroborationDigest(
+  corroboration: NonNullable<SubmitComplaintRequest['corroboration']>,
+): string {
+  return sha256Hex(canonicalize(corroboration));
 }
 
 /** `sha256Hex(canonicalize(envelope))`: digesto del sobre de identidad que entra al envío. */
@@ -50,7 +59,7 @@ export function sealedIdentityDigest(envelope: HpkeEnvelope): string {
  * `ComplaintDetail` sin recibir el sobre (que solo se entrega al abrir la identidad).
  */
 export function submissionDigestInput(request: SubmitComplaintRequest): SubmissionDigestInput {
-  const { sealedIdentity, escalationEnvelope, ...rest } = request;
+  const { sealedIdentity, escalationEnvelope, corroboration, ...rest } = request;
   return {
     ...rest,
     ...(sealedIdentity === undefined
@@ -60,6 +69,7 @@ export function submissionDigestInput(request: SubmitComplaintRequest): Submissi
     ...(escalationEnvelope === undefined
       ? {}
       : { escalationEnvelope: sealedIdentityDigest(escalationEnvelope) }),
+    ...(corroboration === undefined ? {} : { corroboration: corroborationDigest(corroboration) }),
   };
 }
 
@@ -73,7 +83,8 @@ export function computeSubmissionDigest(request: SubmitComplaintRequest): string
 
 /**
  * Recalcula `submissionDigest` desde el detalle que ve la autoridad (`version`, modo, hechos tal
- * como se enviaron, pruebas en orden, protección, llaves, verificador y digesto del sobre).
+ * como se enviaron, pruebas en orden, protección, llaves, verificador y digestos de los sobres y de
+ * la corroboración).
  * Seguridad: si coincide con el `payloadDigest` del evento `complaint.received` publicado, el
  * servidor no cambió nada de eso, en particular las llaves del buzón, ni siquiera en modo anónimo.
  */
@@ -89,6 +100,9 @@ export function submissionDigestFromDetail(detail: ComplaintDetail): string {
     ...(detail.escalationEnvelopeDigest === undefined
       ? {}
       : { escalationEnvelope: detail.escalationEnvelopeDigest }),
+    ...(detail.corroborationDigest === undefined
+      ? {}
+      : { corroboration: detail.corroborationDigest }),
     protectionRequested: detail.summary.protectionRequested,
     reporterKeys: {
       boxPublicKey: detail.reporterKeys.boxPublicKey,

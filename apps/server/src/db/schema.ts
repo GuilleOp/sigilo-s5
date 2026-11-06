@@ -595,6 +595,14 @@ ALTER TABLE corroboration_registrations ADD COLUMN withdrawn INTEGER NOT NULL DE
   CHECK (withdrawn IN (0, 1));
 `;
 
+/**
+ * Migración 13: digesto de la corroboración ciega de cada denuncia, para que la autoridad recalcule
+ * el digesto de la solicitud sin ver la etiqueta.
+ */
+const CORROBORATION_DIGEST = `
+ALTER TABLE complaints ADD COLUMN corroboration_digest TEXT;
+`;
+
 /** Migración 11: nota pública del turnado, que la persona lee cuando llega el comprobante (H1). */
 const TRANSFER_NOTE = `
 ALTER TABLE transfers ADD COLUMN note TEXT;
@@ -791,6 +799,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 10, sql: SECURITY_REVIEW },
   { version: 11, sql: TRANSFER_NOTE },
   { version: 12, sql: CORROBORATION_CONFIRMATION },
+  { version: 13, sql: CORROBORATION_DIGEST },
 ];
 
 /** Versión más reciente del esquema. */
