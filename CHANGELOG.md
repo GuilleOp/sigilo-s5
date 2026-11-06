@@ -5,6 +5,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Agregado
+
+- Confianza verificable (`docs/confianza-verificable.md`): en lugar de pedir confianza, la web da
+  formas de comprobar el anonimato.
+  - Paso 1: invitación a escribir en modo avión; los pasos 1 a 4 y la limpieza de fotos funcionan
+    sin conexión.
+  - Paso 4: «Lo que sale de tu equipo», con lo que viaja, lo que nunca sale y, en la red, una
+    muestra real del relato cerrado con la llave del nodo destino.
+  - Inicio: «¿Quién sabe qué de ti?», con lo que ve cada parte del camino y las dudas más comunes,
+    y «Lo que SIGILO no puede hacer por ti».
+  - `/verificar`: cuántas denuncias llegaron y cuántos nombres se abrieron o entregaron, contados
+    con la bitácora ya comprobada.
+
 ## [1.0.1] - 2026-11-05
 
 ### Corregido

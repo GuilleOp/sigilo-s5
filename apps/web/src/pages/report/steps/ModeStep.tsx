@@ -1,4 +1,5 @@
-// Paso 1: modo anónimo (recomendado) o identidad sellada, con sus datos.
+// Paso 1: modo anónimo (recomendado) o identidad sellada, con sus datos, y la invitación a escribir
+// sin conexión para comprobar que nada sale del equipo antes de enviar.
 import { TextAreaField, TextField } from '../../../components/Field.tsx';
 import { advisorRecommendationStore } from '../../../lib/advisor-recommendation.ts';
 import { useMemoryStore } from '../../../state/memory-store.ts';
@@ -38,6 +39,13 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
   } as const;
   return (
     <>
+      <p className="offline-tip" data-testid="offline-tip">
+        <strong>Compruébalo tú:</strong> si quieres ver que nada sale de tu equipo mientras
+        escribes, pon tu teléfono en modo avión o desconecta el internet ahora. Puedes llenar los
+        pasos y limpiar tus fotos sin conexión; vuelve a conectarte solo para enviar. Los PDF
+        necesitan conexión la primera vez. Si sin conexión no podemos calcular el tamaño de tu grupo
+        de trabajo, te lo diremos.
+      </p>
       <fieldset id="mode" data-group-field>
         <legend>Elige una opción</legend>
         {recommended !== null && (

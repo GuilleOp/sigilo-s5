@@ -1,0 +1,127 @@
+/* Piezas de confianza verificable: «¿Quién sabe qué de ti?», los límites dichos de frente, «Lo que
+   sale de tu equipo», las cifras de la bitácora verificada y la invitación a escribir sin conexión. */
+.trust {
+  margin-block: var(--space-6);
+}
+
+.trust-table {
+  border-collapse: collapse;
+  inline-size: 100%;
+  min-inline-size: 40rem;
+}
+
+.trust-table caption {
+  text-align: start;
+  font-weight: 700;
+  padding-bottom: var(--space-2);
+}
+
+.trust-table th,
+.trust-table td {
+  text-align: start;
+  vertical-align: top;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.trust-table thead th {
+  background: var(--color-surface-strong);
+}
+
+.trust__note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.trust-doubts details {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.trust-doubts summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.limits__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.limits__list li {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-surface-strong);
+}
+
+.limits__risk,
+.limits__help {
+  margin: 0;
+}
+
+.limits__help {
+  color: var(--color-text-muted);
+}
+
+.outgoing__columns {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 48rem) {
+  .outgoing__columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.outgoing__sample {
+  margin: var(--space-4) 0 0;
+}
+
+.outgoing__cipher {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: var(--space-2) 0 0;
+}
+
+.ledger-figures {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+@media (min-width: 40rem) {
+  .ledger-figures {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.ledger-figures div {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.ledger-figures dt {
+  font-size: var(--text-sm);
+}
+
+.ledger-figures dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 900;
+}
+
+.offline-tip {
+  border-left: 6px solid var(--color-info);
+  background: var(--color-info-bg);
+  padding: var(--space-3);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}

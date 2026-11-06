@@ -1,5 +1,6 @@
 // Pantalla de inicio (dirección A): titular, acciones, constelación decorativa que termina en tu
-// denuncia sellada, «Tu escudo» con las protecciones activas y el asesor.
+// denuncia sellada, «Tu escudo» con las protecciones activas, «¿Quién sabe qué de ti?», los límites
+// dichos de frente y el asesor.
 import { Link } from 'react-router';
 import { PATHS } from '../../app/paths.ts';
 import { HeroConstellation } from '../../components/a/HeroConstellation.tsx';
@@ -8,6 +9,8 @@ import { ShieldPanel } from '../../components/a/ShieldPanel.tsx';
 import { SystemBadge } from '../../components/a/SystemBadge.tsx';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 import { Advisor } from './Advisor.tsx';
+import { HonestLimits } from './HonestLimits.tsx';
+import { WhoKnowsWhat } from './WhoKnowsWhat.tsx';
 
 /** Inicio. */
 export function HomePage() {
@@ -48,6 +51,8 @@ export function HomePage() {
         borra todo y abre una página del clima. También puedes pulsar dos veces la tecla{' '}
         <kbd>Esc</kbd>.
       </p>
+      <WhoKnowsWhat />
+      <HonestLimits />
       <Advisor />
       <h2>Más información</h2>
       <ul>
@@ -61,7 +66,7 @@ export function HomePage() {
         </li>
         <li>
           <Link to={PATHS.verify}>Verificar la bitácora</Link>: comprueba que nadie cambió el
-          registro público.
+          registro público y comprueba cuántos nombres se han abierto.
         </li>
       </ul>
     </>

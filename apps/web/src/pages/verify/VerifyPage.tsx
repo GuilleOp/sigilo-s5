@@ -2,6 +2,9 @@
 // si la persona pega uno o varios anclajes publicados, comprueba que la bitácora todavía los
 // contiene todos.
 import { useState } from 'react';
+import { Link } from 'react-router';
+import type { LedgerEvent } from '@sigilo/contracts';
+import { PATHS } from '../../app/paths.ts';
 import { Alert } from '../../components/Alert.tsx';
 import { AnchorsField } from '../../components/AnchorsField.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
@@ -13,6 +16,7 @@ import type {
 } from '../../crypto/ledger-verification.ts';
 import { announce } from '../../lib/announce.ts';
 import { formatDayDate } from '../../lib/format.ts';
+import { summarizeLedger } from '../../lib/ledger-summary.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
@@ -96,6 +100,47 @@ function Result({ result }: { result: LedgerVerification }) {
         firmó.
       </p>
     </Alert>
+  );
+}
+
+/**
+ * Cifras de la bitácora que el navegador acaba de verificar: no son números que el sistema afirma,
+ * sino conteos de los registros firmados que descargó esta pantalla.
+ */
+function LedgerFigures({ events }: { events: readonly LedgerEvent[] }) {
+  const summary = summarizeLedger(events);
+  return (
+    <section className="card" aria-labelledby="figures-title" data-testid="ledger-figures">
+      <h2 id="figures-title">Lo que dice la bitácora que acabas de comprobar</h2>
+      <p>
+        Estas cifras no te las da el sistema: las contó tu equipo con los registros firmados que
+        descargó. Son las de este nodo; cada nodo de la red publica su propia bitácora.
+      </p>
+      <dl className="ledger-figures">
+        <div>
+          <dt>Denuncias recibidas</dt>
+          <dd data-testid="figure-complaints">{summary.complaints}</dd>
+        </div>
+        <div>
+          <dt>
+            Aperturas de un nombre sellado (incluye las que pidió la propia persona para su
+            inconformidad)
+          </dt>
+          <dd data-testid="figure-opened">{summary.identitiesOpened}</dd>
+        </div>
+        <div>
+          <dt>Entregas del sobre con el nombre a una persona de la autoridad</dt>
+          <dd data-testid="figure-released">{summary.identitiesReleased}</dd>
+        </div>
+      </dl>
+      <p>
+        Las denuncias anónimas no tienen nombre que abrir. Cada apertura que pasa por el sistema
+        deja un registro aquí. Quien robara la llave de la autoridad y una copia de la base podría
+        abrir un nombre sin dejar registro; por eso la llave no vive en el servidor y se piden dos
+        aprobaciones. Con tu folio y tus 8 palabras, en{' '}
+        <Link to={PATHS.tracking}>Dar seguimiento</Link> puedes comprobar si abrieron el tuyo.
+      </p>
+    </section>
   );
 }
 
@@ -251,6 +296,7 @@ export function VerifyPage() {
         </Alert>
       )}
       {result !== null && <Result result={result} />}
+      {result?.status === 'valid' && <LedgerFigures events={result.events} />}
 
       <section className="card" aria-labelledby="anchor-title">
         <h2 id="anchor-title">Comparar con anclajes publicados (opcional)</h2>

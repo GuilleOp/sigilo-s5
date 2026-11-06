@@ -1,6 +1,6 @@
-// Paso 4: revisión con la vista de la autoridad, el destino de la denuncia, el grupo de anonimato y
-// el semáforo de riesgo con acciones. Cada acción lleva el foco al lugar exacto que corrige y anuncia
-// el resultado en una frase.
+// Paso 4: revisión con la vista de la autoridad, lo que sale del equipo, el destino de la denuncia,
+// el grupo de anonimato y el semáforo de riesgo con acciones. Cada acción lleva el foco al lugar
+// exacto que corrige y anuncia el resultado en una frase.
 import { useMemo } from 'react';
 import { withAnonymityFactor } from '@sigilo/anonimato';
 import { assessRisk } from '@sigilo/huella';
@@ -20,6 +20,7 @@ import type { ResolvedDestination } from '../destination.ts';
 import { AuthorityPreview } from './AuthorityPreview.tsx';
 import { evidenceTitleId } from './EvidenceItemCard.tsx';
 import { EVIDENCE_INPUT_ID } from './EvidenceStep.tsx';
+import { OutgoingPanel } from './OutgoingPanel.tsx';
 import { RoutingPanel } from './RoutingPanel.tsx';
 
 interface ReviewStepProps {
@@ -121,6 +122,7 @@ export function ReviewStep({ draft, destination, goToStep }: ReviewStepProps) {
       />
       <RoutingPanel destination={destination} />
       <AuthorityPreview draft={draft} />
+      <OutgoingPanel draft={draft} destination={destination} />
     </>
   );
 }
