@@ -50,10 +50,17 @@ test('H1: las 8 palabras no se ven ni se anuncian antes de «Mostrar», y luego 
   await expect(card.getByTestId('receipt-word')).toHaveCount(0);
   for (const item of await card.locator('.print-only li').all()) await expect(item).toBeHidden();
   const { words } = await readReceipt(page);
-  for (const word of words) expect(before).not.toContain(word);
-  // Mostradas, cada palabra aparece una sola vez en el árbol de accesibilidad.
+  // Se compara por estructura y no por subcadenas: una palabra del recibo (por ejemplo «leer»)
+  // puede aparecer dentro del texto de la tarjeta («leerlas») sin que el recibo esté expuesto.
+  expect(before).not.toMatch(/Palabra \d+:/u);
+  // Mostradas, cada palabra aparece una sola vez como elemento numerado del árbol de accesibilidad.
   const after = await card.ariaSnapshot();
-  for (const word of words) expect(after.split(word).length - 1).toBe(1);
+  words.forEach((word, index) => {
+    const item = new RegExp(`Palabra ${index + 1}:\\s+${word}(?![\\p{L}])`, 'gu');
+    expect(after.match(item)?.length ?? 0).toBe(1);
+  });
+  // Y no hay una segunda lista expuesta: exactamente 8 palabras numeradas.
+  expect(after.match(/Palabra \d+:/gu)?.length ?? 0).toBe(words.length);
   await expect(card.getByTestId('toggle-receipt')).toHaveAttribute('aria-expanded', 'true');
 });
 
