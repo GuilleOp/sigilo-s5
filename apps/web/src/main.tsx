@@ -5,6 +5,12 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { createAppRouter } from './app/router.tsx';
 import { onQuickExit, quickExit } from './state/quick-exit.ts';
+import {
+  applyDisplay,
+  DEFAULT_DISPLAY,
+  readStoredDisplay,
+  setInitialDisplay,
+} from './state/display-settings.ts';
 import { applyTheme, readStoredTheme, setInitialTheme } from './state/theme.ts';
 import { modesFromQuery, setInitialModes } from './state/usage-modes.ts';
 import './styles/fonts.css';
@@ -28,6 +34,10 @@ setInitialModes(initialModes);
 const initialTheme = initialModes.isKiosk ? 'system' : readStoredTheme();
 setInitialTheme(initialTheme);
 applyTheme(initialTheme, document.documentElement);
+// Lo mismo con el tamaño y el espaciado del texto que eligió la persona.
+const initialDisplay = initialModes.isKiosk ? DEFAULT_DISPLAY : readStoredDisplay();
+setInitialDisplay(initialDisplay);
+applyDisplay(initialDisplay, document.documentElement);
 history.replaceState(null, '', '/');
 
 const root = createRoot(container);

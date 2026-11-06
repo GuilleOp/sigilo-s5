@@ -17,7 +17,7 @@ import {
   matchesWord,
   pickConfirmationPositions,
 } from './receipt-confirmation.ts';
-import { receiptSpeechParts, spellOut } from './local-speech.ts';
+import { receiptSpeechParts, speechChunks, spellOut } from './local-speech.ts';
 import { distributePastedWords, resolvedWord, wordStatus } from './receipt-words.ts';
 import { segmentText } from './text-segments.ts';
 
@@ -174,5 +174,22 @@ describe('formatos', () => {
     expect(formatHourDate('2026-10-01')).toBe('2026-10-01');
     expect(formatMonthPeriod('2026-03')).toBe('marzo de 2026');
     expect(formatDayDate('otra')).toBe('otra');
+  });
+});
+
+describe('speechChunks', () => {
+  it('corta en fin de oración y de línea, sin frases vacías', () => {
+    expect(speechChunks('Hola.  ¿Cómo estás?\n\nBien: gracias.')).toEqual([
+      'Hola.',
+      '¿Cómo estás?',
+      'Bien: gracias.',
+    ]);
+    expect(speechChunks('   ')).toEqual([]);
+  });
+
+  it('parte entre palabras una oración más larga que el límite', () => {
+    const chunks = speechChunks('uno dos tres cuatro cinco seis', 10);
+    expect(chunks).toEqual(['uno dos', 'tres', 'cuatro', 'cinco seis']);
+    expect(chunks.every((chunk) => chunk.length <= 10)).toBe(true);
   });
 });

@@ -1,36 +1,12 @@
-// Modos de uso: denuncia asistida, quiosco, poca conexión y lectura fácil (en «Preferencias»), y
-// la barra del quiosco con «Terminar y borrar todo», siempre visible cuando el quiosco está activo.
+// Barra del quiosco con «Terminar y borrar todo», siempre visible cuando el quiosco está activo.
+// Los modos de uso se eligen en el menú «Accesibilidad» (AccessibilityTools.tsx).
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { PATHS } from '../app/paths.ts';
 import { announce } from '../lib/announce.ts';
 import { focusAfterRender } from '../lib/focus.ts';
 import { resetAllStores, useMemoryStore } from '../state/memory-store.ts';
-import { applyModesToDocument, setUsageMode, usageModesStore } from '../state/usage-modes.ts';
-import type { UsageModes } from '../state/usage-modes.ts';
-
-const MODES: readonly { key: keyof UsageModes; label: string; hint: string }[] = [
-  {
-    key: 'isAssisted',
-    label: 'Me ayuda otra persona',
-    hint: 'Te avisamos cuándo pedirle que se aparte, para que solo tú veas tus 8 palabras.',
-  },
-  {
-    key: 'isKiosk',
-    label: 'Equipo compartido (quiosco)',
-    hint: 'No se puede copiar el recibo y, al terminar, se borra todo de esta pantalla.',
-  },
-  {
-    key: 'isLowConnection',
-    label: 'Tengo poca conexión',
-    hint: 'Si una consulta falla, la repetimos hasta 4 veces (en lugar de 2), con más espera entre intentos, y te avisamos. Los envíos nunca se repiten solos.',
-  },
-  {
-    key: 'isEasyReading',
-    label: 'Lectura fácil',
-    hint: 'Agranda la letra y deja más espacio entre líneas y entre palabras.',
-  },
-];
+import { applyModesToDocument, usageModesStore } from '../state/usage-modes.ts';
 
 /** Barra del quiosco; además refleja los modos en `<html>` para los estilos. */
 export function KioskBar() {
@@ -59,35 +35,5 @@ export function KioskBar() {
         Terminar y borrar todo
       </button>
     </div>
-  );
-}
-
-/** Casillas de los modos de uso. */
-export function UsageModesPanel() {
-  const modes = useMemoryStore(usageModesStore);
-  return (
-    <fieldset className="usage-modes" data-testid="usage-modes">
-      <legend>Modos de uso</legend>
-      {MODES.map((mode) => (
-        <div key={mode.key} className="choice">
-          <input
-            type="checkbox"
-            id={`usage-mode-${mode.key}`}
-            checked={modes[mode.key]}
-            aria-describedby={`usage-mode-${mode.key}-hint`}
-            onChange={(event) => setUsageMode(mode.key, event.target.checked)}
-            data-testid={`usage-${mode.key}`}
-          />
-          <div>
-            <label htmlFor={`usage-mode-${mode.key}`} className="choice__title">
-              {mode.label}
-            </label>
-            <p id={`usage-mode-${mode.key}-hint`} className="usage-modes__hint">
-              {mode.hint}
-            </p>
-          </div>
-        </div>
-      ))}
-    </fieldset>
   );
 }

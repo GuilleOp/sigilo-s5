@@ -776,106 +776,6 @@
   gap: var(--space-2);
 }
 
-/* Preferencias (tema y modos de uso): al final de cada pantalla, con un enlace en la barra. */
-.preferences {
-  max-inline-size: 64rem;
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-4);
-  border-top: 1px solid var(--color-border);
-}
-
-.preferences h2 {
-  margin-top: 0;
-}
-
-.preferences__grid {
-  display: grid;
-  gap: var(--space-5);
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-}
-
-@media (min-width: 48rem) {
-  .preferences__grid {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-}
-
-.preferences-link {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: var(--target-min);
-  margin-inline-start: auto;
-  padding: 0 var(--space-3);
-  border: 2px solid var(--color-on-header);
-  border-radius: var(--radius-pill);
-  color: var(--color-on-header);
-  font-size: var(--text-sm);
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.preferences-link:hover {
-  color: var(--color-on-header);
-  text-decoration: underline;
-}
-
-.theme-switcher {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.theme-switcher legend {
-  padding: 0;
-  font-size: var(--text-sm);
-  font-weight: 800;
-}
-
-.theme-switcher__options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  padding: 3px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-}
-
-.theme-switcher__option {
-  position: relative;
-}
-
-.theme-switcher__option input {
-  position: absolute;
-  opacity: 0;
-  inset: 0;
-  margin: 0;
-  /* El clic llega a la etiqueta, que selecciona la opción. */
-  pointer-events: none;
-}
-
-.theme-switcher__option label {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: var(--target-min);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-sm);
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.theme-switcher__option input:checked + label {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.theme-switcher__option input:focus-visible + label {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
-}
-
 @media (forced-colors: active) {
   .icon,
   .sys-badge__ring,
@@ -890,10 +790,6 @@
     border-color: CanvasText;
   }
 
-  .theme-switcher__option input:checked + label {
-    outline: 2px solid Highlight;
-  }
-
   .stepper__dots i.is-on {
     background: Highlight;
   }
@@ -905,14 +801,6 @@
   .crowd__you,
   .constellation__you {
     fill: Highlight;
-  }
-}
-
-/* En pantallas muy angostas la barra fija se queda mínima (marca y salida rápida): las
-   preferencias siguen al final de la página. */
-@media (max-width: 25.99rem) {
-  .preferences-link {
-    display: none;
   }
 }
 
@@ -933,16 +821,6 @@
 .table-scroll:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
-}
-
-/* Modos de uso: la etiqueta y su ayuda (asociada con aria-describedby) en dos renglones. */
-.usage-modes .choice__title {
-  display: block;
-  font-weight: 700;
-}
-
-.usage-modes .usage-modes__hint {
-  margin: 0;
 }
 
 /* Sesión vencida del panel: se ve encima del detalle, que sigue en pantalla. */

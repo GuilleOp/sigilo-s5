@@ -5,6 +5,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Cambiado
+
+- Las preferencias del final de cada pantalla pasan a un menú «Accesibilidad» en la barra fija,
+  como en la versión de pruebas del S5: contador de ajustes, alto contraste, tamaño del texto,
+  espaciado, lectura fácil, lector en voz alta (solo voces del equipo), guía de teclado y modos de
+  uso, con paneles flotantes y un botón de tema. En celular la barra ya no parte la marca ni la
+  salida rápida en dos renglones.
+
 ### Corregido
 
 - El panel de la autoridad mostraba «Las llaves no coinciden» en toda denuncia con corroboración

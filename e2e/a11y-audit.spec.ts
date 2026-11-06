@@ -23,6 +23,7 @@ import {
   startReport,
 } from './support/report-wizard.ts';
 import { openTracking } from './support/tracking.ts';
+import { openAccessibilityMenu, turnOnEasyReading } from './support/accessibility-menu.ts';
 
 const SCRATCH = process.env['SIGILO_SCREENSHOTS_DIR'] ?? '';
 
@@ -306,7 +307,8 @@ test('H7: el navegador de pasos no tapa el campo enfocado y en 320 px no es fijo
   await page.setViewportSize({ width: 390, height: 640 });
   await page.addInitScript(() => window.localStorage.setItem('sigilo-tema', 'light'));
   await startReport(page, 'anonymous');
-  await page.getByTestId('usage-isEasyReading').check();
+  await turnOnEasyReading(page);
+  await page.keyboard.press('Escape');
   await continueTo(page, 'facts');
   const margin = await page.evaluate(() => {
     const stepper = document.querySelector('.stepper');
@@ -398,12 +400,13 @@ test('H13: el nombre del plazo y su situación, y el sello y su fecha, van separ
 
 test('H15 y H17: la ayuda de cada modo es su descripción y dice lo que hace', async ({ page }) => {
   await page.goto('/');
+  await openAccessibilityMenu(page);
   const lowConnection = page.getByTestId('usage-isLowConnection');
   await expect(lowConnection).toHaveAccessibleName('Tengo poca conexión');
   await expect(lowConnection).toHaveAccessibleDescription(/hasta 4 veces/u);
   const easy = page.getByTestId('usage-isEasyReading');
   await expect(easy).toHaveAccessibleName('Lectura fácil');
-  await easy.check();
+  await turnOnEasyReading(page);
   const style = await page.evaluate(() => {
     const body = getComputedStyle(document.body);
     return { size: parseFloat(body.fontSize), line: parseFloat(body.lineHeight) };

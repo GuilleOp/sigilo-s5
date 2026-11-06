@@ -26,6 +26,7 @@ import {
 } from './support/report-wizard.ts';
 import { FIXTURE_FILES } from './support/synthetic-files.ts';
 import { openTracking, readTrackingError } from './support/tracking.ts';
+import { openAccessibilityMenu } from './support/accessibility-menu.ts';
 
 test('las pantallas públicas no tienen violaciones de accesibilidad', async ({ page }) => {
   await page.goto('/');
@@ -338,12 +339,15 @@ for (const theme of THEMES) {
 
 test('el selector de tema cambia los colores y recuerda la elección', async ({ page }) => {
   await page.goto('/');
-  await page.getByText('Alto contraste', { exact: true }).click();
+  await openAccessibilityMenu(page);
+  await page.getByTestId('a11y-contrast').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
   expect(await page.evaluate(() => window.localStorage.getItem('sigilo-tema'))).toBe('contrast');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
-  await page.getByText('Como mi sistema', { exact: true }).click();
+  await openAccessibilityMenu(page);
+  await expect(page.getByTestId('a11y-contrast')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('a11y-contrast').click();
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/u);
   expect(await page.evaluate(() => window.localStorage.length)).toBe(0);
 });

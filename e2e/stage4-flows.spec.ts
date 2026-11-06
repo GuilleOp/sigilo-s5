@@ -10,6 +10,7 @@ import { E2E_ACCOUNTS, E2E_AUTHORITY } from './support/environment.ts';
 import { expect, test } from './support/fixtures.ts';
 import { continueTo, expectStep, reachSubmitStep, startReport } from './support/report-wizard.ts';
 import { openTracking } from './support/tracking.ts';
+import { turnOnEasyReading } from './support/accessibility-menu.ts';
 
 /** Hechos del caso de Marta (docs/demo-escenario.md, sección 4.1), ya corregidos. */
 const MARTA_FACTS = syntheticFacts({
@@ -175,8 +176,8 @@ test('el quiosco no deja copiar el recibo y borra todo al terminar; la franja de
   await expect(page.getByTestId('kiosk-bar')).toBeVisible();
   await expectNoAccessibilityViolations(page, 'quiosco');
 
-  // Lectura fácil desde el panel de modos.
-  await page.getByTestId('usage-isEasyReading').check();
+  // Lectura fácil desde el menú «Accesibilidad».
+  await turnOnEasyReading(page);
   await expect(page.locator('html')).toHaveAttribute('data-reading', 'easy');
 });
 

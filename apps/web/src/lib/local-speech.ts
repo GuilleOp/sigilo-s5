@@ -1,4 +1,5 @@
-// Lectura en voz alta del recibo usando solo voces instaladas en el equipo.
+// Lectura en voz alta (del recibo y del «Lector de texto») usando solo voces instaladas en el
+// equipo.
 
 /**
  * Voces en español que funcionan sin red (`localService === true`).
@@ -46,4 +47,57 @@ export function speakReceipt(
 /** Detiene la lectura en voz alta, si hay una. */
 export function stopSpeaking(): void {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+/** Largo máximo de cada frase que se manda a la voz: algunas voces cortan textos largos. */
+export const SPEECH_CHUNK_LENGTH = 220;
+
+/**
+ * Parte un texto en frases de hasta `SPEECH_CHUNK_LENGTH` caracteres, cortando primero en fin de
+ * oración o de línea y, si una oración es más larga, entre palabras.
+ */
+export function speechChunks(text: string, limit: number = SPEECH_CHUNK_LENGTH): string[] {
+  const sentences = text
+    .replace(/\s*\n+\s*/gu, '\n')
+    .split(/(?<=[.!?…\n])\s+/u)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  const chunks: string[] = [];
+  for (const sentence of sentences) {
+    if (sentence.length <= limit) {
+      chunks.push(sentence);
+      continue;
+    }
+    let current = '';
+    for (const word of sentence.split(/\s+/u)) {
+      const next = current === '' ? word : `${current} ${word}`;
+      if (next.length > limit && current !== '') {
+        chunks.push(current);
+        current = word;
+      } else {
+        current = next;
+      }
+    }
+    if (current !== '') chunks.push(current);
+  }
+  return chunks;
+}
+
+/** Lee un texto con la voz local dada, frase por frase. Cancela cualquier lectura anterior. */
+export function speakText(
+  text: string,
+  voice: SpeechSynthesisVoice,
+  onEnd: () => void = () => undefined,
+): void {
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const chunks = speechChunks(text);
+  chunks.forEach((chunk, index) => {
+    const utterance = new SpeechSynthesisUtterance(chunk);
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+    if (index === chunks.length - 1) utterance.addEventListener('end', onEnd);
+    synth.speak(utterance);
+  });
+  if (chunks.length === 0) onEnd();
 }

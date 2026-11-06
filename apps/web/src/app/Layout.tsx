@@ -1,12 +1,13 @@
-// Estructura común: barra fija mínima con salida rápida, salto al contenido, menú, anunciador
-// global, pie y aviso antes de salir de una pantalla con el recibo sin confirmar.
+// Estructura común: barra fija mínima con salida rápida, salto al contenido y herramientas de
+// accesibilidad; menú, anunciador global, pie y aviso antes de salir de una pantalla con el recibo
+// sin confirmar.
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { LeaveDialog } from '../components/LeaveDialog.tsx';
 import { QuickExitButton } from '../components/QuickExitButton.tsx';
-import { ThemeSwitcher } from '../components/ThemeSwitcher.tsx';
-import { KioskBar, UsageModesPanel } from '../components/UsageModesPanel.tsx';
+import { AccessibilityControls, AccessibilityPanels } from '../components/AccessibilityTools.tsx';
+import { KioskBar } from '../components/UsageModesPanel.tsx';
 import { SHOW_DEMO_NOTICE } from '../config/app-config.ts';
 import { ANNOUNCER_ID } from '../lib/announce.ts';
 import { focusAfterRender, focusElement } from '../lib/focus.ts';
@@ -36,13 +37,6 @@ function skipToContent(event: MouseEvent<HTMLAnchorElement>): void {
   event.preventDefault();
   const main = document.getElementById('contenido');
   if (main !== null) focusElement(main);
-}
-
-/** Lleva el foco a «Preferencias» (tema y modos de uso) sin agregar entradas al historial. */
-function goToPreferences(event: MouseEvent<HTMLAnchorElement>): void {
-  event.preventDefault();
-  const section = document.getElementById('preferencias');
-  if (section !== null) focusElement(section);
 }
 
 /** Layout de todas las pantallas. Al cambiar de ruta, el foco va al `h1` de la pantalla nueva. */
@@ -102,20 +96,13 @@ export function Layout() {
           <a className="skip-link" href="#contenido" onClick={skipToContent}>
             Saltar al contenido
           </a>
-          <a
-            className="preferences-link"
-            href="#preferencias"
-            onClick={goToPreferences}
-            data-testid="preferences-link"
-          >
-            Preferencias
-          </a>
+          <AccessibilityControls />
           <NavLink
             to={PATHS.home}
             className="site-brand"
             onClick={(event) => guardNavigation(event, PATHS.home)}
           >
-            SIGILO
+            <span className="site-brand__name">SIGILO</span>
           </NavLink>
         </div>
       </header>
@@ -137,27 +124,15 @@ export function Layout() {
       <main id="contenido" tabIndex={-1} className={isWide ? 'wide' : undefined}>
         <Outlet />
       </main>
-      <section
-        id="preferencias"
-        className="preferences no-print"
-        aria-labelledby="preferences-title"
-        tabIndex={-1}
-        data-testid="preferences"
-      >
-        <h2 id="preferences-title">Preferencias</h2>
-        <div className="preferences__grid">
-          <ThemeSwitcher />
-          <UsageModesPanel />
-        </div>
-      </section>
+      <AccessibilityPanels />
       <footer className="site-footer no-print">
         <nav aria-label="Otros enlaces">
           <ul>{FOOTER_ITEMS.map(navLink)}</ul>
         </nav>
         <p>
-          SIGILO no usa cookies. Lo único que recuerda tu navegador es el tema de colores que elijas
-          (salvo en un equipo compartido). Todo lo que escribes se borra al cerrar o recargar la
-          página.
+          SIGILO no usa cookies. Lo único que recuerda tu navegador son los colores y el tamaño del
+          texto que elijas en «Accesibilidad» (salvo en un equipo compartido). Todo lo que escribes
+          se borra al cerrar o recargar la página.
         </p>
       </footer>
       {/* Anunciador global: existe desde el inicio para que los lectores lean sus cambios. */}

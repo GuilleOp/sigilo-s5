@@ -6,6 +6,8 @@
 }
 
 html {
+  /* Tamaño del texto elegido en «Accesibilidad»: todo se mide en rem, así que escala junto. */
+  font-size: calc(100% * var(--user-text-scale, 1));
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   /* El navegador deja libre la barra fija al desplazar hacia un ancla o un control enfocado. */
@@ -18,7 +20,9 @@ body {
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 1.0625rem;
-  line-height: var(--line-height);
+  /* Espaciado elegido en «Accesibilidad»; sin elegir, el de la página. */
+  line-height: var(--user-line-height, var(--line-height));
+  letter-spacing: var(--user-letter-spacing, normal);
   overflow-wrap: anywhere;
 }
 

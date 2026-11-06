@@ -65,11 +65,19 @@ estado real está en la tabla de conformidad de abajo.
 - Tema de alto contraste (negro, blanco y amarillo) cuando el sistema pide más contraste
   (`prefers-contrast: more`); el tema oscuro sigue a `prefers-color-scheme`. Ambos también se
   pueden fijar con `data-theme="dark"` o `data-theme="contrast"` en `<html>`.
-- Selector de tema y modos de uso en la sección «Preferencias», al final de cada pantalla, con un
-  enlace «Preferencias» en la barra fija que lleva el foco ahí (claro, oscuro, alto contraste o
-  «como mi sistema»), hecho con botones de opción nativos. La elección se recuerda en el navegador
-  (`localStorage`, llave `sigilo-tema`, solo el nombre del tema y con `try/catch`); en modo quiosco
-  no se guarda. Es la única preferencia que se guarda: nada de la denuncia (PRV-10).
+- Menú «Accesibilidad» en la barra fija, con la misma lógica que la versión de pruebas del S5
+  (`AccessibilityTools.tsx`): el botón dice cuántos ajustes hay activos y abre un menú con alto
+  contraste, tamaño del texto (100 % a 200 %), espaciado (entre líneas y entre letras), lectura
+  fácil, lector en voz alta y guía de teclado, más los modos de uso (asistida, quiosco y poca
+  conexión). Tamaño, espaciado, lector y guía se abren en paneles flotantes que se apilan a la
+  derecha (abajo en el celular), cada uno con «Restablecer» y botón de cerrar; el foco va al título
+  del panel y regresa al botón al cerrarlo, y Esc cierra el menú. Un botón aparte cambia el tema
+  entre «como mi sistema», claro y oscuro.
+- El lector usa solo voces instaladas en el equipo (`localService`): una voz en internet recibiría el
+  texto de la denuncia. Si no hay una, lo explica y sugiere el lector de pantalla del sistema.
+- El tema (llave `sigilo-tema`) y el tamaño y espaciado del texto (llave `sigilo-lectura`, solo tres
+  números) se recuerdan en el navegador con `try/catch`; en modo quiosco no se guardan. Nada de la
+  denuncia se guarda (PRV-10). Prueba: E2E `accessibility-tools.spec.ts`.
 - Mulish autoalojada (OFL, `apps/web/src/assets/fonts/mulish/`) con `font-display: swap`: el texto se
   ve de inmediato con la fuente del sistema y no se pide nada a terceros.
 - Los componentes de la dirección A (distintivos de sistema, anillo de tres llaves, constelaciones,
