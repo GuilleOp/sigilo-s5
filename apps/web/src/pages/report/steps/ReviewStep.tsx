@@ -89,7 +89,7 @@ export function ReviewStep({ draft, destination, goToStep }: ReviewStepProps) {
   const actions = buildRiskActions(signals);
   return (
     <>
-      <p>Revisa con calma. Nada se ha enviado todavía.</p>
+      <p>Todavía no se ha enviado nada.</p>
       <RiskMeter assessment={assessment}>
         {actions.length > 0 && (
           <>
@@ -117,12 +117,12 @@ export function ReviewStep({ draft, destination, goToStep }: ReviewStepProps) {
           </>
         )}
       </RiskMeter>
+      <RoutingPanel destination={destination} />
       <AnonymityNotice
         status={anonymity}
         onGeneralize={() => goToStep('facts', 'description-title')}
       />
       {draft.workplace.worksThere === 'no' && <CitizenNotice />}
-      <RoutingPanel destination={destination} />
       <AuthorityPreview draft={draft} />
       <OutgoingPanel draft={draft} destination={destination} />
     </>

@@ -27,7 +27,7 @@ export function TextReviewPanel({ text, textareaId, idPrefix }: TextReviewPanelP
   const summary = isEmpty
     ? ''
     : findings.length === 0
-      ? 'No encontramos datos que te identifiquen. Revisa de todos modos lo que escribiste.'
+      ? 'No vemos datos que te delaten.'
       : findings.length === 1
         ? 'Encontramos 1 dato que podría identificarte.'
         : `Encontramos ${findings.length} datos que podrían identificarte.`;

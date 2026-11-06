@@ -7,6 +7,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Cambiado
 
+- Menos texto para quien denuncia: una frase por bloque y el detalle a un toque («¿Por qué?»,
+  «Ver…»), sin palabras técnicas a la vista. El inicio pasa de unas 1,000 palabras a unas 100, con
+  tres promesas y la página nueva «Cómo te cuidamos» (quién puede saber qué, cómo comprobarlo,
+  límites, protecciones y asesor). El paso 4 pasa de unas 360 a unas 90 palabras: semáforo en una
+  frase, «Tu denuncia llega a», aviso ciudadano compacto y la vista de la autoridad y lo que sale
+  del equipo cerradas. Ayudas del paso 2 más cortas.
 - Las preferencias del final de cada pantalla pasan a un menú «Accesibilidad» en la barra fija,
   como en la versión de pruebas del S5: contador de ajustes, alto contraste, tamaño del texto,
   espaciado, lectura fácil, lector en voz alta (solo voces del equipo), guía de teclado y modos de

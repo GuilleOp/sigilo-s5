@@ -39,22 +39,36 @@ export const LIMITS: readonly { risk: string; whatHelps: string }[] = [
   },
 ];
 
-/** Sección de la pantalla de inicio. */
+/** Los tres límites que más importan, en una línea cada uno. */
+export const KEY_LIMITS: readonly string[] = [
+  'Si te vieron en persona, pueden imaginar que fuiste tú.',
+  'Lo que escribes puede delatarte. Te ayudamos a revisarlo.',
+  'Un teléfono ajeno o espiado puede ver lo que escribes.',
+];
+
+/** Sección de «Cómo te cuidamos». */
 export function HonestLimits() {
   return (
     <section className="card limits" aria-labelledby="limits-title" data-testid="honest-limits">
-      <h2 id="limits-title">Lo que SIGILO no puede hacer por ti</h2>
-      <p>Preferimos decírtelo antes de que denuncies.</p>
-      <ul className="limits__list">
-        {LIMITS.map((limit) => (
-          <li key={limit.risk}>
-            <p className="limits__risk">{limit.risk}</p>
-            <p className="limits__help">
-              <strong>Qué ayuda:</strong> {limit.whatHelps}
-            </p>
-          </li>
+      <h2 id="limits-title">Lo que no podemos evitar</h2>
+      <ul className="limits__key">
+        {KEY_LIMITS.map((limit) => (
+          <li key={limit}>{limit}</li>
         ))}
       </ul>
+      <details className="more">
+        <summary>Ver todos los límites y qué ayuda</summary>
+        <ul className="limits__list">
+          {LIMITS.map((limit) => (
+            <li key={limit.risk}>
+              <p className="limits__risk">{limit.risk}</p>
+              <p className="limits__help">
+                <strong>Qué ayuda:</strong> {limit.whatHelps}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </details>
     </section>
   );
 }

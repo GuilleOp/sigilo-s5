@@ -1,0 +1,314 @@
+/* Propuesta simple para quien denuncia: una frase por bloque y el detalle a un toque. Bloques
+   desplegables («¿Por qué?», «Ver…»), promesas del inicio, resumen de quién puede saber qué y
+   avisos compactos. Solo usa tokens. */
+
+/* «Ver más» dentro de un bloque: un renglón con flecha que abre el detalle. */
+.more {
+  margin-block: var(--space-2) 0;
+}
+
+.more > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  color: var(--color-primary);
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more > summary::before {
+  content: '';
+  inline-size: 0.55rem;
+  block-size: 0.55rem;
+  flex: none;
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.more[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.more--minor > summary {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Bloque que es solo un renglón desplegable (vista de la autoridad, lo que sale del equipo). */
+.more-card {
+  padding-block: var(--space-2);
+}
+
+.more-card > summary,
+.more-card__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: var(--target-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: start;
+  cursor: pointer;
+  list-style: none;
+}
+
+.more-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-card > summary::after,
+.more-card__toggle::after {
+  content: '';
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  flex: none;
+  margin-inline-end: var(--space-2);
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.more-card[open] > summary::after,
+.more-card__toggle[aria-expanded='true']::after {
+  transform: rotate(-135deg);
+}
+
+.more-card[open] > summary {
+  margin-block-end: var(--space-3);
+}
+
+/* Inicio: tres promesas y el acceso a «Cómo te cuidamos». */
+.promises {
+  display: grid;
+  gap: var(--space-3);
+  margin-block: var(--space-6);
+}
+
+.promises h2 {
+  margin: 0;
+}
+
+.promises ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+@media (min-width: 48rem) {
+  .promises ul {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.promises li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  align-items: start;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.promises__icon {
+  grid-row: span 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-strong);
+  color: var(--color-primary);
+}
+
+.promises__icon .icon {
+  inline-size: 1.4rem;
+  block-size: 1.4rem;
+}
+
+.promises li strong {
+  font-size: 1.05rem;
+}
+
+.promises li span:last-child {
+  color: var(--color-text-muted);
+}
+
+.promises__more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: 3.25rem;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius);
+  color: var(--color-primary);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.promises__more:hover {
+  background: var(--color-surface);
+}
+
+.quick-exit-tip {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-danger-bg);
+}
+
+.home-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin-block: var(--space-5);
+  font-weight: 700;
+}
+
+.home-links a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* «¿Quién puede saber qué?»: tres renglones con su etiqueta. */
+.trust-summary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.trust-summary li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--color-surface-strong);
+}
+
+.trust-summary li:first-child {
+  border-top: 0;
+}
+
+.trust-summary__who {
+  font-weight: 800;
+}
+
+.trust-summary__detail {
+  grid-column: 1 / -1;
+  color: var(--color-text-muted);
+}
+
+.trust-summary__tag {
+  align-self: start;
+  padding: 0.1rem var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.trust-summary__tag--safe {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.trust-summary__tag--reads {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.limits__key {
+  margin: 0;
+  padding-inline-start: 1.2rem;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.checks {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* Paso 4: semáforo y destino en pocas líneas. */
+.risk {
+  padding: var(--space-3) var(--space-4);
+  border-width: 2px;
+}
+
+.risk__level {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.risk > p {
+  margin: var(--space-1) 0 0;
+}
+
+.routing__label {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.routing__target {
+  margin: var(--space-1) 0 0;
+  font-size: 1.2rem;
+}
+
+/* Aviso para personas ciudadanas: una frase y «Cómo protegerte». */
+.citizen {
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-warning-bg);
+  border-left: 6px solid var(--color-warning);
+}
+
+.citizen__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.citizen .more > summary {
+  color: var(--color-warning);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more > summary::before,
+  .more-card > summary::after,
+  .more-card__toggle::after {
+    transition: none;
+  }
+}
+
+/* En celular la constelación del inicio es decorativa y empujaba las promesas fuera de la primera
+   pantalla: se oculta. */
+@media (max-width: 47.99rem) {
+  .hero .constellation {
+    display: none;
+  }
+}

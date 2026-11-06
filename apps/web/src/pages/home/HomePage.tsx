@@ -1,16 +1,27 @@
-// Pantalla de inicio (dirección A): titular, acciones, constelación decorativa que termina en tu
-// denuncia sellada, «Tu escudo» con las protecciones activas, «¿Quién sabe qué de ti?», los límites
-// dichos de frente y el asesor.
+// Pantalla de inicio: una frase, las dos acciones y tres promesas de una línea. Todo el detalle
+// (quién puede saber qué, límites, protecciones y asesor) está en «Cómo te cuidamos», a un toque.
 import { Link } from 'react-router';
 import { PATHS } from '../../app/paths.ts';
 import { HeroConstellation } from '../../components/a/HeroConstellation.tsx';
 import { Icon } from '../../components/a/icons.tsx';
-import { ShieldPanel } from '../../components/a/ShieldPanel.tsx';
+import type { IconName } from '../../components/a/icons.tsx';
 import { SystemBadge } from '../../components/a/SystemBadge.tsx';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
-import { Advisor } from './Advisor.tsx';
-import { HonestLimits } from './HonestLimits.tsx';
-import { WhoKnowsWhat } from './WhoKnowsWhat.tsx';
+
+/** Las tres promesas: una línea de título y una de detalle. */
+export const PROMISES: readonly { icon: IconName; title: string; text: string }[] = [
+  {
+    icon: 'key',
+    title: 'Nadie sabe que fuiste tú',
+    text: 'No pedimos tu nombre, correo ni teléfono.',
+  },
+  { icon: 'pencil', title: 'Tú decides qué contar', text: 'Te avisamos si algo puede delatarte.' },
+  {
+    icon: 'eye',
+    title: 'Ves qué pasa con tu denuncia',
+    text: 'Con 8 palabras que solo tú tienes.',
+  },
+];
 
 /** Inicio. */
 export function HomePage() {
@@ -25,11 +36,7 @@ export function HomePage() {
           <h1 className="display-title">
             Denuncia sin miedo. <strong>Tu nombre se queda contigo.</strong>
           </h1>
-          <p className="lead">
-            SIGILO es una forma segura de presentar denuncias por hechos de corrupción ante las
-            autoridades competentes. Te ayudamos a quitar de tu relato y de tus fotos lo que podría
-            decir quién eres.
-          </p>
+          <p className="lead">Cuenta lo que pasó. Nadie sabrá que fuiste tú.</p>
           <div className="actions">
             <Link className="button" to={PATHS.report} data-testid="cta-report">
               Presentar una denuncia <Icon name="right" />
@@ -45,30 +52,32 @@ export function HomePage() {
         </div>
         <HeroConstellation />
       </div>
-      <ShieldPanel />
-      <p>
-        Si alguien se acerca mientras escribes, usa el botón rojo <strong>Salida rápida</strong>:
-        borra todo y abre una página del clima. También puedes pulsar dos veces la tecla{' '}
-        <kbd>Esc</kbd>.
+      <section className="promises" aria-labelledby="promises-title" data-testid="promises">
+        <h2 id="promises-title">Lo que te prometemos</h2>
+        <ul>
+          {PROMISES.map((promise) => (
+            <li key={promise.title}>
+              <span className="promises__icon">
+                <Icon name={promise.icon} />
+              </span>
+              <strong>{promise.title}</strong>
+              <span>{promise.text}</span>
+            </li>
+          ))}
+        </ul>
+        <Link className="promises__more" to={PATHS.protection} data-testid="protection-link">
+          ¿De verdad es seguro? Mira cómo te cuidamos <Icon name="right" />
+        </Link>
+      </section>
+      <p className="quick-exit-tip">
+        <strong>¿Alguien se acerca?</strong> Pulsa «Salida rápida» o <kbd>Esc</kbd> dos veces. Todo
+        se borra.
       </p>
-      <WhoKnowsWhat />
-      <HonestLimits />
-      <Advisor />
-      <h2>Más información</h2>
-      <ul>
-        <li>
-          <Link to={PATHS.observatory}>Observatorio</Link>: ¿sirvió denunciar? Resultados por
-          autoridad y qué se puede comprobar en cada entidad.
-        </li>
-        <li>
-          <Link to={PATHS.openData}>Datos abiertos</Link>: cuántas denuncias hay, sin datos que
-          identifiquen a nadie.
-        </li>
-        <li>
-          <Link to={PATHS.verify}>Verificar la bitácora</Link>: comprueba que nadie cambió el
-          registro público y comprueba cuántos nombres se han abierto.
-        </li>
-      </ul>
+      <nav className="home-links" aria-label="Más">
+        <Link to={PATHS.observatory}>¿Sirvió denunciar?</Link>
+        <Link to={PATHS.openData}>Datos abiertos</Link>
+        <Link to={PATHS.verify}>Revisar el registro público</Link>
+      </nav>
     </>
   );
 }

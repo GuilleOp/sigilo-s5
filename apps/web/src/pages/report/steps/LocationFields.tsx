@@ -40,7 +40,7 @@ export function LocationFields({ facts, errors }: LocationFieldsProps) {
           <SelectField
             id="municipalityCode"
             label="Municipio (opcional)"
-            hint="Dejarlo en blanco te protege más: hay más personas que podrían haber denunciado."
+            hint="Si lo dejas en blanco, es más difícil saber que fuiste tú."
             value={facts.municipalityCode}
             onChange={(event) => setFact('municipalityCode', event.target.value)}
             data-testid="municipality-select"

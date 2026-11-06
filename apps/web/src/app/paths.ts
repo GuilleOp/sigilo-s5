@@ -9,4 +9,5 @@ export const PATHS = {
   openData: '/datos-abiertos',
   verify: '/verificar',
   observatory: '/observatorio',
+  protection: '/como-te-cuidamos',
 } as const;

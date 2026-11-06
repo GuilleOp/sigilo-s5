@@ -1,5 +1,6 @@
-// «¿A quién va tu denuncia?»: la autoridad que propone el sistema con el directorio verificado, por
-// qué, y la opción de corregirla. Con un solo nodo explica el buzón general y qué es «turnar».
+// «Tu denuncia llega a»: la autoridad que propone el sistema con el directorio verificado, en una
+// frase. El porqué (sencillo y técnico) y la opción de cambiarla quedan a un toque. Con un solo nodo
+// dice que llega al buzón general.
 import { reportDraftStore } from '../../../state/report-draft.ts';
 import { Alert } from '../../../components/Alert.tsx';
 import type { DestinationOption } from '../../../network/routing.ts';
@@ -61,20 +62,33 @@ function OptionList({
   );
 }
 
+/** Por qué esa autoridad, en una frase sencilla; el detalle técnico queda aparte. */
+function plainReason(option: DestinationOption): string {
+  return option.kind === 'proposed'
+    ? 'Es la que puede investigar la oficina y la conducta que elegiste.'
+    : 'La elegiste tú. También puede atender esta denuncia.';
+}
+
 /** Panel del destino, antes de enviar. */
 export function RoutingPanel({ destination }: RoutingPanelProps) {
   return (
     <section className="card routing" aria-labelledby="routing-title" data-testid="routing-panel">
-      <h3 id="routing-title">¿A quién va tu denuncia?</h3>
-      {destination.kind === 'loading' && <p>Buscando el directorio de autoridades.</p>}
+      <h3 id="routing-title" className="routing__label">
+        Tu denuncia llega a
+      </h3>
+      {destination.kind === 'loading' && <p>Buscando a quién enviarla.</p>}
       {destination.kind === 'single-node' && (
         <>
-          <p data-testid="routing-single-node">
-            Tu denuncia llega al <strong>buzón general</strong> de este sistema. Ahí la revisan y la{' '}
-            <strong>turnan</strong>: la envían a la autoridad que puede investigarla. Verás cada
-            paso en «Dar seguimiento».
+          <p className="routing__target" data-testid="routing-single-node">
+            <strong>El buzón general</strong>, que la envía a la autoridad que puede investigarla.
           </p>
-          <p>Si la autoridad que la recibe no es la correcta, la puede devolver o canalizar.</p>
+          <details className="more">
+            <summary>¿Qué pasa después?</summary>
+            <p>
+              Ahí la revisan y la <strong>turnan</strong>. Si no es la autoridad correcta, la
+              devuelve o la canaliza. Verás cada paso en «Dar seguimiento».
+            </p>
+          </details>
         </>
       )}
       {destination.kind === 'blocked' && (
@@ -93,26 +107,36 @@ export function RoutingPanel({ destination }: RoutingPanelProps) {
       {destination.kind === 'network' && (
         <>
           <p className="routing__target" data-testid="routing-target">
-            Va a: <strong>{destination.selected.name}</strong> ({destination.selected.nodeName}).
+            <strong>{destination.selected.name}</strong>
           </p>
-          <details className="routing__why" open>
-            <summary>Por qué esta autoridad</summary>
-            <ul data-testid="routing-reasons">
-              {destination.selected.kind === 'proposed' ? (
-                destination.choice.proposal.reasons.map((reason) => <li key={reason}>{reason}</li>)
-              ) : (
-                <li>{destination.selected.reason}</li>
-              )}
-            </ul>
+          <p>Solo esa autoridad puede leerla.</p>
+          <details className="more">
+            <summary>¿Por qué ahí?</summary>
+            <p>{plainReason(destination.selected)}</p>
+            <details className="more more--minor">
+              <summary>Detalle técnico</summary>
+              <ul data-testid="routing-reasons">
+                {destination.selected.kind === 'proposed' ? (
+                  destination.choice.proposal.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))
+                ) : (
+                  <li>{destination.selected.reason}</li>
+                )}
+              </ul>
+              <p>
+                Se cierra con llave en tu equipo, con la llave de esa autoridad, y la guarda el{' '}
+                {destination.selected.nodeName}. Quien la transporta solo ve a quién va dirigida.
+              </p>
+            </details>
           </details>
-          <p>
-            Tu denuncia se cierra con llave en tu navegador, con la llave de esa autoridad. El
-            enrutador de la red solo ve a quién va dirigida, no lo que dice.
-          </p>
-          <OptionList
-            options={destination.choice.options}
-            selectedId={destination.selected.authorityId}
-          />
+          <details className="more">
+            <summary>Cambiar a quién va</summary>
+            <OptionList
+              options={destination.choice.options}
+              selectedId={destination.selected.authorityId}
+            />
+          </details>
         </>
       )}
     </section>

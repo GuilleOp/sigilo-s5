@@ -258,7 +258,7 @@ puertas.
    dispositivo y el autor. Limpiar y mostrar el antes y el después, con «Revisado: la copia limpia ya
    no tiene datos escondidos».
 6. Adjuntar el PDF: cada hoja se convierte en una foto, y se explica por qué.
-7. En «Revisión», mostrar el semáforo de riesgo y la vista «Así te verá la autoridad».
+7. En «Revisión», mostrar el semáforo de riesgo, «Tu denuncia llega a» y «Ver lo que leerá la autoridad».
 8. Enviar. Aparecen el folio y el recibo de 8 palabras; confirmar dos palabras (basta con las
    primeras 4 letras).
 9. En las herramientas del navegador, mostrar que no hay peticiones a terceros y que la identidad

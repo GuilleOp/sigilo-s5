@@ -120,6 +120,7 @@ test('3 y 9: el asesor está plegado y los botones del titular van lado a lado',
   const report = await page.getByTestId('cta-report').boundingBox();
   const tracking = await page.getByTestId('cta-tracking').boundingBox();
   expect(Math.abs((report?.y ?? 0) - (tracking?.y ?? 100))).toBeLessThan(2);
+  await page.goto('/como-te-cuidamos');
   const advisor = page.getByTestId('advisor');
   await expect(advisor.getByTestId('advisor-open')).toHaveText(
     '¿Quieres consejos antes de denunciar? (5 preguntas, nada se envía)',
@@ -129,7 +130,7 @@ test('3 y 9: el asesor está plegado y los botones del titular van lado a lado',
   expect(height).toBeLessThan(400);
   await advisor.getByTestId('advisor-open').click();
   await expect(advisor.getByTestId('advisor-submit')).toBeVisible();
-  await expectNoAccessibilityViolations(page, 'inicio con el asesor abierto');
+  await expectNoAccessibilityViolations(page, 'cómo te cuidamos con el asesor abierto');
 });
 
 test('4 y 5: el estado dice lo que sigue, los sellos no repiten la etapa y la regla llena la tarjeta', async ({
@@ -199,7 +200,8 @@ test('7: en alto contraste, la barra de «Tu escudo» es sólida y del color de 
       probe.remove();
       return color;
     });
-  await page.goto('/');
+  await page.goto('/como-te-cuidamos');
+  await page.getByText('Ver todas tus protecciones').click();
   // Con el selector de tema (data-theme) y con la preferencia del sistema (prefers-contrast).
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'contrast'));
   expect(await readBar()).toEqual({ image: 'none', color: await protectColor() });

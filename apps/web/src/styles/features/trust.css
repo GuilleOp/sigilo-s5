@@ -92,8 +92,7 @@
   margin-bottom: var(--space-2);
 }
 
-.trust-doubts summary,
-.citizen summary {
+.trust-doubts summary {
   /* Zona táctil de al menos 44 px (WCAG 2.5.5). */
   display: flex;
   align-items: center;
@@ -185,13 +184,6 @@
   background: var(--color-info-bg);
   padding: var(--space-3);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-/* Aviso para personas ciudadanas: mismo ritmo que el resto de tarjetas, con sus desplegables. */
-.citizen details {
-  border-top: 1px solid var(--color-surface-strong);
-  padding-top: var(--space-2);
-  margin-top: var(--space-2);
 }
 
 /* La pregunta del lugar de trabajo: opciones de al menos 44 px de alto. */

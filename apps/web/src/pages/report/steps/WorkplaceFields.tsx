@@ -19,9 +19,7 @@ export function WorkplaceFields({ workplace }: WorkplaceFieldsProps) {
     <fieldset className="field workplace" data-testid="workplace-fields">
       <legend>¿Trabajas o trabajaste en esa oficina? (opcional)</legend>
       <p id="workplace-hint" className="field__hint">
-        Si es así, te diremos si tu grupo de compañeras y compañeros es pequeño, porque entonces el
-        relato podría identificarte. Si no trabajas ahí, te daremos consejos para ese caso. Esta
-        respuesta no se envía.
+        Te daremos consejos según tu respuesta. Esta respuesta no se envía.
       </p>
       <div className="choice-list">
         {(
@@ -49,7 +47,7 @@ export function WorkplaceFields({ workplace }: WorkplaceFieldsProps) {
         <TextField
           id="workplace-area"
           label="Tu área (opcional)"
-          hint="Por ejemplo: «Departamento de Compras». Tampoco se envía."
+          hint="Por ejemplo: «Compras». No se envía."
           value={workplace.area}
           maxLength={300}
           onChange={(event) => setWorkplace({ area: event.target.value })}

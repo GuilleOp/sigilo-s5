@@ -116,23 +116,25 @@ export function OutgoingPanel({ draft, destination }: OutgoingPanelProps) {
   }, [isOpen, key, description, keyId, publicKey]);
 
   return (
-    <section className="card outgoing" aria-labelledby="outgoing-title" data-testid="outgoing">
-      <h3 id="outgoing-title">Lo que sale de tu equipo</h3>
-      <p>No tienes que creernos: aquí está lo que enviaremos y lo que no sale de tu equipo.</p>
+    <section
+      className="card more-card outgoing"
+      aria-label="Lo que sale de tu equipo"
+      data-testid="outgoing"
+    >
       <button
         type="button"
-        className="button button--secondary"
+        className="more-card__toggle"
         aria-expanded={isOpen}
         aria-controls="outgoing-details"
         onClick={() => setOpen((value) => !value)}
         data-testid="outgoing-toggle"
       >
-        {isOpen ? 'Ocultar el detalle' : 'Ver lo que vamos a enviar'}
+        Ver lo que sale de tu equipo
       </button>
       <div id="outgoing-details" hidden={!isOpen}>
         <div className="outgoing__columns">
           <div>
-            <h4>Lo que viaja, cerrado con llave</h4>
+            <h4>Sale, cerrado con llave</h4>
             <ul data-testid="outgoing-travels">
               {travellingItems(draft, isNetwork).map((item) => (
                 <li key={item}>{item}</li>
@@ -140,7 +142,7 @@ export function OutgoingPanel({ draft, destination }: OutgoingPanelProps) {
             </ul>
           </div>
           <div>
-            <h4>Lo que nunca sale de tu equipo</h4>
+            <h4>Nunca sale de tu equipo</h4>
             <ul data-testid="outgoing-stays">
               {stayingItems(draft).map((item) => (
                 <li key={item}>{item}</li>

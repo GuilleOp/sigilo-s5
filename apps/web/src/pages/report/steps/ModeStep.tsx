@@ -40,11 +40,8 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
   return (
     <>
       <p className="offline-tip" data-testid="offline-tip">
-        <strong>Compruébalo tú:</strong> si quieres ver que nada sale de tu equipo mientras
-        escribes, pon tu teléfono en modo avión o desconecta el internet ahora. Puedes llenar los
-        pasos y limpiar tus fotos sin conexión; vuelve a conectarte solo para enviar. Los PDF
-        necesitan conexión la primera vez. Si sin conexión no podemos calcular el tamaño de tu grupo
-        de trabajo, te lo diremos.
+        <strong>Compruébalo tú:</strong> pon tu teléfono en modo avión. Puedes llenar todo sin
+        internet y conectarte solo para enviar.
       </p>
       <fieldset id="mode" data-group-field>
         <legend>Elige una opción</legend>

@@ -73,7 +73,7 @@ export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
         label="Buscar oficina o institución (opcional)"
         hint={
           <>
-            Escribe parte del nombre para reducir la lista. La búsqueda ocurre solo en tu equipo.{' '}
+            Escribe parte del nombre.{' '}
             <span data-testid="entity-results">{resultsText(filteredEntities.length)}</span>
           </>
         }

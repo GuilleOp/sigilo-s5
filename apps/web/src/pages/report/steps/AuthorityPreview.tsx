@@ -1,4 +1,5 @@
-// "Así te verá la autoridad": vista fiel de lo que recibirá quien tramite la denuncia.
+// «Ver lo que leerá la autoridad»: vista fiel de lo que recibirá quien tramite la denuncia, cerrada
+// hasta que la persona la abre.
 import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
 import { formatMonthPeriod } from '../../../lib/format.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
@@ -16,8 +17,8 @@ export function AuthorityPreview({ draft }: AuthorityPreviewProps) {
       ? undefined
       : findMunicipality(facts.stateCode, facts.municipalityCode)?.name;
   return (
-    <section className="card" aria-labelledby="preview-title" data-testid="authority-preview">
-      <h3 id="preview-title">Así te verá la autoridad</h3>
+    <details className="card more-card" data-testid="authority-preview">
+      <summary id="preview-title">Ver lo que leerá la autoridad</summary>
       <dl className="definition-list">
         <dt>Identidad</dt>
         <dd data-testid="preview-identity">
@@ -47,7 +48,7 @@ export function AuthorityPreview({ draft }: AuthorityPreviewProps) {
         <dt>Descripción</dt>
         <dd className="review-text">{facts.description.trim()}</dd>
         <dt>Fecha de recepción</dt>
-        <dd>Solo guardamos el día, no la hora. No guardamos datos de tu conexión a internet.</dd>
+        <dd>Solo el día, no la hora. No guardamos datos de tu conexión.</dd>
         <dt>Pruebas ({images.length})</dt>
         <dd>
           {images.length === 0 ? (
@@ -63,6 +64,6 @@ export function AuthorityPreview({ draft }: AuthorityPreviewProps) {
           )}
         </dd>
       </dl>
-    </section>
+    </details>
   );
 }

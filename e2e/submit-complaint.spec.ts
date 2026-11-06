@@ -76,6 +76,7 @@ test('una denuncia anónima limpia sus pruebas, revisa el texto y entrega un rec
   await continueTo(page, 'review');
   await expect(page.getByTestId('risk-meter')).toBeVisible();
   const preview = page.getByTestId('authority-preview');
+  await preview.getByText('Ver lo que leerá la autoridad').click();
   await expect(preview.getByTestId('preview-identity')).toHaveText(
     'No proporcionada (denuncia anónima).',
   );

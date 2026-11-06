@@ -293,8 +293,12 @@ for (const theme of THEMES) {
       }, theme);
 
       await page.goto('/');
-      await expect(page.getByTestId('shield')).toBeVisible();
+      await expect(page.getByTestId('promises')).toBeVisible();
       await checkScreen(page, 'inicio', theme, width);
+      await page.goto('/como-te-cuidamos');
+      await page.getByText('Ver todas tus protecciones').click();
+      await expect(page.getByTestId('shield')).toBeVisible();
+      await checkScreen(page, 'cuidamos', theme, width);
 
       // Denunciar: la revisión con el grupo de anonimato y el navegador de pasos.
       await startReport(page, 'anonymous');

@@ -25,6 +25,7 @@ const NAV_ITEMS = [
 
 /** Enlaces secundarios, en el pie. */
 const FOOTER_ITEMS = [
+  { to: PATHS.protection, label: 'Cómo te cuidamos' },
   { to: PATHS.verify, label: 'Verificar bitácora' },
   { to: PATHS.authority, label: 'Panel de autoridad' },
 ] as const;

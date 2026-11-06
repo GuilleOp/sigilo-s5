@@ -16,14 +16,26 @@ import {
 } from './support/report-wizard.ts';
 import { FIXTURE_FILES } from './support/synthetic-files.ts';
 
-test('la portada dice quién sabe qué y lo que SIGILO no puede hacer', async ({ page }) => {
+test('el inicio es breve y «Cómo te cuidamos» dice quién sabe qué y los límites', async ({
+  page,
+}) => {
   await page.goto('/');
+  await expect(page.getByTestId('promises')).toContainText('Nadie sabe que fuiste tú');
+  await expect(page.getByTestId('who-knows-what')).toHaveCount(0);
+  const words = await page.evaluate(
+    () => document.getElementById('contenido')?.innerText.trim().split(/\s+/u).length ?? 0,
+  );
+  expect(words).toBeLessThan(200);
+  await page.getByTestId('protection-link').click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cómo te cuidamos');
   const table = page.getByTestId('who-knows-what');
+  await expect(table).toContainText('Pero no sabe quién eres');
+  await table.getByText('Ver la explicación completa').click();
   await expect(table.getByRole('table')).toContainText('El enrutador ciego');
   await table.getByText('¿Y si el gobierno quiere saber quién soy?').click();
   await expect(table).toContainText('tu nombre no se guarda en ningún lado');
   await expect(page.getByTestId('honest-limits')).toContainText('cara a cara');
-  await expectNoAccessibilityViolations(page, 'inicio: confianza');
+  await expectNoAccessibilityViolations(page, 'cómo te cuidamos');
 });
 
 test('se escribe sin conexión, se ve lo que saldrá y se envía al reconectar', async ({
@@ -104,7 +116,8 @@ test('quien no trabaja en la oficina ve el aviso ciudadano y el revisor marca su
   await continueTo(page, 'evidence');
   await continueTo(page, 'review');
   const notice = page.getByTestId('citizen-notice');
-  await expect(notice).toContainText('te atendió en persona');
+  await expect(notice).toContainText('Te atendieron en persona');
+  await notice.getByText('Cómo protegerte').click();
   await notice.getByText('¿Te pidieron dinero y lo pagaste?').click();
   await expect(notice.getByTestId('citizen-bribe')).toContainText('artículos 88 y 89');
   await notice.getByText('¿Y si me niegan el trámite o me amenazan?').click();

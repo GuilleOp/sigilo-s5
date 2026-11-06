@@ -36,7 +36,7 @@ export function FactsStep({ draft, errors }: FactsStepProps) {
       <fieldset id="period" data-group-field className="field">
         <legend>¿Cuándo pasó? (mes y año, aproximados)</legend>
         <p id="period-hint" className="field__hint">
-          No pongas el día exacto: el mes basta y te protege más.
+          El mes basta. Es más seguro que el día exacto.
         </p>
         <div className="word-grid">
           <div>
@@ -104,7 +104,7 @@ export function FactsStep({ draft, errors }: FactsStepProps) {
       <ReviewedTextArea
         id="description"
         label="Describe lo que pasó"
-        hint="Cuenta qué pasó, quién lo hizo y cómo. No pongas cosas que solo tú sabes. Escribe por lo menos una frase."
+        hint="Qué pasó, quién y cómo. Evita detalles que solo tú sabes."
         required
         value={facts.description}
         minLength={DESCRIPTION_MIN}

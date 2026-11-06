@@ -1,8 +1,6 @@
-// «¿Quién sabe qué de ti?»: en lugar de pedir confianza, muestra qué ve cada parte del camino de una
-// denuncia por la red y responde las preguntas de desconfianza más comunes, con un enlace para
-// comprobarlo. Las afirmaciones deben coincidir con docs/modelo-de-amenazas.md.
-import { Link } from 'react-router';
-import { PATHS } from '../../app/paths.ts';
+// «¿Quién puede saber qué?»: en lugar de pedir confianza, resume en tres líneas qué ve cada parte
+// del camino y, a un toque, la tabla completa y las preguntas de desconfianza más comunes. Las
+// afirmaciones deben coincidir con docs/modelo-de-amenazas.md.
 import { TableScroll } from '../../components/TableScroll.tsx';
 
 /** Una parte del camino y lo que puede saber. */
@@ -55,6 +53,28 @@ export const PARTIES: readonly Party[] = [
   },
 ];
 
+/** Resumen de una línea por parte, a la vista; la tabla completa queda a un toque. */
+const SUMMARY: readonly { who: string; tag: string; tone: 'safe' | 'reads'; detail: string }[] = [
+  {
+    who: 'Quien lleva tu denuncia',
+    tag: 'No la lee',
+    tone: 'safe',
+    detail: 'Solo sabe a qué autoridad va.',
+  },
+  {
+    who: 'La autoridad que investiga',
+    tag: 'La lee',
+    tone: 'reads',
+    detail: 'Pero no sabe quién eres.',
+  },
+  {
+    who: 'Cualquier persona',
+    tag: 'No la lee',
+    tone: 'safe',
+    detail: 'Solo ve que llegó una denuncia ese día.',
+  },
+];
+
 /** Una pregunta de desconfianza y su respuesta. */
 interface Doubt {
   question: string;
@@ -88,71 +108,75 @@ export const DOUBTS: readonly Doubt[] = [
 export function WhoKnowsWhat() {
   return (
     <section className="card trust" aria-labelledby="who-knows-title" data-testid="who-knows-what">
-      <h2 id="who-knows-title">¿Quién sabe qué de ti?</h2>
-      <p>
-        No te pedimos que confíes en nosotros. Esto es lo que puede ver cada parte del camino de tu
-        denuncia, y cómo comprobarlo.
-      </p>
-      {/* En celular, tarjetas; en pantallas anchas, la tabla. La otra queda oculta también para
-          los lectores de pantalla (display: none), así nadie oye el contenido dos veces. */}
-      <ul className="trust-cards" data-testid="who-knows-cards">
-        {PARTIES.map((party) => (
-          <li key={party.name}>
-            <h3>{party.name}</h3>
-            <dl>
-              <dt>Qué ve</dt>
-              <dd>{party.sees}</dd>
-              <dt>¿Puede leer tu denuncia?</dt>
-              <dd>{party.reads}</dd>
-              <dt>¿Puede saber quién eres?</dt>
-              <dd>{party.knowsWho}</dd>
-            </dl>
+      <h2 id="who-knows-title">¿Quién puede saber qué?</h2>
+      <ul className="trust-summary">
+        {SUMMARY.map((row) => (
+          <li key={row.who}>
+            <span className="trust-summary__who">{row.who}</span>
+            <span className={`trust-summary__tag trust-summary__tag--${row.tone}`}>{row.tag}</span>
+            <span className="trust-summary__detail">{row.detail}</span>
           </li>
         ))}
       </ul>
-      <div className="trust-table-wrap">
-        <TableScroll labelledBy="who-knows-caption">
-          <table className="trust-table">
-            <caption id="who-knows-caption">Qué puede saber cada parte del camino</caption>
-            <thead>
-              <tr>
-                <th scope="col">Quién</th>
-                <th scope="col">Qué ve</th>
-                <th scope="col">¿Puede leer tu denuncia?</th>
-                <th scope="col">¿Puede saber quién eres?</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PARTIES.map((party) => (
-                <tr key={party.name}>
-                  <th scope="row">{party.name}</th>
-                  <td>{party.sees}</td>
-                  <td>{party.reads}</td>
-                  <td>{party.knowsWho}</td>
+      <details className="more">
+        <summary>Ver la explicación completa</summary>
+        {/* En celular, tarjetas; en pantallas anchas, la tabla. La otra queda oculta también para
+          los lectores de pantalla (display: none), así nadie oye el contenido dos veces. */}
+        <ul className="trust-cards" data-testid="who-knows-cards">
+          {PARTIES.map((party) => (
+            <li key={party.name}>
+              <h3>{party.name}</h3>
+              <dl>
+                <dt>Qué ve</dt>
+                <dd>{party.sees}</dd>
+                <dt>¿Puede leer tu denuncia?</dt>
+                <dd>{party.reads}</dd>
+                <dt>¿Puede saber quién eres?</dt>
+                <dd>{party.knowsWho}</dd>
+              </dl>
+            </li>
+          ))}
+        </ul>
+        <div className="trust-table-wrap">
+          <TableScroll labelledBy="who-knows-caption">
+            <table className="trust-table">
+              <caption id="who-knows-caption">Qué puede saber cada parte del camino</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Quién</th>
+                  <th scope="col">Qué ve</th>
+                  <th scope="col">¿Puede leer tu denuncia?</th>
+                  <th scope="col">¿Puede saber quién eres?</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
-      </div>
-      <p className="trust__note">
-        Esto describe el envío por la red de SIGILO. Si tu estado usa un solo servidor, ese servidor
-        ve tu conexión: SIGILO no la registra, pero quien opera el servidor o su proveedor sí podría
-        verla.
-      </p>
-      <h3>Lo que más nos preguntan</h3>
-      <div className="trust-doubts">
-        {DOUBTS.map((doubt) => (
-          <details key={doubt.question}>
-            <summary>{doubt.question}</summary>
-            <p>{doubt.answer}</p>
-          </details>
-        ))}
-      </div>
-      <p>
-        Compruébalo: <Link to={PATHS.verify}>verifica el registro público</Link> o revisa el código
-        en el repositorio del proyecto.
-      </p>
+              </thead>
+              <tbody>
+                {PARTIES.map((party) => (
+                  <tr key={party.name}>
+                    <th scope="row">{party.name}</th>
+                    <td>{party.sees}</td>
+                    <td>{party.reads}</td>
+                    <td>{party.knowsWho}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
+        </div>
+        <p className="trust__note">
+          Esto describe el envío por la red de SIGILO. Si tu estado usa un solo servidor, ese
+          servidor ve tu conexión: SIGILO no la registra, pero quien opera el servidor o su
+          proveedor sí podría verla.
+        </p>
+        <h3>Lo que más nos preguntan</h3>
+        <div className="trust-doubts">
+          {DOUBTS.map((doubt) => (
+            <details key={doubt.question}>
+              <summary>{doubt.question}</summary>
+              <p>{doubt.answer}</p>
+            </details>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }

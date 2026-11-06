@@ -47,6 +47,12 @@ export function createAppRouter(initialPath: string = PATHS.home) {
             }),
           },
           {
+            path: PATHS.protection,
+            lazy: async () => ({
+              Component: (await import('../pages/protection/ProtectionPage.tsx')).ProtectionPage,
+            }),
+          },
+          {
             path: PATHS.verify,
             lazy: async () => ({
               Component: (await import('../pages/verify/VerifyPage.tsx')).VerifyPage,
