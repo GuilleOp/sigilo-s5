@@ -29,6 +29,8 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
+      # Las pruebas del validador abren Chromium con Playwright.
+      - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run data:test
       - run: npm run build -w @sigilo/web

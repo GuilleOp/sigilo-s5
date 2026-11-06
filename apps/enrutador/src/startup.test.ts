@@ -115,7 +115,10 @@ describe('reenvío TCP del contenedor', () => {
     const proxy = createLoopbackProxy((upstream.address() as AddressInfo).port);
     await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
     try {
-      const response = await fetch(`http://127.0.0.1:${(proxy.address() as AddressInfo).port}/`);
+      // Sin keep-alive: si la conexión queda abierta, el cierre del servidor espera y la prueba vence.
+      const response = await fetch(`http://127.0.0.1:${(proxy.address() as AddressInfo).port}/`, {
+        headers: { connection: 'close' },
+      });
       expect(await response.text()).toBe('hola desde el nodo');
     } finally {
       await new Promise((resolve) => proxy.close(resolve));
