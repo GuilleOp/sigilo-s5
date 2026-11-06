@@ -27,7 +27,8 @@ import type { AuthoritySession } from './authority-session.ts';
 interface ProcedurePanelProps {
   session: AuthoritySession;
   detail: ComplaintDetail;
-  onChanged: () => void;
+  /** Recarga el detalle; se espera antes de mover el foco para que no lo pierda al repintar. */
+  onChanged: () => Promise<unknown>;
 }
 
 type ActionKey = ProcedureActionRequest['action'];
@@ -246,8 +247,8 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
       // H3: el panel se vuelve a pintar con el estado nuevo; el foco va a su encabezado y el
       // resultado se anuncia.
       announce(`Listo: ${ACTION_LABELS[request.action]}.`);
-      focusAfterRender('procedure-title');
-      onChanged();
+      await onChanged();
+      if (isMounted.current) focusAfterRender('procedure-title');
     } catch (failure) {
       if (isMounted.current) {
         setMessage(describeError(failure, 'No pudimos aplicar la acción. Inténtalo de nuevo.'));

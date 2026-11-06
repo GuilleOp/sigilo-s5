@@ -17,7 +17,8 @@ interface ConflictPanelProps {
   session: AuthoritySession;
   detail: ComplaintDetail;
   review: ConflictReview;
-  onChanged: () => void;
+  /** Recarga el detalle; se espera antes de mover el foco para que no lo pierda al repintar. */
+  onChanged: () => Promise<unknown>;
 }
 
 const OUTCOME_TEXT: Readonly<Record<ConflictReview['outcome'], string>> = {
@@ -91,9 +92,9 @@ export function ConflictPanel({ session, detail, review, onChanged }: ConflictPa
       });
       setConfirming(false);
       setMessage('Listo: tu respuesta quedó registrada en la bitácora.');
-      // H3: el formulario desaparece; el foco va al resultado.
+      // H3: el formulario desaparece; el foco va al resultado, después de repintar el detalle.
+      await onChanged();
       focusAfterRender('conflict-message');
-      onChanged();
     } catch (failure) {
       setMessage(describeError(failure, 'No pudimos registrar tu respuesta. Inténtalo de nuevo.'));
       focusAfterRender('conflict-message');

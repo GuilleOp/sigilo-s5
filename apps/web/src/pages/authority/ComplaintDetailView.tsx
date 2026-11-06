@@ -137,7 +137,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
           session={session}
           detail={detail}
           review={detail.conflictReview}
-          onChanged={() => void reload()}
+          onChanged={reload}
         />
       )}
       {detail.corroboration !== undefined && (
@@ -178,7 +178,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         key={`${summary.managementState ?? ''}-${detail.procedure?.legalStage ?? ''}`}
         session={session}
         detail={detail}
-        onChanged={() => void reload()}
+        onChanged={reload}
       />
       {network.kind === 'verified' && (
         <TransferPanel session={session} detail={detail} directory={network.directory} />
