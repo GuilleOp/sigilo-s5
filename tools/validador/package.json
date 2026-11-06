@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@playwright/test": "^1.63.0",
-    "@sigilo/contracts": "1.0.0",
-    "@sigilo/core": "1.0.0",
+    "@sigilo/contracts": "1.0.1",
+    "@sigilo/core": "1.0.1",
     "ajv": "^8.20.0",
     "yaml": "^2.9.1"
   }

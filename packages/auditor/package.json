@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/auditor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Auditor de las actuaciones de la autoridad: reglas deterministas que señalan con evidencia y un modelo local opcional que solo orienta. Nunca decide.",
   "license": "CC-BY-NC-4.0",
   "type": "module",
@@ -14,9 +14,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@sigilo/contexto-pdn": "1.0.0",
-    "@sigilo/contracts": "1.0.0",
-    "@sigilo/core": "1.0.0",
+    "@sigilo/contexto-pdn": "1.0.1",
+    "@sigilo/contracts": "1.0.1",
+    "@sigilo/core": "1.0.1",
     "zod": "^4.6.5"
   }
 }

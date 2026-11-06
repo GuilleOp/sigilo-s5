@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/corroboracion",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Corroboracion ciega: normalizacion del identificador, cliente VOPRF (RFC 9497) sobre ristretto255, resumen difuso de similitud, senales de independencia y custodia opcional.",
   "license": "CC-BY-NC-4.0",
   "type": "module",
@@ -14,9 +14,9 @@
   "dependencies": {
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
-    "@sigilo/anonimato": "1.0.0",
-    "@sigilo/contracts": "1.0.0",
-    "@sigilo/core": "1.0.0",
+    "@sigilo/anonimato": "1.0.1",
+    "@sigilo/contracts": "1.0.1",
+    "@sigilo/core": "1.0.1",
     "zod": "^4.6.5"
   }
 }

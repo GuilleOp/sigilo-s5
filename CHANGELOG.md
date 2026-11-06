@@ -5,6 +5,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [1.0.1] - 2026-11-05
+
+### Corregido
+
+- El panel de la autoridad mueve el foco después de recargar el detalle (antes podía perderse si
+  la recarga tardaba).
+- La integración continua instala Chromium para las pruebas del validador.
+- La prueba del reenvío del contenedor del enrutador ya no espera conexiones keep-alive.
+- La ficha de contexto nombra la fuente real de la gravedad y de la corroboración.
+
 ## [1.0.0] - 2026-11-05
 
 Versión entregada al Datatón Anticorrupción 2026: Estándar S5, red federada, protección de quien

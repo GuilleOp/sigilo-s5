@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/red",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Red federada de SIGILO: directorio firmado, propuesta de autoridad competente, sobres del enrutador ciego, bitacora nacional y cliente de nodo.",
   "license": "CC-BY-NC-4.0",
   "type": "module",
@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@noble/curves": "^2.4.0",
-    "@sigilo/contracts": "1.0.0",
-    "@sigilo/core": "1.0.0",
+    "@sigilo/contracts": "1.0.1",
+    "@sigilo/core": "1.0.1",
     "zod": "^4.6.5",
     "@noble/hashes": "^2.4.0"
   }
