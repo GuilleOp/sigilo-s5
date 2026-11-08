@@ -30,6 +30,32 @@ Los paquetes son ESM y TypeScript sin paso de build: el bundler del frontend los
 | Pruebas                 | `EvidenceDescriptor`            | Limpias y verificadas en el navegador; el digesto original va en el sobre |
 | Folio de seguimiento    | `Folio` + recibo                | El backend genera el folio; el navegador genera el recibo                 |
 
+## Vocabulario de la bandeja del S5
+
+Revisado el 2026-11-07 con la cuenta compartida del buzón general de la versión de pruebas. SIGILO
+usa los mismos nombres para que quien ya opera la bandeja de la SESNA reconozca el flujo; el
+catálogo los publica en `s5Code` (`packages/contracts/src/catalogs/procedure.ts`).
+
+| SIGILO (`managementState`) | Código en la bandeja del S5      | Lo que ve quien opera                                                          |
+| -------------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
+| `received_in_inbox`        | `SIN_TURNAR`                     | «Bandeja general de turnado» (buzón general)                                   |
+| `routed`                   | `TURNADA`                        | «Asignadas», en espera de que la institución acepte                            |
+| `accepted`                 | `ACEPTADA` (evento «Aceptación») | La institución la atiende                                                      |
+| `reassigned`               | `REASIGNADA`                     | «Reasignadas» (en el S5, máximo 3)                                             |
+| `returned_to_inbox`        | `DEVUELTA`                       | Vuelve a la bandeja general                                                    |
+| `closed`                   | `CERRADA`, con su motivo         | Atendida, canalizada, improcedente, información insuficiente, acumulada u otro |
+
+`SIN_TURNAR` y `TURNADA` se observaron en la API de la bandeja; los demás códigos siguen el mismo
+patrón y los nombres que la SESNA usó en el taller del 27 de octubre, y conviene confirmarlos con la
+especificación cuando se publique. El panel de SIGILO muestra el código en la columna «Turnado» y
+titula la lista según la función de la cuenta: «Bandeja general de turnado» (recepción),
+«Denuncias asignadas» (investigación) o «Denuncias de tu institución» (supervisión).
+
+El semáforo de la bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2
+días. SIGILO no tiene ese semáforo fijo: mide los plazos legales de cada etapa (LGRA) y escala a la
+supervisora con reglas públicas. Agregar un semáforo de turnado con los mismos días sería un ajuste
+menor del panel.
+
 ## Pasos
 
 1. **Llaves.** Generar el par X25519 y Ed25519 de la autoridad competente fuera del servidor y fijar

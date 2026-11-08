@@ -99,6 +99,11 @@ export interface ManagementStateOption {
   /** Qué significa para la persona denunciante, en lenguaje sencillo. */
   explanation: string;
   actors: readonly ProcedureActor[];
+  /**
+   * Código del mismo estado en la versión de pruebas del S5 (bandeja de turnado de la SESNA), para
+   * que las autoridades reconozcan el flujo y el estándar se pueda mapear sin traducir.
+   */
+  s5Code: string;
   /** Estados a los que se puede pasar desde este. */
   next: readonly ManagementState[];
   deadlines: readonly DeadlineKey[];
@@ -112,6 +117,7 @@ export const MANAGEMENT_STATES: readonly ManagementStateOption[] = [
     explanation:
       'Tu denuncia llegó al buzón general del sistema. Ahí se revisa para saber qué institución debe atenderla. Todavía nadie la investiga.',
     actors: ['inbox_operator'],
+    s5Code: 'SIN_TURNAR',
     next: ['routed', 'closed'],
     deadlines: [],
     legalBasis: [
@@ -125,6 +131,7 @@ export const MANAGEMENT_STATES: readonly ManagementStateOption[] = [
     explanation:
       'Turnar significa enviar tu denuncia a la institución que puede investigarla, por ejemplo el órgano interno de control de la dependencia donde ocurrieron los hechos. Esa institución todavía tiene que aceptarla: turnada no quiere decir que ya se investiga ni que se decidió algo.',
     actors: ['receiving_institution'],
+    s5Code: 'TURNADA',
     next: ['accepted', 'reassigned', 'returned_to_inbox'],
     deadlines: [],
     legalBasis: [{ law: 'BPDN', article: '58' }],
@@ -135,6 +142,7 @@ export const MANAGEMENT_STATES: readonly ManagementStateOption[] = [
     explanation:
       'La institución revisó tu denuncia y aceptó que le corresponde atenderla. Desde aquí empieza la investigación y corren los plazos legales.',
     actors: ['receiving_institution', 'investigating_authority'],
+    s5Code: 'ACEPTADA',
     next: ['closed'],
     deadlines: ['serious_offense_start'],
     legalBasis: [
@@ -148,6 +156,7 @@ export const MANAGEMENT_STATES: readonly ManagementStateOption[] = [
     explanation:
       'La institución que la recibió consideró que no le corresponde y la envió a otra que sí podría atenderla. Tu folio y tu recibo siguen sirviendo igual.',
     actors: ['receiving_institution'],
+    s5Code: 'REASIGNADA',
     next: ['accepted', 'reassigned', 'returned_to_inbox'],
     deadlines: [],
     legalBasis: [{ law: 'BPDN', article: '58' }],
@@ -158,6 +167,7 @@ export const MANAGEMENT_STATES: readonly ManagementStateOption[] = [
     explanation:
       'La institución consideró que no le corresponde y la regresó al buzón general para que se envíe a otra. No se pierde: vuelve a turnarse.',
     actors: ['inbox_operator'],
+    s5Code: 'DEVUELTA',
     next: ['routed', 'closed'],
     deadlines: [],
     legalBasis: [{ law: 'BPDN', article: '58' }],
@@ -168,6 +178,7 @@ export const MANAGEMENT_STATES: readonly ManagementStateOption[] = [
     explanation:
       'El trámite en el sistema terminó. El motivo de cierre explica por qué. Si se archivó por falta de elementos, puede reabrirse si aportas nuevos indicios.',
     actors: ['inbox_operator', 'receiving_institution'],
+    s5Code: 'CERRADA',
     next: ['accepted'],
     deadlines: ['archive_notification'],
     legalBasis: [{ law: 'LGRA', article: '100' }],

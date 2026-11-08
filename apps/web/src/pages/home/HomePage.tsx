@@ -6,6 +6,8 @@ import { HeroConstellation } from '../../components/a/HeroConstellation.tsx';
 import { Icon } from '../../components/a/icons.tsx';
 import type { IconName } from '../../components/a/icons.tsx';
 import { SystemBadge } from '../../components/a/SystemBadge.tsx';
+import { startTour } from '../../components/GuidedTour.tsx';
+import { REPORTER_TOUR } from '../../lib/tours.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 
 /** Las tres promesas: una línea de título y una de detalle. */
@@ -49,6 +51,15 @@ export function HomePage() {
               Ver cómo va mi denuncia
             </Link>
           </div>
+          <button
+            type="button"
+            id="tour-start-home"
+            className="tour-start"
+            onClick={() => startTour(REPORTER_TOUR, 'tour-start-home')}
+            data-testid="tour-start-home"
+          >
+            <Icon name="sparkle" /> ¿Primera vez? Recorrido de 1 minuto
+          </button>
         </div>
         <HeroConstellation />
       </div>

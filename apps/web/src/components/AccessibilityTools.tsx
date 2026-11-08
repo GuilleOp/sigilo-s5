@@ -6,6 +6,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { focusAfterRender } from '../lib/focus.ts';
+import { REPORTER_TOUR } from '../lib/tours.ts';
 import { speakText, stopSpeaking } from '../lib/local-speech.ts';
 import { useLocalVoice } from '../lib/use-local-voice.ts';
 import {
@@ -26,6 +27,7 @@ import type { ThemeChoice } from '../state/theme.ts';
 import { setUsageMode, usageModesStore } from '../state/usage-modes.ts';
 import type { UsageModes } from '../state/usage-modes.ts';
 import { Icon } from './a/icons.tsx';
+import { startTour } from './GuidedTour.tsx';
 import type { IconName } from './a/icons.tsx';
 
 /** Paneles flotantes que se pueden abrir. */
@@ -268,6 +270,21 @@ export function AccessibilityControls() {
           />
           {panelItem('reader', 'speaker', 'Leer en voz alta')}
           {panelItem('keys', 'keyboard', 'Guía de teclado')}
+          <li>
+            <button
+              type="button"
+              className="a11y-menu__item"
+              onClick={() => {
+                setOpen(false);
+                startTour(REPORTER_TOUR, MENU_BUTTON_ID);
+              }}
+              data-testid="a11y-tour"
+            >
+              <Icon name="sparkle" />
+              <span>Recorrido guiado</span>
+              <span className="a11y-menu__state" />
+            </button>
+          </li>
         </ul>
         <fieldset className="a11y-menu__modes" data-testid="usage-modes">
           <legend className="a11y-menu__group">Modos de uso</legend>

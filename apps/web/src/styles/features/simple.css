@@ -312,3 +312,191 @@
     display: none;
   }
 }
+
+/* Estado de turnado con el código de la bandeja del S5 («SIN TURNAR», «TURNADA»). */
+.s5-code {
+  display: inline-block;
+  padding: 0.1rem var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Recorrido guiado: tarjeta en una esquina, con la forma del tutorial de la bandeja del S5. */
+.tour {
+  position: fixed;
+  z-index: 40;
+  inset-inline-end: var(--space-4);
+  inset-block-end: var(--space-4);
+  inline-size: min(23rem, calc(100vw - 2rem));
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-radius: var(--radius);
+  background: var(--color-header-1);
+  color: var(--color-on-header);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.35);
+}
+
+@media (max-width: 47.99rem) {
+  .tour {
+    inset-inline: var(--space-3);
+    inset-block-end: var(--space-3);
+    inline-size: auto;
+  }
+}
+
+.tour :focus-visible {
+  outline-color: var(--color-on-header);
+}
+
+.tour__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tour__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-protect-fill);
+}
+
+.tour .icon {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+}
+
+.tour__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--target-min);
+  block-size: var(--target-min);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-3)) 0 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-on-header);
+  cursor: pointer;
+}
+
+.tour__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tour__title-row h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  line-height: 1.15;
+  color: var(--color-on-header);
+}
+
+.tour__count {
+  flex: none;
+  padding: 0.15rem var(--space-2);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 0.12);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tour p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tour__progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.tour__progress li {
+  flex: 1;
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 0.2);
+}
+
+.tour__progress li.is-done {
+  background: var(--color-protect-fill);
+}
+
+.tour__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tour__actions .button {
+  margin: 0;
+}
+
+.tour__actions .button--secondary {
+  background: transparent;
+  color: var(--color-on-header);
+  border-color: var(--color-on-header);
+}
+
+.tour__actions .button:not(.button--secondary) {
+  background: var(--color-protect-fill);
+  border-color: var(--color-protect-fill);
+  color: #04332e;
+}
+
+.tour__actions .button:disabled {
+  opacity: 0.45;
+}
+
+/* Lo que el paso explica: un foco de luz que oscurece lo demás sin bloquear la página. */
+.tour-target {
+  position: relative;
+  z-index: 30;
+  border-radius: var(--radius-sm);
+  box-shadow:
+    0 0 0 4px var(--color-protect-fill),
+    0 0 0 100vmax rgb(0 0 0 / 0.45);
+}
+
+.tour-start {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tour-start .icon {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+}
+
+@media (forced-colors: active) {
+  .tour-target {
+    outline: 3px solid Highlight;
+  }
+}

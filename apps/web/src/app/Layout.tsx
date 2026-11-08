@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { GuidedTour } from '../components/GuidedTour.tsx';
 import { LeaveDialog } from '../components/LeaveDialog.tsx';
 import { QuickExitButton } from '../components/QuickExitButton.tsx';
 import { AccessibilityControls, AccessibilityPanels } from '../components/AccessibilityTools.tsx';
@@ -126,6 +127,7 @@ export function Layout() {
         <Outlet />
       </main>
       <AccessibilityPanels />
+      <GuidedTour />
       <footer className="site-footer no-print">
         <nav aria-label="Otros enlaces">
           <ul>{FOOTER_ITEMS.map(navLink)}</ul>

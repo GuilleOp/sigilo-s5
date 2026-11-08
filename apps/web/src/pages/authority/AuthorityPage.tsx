@@ -1,4 +1,6 @@
 // Pantalla /autoridad: panel de demostración para la autoridad competente.
+import { startTour } from '../../components/GuidedTour.tsx';
+import { authorityTour } from '../../lib/tours.ts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComplaintSummary } from '@sigilo/contracts';
 import { wipeAuthorityKeys } from '../../crypto/authority.ts';
@@ -15,6 +17,13 @@ import { SessionGuard } from './SessionGuard.tsx';
 
 /** Encabezado del listado: destino del foco al entrar y al volver del detalle. */
 const LIST_TITLE_ID = 'complaint-list-title';
+
+/** Título de la lista según la función de la cuenta, con los nombres de la bandeja del S5. */
+const LIST_TITLES = {
+  intake: 'Bandeja general de turnado',
+  investigation: 'Denuncias asignadas',
+  supervision: 'Denuncias de tu institución',
+} as const;
 
 /** Panel de autoridad. */
 export function AuthorityPage() {
@@ -115,6 +124,17 @@ export function AuthorityPage() {
             >
               Cerrar sesión y borrar la llave de la memoria
             </button>
+            <button
+              type="button"
+              id="tour-start-authority"
+              className="button button--secondary"
+              onClick={() =>
+                startTour(authorityTour(session.account.function), 'tour-start-authority')
+              }
+              data-testid="tour-start-authority"
+            >
+              Recorrido del panel
+            </button>
           </div>
           {error && (
             <p className="field__error" role="alert">
@@ -125,7 +145,7 @@ export function AuthorityPage() {
             <>
               {session.account.function === 'supervision' && <EscalationsPanel session={session} />}
               <h2 id={LIST_TITLE_ID} tabIndex={-1}>
-                Denuncias recibidas
+                {LIST_TITLES[session.account.function]}
               </h2>
               <ComplaintList
                 complaints={complaints}

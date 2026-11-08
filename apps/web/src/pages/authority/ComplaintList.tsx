@@ -1,5 +1,5 @@
-// Listado de denuncias (resúmenes sin identidad).
-import { findOffense, findState } from '@sigilo/contracts';
+// Listado de denuncias (resúmenes sin identidad), con el estado de turnado en el vocabulario del S5.
+import { findManagementState, findOffense, findState } from '@sigilo/contracts';
 import { TableScroll } from '../../components/TableScroll.tsx';
 import type { ComplaintSummary } from '@sigilo/contracts';
 import { formatDayDate, STATUS_LABELS } from '../../lib/format.ts';
@@ -7,6 +7,17 @@ import { formatDayDate, STATUS_LABELS } from '../../lib/format.ts';
 interface ComplaintListProps {
   complaints: readonly ComplaintSummary[];
   onOpen: (folio: string) => void;
+}
+
+/**
+ * Estado de gestión con el código de la versión de pruebas del S5 («SIN TURNAR», «TURNADA»…), para
+ * que quien ya usa la bandeja de la SESNA lo reconozca. Las denuncias anteriores llegan al buzón.
+ */
+function s5Label(state: ComplaintSummary['managementState']): string {
+  return (findManagementState(state ?? 'received_in_inbox')?.s5Code ?? 'SIN_TURNAR').replace(
+    /_/gu,
+    ' ',
+  );
 }
 
 /** Tabla de denuncias recibidas. */
@@ -25,6 +36,7 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
             <th scope="col">Estado</th>
             <th scope="col">Conducta</th>
             <th scope="col">Modo</th>
+            <th scope="col">Turnado</th>
             <th scope="col">Estatus</th>
           </tr>
         </thead>
@@ -47,6 +59,11 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
               <td>
                 {complaint.mode === 'sealed' ? 'Identidad sellada' : 'Anónima'}
                 {complaint.protectionRequested ? ', pide protección' : ''}
+              </td>
+              <td>
+                <span className="s5-code" data-testid="s5-code">
+                  {s5Label(complaint.managementState)}
+                </span>
               </td>
               <td>{STATUS_LABELS[complaint.status]}</td>
             </tr>

@@ -5,6 +5,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Agregado
+
+- Recorrido guiado, con la forma del tutorial de la bandeja del S5 (paso «n/N», barra de avance,
+  Anterior y Siguiente), pero a pedido y sin guardar nada: para quien denuncia (desde el inicio o
+  «Accesibilidad») y para el panel según la función de la cuenta. Resalta lo que explica y Esc lo
+  cierra.
+- Vocabulario de la bandeja del S5: el catálogo publica `s5Code` (`SIN_TURNAR`, `TURNADA`,
+  `ACEPTADA`…), el panel lo muestra en la columna «Turnado» y titula la lista según la función
+  («Bandeja general de turnado», «Denuncias asignadas»). Equivalencias en `docs/integracion-s5.md`.
+
 ### Cambiado
 
 - Menos texto para quien denuncia: una frase por bloque y el detalle a un toque («¿Por qué?»,
