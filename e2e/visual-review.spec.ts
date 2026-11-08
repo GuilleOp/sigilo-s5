@@ -112,14 +112,14 @@ test('2: en la cobertura, «sin cobertura» es un círculo punteado y vacío', a
   expect(yesStyle.background).not.toBe(noneStyle.background);
 });
 
-test('3 y 9: el asesor está plegado y los botones del titular van lado a lado', async ({
-  page,
-}) => {
+test('3 y 9: el asesor está plegado y las acciones del inicio van apiladas', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
+  // Las acciones del inicio son tarjetas apiladas, como la ventanilla del S5: denunciar va primero.
   const report = await page.getByTestId('cta-report').boundingBox();
   const tracking = await page.getByTestId('cta-tracking').boundingBox();
-  expect(Math.abs((report?.y ?? 0) - (tracking?.y ?? 100))).toBeLessThan(2);
+  expect((report?.y ?? 0) < (tracking?.y ?? 0)).toBe(true);
+  expect(Math.abs((report?.x ?? 0) - (tracking?.x ?? 100))).toBeLessThan(2);
   await page.goto('/como-te-cuidamos');
   const advisor = page.getByTestId('advisor');
   await expect(advisor.getByTestId('advisor-open')).toHaveText(

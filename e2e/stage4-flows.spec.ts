@@ -149,11 +149,13 @@ test('el observatorio muestra «¿Sirvió denunciar?» y la matriz de cobertura 
   const matrix = page.getByTestId('coverage-matrix');
   await expect(matrix).toContainText('Estado Ejemplo (ficticio)');
   await expect(matrix).toContainText('Sin cobertura');
+  await expectNoAccessibilityViolations(page, 'observatorio');
+  // Las descargas viven en «Datos abiertos»; el observatorio solo enlaza.
+  await page.getByTestId('observatory-downloads').getByRole('link').click();
   await expect(page.getByTestId('open-datasets').getByRole('link').first()).toHaveAttribute(
     'href',
     /^\/datos\/abiertos\//u,
   );
-  await expectNoAccessibilityViolations(page, 'observatorio');
 });
 
 test('el quiosco no deja copiar el recibo y borra todo al terminar; la franja del prototipo está', async ({
@@ -184,6 +186,7 @@ test('el quiosco no deja copiar el recibo y borra todo al terminar; la franja de
 test('en un celular de 390 px el observatorio no se desplaza a lo ancho', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/observatorio');
+  await page.getByText('Ver la tabla de las 32 entidades').click();
   await expect(page.getByTestId('coverage-matrix')).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

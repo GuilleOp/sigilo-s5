@@ -29,7 +29,7 @@ function OpeningsAlert({
     return (
       <p data-testid="identity-openings-remote">
         Cada apertura queda anotada en el registro público del nodo que atiende tu denuncia. Puedes
-        revisarlo en «Verificar bitácora» de ese nodo.
+        revisarlo en «Registro público» de ese nodo.
       </p>
     );
   }

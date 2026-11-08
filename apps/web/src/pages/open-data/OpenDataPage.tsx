@@ -10,6 +10,7 @@ import {
   ROUTES,
 } from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
+import { OpenDatasets } from './OpenDatasets.tsx';
 import { parseOpenDataCsv } from '../../lib/csv.ts';
 import type { OpenDataTable } from '../../lib/csv.ts';
 import { formatMonthPeriod, STATUS_LABELS } from '../../lib/format.ts';
@@ -126,6 +127,7 @@ export function OpenDataPage() {
           )}
         </>
       )}
+      <OpenDatasets />
     </>
   );
 }

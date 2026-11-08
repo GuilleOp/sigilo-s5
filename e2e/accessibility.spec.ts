@@ -335,6 +335,7 @@ for (const theme of THEMES) {
       await checkScreen(page, 'panel', theme, width);
 
       await page.goto('/observatorio');
+      await page.getByText('Ver la tabla de las 32 entidades').click();
       await expect(page.getByTestId('coverage-matrix')).toBeVisible();
       await checkScreen(page, 'observatorio', theme, width);
     });

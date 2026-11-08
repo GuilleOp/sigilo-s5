@@ -88,7 +88,11 @@ export function ReportPage() {
       <section aria-labelledby="step-title" data-testid={`step-${step.id}`}>
         <div id="step-title">
           <StepHeading key={step.id} shouldFocus={shouldFocusHeading}>
-            Paso {index + 1} de {STEPS.length}: {step.heading}
+            {/* El avance ya se ve en las píldoras y en la barra de abajo: aquí solo lo oyen los lectores. */}
+            <span className="visually-hidden">
+              Paso {index + 1} de {STEPS.length}:{' '}
+            </span>
+            {step.heading}
           </StepHeading>
         </div>
         {STEPS_WITH_FIELDS.includes(step.id) && (

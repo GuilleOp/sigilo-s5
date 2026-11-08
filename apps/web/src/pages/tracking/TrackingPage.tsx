@@ -67,7 +67,7 @@ class FolioNotFoundError extends ApiRequestError {
 
 /** Texto cuando la denuncia está en otro nodo de la red: no es una falla. */
 export const REMOTE_LEDGER_TEXT =
-  'Tu denuncia quedó anotada en el registro público del nodo que la atiende. Puedes comprobarlo en «Verificar bitácora» de ese nodo: este sistema no consulta registros de otros nodos para no revelar en cuál está tu denuncia.';
+  'Tu denuncia quedó anotada en el registro público del nodo que la atiende. Puedes comprobarlo en «Registro público» de ese nodo: este sistema no consulta registros de otros nodos para no revelar en cuál está tu denuncia.';
 
 /** Encabezado de la vista de seguimiento: recibe el foco al entrar. */
 const TRACKING_VIEW_TITLE_ID = 'tracking-view-title';
@@ -197,7 +197,7 @@ function anchorsMessage(ledger: TrackingLedger): string {
 
 /** Seguimiento de la denuncia. Todo vive en memoria y se borra al salir. */
 export function TrackingPage() {
-  useDocumentTitle('Dar seguimiento');
+  useDocumentTitle('Mi denuncia');
   const sessionRef = useRef<TrackingSession | null>(null);
   const transportRef = useRef<TrackingTransport | null>(null);
   const isMounted = useRef(true);
@@ -484,7 +484,7 @@ export function TrackingPage() {
 
   return (
     <>
-      <h1 tabIndex={-1}>Dar seguimiento a tu denuncia</h1>
+      <h1 tabIndex={-1}>Ver cómo va tu denuncia</h1>
       {loaded === null ? (
         <TrackingLogin
           isBusy={isBusy}

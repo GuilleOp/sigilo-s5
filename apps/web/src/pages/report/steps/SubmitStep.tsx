@@ -156,7 +156,7 @@ export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepPr
             title="Atención: no pudimos comprobar que tu denuncia llegó bien"
             testId="submit-unverified"
           >
-            <p>Guarda tu recibo. Más tarde entra a «Dar seguimiento» para revisar.</p>
+            <p>Guarda tu recibo. Más tarde entra a «Mi denuncia» para revisar.</p>
           </Alert>
         )}
         {result.destination !== undefined && (
@@ -215,7 +215,7 @@ export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepPr
           <p>
             Folio: <strong className="mono folio">{phase.folio}</strong>. Para ver cómo va tu
             denuncia o responder a la autoridad, entra a{' '}
-            <Link to={PATHS.tracking}>Dar seguimiento</Link> con tu folio y tus 8 palabras.
+            <Link to={PATHS.tracking}>Mi denuncia</Link> con tu folio y tus 8 palabras.
           </p>
         </Alert>
       </>

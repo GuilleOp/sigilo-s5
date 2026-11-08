@@ -6,6 +6,7 @@ import type { MouseEvent } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { GuidedTour } from '../components/GuidedTour.tsx';
 import { LeaveDialog } from '../components/LeaveDialog.tsx';
+import { ProfileBadge } from '../components/ProfileBadge.tsx';
 import { QuickExitButton } from '../components/QuickExitButton.tsx';
 import { AccessibilityControls, AccessibilityPanels } from '../components/AccessibilityTools.tsx';
 import { KioskBar } from '../components/UsageModesPanel.tsx';
@@ -19,7 +20,7 @@ import { PATHS } from './paths.ts';
 const NAV_ITEMS = [
   { to: PATHS.home, label: 'Inicio' },
   { to: PATHS.report, label: 'Denunciar' },
-  { to: PATHS.tracking, label: 'Dar seguimiento' },
+  { to: PATHS.tracking, label: 'Mi denuncia' },
   { to: PATHS.observatory, label: 'Observatorio' },
   { to: PATHS.openData, label: 'Datos abiertos' },
 ] as const;
@@ -27,7 +28,7 @@ const NAV_ITEMS = [
 /** Enlaces secundarios, en el pie. */
 const FOOTER_ITEMS = [
   { to: PATHS.protection, label: 'Cómo te cuidamos' },
-  { to: PATHS.verify, label: 'Verificar bitácora' },
+  { to: PATHS.verify, label: 'Registro público' },
   { to: PATHS.authority, label: 'Panel de autoridad' },
 ] as const;
 
@@ -99,6 +100,7 @@ export function Layout() {
             Saltar al contenido
           </a>
           <AccessibilityControls />
+          <ProfileBadge />
           <NavLink
             to={PATHS.home}
             className="site-brand"
@@ -115,13 +117,26 @@ export function Layout() {
           </p>
         </aside>
       )}
-      <nav className="site-nav no-print" aria-label="Principal">
-        <details className="site-nav__menu" ref={menuRef}>
-          <summary>Menú</summary>
-          <ul>{NAV_ITEMS.map(navLink)}</ul>
-        </details>
-        <ul className="site-nav__list">{NAV_ITEMS.map(navLink)}</ul>
-      </nav>
+      {/* El panel es de otro público: no muestra la navegación de quien denuncia. */}
+      {location.pathname === PATHS.authority ? (
+        <nav className="site-nav site-nav--panel no-print" aria-label="Principal">
+          <ul>
+            <li>
+              <NavLink to={PATHS.home} onClick={(event) => guardNavigation(event, PATHS.home)}>
+                ← Ir a la ventanilla ciudadana
+              </NavLink>
+            </li>
+          </ul>
+        </nav>
+      ) : (
+        <nav className="site-nav no-print" aria-label="Principal">
+          <details className="site-nav__menu" ref={menuRef}>
+            <summary>Menú</summary>
+            <ul>{NAV_ITEMS.map(navLink)}</ul>
+          </details>
+          <ul className="site-nav__list">{NAV_ITEMS.map(navLink)}</ul>
+        </nav>
+      )}
       <KioskBar />
       <main id="contenido" tabIndex={-1} className={isWide ? 'wide' : undefined}>
         <Outlet />

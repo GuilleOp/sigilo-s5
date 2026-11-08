@@ -2,6 +2,8 @@
 // la matriz de cobertura por entidad (con «Sin cobertura» explícito) y los conjuntos de datos
 // abiertos descargables. Cada gráfica tiene su tabla equivalente y nada depende del color.
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import { PATHS } from '../../app/paths.ts';
 import { TableScroll } from '../../components/TableScroll.tsx';
 import { Alert } from '../../components/Alert.tsx';
 import { BarChart } from '../../components/BarChart.tsx';
@@ -21,36 +23,6 @@ import {
   summarizeCoverage,
 } from './observatory-data.ts';
 import type { CoverageEntityRow } from './observatory-data.ts';
-
-/** Conjuntos de datos abiertos publicados en el mismo origen (ver vite.config.ts). */
-const OPEN_DATASETS = [
-  {
-    title: 'Matriz de cobertura de la PDN por entidad',
-    files: [
-      ['/datos/abiertos/cobertura/matriz-cobertura.csv', 'Datos (CSV)'],
-      ['/datos/abiertos/cobertura/diccionario.csv', 'Diccionario (CSV)'],
-      ['/datos/abiertos/cobertura/metodologia.md', 'Metodología'],
-    ],
-  },
-  {
-    title: 'Indicadores de contratación federal por comprador',
-    files: [
-      ['/datos/abiertos/contratacion-federal/indicadores-comprador.csv', 'Datos (CSV)'],
-      ['/datos/abiertos/contratacion-federal/indicadores-comprador-anio.csv', 'Por año (CSV)'],
-      ['/datos/abiertos/contratacion-federal/diccionario.csv', 'Diccionario (CSV)'],
-      ['/datos/abiertos/contratacion-federal/metodologia.md', 'Metodología'],
-    ],
-  },
-  {
-    title: 'Grupos de anonimato (tamaños en rangos)',
-    files: [
-      ['/datos/abiertos/grupos-anonimato/resumen.csv', 'Resumen (CSV)'],
-      ['/datos/abiertos/grupos-anonimato/cubetas.csv', 'Rangos (CSV)'],
-      ['/datos/abiertos/grupos-anonimato/diccionario.csv', 'Diccionario (CSV)'],
-      ['/datos/abiertos/grupos-anonimato/metodologia.md', 'Metodología'],
-    ],
-  },
-] as const;
 
 /** Enlace de descarga de un CSV generado en el navegador. */
 function CsvDownload({ name, csv, label }: { name: string; csv: string; label: string }) {
@@ -178,43 +150,46 @@ export function ObservatoryPage() {
           }))}
           testId="chart-archive-rate"
         />
-        <TableScroll labelledBy={'indicators-caption'}>
-          <table className="data-table--wide data-table" data-testid="authority-indicators">
-            <caption id={'indicators-caption'}>
-              Indicadores por autoridad (12 meses previos)
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Autoridad</th>
-                <th scope="col">Recibidas</th>
-                <th scope="col">Archivadas</th>
-                <th scope="col">Plazo vencido</th>
-                <th scope="col">Acuerdos con plantilla</th>
-                <th scope="col">Sanciones declaradas</th>
-                <th scope="col">Confirmadas</th>
-                <th scope="col">Contradichas</th>
-                <th scope="col">Sin cobertura</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DEMO_AUTHORITY_INDICATORS.map((row) => (
-                <tr key={row.authorityId}>
-                  <th scope="row">{row.name}</th>
-                  <td className="numeric">{row.received}</td>
-                  <td className="numeric">
-                    {row.archived} ({percent(row.archived, row.received)} %)
-                  </td>
-                  <td className="numeric">{row.overdue}</td>
-                  <td className="numeric">{row.templateClosures}</td>
-                  <td className="numeric">{row.declaredSanctions}</td>
-                  <td className="numeric">{row.confirmed}</td>
-                  <td className="numeric">{row.contradicted}</td>
-                  <td className="numeric">{row.noCoverage}</td>
+        <details className="more">
+          <summary>Ver todos los indicadores por autoridad</summary>
+          <TableScroll labelledBy={'indicators-caption'}>
+            <table className="data-table--wide data-table" data-testid="authority-indicators">
+              <caption id={'indicators-caption'}>
+                Indicadores por autoridad (12 meses previos)
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Autoridad</th>
+                  <th scope="col">Recibidas</th>
+                  <th scope="col">Archivadas</th>
+                  <th scope="col">Plazo vencido</th>
+                  <th scope="col">Acuerdos con plantilla</th>
+                  <th scope="col">Sanciones declaradas</th>
+                  <th scope="col">Confirmadas</th>
+                  <th scope="col">Contradichas</th>
+                  <th scope="col">Sin cobertura</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
+              </thead>
+              <tbody>
+                {DEMO_AUTHORITY_INDICATORS.map((row) => (
+                  <tr key={row.authorityId}>
+                    <th scope="row">{row.name}</th>
+                    <td className="numeric">{row.received}</td>
+                    <td className="numeric">
+                      {row.archived} ({percent(row.archived, row.received)} %)
+                    </td>
+                    <td className="numeric">{row.overdue}</td>
+                    <td className="numeric">{row.templateClosures}</td>
+                    <td className="numeric">{row.declaredSanctions}</td>
+                    <td className="numeric">{row.confirmed}</td>
+                    <td className="numeric">{row.contradicted}</td>
+                    <td className="numeric">{row.noCoverage}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
+        </details>
         <CsvDownload
           name="indicadores-por-autoridad.csv"
           csv={authorityIndicatorsCsv(DEMO_AUTHORITY_INDICATORS)}
@@ -265,70 +240,53 @@ export function ObservatoryPage() {
           </figure>
         )}
         {coverage.kind === 'ready' && (
-          <TableScroll labelledBy={'coverage-caption'}>
-            <table
-              className="data-table--wide data-table coverage-matrix"
-              data-testid="coverage-matrix"
-            >
-              <caption id={'coverage-caption'}>Periodos con datos por entidad y sistema</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Entidad</th>
-                  {COVERAGE_SYSTEMS.map((system) => (
-                    <th key={system} scope="col">
-                      {COVERAGE_SYSTEM_LABELS[system]}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {coverage.rows.map((row) => (
-                  <tr key={row.stateCode} data-synthetic={row.isSynthetic || undefined}>
-                    <th scope="row">{row.stateName}</th>
-                    {COVERAGE_SYSTEMS.map((system) => {
-                      const periods = row.periods[system];
-                      const isCovered = periods.length > 0;
-                      return (
-                        <td key={system} className="coverage-cell" data-covered={isCovered}>
-                          <Icon
-                            name={isCovered ? 'check' : 'nocov'}
-                            className="icon coverage-cell__icon"
-                          />
-                          {describePeriods(periods)}
-                        </td>
-                      );
-                    })}
+          <details className="more">
+            <summary>Ver la tabla de las 32 entidades</summary>
+            <TableScroll labelledBy={'coverage-caption'}>
+              <table
+                className="data-table--wide data-table coverage-matrix"
+                data-testid="coverage-matrix"
+              >
+                <caption id={'coverage-caption'}>Periodos con datos por entidad y sistema</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Entidad</th>
+                    {COVERAGE_SYSTEMS.map((system) => (
+                      <th key={system} scope="col">
+                        {COVERAGE_SYSTEM_LABELS[system]}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
+                </thead>
+                <tbody>
+                  {coverage.rows.map((row) => (
+                    <tr key={row.stateCode} data-synthetic={row.isSynthetic || undefined}>
+                      <th scope="row">{row.stateName}</th>
+                      {COVERAGE_SYSTEMS.map((system) => {
+                        const periods = row.periods[system];
+                        const isCovered = periods.length > 0;
+                        return (
+                          <td key={system} className="coverage-cell" data-covered={isCovered}>
+                            <Icon
+                              name={isCovered ? 'check' : 'nocov'}
+                              className="icon coverage-cell__icon"
+                            />
+                            {describePeriods(periods)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
+          </details>
         )}
       </section>
 
-      <section aria-labelledby="datasets-title" className="observatory-section">
-        <h2 id="datasets-title">Datos abiertos para descargar</h2>
-        <p>
-          Todos son agregados, con los conteos pequeños suprimidos o en rangos. También puedes
-          descargar las denuncias por mes en «Datos abiertos».
-        </p>
-        <ul className="dataset-list" data-testid="open-datasets">
-          {OPEN_DATASETS.map((dataset) => (
-            <li key={dataset.title}>
-              <p className="dataset-list__title">{dataset.title}</p>
-              <ul className="dataset-list__files">
-                {dataset.files.map(([href, label]) => (
-                  <li key={href}>
-                    <a href={href} download>
-                      {label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <p className="observatory-more" data-testid="observatory-downloads">
+        Todos estos datos se pueden descargar en <Link to={PATHS.openData}>Datos abiertos</Link>.
+      </p>
     </>
   );
 }

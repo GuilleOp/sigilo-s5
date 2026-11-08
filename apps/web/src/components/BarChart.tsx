@@ -1,5 +1,6 @@
-// Gráfica de barras horizontales de una sola serie, con etiqueta y valor directos en cada barra y su
-// tabla equivalente. Una sola serie: el color no identifica nada, así que nunca se depende de él.
+// Gráfica de barras horizontales de una sola serie, con etiqueta y valor directos en cada barra
+// (también para lectores de pantalla) y su tabla equivalente a un toque. Una sola serie: el color
+// no identifica nada, así que nunca se depende de él.
 // El ancho de cada barra se fija por CSSOM (permitido por la CSP sin estilos en línea).
 import { useId } from 'react';
 import { TableScroll } from './TableScroll.tsx';
@@ -32,8 +33,8 @@ export function BarChart({ title, valueLabel, data, max, testId }: BarChartProps
       <figcaption id={`${id}-title`} className="bar-chart__title">
         {title}
       </figcaption>
-      {/* La gráfica es visual; la misma información está en la tabla para lectores de pantalla. */}
-      <ul className="bar-chart__rows" aria-hidden="true">
+      {/* Cada barra dice su concepto y su valor en texto; la tabla equivalente queda a un toque. */}
+      <ul className="bar-chart__rows">
         {data.map((item) => (
           <li
             key={item.key}
@@ -51,25 +52,28 @@ export function BarChart({ title, valueLabel, data, max, testId }: BarChartProps
           </li>
         ))}
       </ul>
-      <TableScroll labelledBy={`${id}-table`}>
-        <table className="data-table bar-chart__table">
-          <caption id={`${id}-table`}>{title} (tabla)</caption>
-          <thead>
-            <tr>
-              <th scope="col">Concepto</th>
-              <th scope="col">{valueLabel}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((item) => (
-              <tr key={item.key}>
-                <th scope="row">{item.label}</th>
-                <td className="numeric">{item.valueText ?? String(item.value)}</td>
+      <details className="more">
+        <summary>Ver como tabla</summary>
+        <TableScroll labelledBy={`${id}-table`}>
+          <table className="data-table bar-chart__table">
+            <caption id={`${id}-table`}>{title} (tabla)</caption>
+            <thead>
+              <tr>
+                <th scope="col">Concepto</th>
+                <th scope="col">{valueLabel}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableScroll>
+            </thead>
+            <tbody>
+              {data.map((item) => (
+                <tr key={item.key}>
+                  <th scope="row">{item.label}</th>
+                  <td className="numeric">{item.valueText ?? String(item.value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
+      </details>
     </figure>
   );
 }

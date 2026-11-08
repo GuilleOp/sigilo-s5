@@ -137,8 +137,8 @@ function LedgerFigures({ events }: { events: readonly LedgerEvent[] }) {
         Las denuncias anónimas no tienen nombre que abrir. Cada apertura que pasa por el sistema
         deja un registro aquí. Quien robara la llave de la autoridad y una copia de la base podría
         abrir un nombre sin dejar registro; por eso la llave no vive en el servidor y se piden dos
-        aprobaciones. Con tu folio y tus 8 palabras, en{' '}
-        <Link to={PATHS.tracking}>Dar seguimiento</Link> puedes comprobar si abrieron el tuyo.
+        aprobaciones. Con tu folio y tus 8 palabras, en <Link to={PATHS.tracking}>Mi denuncia</Link>{' '}
+        puedes comprobar si abrieron el tuyo.
       </p>
     </section>
   );
@@ -203,7 +203,7 @@ function AnchorsResult({ comparison }: { comparison: AnchorsComparison }) {
 
 /** Verificador de la bitácora pública. */
 export function VerifyPage() {
-  useDocumentTitle('Verificar bitácora');
+  useDocumentTitle('Registro público');
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<LedgerVerification | null>(null);
   const [anchorText, setAnchorText] = useState('');
@@ -266,7 +266,7 @@ export function VerifyPage() {
 
   return (
     <>
-      <h1>Verificar la bitácora pública</h1>
+      <h1>Comprueba el registro público</h1>
       <p>
         Cada denuncia, cambio de estatus, mensaje y apertura de un nombre queda anotado en un
         registro público. Cada registro está unido al anterior y el sistema firma el último. Tu

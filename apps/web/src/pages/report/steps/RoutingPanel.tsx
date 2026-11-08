@@ -86,7 +86,7 @@ export function RoutingPanel({ destination }: RoutingPanelProps) {
             <summary>¿Qué pasa después?</summary>
             <p>
               Ahí la revisan y la <strong>turnan</strong>. Si no es la autoridad correcta, la
-              devuelve o la canaliza. Verás cada paso en «Dar seguimiento».
+              devuelve o la canaliza. Verás cada paso en «Mi denuncia».
             </p>
           </details>
         </>

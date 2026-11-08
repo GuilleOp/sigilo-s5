@@ -6,6 +6,7 @@ import type { ComplaintSummary } from '@sigilo/contracts';
 import { wipeAuthorityKeys } from '../../crypto/authority.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
+import { authorityProfileStore } from '../../state/profile.ts';
 import { api, AUTHORITY_PAGE_SIZE } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import { AuthorityLogin } from './AuthorityLogin.tsx';
@@ -81,6 +82,31 @@ export function AuthorityPage() {
   useEffect(() => {
     if (session !== null && selected === null) refresh(session);
   }, [session, selected, refresh]);
+
+  // Distintivo de la barra: la función de la cuenta y el nombre de su institución; se borra al
+  // cerrar la sesión o salir del panel.
+  const account = session?.account ?? null;
+  const token = session?.token ?? null;
+  useEffect(() => {
+    if (account === null || token === null) {
+      authorityProfileStore.set(() => null);
+      return;
+    }
+    authorityProfileStore.set(() => ({ role: account.function, authorityName: null }));
+    let isActive = true;
+    api.listAuthorities(token).then(
+      (list) => {
+        const name = list.find((item) => item.authorityId === account.authorityId)?.name ?? null;
+        if (isActive)
+          authorityProfileStore.set((current) => current && { ...current, authorityName: name });
+      },
+      () => undefined,
+    );
+    return () => {
+      isActive = false;
+    };
+  }, [account, token]);
+  useEffect(() => () => authorityProfileStore.set(() => null), []);
 
   // Seguridad: las llaves se borran al cambiar de llaves o al salir de la pantalla. Una sesión
   // renovada (nuevo token tras vencer) conserva las mismas llaves y no las borra.

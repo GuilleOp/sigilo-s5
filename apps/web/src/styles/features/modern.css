@@ -1,0 +1,492 @@
+/* Capa visual moderna (después de comparar con la versión de pruebas del S5): fondo con
+   profundidad (brillo turquesa y ondas de líneas), barra superior translúcida, superficies con
+   borde fino y sombra suave, botones sin bordes gruesos, navegación sin mayúsculas y tarjetas de
+   acción grandes en el inicio. Va al final de la cascada y solo usa tokens (más los suyos, aquí).
+   El tema de alto contraste no cambia: ahí manda la legibilidad. */
+
+:root {
+  --radius-lg: 1.375rem;
+  --glass: rgb(255 255 255 / 0.72);
+  --glass-strong: rgb(255 255 255 / 0.9);
+  --glass-border: rgb(4 70 63 / 0.1);
+  --shadow-soft: 0 1px 2px rgb(4 70 63 / 0.06), 0 10px 30px rgb(4 70 63 / 0.08);
+  --glow-1: rgb(52 203 180 / 0.22);
+  --glow-2: rgb(3 97 90 / 0.12);
+  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 520' fill='none' stroke='%2334cbb4' stroke-opacity='.22' stroke-width='1.2'%3E%3Cpath d='M-20 380C240 300 420 470 720 380S1200 250 1460 320'/%3E%3Cpath d='M-20 410C240 330 420 500 720 410S1200 280 1460 350'/%3E%3Cpath d='M-20 440C240 360 420 530 720 440S1200 310 1460 380'/%3E%3Cpath d='M-20 470C240 390 420 560 720 470S1200 340 1460 410'/%3E%3Cpath d='M-20 350C260 260 460 430 760 340S1220 220 1460 290'/%3E%3Cpath d='M-20 320C280 230 480 400 780 310S1240 190 1460 260'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --glass: rgb(255 255 255 / 0.045);
+    --glass-strong: rgb(255 255 255 / 0.07);
+    --glass-border: rgb(255 255 255 / 0.1);
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.25);
+    --glow-1: rgb(52 203 180 / 0.2);
+    --glow-2: rgb(52 203 180 / 0.08);
+  }
+}
+
+:root[data-theme='dark'] {
+  --glass: rgb(255 255 255 / 0.045);
+  --glass-strong: rgb(255 255 255 / 0.07);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.25);
+  --glow-1: rgb(52 203 180 / 0.2);
+  --glow-2: rgb(52 203 180 / 0.08);
+}
+
+/* Fondo con profundidad: brillo arriba a la izquierda, resplandor abajo a la derecha y ondas. */
+:root:not([data-theme='contrast']) body {
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(70rem 40rem at 105% 105%, var(--glow-1), transparent 60%),
+    radial-gradient(50rem 30rem at -10% -10%, var(--glow-2), transparent 60%), var(--wave);
+  background-repeat: no-repeat;
+  background-position:
+    0 0,
+    0 0,
+    center bottom;
+  background-size:
+    auto,
+    auto,
+    100% auto;
+  background-attachment: fixed;
+}
+
+/* Barra superior translúcida, sin el degradado: la marca y los botones con el color del texto. */
+:root:not([data-theme='contrast']) .site-header {
+  --color-on-header: var(--color-text);
+  background: color-mix(in srgb, var(--color-bg) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+:root:not([data-theme='contrast']) .site-brand {
+  color: var(--color-text);
+}
+
+:root:not([data-theme='contrast']) .site-header .a11y-button,
+:root:not([data-theme='contrast']) .site-header .a11y-icon-button {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  color: var(--color-text);
+}
+
+:root:not([data-theme='contrast']) .site-header .a11y-button:hover,
+:root:not([data-theme='contrast']) .site-header .a11y-button[aria-expanded='true'],
+:root:not([data-theme='contrast']) .site-header .a11y-icon-button:hover {
+  background: var(--color-surface-strong);
+  color: var(--color-text);
+}
+
+:root:not([data-theme='contrast']) .site-header .quick-exit {
+  border-color: var(--color-danger);
+  box-shadow: 0 6px 18px rgb(163 23 47 / 0.25);
+}
+
+/* Franja del prototipo: una línea discreta, no una banda pesada. */
+:root:not([data-theme='contrast']) .demo-notice {
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  padding-block: var(--space-2) 0;
+}
+
+/* Navegación: texto normal (sin mayúsculas), píldora translúcida y la sección actual rellena. */
+:root:not([data-theme='contrast']) .site-nav {
+  background: transparent;
+  border-bottom: 0;
+}
+
+@media (min-width: 48rem) {
+  :root:not([data-theme='contrast']) .site-nav .site-nav__list {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(10px);
+  }
+
+  :root:not([data-theme='contrast']) .site-nav .site-nav__list a {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    padding-inline: var(--space-3);
+    border-radius: var(--radius-pill);
+    text-decoration: none;
+  }
+
+  :root:not([data-theme='contrast']) .site-nav .site-nav__list a[aria-current='page'] {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-weight: 800;
+  }
+
+  :root:not([data-theme='contrast']) .site-nav .site-nav__list a[aria-current='page']::after {
+    display: none;
+  }
+}
+
+/* Títulos: más aire y un poco más compactos. */
+:root:not([data-theme='contrast']) h1,
+:root:not([data-theme='contrast']) h2 {
+  letter-spacing: -0.015em;
+}
+
+/* Superficies: borde fino, esquinas amplias y sombra suave en lugar de bordes gruesos. */
+:root:not([data-theme='contrast']) :is(.card, .shield, .promises li, .a11y-panel, .risk, .citizen) {
+  border-radius: var(--radius-lg);
+}
+
+:root:not([data-theme='contrast']) :is(.card, .shield, .promises li) {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(8px);
+}
+
+:root:not([data-theme='contrast']) .shield::before {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Botones: el principal sin borde y con un degradado del mismo tono; el secundario translúcido. */
+:root:not([data-theme='contrast']) .button {
+  border-width: 1px;
+  font-weight: 800;
+  letter-spacing: 0.005em;
+  transition:
+    background var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+}
+
+:root:not([data-theme='contrast']) .button:not(.button--secondary, .quick-exit) {
+  border-color: transparent;
+  background-image: linear-gradient(135deg, var(--color-primary), var(--color-title));
+  box-shadow: 0 8px 22px rgb(3 97 90 / 0.22);
+}
+
+:root:not([data-theme='contrast']) .button:not(.button--secondary, .quick-exit):hover {
+  transform: translateY(-1px);
+}
+
+:root:not([data-theme='contrast']) .button--secondary {
+  background: var(--glass-strong);
+  border-color: var(--glass-border);
+  color: var(--color-text);
+}
+
+:root:not([data-theme='contrast']) .button--secondary:hover {
+  background: var(--color-surface-strong);
+  color: var(--color-text);
+}
+
+/* Campos y opciones: borde fino que se marca al enfocar o elegir. */
+:root:not([data-theme='contrast'])
+  :is(input:not([type='radio'], [type='checkbox'], [type='range']), select, textarea) {
+  border-width: 1px;
+  border-radius: 0.875rem;
+  background: var(--glass-strong);
+}
+
+:root:not([data-theme='contrast']) .choice {
+  border-width: 1px;
+  border-color: var(--glass-border);
+  background: var(--glass);
+  border-radius: var(--radius-lg);
+}
+
+:root:not([data-theme='contrast']) .choice:has(input:checked) {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* Inicio: tarjetas de acción grandes, como la ventanilla del S5. */
+.home-actions {
+  list-style: none;
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  max-inline-size: 36rem;
+}
+
+.home-action {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-block-size: 4.5rem;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  box-shadow: var(--shadow-soft);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition),
+    background var(--transition);
+}
+
+.home-action:hover {
+  transform: translateY(-2px);
+  color: var(--color-text);
+}
+
+.home-action__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-strong);
+  color: var(--color-primary);
+}
+
+.home-action__icon .icon {
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+}
+
+.home-action__text {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.home-action__title {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.home-action__sub {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.home-action--primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-title));
+  color: var(--color-on-primary);
+  box-shadow: 0 12px 30px rgb(3 97 90 / 0.28);
+}
+
+.home-action--primary:hover {
+  color: var(--color-on-primary);
+}
+
+.home-action--primary .home-action__sub {
+  color: var(--color-on-primary);
+}
+
+.home-action--primary .home-action__icon {
+  background: rgb(255 255 255 / 0.18);
+  color: var(--color-on-primary);
+}
+
+:root[data-theme='contrast'] .home-action {
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: none;
+}
+
+:root[data-theme='contrast'] .home-action--primary {
+  background: var(--color-primary);
+}
+
+@media (prefers-contrast: more) {
+  :root:not([data-theme]) .home-action {
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-action,
+  .button {
+    transition: none;
+  }
+
+  .home-action:hover,
+  .button:hover {
+    transform: none;
+  }
+}
+
+/* Asistente: pasos como píldoras finas, la barra de abajo translúcida y avisos sin raya lateral. */
+:root:not([data-theme='contrast']) .steps li {
+  border-width: 1px;
+  border-color: var(--glass-border);
+  background: var(--glass);
+  padding: var(--space-1) var(--space-3);
+}
+
+:root:not([data-theme='contrast']) .steps li[aria-current='step'] {
+  border-color: transparent;
+  background-image: linear-gradient(135deg, var(--color-primary), var(--color-title));
+  box-shadow: 0 6px 16px rgb(3 97 90 / 0.2);
+}
+
+:root:not([data-theme='contrast']) .stepper {
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: var(--shadow-soft);
+}
+
+:root:not([data-theme='contrast']) .offline-tip {
+  border-left: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass);
+  box-shadow: var(--shadow-soft);
+}
+
+:root:not([data-theme='contrast']) .alert {
+  border-radius: var(--radius-lg);
+}
+
+/* Casillas, opciones y barras con el color principal. */
+:root:not([data-theme='contrast'])
+  :is(input[type='radio'], input[type='checkbox'], input[type='range']) {
+  accent-color: var(--color-primary);
+}
+
+/* Distintivo del perfil en la barra: píldora fina con un punto de color y el nombre en texto. */
+:root {
+  --role-public: #5f6f6c;
+  --role-reporter: #0e8a76;
+  --role-intake: #1b609a;
+  --role-investigation: #9a5b00;
+  --role-supervision: #6b46c1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --role-public: #a9bdb8;
+    --role-reporter: #34cbb4;
+    --role-intake: #8cc2f0;
+    --role-investigation: #ffc978;
+    --role-supervision: #b9a2ff;
+  }
+}
+
+:root[data-theme='dark'] {
+  --role-public: #a9bdb8;
+  --role-reporter: #34cbb4;
+  --role-intake: #8cc2f0;
+  --role-investigation: #ffc978;
+  --role-supervision: #b9a2ff;
+}
+
+.profile-badge {
+  --role: var(--role-public);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0 var(--space-2) 0 var(--space-3);
+  padding: 0.2rem var(--space-3) 0.2rem var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--role) 45%, transparent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--role) 10%, transparent);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.profile-badge--reporter {
+  --role: var(--role-reporter);
+}
+
+.profile-badge--guest {
+  --role: var(--role-public);
+}
+
+.profile-badge--intake {
+  --role: var(--role-intake);
+}
+
+.profile-badge--investigation {
+  --role: var(--role-investigation);
+}
+
+.profile-badge--supervision {
+  --role: var(--role-supervision);
+}
+
+.profile-badge__dot {
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--role);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--role) 22%, transparent);
+}
+
+.profile-badge__place {
+  overflow: hidden;
+  max-inline-size: 18rem;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.profile-badge__place::before {
+  content: '· ';
+}
+
+/* En pantallas angostas: solo el nombre del perfil; en las muy angostas, se esconde. */
+@media (max-width: 63.99rem) {
+  .profile-badge__place {
+    display: none;
+  }
+}
+
+@media (max-width: 29.99rem) {
+  .profile-badge {
+    display: none;
+  }
+}
+
+:root[data-theme='contrast'] .profile-badge {
+  border: 2px solid var(--color-border);
+  background: transparent;
+}
+
+:root[data-theme='contrast'] .profile-badge__dot {
+  background: var(--color-text);
+  box-shadow: none;
+}
+
+/* Panel: en lugar de la navegación de quien denuncia, un enlace de regreso a la ventanilla. */
+.site-nav--panel ul {
+  display: flex;
+}
+
+/* Avisos: borde fino del color del tono, sin la raya lateral gruesa. */
+:root:not([data-theme='contrast']) .alert {
+  border: 1px solid var(--alert-tone, var(--color-border));
+  box-shadow: var(--shadow-soft);
+}
+
+:root:not([data-theme='contrast']) .alert--info {
+  --alert-tone: color-mix(in srgb, var(--color-info) 45%, transparent);
+}
+
+:root:not([data-theme='contrast']) .alert--success {
+  --alert-tone: color-mix(in srgb, var(--color-success) 45%, transparent);
+}
+
+:root:not([data-theme='contrast']) .alert--warning {
+  --alert-tone: color-mix(in srgb, var(--color-warning) 45%, transparent);
+}
+
+:root:not([data-theme='contrast']) .alert--danger {
+  --alert-tone: color-mix(in srgb, var(--color-danger) 55%, transparent);
+}

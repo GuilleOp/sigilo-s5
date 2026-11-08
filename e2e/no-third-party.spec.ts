@@ -9,7 +9,7 @@ const SCREENS = [
   { path: '/autoridad', ready: 'authority-login' },
   { path: '/datos-abiertos', ready: 'suppressed-count' },
   { path: '/verificar', ready: 'verify-ledger' },
-  { path: '/observatorio', ready: 'coverage-matrix' },
+  { path: '/observatorio', ready: 'coverage-map' },
 ] as const;
 
 for (const screen of SCREENS) {

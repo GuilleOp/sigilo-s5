@@ -128,6 +128,7 @@ test('H5/H11: a 320 px las tablas se desplazan en una región enfocable y no par
 }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/observatorio');
+  await page.getByText('Ver la tabla de las 32 entidades').click();
   const region = page.getByRole('region', { name: 'Periodos con datos por entidad y sistema' });
   await expect(region).toBeVisible();
   await expect(region).toHaveAttribute('tabindex', '0');

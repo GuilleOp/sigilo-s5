@@ -17,6 +17,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Cambiado
 
+- Capa visual moderna (`styles/features/modern.css`), tras compararla con la versión de pruebas
+  del S5: fondo con profundidad (brillo y ondas de líneas, sin recursos externos), barra superior
+  translúcida, navegación sin mayúsculas, superficies con borde fino y sombra suave, botones sin
+  bordes gruesos, avisos sin raya lateral y tarjetas de acción grandes en el inicio. El alto
+  contraste no cambia.
+- Distintivo del perfil en la barra: «Vista pública», «Persona denunciante», «Autoridad · sin
+  sesión», «Recepción y turnado», «Investigación» o «Supervisión» (con la institución en pantallas
+  anchas), con un punto de color y el nombre siempre en texto.
+- Sin repeticiones: el avance del formulario se ve en las píldoras y en la barra de abajo («Paso n
+  de 5» queda solo para lectores de pantalla); en el observatorio, cada tabla equivalente a una
+  gráfica queda en «Ver como tabla», la tabla de entidades y la de indicadores se pliegan y las
+  descargas pasan a «Datos abiertos»; el inicio ya no repite los enlaces del menú y del pie; el
+  panel de autoridad no muestra la navegación de quien denuncia.
+- Nombres coherentes: «Mi denuncia» (antes «Dar seguimiento») y «Registro público» (antes
+  «Verificar bitácora»).
+
 - Menos texto para quien denuncia: una frase por bloque y el detalle a un toque («¿Por qué?»,
   «Ver…»), sin palabras técnicas a la vista. El inicio pasa de unas 1,000 palabras a unas 100, con
   tres promesas y la página nueva «Cómo te cuidamos» (quién puede saber qué, cómo comprobarlo,

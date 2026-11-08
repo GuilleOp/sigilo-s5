@@ -74,7 +74,7 @@ test('navegar dentro del sitio no deja rutas en el historial del navegador', asy
 
   await page.locator('.site-nav__list').getByRole('link', { name: 'Denunciar' }).click();
   await expect(page.getByTestId('step-mode')).toBeVisible();
-  await page.getByRole('link', { name: 'Verificar bitácora' }).click();
+  await page.getByRole('link', { name: 'Registro público' }).click();
   await expect(page.getByTestId('verify-ledger')).toBeVisible();
   await page.getByRole('link', { name: 'Saltar al contenido' }).focus();
   await page.keyboard.press('Enter');
