@@ -9,7 +9,7 @@ import { Alert } from '../../components/Alert.tsx';
 import { SealedRing } from '../../components/a/SealedRing.tsx';
 import { StateTag } from '../../components/a/StateTag.tsx';
 import { TextAreaField } from '../../components/Field.tsx';
-import { openSealedIdentity } from '../../crypto/authority.ts';
+import { openSealedIdentity, SealedForOtherKeyError } from '../../crypto/authority.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
@@ -76,7 +76,12 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
     try {
       await action();
     } catch (failure) {
-      if (isMounted.current) setError(describeError(failure, failureMessage));
+      if (!isMounted.current) return;
+      setError(
+        failure instanceof SealedForOtherKeyError
+          ? failure.message
+          : describeError(failure, failureMessage),
+      );
     } finally {
       isBusyRef.current = false;
       if (isMounted.current) setBusy(false);

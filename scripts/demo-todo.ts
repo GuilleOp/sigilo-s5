@@ -296,7 +296,8 @@ async function main(): Promise<void> {
   say('  Nodo Querétaro (web): http://127.0.0.1:8781/');
   say('  Nodo Federal (web):   http://127.0.0.1:8782/  ·  panel: http://127.0.0.1:8782/autoridad');
   say('  Cuentas del panel:    .red-demo/nodos/<nodo>/credenciales.json');
-  say('  Llave del panel:      .red-demo/nodos/<nodo>/data/authority-demo-key.json');
+  say('  Llave del panel:      .red-demo/autoridades/<id>.json (la de la autoridad de la cuenta)');
+  say('  Llave del buzón:      .red-demo/nodos/<nodo>/data/authority-demo-key.json');
   say('  Folios y recibos:     .red-demo/semilla.json');
   say('  Guion: docs/demo.md. Para bajarla y limpiar: npm run demo:apagar');
 }
