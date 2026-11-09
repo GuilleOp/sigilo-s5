@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CORROBORATION_ROUTES,
   NETWORK_ROUTES,
+  NationalOpenDataSchema,
   ROUTES,
   SubmitComplaintResponseSchema,
 } from '@sigilo/contracts';
@@ -113,6 +114,7 @@ describe('pasos del mismo origen para la web', () => {
   it('sin red, el directorio, el enrutador y el evaluador responden 404', async () => {
     const { app } = createTestServer();
     expect((await app.request(NETWORK_ROUTES.directory)).status).toBe(404);
+    expect((await app.request(NETWORK_ROUTES.nationalOpenData)).status).toBe(404);
     expect((await app.request(CORROBORATION_ROUTES.evaluatorChallenge)).status).toBe(404);
     const relay = await app.request(NETWORK_ROUTES.relay, {
       method: 'POST',
@@ -151,6 +153,23 @@ describe('pasos del mismo origen para la web', () => {
       body: '{"to":"nadie"}',
     });
     expect(invalid.status).toBe(400);
+  });
+
+  it('pasa el corte nacional de datos abiertos, que suma el CSV real de cada nodo', async () => {
+    const network = createTestNetwork();
+    // Antes del primer corte, el enrutador responde 404 y el nodo también.
+    expect((await network.federal.app.request(NETWORK_ROUTES.nationalOpenData)).status).toBe(404);
+    const cut = await network.openData.run();
+    // El CSV del servidor de referencia cumple las reglas del agregador.
+    expect(cut.nodes.map((node) => [node.nodeId, node.status])).toEqual(
+      expect.arrayContaining([
+        ['node.federal', 'included'],
+        ['node.queretaro', 'included'],
+      ]),
+    );
+    const response = await network.queretaro.app.request(NETWORK_ROUTES.nationalOpenData);
+    expect(response.status).toBe(200);
+    expect(NationalOpenDataSchema.parse(await response.json())).toEqual(cut);
   });
 
   it('pasa el reto del evaluador', async () => {

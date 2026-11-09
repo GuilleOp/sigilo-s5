@@ -33,6 +33,8 @@ import { createRouterApp } from '../../../enrutador/src/app.ts';
 import { openRouterDatabase } from '../../../enrutador/src/database.ts';
 import { loadDirectoryStore } from '../../../enrutador/src/directory-store.ts';
 import { createNationalLedgerService } from '../../../enrutador/src/national-ledger-service.ts';
+import { createOpenDataAggregator } from '../../../enrutador/src/open-data-aggregator.ts';
+import type { OpenDataAggregator } from '../../../enrutador/src/open-data-aggregator.ts';
 import { createRelayService } from '../../../enrutador/src/relay-service.ts';
 import type { RelayService } from '../../../enrutador/src/relay-service.ts';
 import type { AppContext } from '../context.ts';
@@ -192,6 +194,8 @@ export interface TestNetwork {
   trust: NetworkTrustAnchor;
   routerApp: Hono;
   relay: RelayService;
+  /** Agregador nacional de datos abiertos del enrutador. */
+  openData: OpenDataAggregator;
   /** Cuerpos que el enrutador reenvió a los nodos (para comprobar que no ve el contenido). */
   forwarded: string[];
   federal: TestNode;
@@ -317,7 +321,14 @@ export function createTestNetwork(): TestNetwork {
     fetch: nodeFetch,
     relaySecret: (node) => relaySecrets[node.id as DemoNodeId] ?? null,
   });
-  const routerApp = createRouterApp({ directory, national, relay, now });
+  const openData = createOpenDataAggregator({
+    directory: directory.directory,
+    national,
+    nodeUrl: (node) => node.baseUrl,
+    fetch: networkFetch,
+    now,
+  });
+  const routerApp = createRouterApp({ directory, national, relay, openData, now });
   const federal = createNode(
     'node.federal',
     services,
@@ -354,6 +365,7 @@ export function createTestNetwork(): TestNetwork {
     trust,
     routerApp,
     relay,
+    openData,
     forwarded,
     federal,
     queretaro,

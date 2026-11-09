@@ -24,6 +24,8 @@ import type { DirectoryStore } from './directory-store.ts';
 import { ApiFailure, errorResponse, readJson, securityHeaders } from './http.ts';
 import { NationalLedgerRejection } from './national-ledger-service.ts';
 import type { NationalLedgerService } from './national-ledger-service.ts';
+import { nationalOpenDataCsv } from './open-data-aggregator.ts';
+import type { OpenDataAggregator } from './open-data-aggregator.ts';
 import type { RelayService } from './relay-service.ts';
 
 /** Dependencias de la aplicación. */
@@ -31,6 +33,8 @@ export interface RouterAppDeps {
   directory: DirectoryStore;
   national: NationalLedgerService;
   relay: RelayService;
+  /** Corte nacional de datos abiertos; sin él, sus rutas responden `404`. */
+  openData?: Pick<OpenDataAggregator, 'latest'>;
   now: () => Date;
   hstsMaxAgeSeconds?: number | null;
   /** Reenvíos simultáneos permitidos; los que excedan reciben `429`. */
@@ -166,6 +170,20 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
     if (proof === 'too-long') throw new ApiFailure('payload_too_large');
     if (proof === null) throw new ApiFailure('not_found');
     return c.json(proof);
+  });
+
+  // Corte nacional de datos abiertos: solo números ya publicados por cada nodo.
+  const latestOpenData = () => {
+    const latest = deps.openData?.latest() ?? null;
+    if (latest === null) throw new ApiFailure('not_found');
+    return latest;
+  };
+  app.get(NETWORK_ROUTES.nationalOpenData, (c) => c.json(latestOpenData()));
+  app.get(NETWORK_ROUTES.nationalOpenDataCsv, (c) => {
+    const csv = nationalOpenDataCsv(latestOpenData());
+    c.header('Content-Type', 'text/csv; charset=utf-8');
+    c.header('Content-Disposition', 'attachment; filename="denuncias-nacional.csv"');
+    return c.body(csv);
   });
 
   app.notFound((c) => errorResponse(c, 'not_found'));

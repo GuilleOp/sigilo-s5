@@ -17,6 +17,9 @@ import {
   NationalInclusionProofSchema,
   NationalLedgerEntrySchema,
   NationalLedgerPageSchema,
+  NationalOpenDataCellSchema,
+  NationalOpenDataNodeSchema,
+  NationalOpenDataSchema,
   NetworkTrustAnchorSchema,
   NodeHeadAcceptanceSchema,
   NodeRegistrationReceiptSchema,
@@ -36,6 +39,7 @@ import type {
   NationalInclusionProof,
   NationalLedgerEntry,
   NationalLedgerPage,
+  NationalOpenData,
   NetworkTrustAnchor,
   NodeHeadAcceptance,
   NodeRegistration,
@@ -73,6 +77,9 @@ export const NETWORK_COMPONENTS = {
   NationalCosignatureRequest: NationalCosignatureRequestSchema,
   NationalLedgerPage: NationalLedgerPageSchema,
   NationalInclusionProof: NationalInclusionProofSchema,
+  NationalOpenData: NationalOpenDataSchema,
+  NationalOpenDataNode: NationalOpenDataNodeSchema,
+  NationalOpenDataCell: NationalOpenDataCellSchema,
 } as const satisfies Record<string, z.ZodType>;
 
 export type NetworkComponentName = keyof typeof NETWORK_COMPONENTS;
@@ -284,6 +291,48 @@ const trustAnchor: NetworkTrustAnchor = {
   ],
 };
 
+const nationalOpenData: NationalOpenData = {
+  v: 1,
+  cutAt: '2026-11-09T17:00Z',
+  closedBefore: '2026-11',
+  directorySerial: 1,
+  minCell: 5,
+  rounding: 5,
+  nodes: [
+    {
+      nodeId: 'node.queretaro',
+      name: 'Nodo estatal Querétaro',
+      status: 'included',
+      rejection: null,
+      cells: 2,
+      total: 25,
+      ledgerHead: nodeHead,
+      nationalEntrySeq: 1,
+    },
+    {
+      nodeId: 'node.federal',
+      name: 'Nodo Federal y común',
+      status: 'unreachable',
+      rejection: null,
+      cells: 0,
+      total: 0,
+      ledgerHead: null,
+      nationalEntrySeq: null,
+    },
+  ],
+  cells: [
+    {
+      stateCode: '22',
+      offenseCode: 'LGRA-52',
+      month: '2026-10',
+      status: 'investigating',
+      count: 10,
+    },
+    { stateCode: '22', offenseCode: 'LGRA-57', month: '2026-10', status: 'archived', count: 10 },
+  ],
+  suppressed: 5,
+};
+
 /** Ejemplos sintéticos del grupo; cumplen los esquemas pero no son criptográficamente válidos. */
 export const NETWORK_EXAMPLES = {
   'get-network-directory.response': signedDirectory,
@@ -299,6 +348,7 @@ export const NETWORK_EXAMPLES = {
   'cosign-national-head.response': cosignedHead,
   'list-national-entries.response': page,
   'get-node-head-inclusion.response': inclusion,
+  'get-national-open-data.response': nationalOpenData,
   'receive-routed-envelope.request': relayRequest,
   'receive-routed-envelope.response': relayResponse,
   'routed-request.content': routedRequest,
@@ -315,13 +365,15 @@ export const NETWORK_EXTRA_EXAMPLES: Partial<Record<NetworkComponentName, Networ
   NetworkTrustAnchor: 'network-trust-anchor.content',
 };
 
-/** Cuerpo JSON de una operación de la red. */
-export interface NetworkBody {
-  kind: 'json';
-  component: NetworkComponentName | StandardComponentName;
-  isArray?: boolean;
-  example: NetworkExampleName;
-}
+/** Cuerpo de una operación de la red: JSON con su componente, o texto (el CSV nacional). */
+export type NetworkBody =
+  | {
+      kind: 'json';
+      component: NetworkComponentName | StandardComponentName;
+      isArray?: boolean;
+      example: NetworkExampleName;
+    }
+  | { kind: 'text'; mediaType: string; description: string; example: string };
 
 /** Operación del grupo «Red». `servedBy` dice quién la implementa. */
 export interface NetworkOperation {
@@ -596,6 +648,52 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
       },
     },
     errors: ['bad_request', 'not_found', 'payload_too_large'],
+  },
+  {
+    operationId: 'getNationalOpenData',
+    method: 'get',
+    path: NETWORK_ROUTES.nationalOpenData,
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Corte nacional de datos abiertos',
+    description:
+      'Suma por entidad, conducta, mes y estatus de los CSV públicos de datos abiertos de cada nodo del directorio (Bases de la PDN, arts. 60 y 61). El enrutador descarga cada CSV en `GET /api/v1/open-data/complaints.csv`, lo valida (encabezado, catálogos, solo meses anteriores al mes en curso, conteos múltiplos de 5 y de al menos 5, sin celdas repetidas y con su fila de suprimidas) y descarta completo el que no cumpla. Después de sumar vuelve a aplicar la celda mínima. Un nodo que no responde aparece como `unreachable`: sin datos de ese nodo en este corte. Cada nodo lleva la cabeza de su bitácora vigente en la bitácora nacional, como referencia; los conteos no están firmados ni se pueden comprobar con ella: se comprueban rehaciendo la suma con los CSV de los nodos. Responde `404` hasta el primer corte.',
+    security: 'none',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Último corte nacional.',
+      body: {
+        kind: 'json',
+        component: 'NationalOpenData',
+        example: 'get-national-open-data.response',
+      },
+    },
+    errors: ['not_found'],
+  },
+  {
+    operationId: 'downloadNationalOpenData',
+    method: 'get',
+    path: NETWORK_ROUTES.nationalOpenDataCsv,
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Corte nacional de datos abiertos en CSV',
+    description:
+      'Las celdas del último corte nacional con las mismas columnas que el CSV de cada nodo y su fila final de suprimidas. Qué nodos se sumaron está en la versión JSON. Responde `404` hasta el primer corte.',
+    security: 'none',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Archivo CSV en UTF-8.',
+      body: {
+        kind: 'text',
+        mediaType: 'text/csv',
+        description: 'Columnas: entidad, conducta, mes_recepcion, estatus, denuncias.',
+        example:
+          'entidad,conducta,mes_recepcion,estatus,denuncias\n22,LGRA-52,2026-10,investigating,10\nsuprimidas,,,,5\n',
+      },
+    },
+    errors: ['not_found'],
   },
   {
     operationId: 'receiveRoutedEnvelope',

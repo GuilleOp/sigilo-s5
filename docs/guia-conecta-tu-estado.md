@@ -178,6 +178,14 @@ devuelve la prueba (con `seq` y `hash` de `http://127.0.0.1:8781/api/v1/ledger/h
 umbral 2 de 3, detén un testigo (`docker compose stop testigo-universidad-ejemplo`): la cabeza
 nacional se sigue cofirmando con los otros dos.
 
+Tu nodo también entra al corte nacional de datos abiertos: en cada vuelta el enrutador descarga tu
+`/api/v1/open-data/complaints.csv` (solo meses cerrados, múltiplos de 5, celdas menores a 5
+omitidas) y lo suma con los demás. Para ver si se sumó o por qué se descartó:
+
+```sh
+curl -s http://127.0.0.1:8790/api/v1/red/national/open-data | jq '.nodes[] | {nodeId, status, rejection}'
+```
+
 ## 5. Recibir denuncias por la red
 
 El servidor de referencia ya monta el buzón de red (`POST /api/v1/red/inbox`) y se registra ante el

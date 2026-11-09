@@ -1,0 +1,53 @@
+{
+  "v": 1,
+  "cutAt": "2026-11-09T17:00Z",
+  "closedBefore": "2026-11",
+  "directorySerial": 1,
+  "minCell": 5,
+  "rounding": 5,
+  "nodes": [
+    {
+      "nodeId": "node.queretaro",
+      "name": "Nodo estatal Querétaro",
+      "status": "included",
+      "rejection": null,
+      "cells": 2,
+      "total": 25,
+      "ledgerHead": {
+        "seq": 41,
+        "hash": "a41f0c2e9b8d7a6c5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d",
+        "at": "2026-11-09",
+        "serverKeyId": "c3f8e2a1b0d94756",
+        "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+      },
+      "nationalEntrySeq": 1
+    },
+    {
+      "nodeId": "node.federal",
+      "name": "Nodo Federal y común",
+      "status": "unreachable",
+      "rejection": null,
+      "cells": 0,
+      "total": 0,
+      "ledgerHead": null,
+      "nationalEntrySeq": null
+    }
+  ],
+  "cells": [
+    {
+      "stateCode": "22",
+      "offenseCode": "LGRA-52",
+      "month": "2026-10",
+      "status": "investigating",
+      "count": 10
+    },
+    {
+      "stateCode": "22",
+      "offenseCode": "LGRA-57",
+      "month": "2026-10",
+      "status": "archived",
+      "count": 10
+    }
+  ],
+  "suppressed": 5
+}

@@ -1,6 +1,8 @@
 // Pantalla /observatorio: «¿Sirvió denunciar?» con indicadores por autoridad y resultados agregados,
 // la matriz de cobertura por entidad (con «Sin cobertura» explícito) y los conjuntos de datos
 // abiertos descargables. Cada gráfica tiene su tabla equivalente y nada depende del color.
+// En modo red, los resultados agregados salen del corte nacional del enrutador; sin red, de la
+// línea base sintética, rotulada «Datos de ejemplo».
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { PATHS } from '../../app/paths.ts';
@@ -10,7 +12,9 @@ import { BarChart } from '../../components/BarChart.tsx';
 import { CoverageMap } from '../../components/a/CoverageMap.tsx';
 import { Icon } from '../../components/a/icons.tsx';
 import { SystemBadge } from '../../components/a/SystemBadge.tsx';
+import { formatMonthPeriod } from '../../lib/format.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
+import { networkState } from '../../network/directory.ts';
 import {
   authorityIndicatorsCsv,
   COVERAGE_SYSTEM_LABELS,
@@ -22,7 +26,15 @@ import {
   percent,
   summarizeCoverage,
 } from './observatory-data.ts';
-import type { CoverageEntityRow } from './observatory-data.ts';
+import type { CoverageEntityRow, OutcomeCount } from './observatory-data.ts';
+import {
+  cutTotal,
+  EXAMPLE_REASONS,
+  loadNetworkOutcomes,
+  nodeNotes,
+  statusTotals,
+} from './network-outcomes.ts';
+import type { NetworkOutcomes } from './network-outcomes.ts';
 
 /** Enlace de descarga de un CSV generado en el navegador. */
 function CsvDownload({ name, csv, label }: { name: string; csv: string; label: string }) {
@@ -69,8 +81,50 @@ function useCoverage(): CoverageState {
   return state;
 }
 
-/** Contadores sobre la banda: cifras agregadas de la red (sintéticas en la demostración). */
-function counters(): { label: string; value: string }[] {
+/** Resultados agregados: el corte nacional en modo red o los datos de ejemplo. */
+function useNetworkOutcomes(): NetworkOutcomes {
+  const [state, setState] = useState<NetworkOutcomes>({ kind: 'loading' });
+  useEffect(() => {
+    let isActive = true;
+    void networkState()
+      .then((network) => loadNetworkOutcomes(network))
+      .then((loaded) => {
+        if (isActive) setState(loaded);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, []);
+  return state;
+}
+
+/** Rótulo visible del origen de una sección: corte de la red o datos de ejemplo. */
+function DataSource({ isExample, testId }: { isExample: boolean; testId: string }) {
+  return (
+    <p className="data-source" data-kind={isExample ? 'example' : 'network'} data-testid={testId}>
+      {isExample ? 'Datos de ejemplo' : 'Datos de la red'}
+    </p>
+  );
+}
+
+/** Contadores sobre la banda: cifras agregadas de la red (sintéticas sin red). */
+function counters(outcomes: NetworkOutcomes): { label: string; value: string }[] {
+  if (outcomes.kind === 'network') {
+    const { cut } = outcomes;
+    const included = cut.nodes.filter((node) => node.status === 'included').length;
+    return [
+      { label: 'denuncias en meses cerrados', value: String(cutTotal(cut)) },
+      { label: 'nodos sumados en este corte', value: `${included} de ${cut.nodes.length}` },
+      {
+        label: 'meses publicados',
+        value: String(new Set(cut.cells.map((cell) => cell.month)).size),
+      },
+      {
+        label: 'autoridades observadas (ejemplo)',
+        value: String(DEMO_AUTHORITY_INDICATORS.length),
+      },
+    ];
+  }
   const total = DEMO_OUTCOMES.reduce((sum, row) => sum + row.count, 0);
   const find = (key: string) => DEMO_OUTCOMES.find((row) => row.key === key)?.count ?? 0;
   return [
@@ -88,6 +142,12 @@ function counters(): { label: string; value: string }[] {
 export function ObservatoryPage() {
   useDocumentTitle('Observatorio: ¿sirvió denunciar?');
   const coverage = useCoverage();
+  const outcomes = useNetworkOutcomes();
+  const isNetwork = outcomes.kind === 'network';
+  const outcomeRows: readonly OutcomeCount[] = isNetwork
+    ? statusTotals(outcomes.cut)
+    : DEMO_OUTCOMES;
+  const notes = outcomes.kind === 'loading' || outcomes.cut === null ? [] : nodeNotes(outcomes.cut);
   const indicators = DEMO_AUTHORITY_INDICATORS.filter((row) => row.received > 0);
   return (
     <>
@@ -98,7 +158,7 @@ export function ObservatoryPage() {
         ¿Sirvió <strong>denunciar?</strong>
       </h1>
       <dl className="counters" data-testid="observatory-counters">
-        {counters().map((counter) => (
+        {counters(outcomes).map((counter) => (
           <div key={counter.label} className="counters__item">
             <dt>{counter.label}</dt>
             <dd>{counter.value}</dd>
@@ -107,33 +167,51 @@ export function ObservatoryPage() {
       </dl>
       <Alert tone="info" title="Datos de demostración">
         <p>
-          Los indicadores por autoridad y los resultados son sintéticos (escenario de la
-          demostración). La matriz de cobertura usa cifras públicas agregadas de la Plataforma
-          Digital Nacional, sin datos de personas. Nada aquí identifica a quien denunció.
+          {isNetwork
+            ? 'Los resultados de la red suman los datos abiertos de cada nodo. Los indicadores por autoridad son sintéticos (escenario de la demostración).'
+            : 'Los indicadores por autoridad y los resultados son sintéticos (escenario de la demostración).'}{' '}
+          La matriz de cobertura usa cifras públicas agregadas de la Plataforma Digital Nacional,
+          sin datos de personas. Nada aquí identifica a quien denunció.
         </p>
       </Alert>
 
       <section aria-labelledby="outcomes-title" className="observatory-section">
         <h2 id="outcomes-title">¿Qué pasó con las denuncias?</h2>
-        <p>
-          Toda la red, 12 meses. Conteos redondeados a múltiplos de 5. Solo cuenta como «sanción
-          verificada» la que aparece en el registro público de sanciones.
-        </p>
+        {outcomes.kind !== 'loading' && (
+          <DataSource isExample={!isNetwork} testId="outcomes-source" />
+        )}
+        {isNetwork ? (
+          <p>
+            Toda la red: suma de los datos abiertos que publica cada nodo, solo meses cerrados
+            (antes de {formatMonthPeriod(outcomes.cut.closedBefore)}). Conteos redondeados a
+            múltiplos de {outcomes.cut.rounding}; lo menor que {outcomes.cut.minCell} se suprime.
+          </p>
+        ) : (
+          <p>
+            {outcomes.kind === 'example' ? `${EXAMPLE_REASONS[outcomes.reason]} ` : ''}Toda la red,
+            12 meses. Conteos redondeados a múltiplos de 5. Solo cuenta como «sanción verificada» la
+            que aparece en el registro público de sanciones.
+          </p>
+        )}
+        {notes.length > 0 && (
+          <ul className="data-source__notes" data-testid="outcomes-node-notes">
+            {notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        )}
         <BarChart
-          title="Denuncias por resultado"
+          title={isNetwork ? 'Denuncias por estatus' : 'Denuncias por resultado'}
           valueLabel="Denuncias"
-          data={DEMO_OUTCOMES.map((row) => ({ key: row.key, label: row.label, value: row.count }))}
+          data={outcomeRows.map((row) => ({ key: row.key, label: row.label, value: row.count }))}
           testId="chart-outcomes"
         />
-        <CsvDownload
-          name="resultados.csv"
-          csv={outcomesCsv(DEMO_OUTCOMES)}
-          label="Descargar (CSV)"
-        />
+        <CsvDownload name="resultados.csv" csv={outcomesCsv(outcomeRows)} label="Descargar (CSV)" />
       </section>
 
       <section aria-labelledby="authorities-title" className="observatory-section">
         <h2 id="authorities-title">Indicadores por autoridad</h2>
+        <DataSource isExample testId="authorities-source" />
         <p>
           Una tasa de archivo alta o muchos acuerdos con la misma plantilla no prueban nada por sí
           solos: son señales para que la ciudadanía y los comités pregunten.

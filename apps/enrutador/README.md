@@ -1,12 +1,16 @@
 # Enrutador ciego de SIGILO (`@sigilo/enrutador`)
 
 Pieza central de la red federada «un S5, muchas llaves» ([ADR 0005](../../docs/adr/0005-estandar-s5-federado.md)
-y [ADR 0007](../../docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)). Hace tres cosas y nada más:
+y [ADR 0007](../../docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)). Hace tres cosas:
 
 1. **Publica el directorio de autoridades** firmado por la operación y cofirmado por m de n testigos.
 2. **Reenvía sobres opacos** al nodo de la autoridad destino, sin poder leerlos ni guardarlos.
 3. **Lleva la bitácora nacional**: encadena las cabezas firmadas de cada nodo y las versiones del
    directorio, y publica una cabeza nacional que solo vale con m cofirmas de testigos.
+
+Además, como el S1 de la PDN (cada entidad publica y la SESNA consulta por API), arma el **corte
+nacional de datos abiertos** (Bases de la PDN, arts. 60 y 61): **la SESNA consulta números y
+pruebas, nunca denuncias** (ver «Corte nacional de datos abiertos» más abajo).
 
 Las funciones puras que usan el navegador, los nodos y los testigos están en
 [`packages/red`](../../packages/red/src/index.ts). Las rutas y esquemas están en
@@ -28,7 +32,8 @@ O toda la red con `npm run demo:todo` (o `docker compose build && docker compose
 | `SIGILO_ROUTER_HOST`                     | `127.0.0.1`           | `0.0.0.0` solo dentro de un contenedor                               |
 | `SIGILO_ROUTER_PORT`                     | `8790`                | Puerto                                                               |
 | `SIGILO_ROUTER_NODE_URLS`                | vacío                 | `node.id=http://host:puerto,...`: direcciones internas de los nodos  |
-| `SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS` | `600`                 | Cada cuánto recoge cabezas y emite la cabeza nacional                |
+| `SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS` | `600`                 | Cada cuánto recoge cabezas, emite la cabeza nacional y hace el corte |
+| `SIGILO_ROUTER_CLOCK_FILE`               | vacío                 | Solo demostración (`SIGILO_DEMO=1`): reloj simulado del corte        |
 | `SIGILO_ROUTER_HSTS_MAX_AGE`             | sin HSTS              | `max-age` cuando se publica detrás de HTTPS                          |
 
 Al arrancar verifica `directory.json`: la primera vez contra la raíz fijada `trust.json`; después
@@ -50,11 +55,45 @@ Todas bajo `/api/v1/red`; el detalle está en `estandar/openapi.yaml`.
 | `POST /national/cosignatures`                | Cofirma de un testigo                                        |
 | `GET /national/entries?from=&limit=`         | Entradas de la bitácora nacional                             |
 | `GET /national/inclusion?nodeId=&seq=&hash=` | Prueba de que esa cabeza de nodo está incluida               |
+| `GET /national/open-data`                    | Último corte nacional de datos abiertos (`404` hasta el 1.º) |
+| `GET /national/open-data.csv`                | El mismo corte en CSV, con las columnas del CSV de cada nodo |
 | `POST /inbox` (en cada **nodo**)             | Buzón de red: lo implementa el nodo, no el enrutador         |
 
 Además, el enrutador **recoge** periódicamente la cabeza de cada nodo en `GET /api/v1/ledger/head`,
 la ruta pública que el servidor de referencia ya sirve. Por eso la bitácora nacional funciona hoy
 sin cambiar `apps/server`.
+
+## Corte nacional de datos abiertos
+
+`src/open-data-aggregator.ts`. En cada vuelta, después de recoger las cabezas, el enrutador
+descarga de cada nodo del directorio su CSV público `GET /api/v1/open-data/complaints.csv` (el
+mismo que cualquiera puede bajar; ninguna ruta de denuncias ni del buzón) y:
+
+1. **Valida** el archivo completo y lo descarta si no cumple: encabezado exacto, claves de los
+   catálogos de entidad, conducta y estatus, solo meses anteriores al mes en curso (cerrados y
+   congelados en el nodo), conteos múltiplos de 5 y de al menos 5, sin celdas repetidas, fila final
+   `suprimidas` y a lo más 4 MiB. El motivo queda en `rejection`.
+2. **Suma** por entidad, conducta, mes y estatus y **vuelve a aplicar la celda mínima**: una celda
+   nacional menor que el mínimo pasa a suprimidas.
+3. **Marca** cada nodo como `included`, `unreachable` (no respondió: «sin datos de ese nodo en
+   este corte») o `rejected`. Un nodo caído no detiene el corte.
+4. **Cita** la cabeza firmada de la bitácora de cada nodo vigente en la bitácora nacional al hacer
+   el corte, y la entrada nacional que la contiene.
+
+Qué se verifica y qué no, con honestidad:
+
+| Se verifica                                                          | No se verifica                                                        |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Que cada CSV cumple las reglas de publicación del Estándar           | Que los conteos correspondan a las denuncias reales del nodo          |
+| Que la suma se puede rehacer con los CSV públicos de los nodos       | Nada criptográfico de los conteos: el CSV del nodo no está firmado    |
+| Qué cabeza de bitácora tenía cada nodo en el momento del corte       | La cabeza no contiene conteos: es referencia de integridad, no prueba |
+| Que ningún nodo baja las reglas (mes abierto o celda pequeña: fuera) | El corte no lo firma la operación; se guarda solo en memoria          |
+
+El corte se guarda en memoria y se rehace en cada vuelta (el primero, al arrancar). El nodo lo
+pasa a su web en el mismo origen (`GET /api/v1/red/national/open-data`, validado con el esquema)
+para el observatorio. En la demostración, `SIGILO_ROUTER_CLOCK_FILE` usa el reloj simulado de los
+nodos solo para decidir qué meses están cerrados; la bitácora nacional y el directorio siguen con el
+reloj real.
 
 ## Qué metadatos ve el enrutador y cuáles no
 
