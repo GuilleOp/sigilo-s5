@@ -148,7 +148,8 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 | Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                            |
 | Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)         |
 | Llave del buzón general    | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (solo las cuentas `buzon.federal` y `buzon.queretaro`) |
-| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso)                                                    |
+| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso; `solicitudes`: alta pendiente y su huella)         |
+| Solicitud de alta          | <http://127.0.0.1:8782/solicitar-alta>; bandeja con `operacion.federal` en el panel (sin archivo de llave)   |
 | Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                 |
 
 Cada autoridad abre el panel con **su propia llave**, la que corresponde a su entrada en el

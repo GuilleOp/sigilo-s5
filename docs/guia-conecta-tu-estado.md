@@ -19,6 +19,25 @@ Si tu entidad no opera nodo, sus autoridades se alojan en el **nodo común** y s
 - Una persona responsable de cada autoridad que custodiará su llave privada.
 - Saber qué autoridades de tu entidad reciben denuncias y de qué entes.
 
+## El alta en cinco pasos
+
+Así se da de alta una institución (por ejemplo, la contraloría de un estado sin nodo propio, que
+usará el nodo común):
+
+| Paso | Quién                     | Qué                                                                                                                                 | Estado                                      |
+| ---- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 1    | La institución            | Llena «Solicitar alta de mi institución» (`/solicitar-alta`, enlace en la entrada del panel)                                        | Construido                                  |
+| 2    | La institución            | En la misma página crea sus llaves: descarga la privada; solo el candado viaja con la solicitud                                     | Construido                                  |
+| 3    | Quien opera el nodo       | En la bandeja «Solicitudes de alta» (cuenta de operación) llama a la institución, confirma la huella y aprueba o rechaza con motivo | Construido                                  |
+| 4    | Quien opera la ventanilla | Agrega la entrada propuesta al directorio, lo firma y los testigos lo cofirman (sección 3)                                          | Manual: la bandeja entrega la entrada lista |
+| 5    | Quien opera el nodo       | Crea las cuentas de la lista; cada persona pone su contraseña y firma la carta responsiva                                           | Manual: hoy con `npm run accounts:generate` |
+
+La cuenta de operación del nodo (función `operation`) entra al panel sin archivo de llave: no ve
+denuncias, ni autoridades, ni identidades; solo las solicitudes de alta. Aprobar exige que la huella
+que la institución lee por teléfono coincida con la que el navegador de la operación calcula a
+partir del candado recibido, y el servidor vuelve a comprobarla. Conviene llamar a un número
+obtenido por otra vía, no al de la solicitud.
+
 ## 1. Da de alta tus autoridades
 
 Cada autoridad es una entrada del directorio (`DirectoryAuthority` en `estandar/diccionario-de-datos.md`):

@@ -90,8 +90,15 @@ abre identidades.
 | `contraloria-ejemplo`             | `authority.comptroller-ejemplo`       | Recepción e investigación   |
 | `buzon.queretaro`                 | Buzón general del nodo Querétaro      | Recepción y turnado         |
 | `contraloria.queretaro`           | `authority.comptroller-queretaro`     | Recepción e investigación   |
+| `operacion.federal`               | Operación del nodo Federal            | Operación del nodo          |
+| `operacion.queretaro`             | Operación del nodo Querétaro          | Operación del nodo          |
 
-Las dos personas del OIC IFFE permiten la apertura de identidad de 2 de N.
+Las dos personas del OIC IFFE permiten la apertura de identidad de 2 de N. Las cuentas de operación
+solo revisan las solicitudes de alta de autoridades (entran sin llave y no ven denuncias). La
+siembra deja en el nodo Federal una solicitud pendiente de la «Secretaría de la Contraloría
+Ficticia de Oaxaca» (estado 20, sin nodo propio) y una rechazada; la huella de la pendiente sale en
+la salida de `demo:seed` y en `.red-demo/semilla.json` (`solicitudes`), y su llave privada en
+`.red-demo/solicitudes/`.
 
 ### 2.3 Observadores y testigos
 

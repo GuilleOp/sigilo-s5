@@ -7,6 +7,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Agregado
 
+- Alta de autoridades, pasos 1 a 3: página «Solicitar alta de mi institución» (`/solicitar-alta`)
+  con las llaves creadas en el navegador (solo el candado viaja) y folio y huella al enviar;
+  función de cuenta «Operación del nodo», que entra sin llave, no ve denuncias y aprueba solo con
+  la huella confirmada por teléfono o rechaza con motivo; al aprobar entrega la entrada propuesta
+  del directorio. Rutas `registrationRequests` (con prueba de trabajo `registration`),
+  `operationRegistrations` y `operationRegistrationDecision` en el estándar.
 - Recorrido guiado, con la forma del tutorial de la bandeja del S5 (paso «n/N», barra de avance,
   Anterior y Siguiente), pero a pedido y sin guardar nada: para quien denuncia (desde el inicio o
   «Accesibilidad») y para el panel según la función de la cuenta. Resalta lo que explica y Esc lo
