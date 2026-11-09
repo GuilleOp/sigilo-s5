@@ -31,12 +31,12 @@ export interface AuthorityRegistry {
   findAccount(accountId: string): AuthorityAccount | null;
 }
 
-/** Vista pública de una cuenta: seudónimo, autoridad y función. */
+/** Vista pública de una cuenta: seudónimo, autoridad y funciones. */
 export function accountView(account: AuthorityAccount): AuthorityAccountView {
   return {
     accountId: account.accountId,
     authorityId: account.authorityId,
-    function: account.function,
+    functions: account.functions,
   };
 }
 

@@ -4,6 +4,7 @@
 import type { IdentityOpeningRequestView, OpenIdentityResponse } from '@sigilo/contracts';
 import {
   findDeadlineRule,
+  hasFunction,
   IDENTITY_APPROVAL_THRESHOLD,
   IDENTITY_REQUEST_TTL_DAYS,
 } from '@sigilo/contracts';
@@ -28,8 +29,18 @@ import type { AuthorityAccount } from '../security/authority-registry.ts';
 import { isCompetent } from './procedure-service.ts';
 import { REPORTER_REQUESTER } from './qualification-service.ts';
 
-/** Funciones que pueden solicitar y aprobar aperturas: nunca recepción y turnado. */
+/**
+ * Funciones que pueden solicitar y aprobar aperturas: nunca recepción y turnado sola (el buzón
+ * general nunca abre identidades) ni substanciación. Una cuenta de recepción e investigación las
+ * abre por su función de investigación.
+ */
 export const IDENTITY_CUSTODIAN_FUNCTIONS = ['investigation', 'supervision'] as const;
+
+/** Indica si la aprobación es de una cuenta de supervisión. */
+function isSupervisionAccount(ctx: AppContext, accountId: string): boolean {
+  const approver = ctx.authorities.findAccount(accountId);
+  return approver !== null && hasFunction(approver, 'supervision');
+}
 
 function isOpened(ctx: AppContext, request: StoredIdentityRequest): boolean {
   return ctx.identityOpenings
@@ -291,9 +302,7 @@ export function releaseIdentityEnvelope(
   // Recurso (H7): dos personas distintas, al menos una de supervisión (distinta de quien calificó).
   const isAppealQuorum =
     approvals.length >= IDENTITY_APPROVAL_THRESHOLD &&
-    approvals.some(
-      (approval) => ctx.authorities.findAccount(approval.accountId)?.function === 'supervision',
-    );
+    approvals.some((approval) => isSupervisionAccount(ctx, approval.accountId));
   if (!hasApproved || (isForAppeal && !isAppealQuorum)) {
     logSecurityEvent(ctx, 'function_denied', account.accountId, folio);
     throw new ApiFailure(hasApproved ? 'conflict' : 'forbidden');

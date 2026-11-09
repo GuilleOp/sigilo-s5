@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { NETWORK_ROUTES, ROUTES } from '@sigilo/contracts';
 import type {
+  AuthorityFunction,
   AuthorityAccountsFile,
   NetworkTrustAnchor,
   RoutedReply,
@@ -69,7 +70,7 @@ interface NodeAccount {
   accountId: string;
   username: string;
   authorityId: string;
-  function: 'intake' | 'investigation' | 'supervision';
+  functions: readonly AuthorityFunction[];
 }
 
 /** Cuentas de los dos nodos de prueba. */
@@ -78,37 +79,37 @@ export const NETWORK_ACCOUNTS = {
     accountId: 'acct-00000000000000f1',
     username: 'recepcion.buzon.federal',
     authorityId: 'authority.buzon-federal',
-    function: 'intake',
+    functions: ['intake'],
   },
   iffeIntake: {
     accountId: 'acct-00000000000000f2',
     username: 'recepcion.oic.iffe',
     authorityId: 'authority.oic-iffe',
-    function: 'intake',
+    functions: ['intake'],
   },
   iffeInvestigator: {
     accountId: 'acct-00000000000000f3',
     username: 'investigacion.oic.iffe',
     authorityId: 'authority.oic-iffe',
-    function: 'investigation',
+    functions: ['investigation'],
   },
   iffeSupervision: {
     accountId: 'acct-00000000000000f5',
     username: 'supervision.oic.iffe',
     authorityId: 'authority.oic-iffe',
-    function: 'supervision',
+    functions: ['supervision'],
   },
   oversight: {
     accountId: 'acct-00000000000000f4',
     username: 'supervision.federal',
     authorityId: 'authority.oversight-federal',
-    function: 'supervision',
+    functions: ['supervision'],
   },
   queretaroIntake: {
     accountId: 'acct-00000000000000e1',
     username: 'recepcion.contraloria.queretaro',
     authorityId: 'authority.comptroller-queretaro',
-    function: 'intake',
+    functions: ['intake'],
   },
 } as const satisfies Record<string, Omit<NodeAccount, 'name'>>;
 
@@ -131,6 +132,7 @@ function accountsFile(nodeId: DemoNodeId): AuthorityAccountsFile {
     .filter(([name]) => (nodeId === 'node.federal') !== name.startsWith('queretaro'))
     .map(([name, account]) => ({
       ...account,
+      functions: [...account.functions],
       passwordHash: hashPassword(`contraseña-sintética-${name}`, 10),
     }));
   if (nodeId === 'node.queretaro') {

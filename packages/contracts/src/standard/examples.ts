@@ -10,6 +10,7 @@ import type {
   TransferComplaintRequest,
   TransferComplaintResponse,
   TransferReceiptRequest,
+  AuthorityAccountView,
   AuthorityMessageRequest,
   AuthorityProfile,
   AuthoritySession,
@@ -234,10 +235,10 @@ const procedureView: ProcedureView = {
   rules: [],
 };
 
-const sessionAccount = {
+const sessionAccount: AuthorityAccountView = {
   accountId: ACCOUNT_ID,
   authorityId: AUTHORITY_ID,
-  function: 'investigation' as const,
+  functions: ['intake', 'investigation'],
 };
 
 const authorityProfile: AuthorityProfile = {
@@ -248,7 +249,7 @@ const authorityProfile: AuthorityProfile = {
 };
 
 const loginRequest: LoginRequest = {
-  username: 'investigacion.uno',
+  username: 'oic-equipamiento.persona1',
   password: 'contraseña-sintética-de-ejemplo',
 };
 

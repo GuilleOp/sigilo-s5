@@ -3,7 +3,7 @@
 // sobre al enrutador ciego y registra el turnado en la bitácora. La competencia sigue en el origen
 // hasta que llega el comprobante del destino ligado a esta misma denuncia (H1); entonces se cede y
 // se avisa a quien denunció. Sin comprobante en 10 días hábiles, el turnado vence y se escala.
-import { NETWORK_ROUTES, RelayResponseSchema } from '@sigilo/contracts';
+import { hasFunction, NETWORK_ROUTES, RelayResponseSchema } from '@sigilo/contracts';
 import type {
   TransferComplaintRequest,
   TransferComplaintResponse,
@@ -47,7 +47,7 @@ export async function transferComplaint(
 ): Promise<TransferComplaintResponse> {
   const network = ctx.deps.network;
   if (network === undefined || network.routerUrl === null) throw new ApiFailure('conflict');
-  if (account.function !== 'intake') throw new ApiFailure('forbidden');
+  if (!hasFunction(account, 'intake')) throw new ApiFailure('forbidden');
   const complaint = ctx.complaints.find(folio);
   if (complaint === null || !isCompetent(ctx, account, complaint)) {
     throw new ApiFailure('not_found');

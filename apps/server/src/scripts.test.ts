@@ -135,10 +135,21 @@ describe('scripts/generate-accounts.ts', () => {
       expect(statSync(path).mode & 0o777, path).toBe(0o600);
     }
     const { credenciales } = readJson(credentialsPath) as {
-      credenciales: { username: string; password: string; function: string }[];
+      credenciales: { username: string; password: string; functions: string[] }[];
     };
-    const functions = new Set(credenciales.map((item) => item.function));
-    expect([...functions].sort()).toEqual(['intake', 'investigation', 'supervision']);
+    const functions = new Set(credenciales.flatMap((item) => item.functions));
+    expect([...functions].sort()).toEqual([
+      'intake',
+      'investigation',
+      'substantiation',
+      'supervision',
+    ]);
+    // El buzón general solo recibe y turna; la substanciación nunca investiga (LGRA art. 115).
+    const functionsOf = (username: string) =>
+      credenciales.find((item) => item.username === username)?.functions;
+    expect(functionsOf('buzon.federal')).toEqual(['intake']);
+    expect(functionsOf('oic-equipamiento.persona1')).toEqual(['intake', 'investigation']);
+    expect(functionsOf('oic-equipamiento.substanciacion')).toEqual(['substantiation']);
     const [first] = credenciales;
     if (first === undefined) throw new Error('Faltan credenciales.');
     const account = registry.findByUsername(first.username);

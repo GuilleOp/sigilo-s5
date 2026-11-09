@@ -141,19 +141,19 @@ RuleTriggerView,name,name,cadena,,sí,Nombre de la regla.,,Falta grave sin inici
 RuleTriggerView,explanation,explanation,cadena,,sí,"Qué vigila la regla y qué pasa, en lenguaje sencillo.",,Si la autoridad no inicia el procedimiento corr…
 RuleTriggerView,effect,effect,cadena (RuleEffect),,sí,Efecto de la regla: escalate (entrega el sobre de escalamiento a la supervisora) o alert (solo avisa).,escalate; alert,escalate
 RuleTriggerView,dueOn,dueOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,Vencimiento que dio lugar a la regla.,,2026-12-05
-LoginRequest,username,username,cadena,patrón ^[a-z0-9._-]+$; de 3 a 64 caracteres,sí,"Nombre de usuario de la cuenta (minúsculas, dígitos, punto y guiones).",,investigacion.uno
+LoginRequest,username,username,cadena,patrón ^[a-z0-9._-]+$; de 3 a 64 caracteres,sí,"Nombre de usuario de la cuenta (minúsculas, dígitos, punto y guiones).",,oic-equipamiento.persona1
 LoginRequest,password,password,cadena,de 12 a 256 caracteres,sí,"Contraseña de la cuenta, de 12 a 256 caracteres.",,contraseña-sintética-de-ejemplo
 AuthoritySession,token,token,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Token de sesión opaco para Authorization: Bearer. Vence por inactividad y por duración, y se invalida al cerrar sesión.",,Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq
 AuthoritySession,idleTimeoutSeconds,idleTimeoutSeconds,entero,,sí,Segundos de inactividad tras los que vence la sesión.,,900
 AuthoritySession,absoluteTimeoutSeconds,absoluteTimeoutSeconds,entero,,sí,Segundos tras los que vence la sesión aunque haya actividad.,,28800
-AuthoritySession,account,account,objeto (AuthorityAccountView),,sí,"Cuenta de la sesión: seudónimo, autoridad y función.",,
-AuthoritySessionInfo,account,account,objeto (AuthorityAccountView),,sí,"Cuenta de la sesión: seudónimo, autoridad y función.",,
+AuthoritySession,account,account,objeto (AuthorityAccountView),,sí,"Cuenta de la sesión: seudónimo, autoridad y funciones.",,
+AuthoritySessionInfo,account,account,objeto (AuthorityAccountView),,sí,"Cuenta de la sesión: seudónimo, autoridad y funciones.",,
 AuthoritySessionInfo,authority,authority,objeto (AuthorityProfile),,sí,Autoridad alojada en el nodo.,,
 AuthoritySessionInfo,idleTimeoutSeconds,idleTimeoutSeconds,entero,,sí,Segundos de inactividad tras los que vence la sesión.,,900
 AuthoritySessionInfo,absoluteTimeoutSeconds,absoluteTimeoutSeconds,entero,,sí,Segundos tras los que vence la sesión aunque haya actividad.,,28800
 AuthorityAccountView,accountId,accountId,cadena (AccountId),,sí,Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.,,acct-5f0c2a9d1e7b3c44
 AuthorityAccountView,authorityId,authorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.oic-iffe
-AuthorityAccountView,function,function,cadena (AuthorityFunction),,sí,"Función de la cuenta: intake (recepción y turnado), investigation (investigación) o supervision (supervisión).",intake; investigation; supervision,investigation
+AuthorityAccountView,functions,functions,arreglo de AuthorityFunction,hasta 2 elementos,sí,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan.",,
 AuthorityProfile,authorityId,authorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.oic-iffe
 AuthorityProfile,name,name,cadena,de 1 a 200 caracteres,sí,Nombre de la autoridad.,,Órgano Interno de Control Ficticio
 AuthorityProfile,supervisorId,supervisorId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,no,"Autoridad supervisora que recibe los escalamientos, si tiene.",,authority.oversight-federal
@@ -353,7 +353,7 @@ ProcedureAction,(valor),ProcedureAction,cadena,,sí,"Acción del trámite: recep
 OffenseSeverity,(valor),OffenseSeverity,cadena,,sí,"Gravedad de la conducta: non_serious (falta no grave), serious (grave), private_party (de particulares) o crime (delito).",non_serious; serious; private_party; crime,
 EscalationRuleKey,(valor),EscalationRuleKey,cadena,,sí,Regla pública de escalamiento o de alerta del catálogo ESCALATION_RULES.,escalation.grave-stalled; escalation.archive-unnotified; escalation.conflict; escalation.archive-signals; escalation.downgrade-signals; escalation.declined-serious; escalation.conflict-justified; escalation.transfer-unconfirmed; alert.prescription-12m; alert.prescription-6m; alert.prescription-3m; alert.inactivity-warning; alert.inactivity-expiry; alert.expiry-warning; alert.expiry-reached,escalation.grave-stalled
 RuleEffect,(valor),RuleEffect,cadena,,sí,Efecto de la regla: escalate (entrega el sobre de escalamiento a la supervisora) o alert (solo avisa).,escalate; alert,escalate
-AuthorityFunction,(valor),AuthorityFunction,cadena,,sí,"Función de la cuenta: intake (recepción y turnado), investigation (investigación) o supervision (supervisión).",intake; investigation; supervision,investigation
+AuthorityFunction,(valor),AuthorityFunction,cadena,,sí,"Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).",intake; investigation; supervision; substantiation,intake
 AccountId,(valor),AccountId,cadena,patrón ^acct-[0-9a-f]{16}$,sí,Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.,,acct-5f0c2a9d1e7b3c44
 SignedAuthorityDirectory,directory,directory,objeto (AuthorityDirectory),,sí,Directorio de autoridades: cada versión la firma la operación y la cofirman m de n testigos.,,
 SignedAuthorityDirectory,digest,digest,cadena,patrón ^[0-9a-f]{64}$,sí,SHA-256 de la forma canónica de directory.,,3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9…

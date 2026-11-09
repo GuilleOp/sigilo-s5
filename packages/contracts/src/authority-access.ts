@@ -2,6 +2,8 @@
 // sesión con vencimiento y el archivo local de cuentas (que nunca se versiona).
 import { z } from 'zod';
 import { AuthorityIdSchema } from './network.ts';
+import { AdministrativeStageSchema } from './procedure.ts';
+import type { LegalStage } from './procedure.ts';
 import { Base64UrlSchema } from './primitives.ts';
 
 /** Identificador estable de una autoridad (definido con el directorio de la red). */
@@ -22,16 +24,104 @@ export const AccountIdSchema = z
 export type AccountId = z.infer<typeof AccountIdSchema>;
 
 /**
- * Función de una cuenta. Separación de funciones: `intake` recibe, turna, acepta, reasigna y
- * devuelve; `investigation` investiga, avanza etapas, cierra, escribe por el buzón y aprueba
- * aperturas; `supervision` aprueba aperturas, ve los cierres y recibe los escalamientos. Quien
- * turna nunca puede abrir identidades.
+ * Función de una cuenta. Separación de funciones:
+ * - `intake` (recepción y turnado) recibe, turna, acepta, reasigna y devuelve.
+ * - `investigation` (autoridad investigadora, LGRA art. 3 fr. II) investiga, califica, presenta el
+ *   Informe de Presunta Responsabilidad Administrativa (IPRA), cierra lo que investiga, escribe por
+ *   el buzón y aprueba aperturas.
+ * - `substantiation` (autoridad substanciadora y resolutora, LGRA art. 3 fr. III y IV) dirige el
+ *   procedimiento desde la admisión del IPRA hasta la resolución: solo ella avanza las etapas
+ *   posteriores a `report_filed` y cierra desde que el informe se presentó (ver
+ *   `functionForStage` y `functionInChargeAt`). LGRA art. 115: nunca es la misma
+ *   persona que investiga, así que no se combina con ninguna otra función; tampoco turna ni abre
+ *   identidades.
+ * - `supervision` aprueba aperturas, ve los cierres y recibe los escalamientos.
+ * Quien solo turna nunca puede abrir identidades.
  */
-export const AuthorityFunctionSchema = z.enum(['intake', 'investigation', 'supervision']).meta({
-  description:
-    'Función de la cuenta: intake (recepción y turnado), investigation (investigación) o supervision (supervisión).',
-});
+export const AuthorityFunctionSchema = z
+  .enum(['intake', 'investigation', 'supervision', 'substantiation'])
+  .meta({
+    description:
+      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).',
+  });
 export type AuthorityFunction = z.infer<typeof AuthorityFunctionSchema>;
+
+/**
+ * Combinaciones de funciones que admite una cuenta. La LGRA no obliga a separar la recepción de la
+ * investigación (en los OIC es una sola área de quejas, denuncias e investigación), así que una
+ * cuenta puede tener las dos. Ninguna otra se combina: la supervisión es la segunda llave de quien
+ * supervisa, y la substanciación se separa de la investigación (LGRA art. 115).
+ */
+export const AUTHORITY_FUNCTION_SETS: readonly (readonly AuthorityFunction[])[] = [
+  ['intake'],
+  ['investigation'],
+  ['supervision'],
+  ['substantiation'],
+  ['intake', 'investigation'],
+];
+
+/** Indica si `functions` es una de las combinaciones de `AUTHORITY_FUNCTION_SETS` (sin orden). */
+export function isAllowedFunctionSet(functions: readonly AuthorityFunction[]): boolean {
+  if (new Set(functions).size !== functions.length) return false;
+  return AUTHORITY_FUNCTION_SETS.some(
+    (set) => set.length === functions.length && set.every((item) => functions.includes(item)),
+  );
+}
+
+/** Funciones de una cuenta: una, o recepción e investigación juntas. */
+export const AuthorityFunctionsSchema = z
+  .array(AuthorityFunctionSchema)
+  .min(1)
+  .max(2)
+  .refine(isAllowedFunctionSet, 'Combinación de funciones inválida')
+  .meta({
+    description:
+      'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan.',
+    examples: [['investigation'], ['intake', 'investigation']],
+  });
+
+/** Indica si la cuenta tiene la función `fn`. */
+export function hasFunction(
+  account: { readonly functions: readonly AuthorityFunction[] },
+  fn: AuthorityFunction,
+): boolean {
+  return account.functions.includes(fn);
+}
+
+/** Indica si la cuenta tiene alguna de las funciones de `allowed`. */
+export function hasAnyFunction(
+  account: { readonly functions: readonly AuthorityFunction[] },
+  allowed: readonly AuthorityFunction[],
+): boolean {
+  return account.functions.some((fn) => allowed.includes(fn));
+}
+
+/**
+ * Función que avanza una etapa legal. Corte (LGRA art. 3 fr. III y art. 100): la autoridad
+ * investigadora califica la falta y presenta el IPRA (`report_filed`); la substanciadora dirige el
+ * procedimiento desde la admisión del informe, así que toda etapa administrativa posterior
+ * (`case_file_sent` en adelante, hasta la resolución) es suya. La vía penal es de la fiscalía, que
+ * investiga.
+ */
+export function functionForStage(stage: LegalStage): 'investigation' | 'substantiation' {
+  return SUBSTANTIATION_STAGES.has(stage) ? 'substantiation' : 'investigation';
+}
+
+/**
+ * Función que lleva la denuncia mientras está en `stage` (la que la cierra): investigación hasta
+ * la calificación; substanciación desde que el IPRA se presentó (`report_filed`), porque desde ahí
+ * el expediente es de la autoridad substanciadora.
+ */
+export function functionInChargeAt(stage: LegalStage): 'investigation' | 'substantiation' {
+  return stage === 'report_filed' ? 'substantiation' : functionForStage(stage);
+}
+
+/** Etapas administrativas posteriores a la presentación del IPRA (`report_filed`). */
+export const SUBSTANTIATION_STAGES: ReadonlySet<LegalStage> = new Set(
+  AdministrativeStageSchema.options.slice(
+    AdministrativeStageSchema.options.indexOf('report_filed') + 1,
+  ),
+);
 
 /** Nombre de usuario: minúsculas, dígitos, punto, guion y guion bajo. */
 export const UsernameSchema = z
@@ -73,9 +163,9 @@ export const AuthorityAccountViewSchema = z
   .object({
     accountId: AccountIdSchema,
     authorityId: AuthorityIdSchema,
-    function: AuthorityFunctionSchema,
+    functions: AuthorityFunctionsSchema,
   })
-  .meta({ description: 'Cuenta de la sesión: seudónimo, autoridad y función.' });
+  .meta({ description: 'Cuenta de la sesión: seudónimo, autoridad y funciones.' });
 export type AuthorityAccountView = z.infer<typeof AuthorityAccountViewSchema>;
 
 /** Inactividad máxima de una sesión, en segundos (ASVS V3.3.2: 30 minutos como máximo). */
@@ -132,14 +222,25 @@ export const PasswordHashSchema = z
   .string()
   .regex(/^scrypt\$\d{1,2}\$\d{1,2}\$\d{1,2}\$[A-Za-z0-9_-]{16,}\$[A-Za-z0-9_-]{32,}$/u);
 
-/** Cuenta tal como se guarda en el archivo local de cuentas. */
-export const AuthorityAccountRecordSchema = z.strictObject({
-  accountId: AccountIdSchema,
-  username: UsernameSchema,
-  authorityId: AuthorityIdSchema,
-  function: AuthorityFunctionSchema,
-  passwordHash: PasswordHashSchema,
-});
+/**
+ * Cuenta tal como se guarda en el archivo local de cuentas. Compatibilidad: los archivos anteriores
+ * guardaban una sola `function`; se lee como `functions: [function]`.
+ */
+export const AuthorityAccountRecordSchema = z.preprocess(
+  (raw) => {
+    if (typeof raw !== 'object' || raw === null || !('function' in raw)) return raw;
+    if ('functions' in raw) return raw;
+    const { function: single, ...rest } = raw as Record<string, unknown>;
+    return { ...rest, functions: [single] };
+  },
+  z.strictObject({
+    accountId: AccountIdSchema,
+    username: UsernameSchema,
+    authorityId: AuthorityIdSchema,
+    functions: AuthorityFunctionsSchema,
+    passwordHash: PasswordHashSchema,
+  }),
+);
 export type AuthorityAccountRecord = z.infer<typeof AuthorityAccountRecordSchema>;
 
 /**

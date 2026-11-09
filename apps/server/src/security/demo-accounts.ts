@@ -10,7 +10,7 @@ export interface DemoCredential {
   username: string;
   password: string;
   authorityId: string;
-  function: AuthorityFunction;
+  functions: readonly AuthorityFunction[];
 }
 
 /** Buzón general del nodo de demostración. */
@@ -55,56 +55,53 @@ const DEMO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
   },
 ];
 
-/** Usuarios de la demostración: uno por persona, cada uno con su autoridad y su función. */
+/** Autoridades de la demostración que tienen varias cuentas. */
+const IFFE = 'authority.oic-iffe';
+
+/**
+ * Usuarios de la demostración: uno por persona, cada uno con su autoridad y sus funciones. Los
+ * OIC y las contralorías reciben e investigan en la misma área (la LGRA no obliga a separarlas);
+ * el buzón general solo recibe y turna, y nunca abre identidades. La substanciación del OIC IFFE
+ * es otra persona que nunca investiga (LGRA art. 115). El OIC IFFE tiene dos personas para la
+ * apertura de identidad de 2 de N.
+ */
 export const DEMO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
-  { username: 'recepcion.buzon', authorityId: DEMO_INBOX_AUTHORITY, function: 'intake' },
-  { username: 'recepcion.iffe', authorityId: 'authority.oic-iffe', function: 'intake' },
+  { username: 'buzon.federal', authorityId: DEMO_INBOX_AUTHORITY, functions: ['intake'] },
   {
-    username: 'investigacion.iffe.uno',
-    authorityId: 'authority.oic-iffe',
-    function: 'investigation',
+    username: 'oic-equipamiento.persona1',
+    authorityId: IFFE,
+    functions: ['intake', 'investigation'],
   },
   {
-    username: 'investigacion.iffe.dos',
-    authorityId: 'authority.oic-iffe',
-    function: 'investigation',
+    username: 'oic-equipamiento.persona2',
+    authorityId: IFFE,
+    functions: ['intake', 'investigation'],
   },
-  { username: 'supervision.iffe', authorityId: 'authority.oic-iffe', function: 'supervision' },
-  { username: 'recepcion.dfps', authorityId: 'authority.oic-dfps', function: 'intake' },
+  { username: 'oic-equipamiento.titular', authorityId: IFFE, functions: ['supervision'] },
   {
-    username: 'investigacion.dfps.uno',
+    username: 'oic-equipamiento.substanciacion',
+    authorityId: IFFE,
+    functions: ['substantiation'],
+  },
+  {
+    username: 'oic-programas',
     authorityId: 'authority.oic-dfps',
-    function: 'investigation',
+    functions: ['intake', 'investigation'],
   },
   {
-    username: 'investigacion.dfps.dos',
-    authorityId: 'authority.oic-dfps',
-    function: 'investigation',
-  },
-  {
-    username: 'supervision.federal.uno',
+    username: 'supervision-oic',
     authorityId: DEMO_SUPERVISOR_AUTHORITY,
-    function: 'supervision',
+    functions: ['supervision'],
   },
   {
-    username: 'supervision.federal.dos',
-    authorityId: DEMO_SUPERVISOR_AUTHORITY,
-    function: 'supervision',
-  },
-  {
-    username: 'investigacion.fiscalia',
+    username: 'fiscalia',
     authorityId: 'authority.prosecutor-anticorruption',
-    function: 'investigation',
+    functions: ['investigation'],
   },
   {
-    username: 'recepcion.ejemplo',
+    username: 'contraloria-ejemplo',
     authorityId: 'authority.comptroller-ejemplo',
-    function: 'intake',
-  },
-  {
-    username: 'investigacion.ejemplo',
-    authorityId: 'authority.comptroller-ejemplo',
-    function: 'investigation',
+    functions: ['intake', 'investigation'],
   },
 ];
 
@@ -122,22 +119,17 @@ const QUERETARO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
   },
 ];
 
-/** Usuarios del nodo Querétaro. */
+/** Usuarios del nodo Querétaro: el buzón general y la contraloría, que recibe e investiga. */
 export const QUERETARO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
   {
-    username: 'recepcion.buzon.queretaro',
+    username: 'buzon.queretaro',
     authorityId: DEMO_QUERETARO_INBOX_AUTHORITY,
-    function: 'intake',
+    functions: ['intake'],
   },
   {
-    username: 'recepcion.contraloria.queretaro',
+    username: 'contraloria.queretaro',
     authorityId: 'authority.comptroller-queretaro',
-    function: 'intake',
-  },
-  {
-    username: 'investigacion.contraloria.queretaro',
-    authorityId: 'authority.comptroller-queretaro',
-    function: 'investigation',
+    functions: ['intake', 'investigation'],
   },
 ];
 
@@ -177,7 +169,7 @@ export function buildDemoAccounts(
         accountId: `acct-${toHex(randomBytes(8))}`,
         username: credential.username,
         authorityId: credential.authorityId,
-        function: credential.function,
+        functions: [...credential.functions],
         passwordHash: hashPassword(credential.password, logN),
       })),
     },

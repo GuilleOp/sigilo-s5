@@ -144,7 +144,7 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   );
 
   app.post(ROUTES.authorityProcedure(':folio'), jsonBodyLimit, async (c) => {
-    const account = requireFunction(ctx, c, ['intake', 'investigation']);
+    const account = requireFunction(ctx, c, ['intake', 'investigation', 'substantiation']);
     const folio = folioOf(c);
     const request = await readJson(c, ProcedureActionRequestSchema);
     return c.json(applyProcedureAction(ctx, account, folio, request));
