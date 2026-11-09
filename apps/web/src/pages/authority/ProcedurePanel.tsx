@@ -6,6 +6,10 @@ import {
   CLOSURE_REASONS,
   CRIMINAL_STAGES,
   ClosureReasonSchema,
+  functionForStage,
+  functionInChargeAt,
+  hasAnyFunction,
+  hasFunction,
 } from '@sigilo/contracts';
 import type {
   AuthorityProfile,
@@ -62,10 +66,15 @@ const EMPTY_SANCTION: SanctionDraft = {
   stateCode: '00',
 };
 
-/** Acciones que la función de la cuenta puede hacer en el estado actual del flujo. */
+/**
+ * Acciones que las funciones de la cuenta pueden hacer en el estado actual del flujo (una cuenta
+ * de recepción e investigación suma las de ambas). Después del IPRA, avanzar y cerrar es de
+ * substanciación (LGRA art. 115; el nodo responde 403 a lo demás).
+ */
 function availableActions(session: AuthoritySession, detail: ComplaintDetail): ActionKey[] {
   const state = detail.summary.managementState ?? 'received_in_inbox';
-  const role = session.account.function;
+  const account = session.account;
+  const stage = detail.procedure?.legalStage;
   // LGRA, art. 58 (H5): la autoridad que se excusó no acepta, no avanza ni cierra; solo reasigna,
   // devuelve o turna (el nodo responde 409 a lo demás).
   const review = detail.conflictReview;
@@ -74,21 +83,48 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
     review.authorityId === detail.summary.assignedAuthorityId &&
     state !== 'closed';
   if (isExcused) {
-    if (role !== 'intake') return [];
+    if (!hasFunction(account, 'intake')) return [];
     if (state === 'received_in_inbox' || state === 'returned_to_inbox') return ['route'];
     if (state === 'routed' || state === 'reassigned') return ['reassign', 'return'];
     return [];
   }
-  if (role === 'intake') {
-    if (state === 'received_in_inbox' || state === 'returned_to_inbox') return ['route', 'close'];
-    if (state === 'routed' || state === 'reassigned') return ['accept', 'reassign', 'return'];
-    if (state === 'closed') return ['accept'];
+  const actions = new Set<ActionKey>();
+  if (hasFunction(account, 'intake')) {
+    if (state === 'received_in_inbox' || state === 'returned_to_inbox') {
+      actions.add('route').add('close');
+    }
+    if (state === 'routed' || state === 'reassigned') {
+      actions.add('accept').add('reassign').add('return');
+    }
   }
-  if (role === 'investigation') {
-    if (state === 'accepted') return ['advance_stage', 'close'];
-    if (state === 'closed') return ['accept'];
+  if (hasAnyFunction(account, ['intake', 'investigation']) && state === 'closed') {
+    actions.add('accept');
   }
-  return [];
+  if (state === 'accepted') {
+    if (nextStages(stage).some((next) => canAdvanceTo(session, stage, next.key))) {
+      actions.add('advance_stage');
+    }
+    const inCharge = stage === undefined ? 'investigation' : functionInChargeAt(stage);
+    if (hasFunction(account, inCharge)) actions.add('close');
+  }
+  return [...actions];
+}
+
+/**
+ * Indica si la cuenta puede avanzar de `current` a `next`: investigación hasta el IPRA; después,
+ * substanciación, y solo con el informe ya presentado (el nodo responde 409 si se salta).
+ */
+function canAdvanceTo(
+  session: AuthoritySession,
+  current: LegalStage | undefined,
+  next: LegalStage,
+): boolean {
+  const owner = functionForStage(next);
+  if (!hasFunction(session.account, owner)) return false;
+  return (
+    owner === 'investigation' ||
+    (current !== undefined && functionInChargeAt(current) === 'substantiation')
+  );
 }
 
 /** Etapas posteriores a la actual en su vía (o la primera de cada vía si no hay etapa). */
@@ -104,7 +140,9 @@ function nextStages(current: LegalStage | undefined): { key: LegalStage; name: s
 export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelProps) {
   const actions = availableActions(session, detail);
   const procedure = detail.procedure;
-  const stages = nextStages(procedure?.legalStage);
+  const stages = nextStages(procedure?.legalStage).filter((item) =>
+    canAdvanceTo(session, procedure?.legalStage, item.key),
+  );
   const [authorities, setAuthorities] = useState<AuthorityProfile[]>([]);
   const [action, setAction] = useState<ActionKey | ''>(actions[0] ?? '');
   const [authorityId, setAuthorityId] = useState('');

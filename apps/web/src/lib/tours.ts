@@ -1,7 +1,7 @@
 // Recorridos guiados, como el tutorial de la bandeja del S5 pero a pedido: solo empiezan cuando la
 // persona los pide (nada se guarda para saber si ya los vio, así el equipo no delata que se usó
 // SIGILO). Cada paso es una frase corta y, si tiene `target`, resalta ese elemento de la pantalla.
-import type { AuthorityFunction } from '@sigilo/contracts';
+import type { AuthorityRole } from './authority-role.ts';
 
 /** Un paso del recorrido. `target` es el `data-testid` del elemento que se resalta. */
 export interface TourStep {
@@ -60,7 +60,7 @@ export const REPORTER_TOUR: Tour = {
   ],
 };
 
-const AUTHORITY_INTRO: Readonly<Record<AuthorityFunction, TourStep>> = {
+const AUTHORITY_INTRO: Readonly<Record<AuthorityRole, TourStep>> = {
   intake: {
     title: 'Tu función: recepción y turnado',
     text: 'Recibes las denuncias nuevas y las envías a la autoridad que puede investigarlas.',
@@ -69,13 +69,21 @@ const AUTHORITY_INTRO: Readonly<Record<AuthorityFunction, TourStep>> = {
     title: 'Tu función: investigación',
     text: 'Aceptas las denuncias que te turnan, investigas y calificas. Los plazos de la ley corren desde que aceptas.',
   },
+  intake_investigation: {
+    title: 'Tu función: recepción e investigación',
+    text: 'Aceptas o reasignas lo que llega, investigas, calificas y presentas el informe a la autoridad substanciadora.',
+  },
+  substantiation: {
+    title: 'Tu función: substanciación y resolución',
+    text: 'Recibes el informe de la autoridad investigadora y llevas el procedimiento hasta la resolución. Nunca investigas.',
+  },
   supervision: {
     title: 'Tu función: supervisión',
     text: 'Recibes las denuncias que una autoridad no atendió a tiempo, con los hechos y nunca con el nombre.',
   },
 };
 
-const AUTHORITY_DETAIL: Readonly<Record<AuthorityFunction, TourStep>> = {
+const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
   intake: {
     title: 'Turna con cuidado',
     text: 'Si tienes un interés con la persona señalada, el sistema te pide excusarte. Para reasignar o devolver, escribe un motivo: la persona lo leerá.',
@@ -84,6 +92,14 @@ const AUTHORITY_DETAIL: Readonly<Record<AuthorityFunction, TourStep>> = {
     title: 'Decisiones con fundamento',
     text: 'Calificar o cerrar pide fundamento y acuerdo. Abrir un nombre sellado exige dos personas y queda en el registro público.',
   },
+  intake_investigation: {
+    title: 'Decisiones con fundamento',
+    text: 'Para reasignar o devolver, escribe un motivo. Calificar o cerrar pide fundamento. Abrir un nombre exige dos personas.',
+  },
+  substantiation: {
+    title: 'Del informe a la resolución',
+    text: 'Avanzas las etapas después del informe y resuelves con fundamento. No turnas ni abres nombres sellados.',
+  },
   supervision: {
     title: 'Lo que puedes hacer',
     text: 'Abres la segunda llave para leer los hechos y das seguimiento sin depender de la autoridad que se tardó.',
@@ -91,7 +107,7 @@ const AUTHORITY_DETAIL: Readonly<Record<AuthorityFunction, TourStep>> = {
 };
 
 /** Recorrido del panel según la función de la cuenta. */
-export function authorityTour(role: AuthorityFunction): Tour {
+export function authorityTour(role: AuthorityRole): Tour {
   return {
     id: `authority-${role}`,
     label: 'Recorrido · Panel de autoridad',

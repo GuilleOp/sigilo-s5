@@ -3,10 +3,11 @@
 // nombre en texto (nunca solo el color). En el panel muestra también la institución.
 import { useLocation } from 'react-router';
 import { PATHS } from '../app/paths.ts';
+import type { AuthorityRole } from '../lib/authority-role.ts';
 import { useMemoryStore } from '../state/memory-store.ts';
 import { authorityProfileStore } from '../state/profile.ts';
 
-type BadgeKind = 'public' | 'reporter' | 'guest' | 'intake' | 'investigation' | 'supervision';
+type BadgeKind = 'public' | 'reporter' | 'guest' | AuthorityRole;
 
 const LABELS: Readonly<Record<BadgeKind, string>> = {
   public: 'Vista pública',
@@ -14,6 +15,8 @@ const LABELS: Readonly<Record<BadgeKind, string>> = {
   guest: 'Autoridad · sin sesión',
   intake: 'Recepción y turnado',
   investigation: 'Investigación',
+  intake_investigation: 'Recepción e investigación',
+  substantiation: 'Substanciación y resolución',
   supervision: 'Supervisión',
 };
 

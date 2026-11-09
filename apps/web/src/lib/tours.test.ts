@@ -1,5 +1,7 @@
 // Pruebas de los recorridos: frases cortas (una idea por paso) y un recorrido por cada función.
 import { describe, expect, it } from 'vitest';
+import { authorityRoleOf } from './authority-role.ts';
+import type { AuthorityRole } from './authority-role.ts';
 import { authorityTour, REPORTER_TOUR } from './tours.ts';
 
 const words = (text: string): number => text.trim().split(/\s+/u).length;
@@ -10,6 +12,8 @@ describe('recorridos guiados', () => {
       REPORTER_TOUR,
       authorityTour('intake'),
       authorityTour('investigation'),
+      authorityTour('intake_investigation'),
+      authorityTour('substantiation'),
       authorityTour('supervision'),
     ];
     for (const tour of tours) {
@@ -28,9 +32,20 @@ describe('recorridos guiados', () => {
   });
 
   it('solo la supervisión explica los escalamientos', () => {
-    const has = (role: 'intake' | 'investigation' | 'supervision') =>
+    const has = (role: AuthorityRole) =>
       authorityTour(role).steps.some((step) => step.target === 'escalations');
     expect(has('supervision')).toBe(true);
     expect(has('intake')).toBe(false);
+    expect(has('substantiation')).toBe(false);
+  });
+
+  it('una cuenta de recepción e investigación tiene su propio perfil', () => {
+    expect(authorityRoleOf(['intake', 'investigation'])).toBe('intake_investigation');
+    expect(authorityRoleOf(['investigation', 'intake'])).toBe('intake_investigation');
+    expect(authorityRoleOf(['intake'])).toBe('intake');
+    expect(authorityRoleOf(['substantiation'])).toBe('substantiation');
+    expect(authorityTour('intake_investigation').steps[0]?.title).toMatch(
+      /recepción e investigación/u,
+    );
   });
 });
