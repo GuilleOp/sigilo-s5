@@ -140,16 +140,16 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 
 ### Qué deja listo
 
-| Qué                        | Dónde                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Web del nodo Querétaro     | <http://127.0.0.1:8781/>                                                                             |
-| Web del nodo Federal       | <http://127.0.0.1:8782/> (panel: <http://127.0.0.1:8782/autoridad>)                                  |
-| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                         |
-| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                    |
-| Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta) |
-| Llave del buzón general    | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (solo las cuentas `recepcion.buzon…`)          |
-| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso)                                            |
-| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                         |
+| Qué                        | Dónde                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Web del nodo Querétaro     | <http://127.0.0.1:8781/>                                                                                     |
+| Web del nodo Federal       | <http://127.0.0.1:8782/> (panel: <http://127.0.0.1:8782/autoridad>)                                          |
+| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                                 |
+| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                            |
+| Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)         |
+| Llave del buzón general    | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (solo las cuentas `buzon.federal` y `buzon.queretaro`) |
+| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso)                                                    |
+| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                 |
 
 Cada autoridad abre el panel con **su propia llave**, la que corresponde a su entrada en el
 directorio firmado: es la llave con la que el navegador de quien denuncia sella la identidad y los
