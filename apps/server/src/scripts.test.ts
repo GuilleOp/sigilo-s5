@@ -141,6 +141,7 @@ describe('scripts/generate-accounts.ts', () => {
     expect([...functions].sort()).toEqual([
       'intake',
       'investigation',
+      'operation',
       'substantiation',
       'supervision',
     ]);
@@ -148,6 +149,7 @@ describe('scripts/generate-accounts.ts', () => {
     const functionsOf = (username: string) =>
       credenciales.find((item) => item.username === username)?.functions;
     expect(functionsOf('buzon.federal')).toEqual(['intake']);
+    expect(functionsOf('operacion.federal')).toEqual(['operation']);
     expect(functionsOf('oic-equipamiento.persona1')).toEqual(['intake', 'investigation']);
     expect(functionsOf('oic-equipamiento.substanciacion')).toEqual(['substantiation']);
     const [first] = credenciales;

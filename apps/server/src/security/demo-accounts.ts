@@ -67,6 +67,8 @@ const IFFE = 'authority.oic-iffe';
  */
 export const DEMO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
   { username: 'buzon.federal', authorityId: DEMO_INBOX_AUTHORITY, functions: ['intake'] },
+  // Operación del nodo: solo revisa solicitudes de alta (la cuenta se ancla al buzón del nodo).
+  { username: 'operacion.federal', authorityId: DEMO_INBOX_AUTHORITY, functions: ['operation'] },
   {
     username: 'oic-equipamiento.persona1',
     authorityId: IFFE,
@@ -125,6 +127,11 @@ export const QUERETARO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
     username: 'buzon.queretaro',
     authorityId: DEMO_QUERETARO_INBOX_AUTHORITY,
     functions: ['intake'],
+  },
+  {
+    username: 'operacion.queretaro',
+    authorityId: DEMO_QUERETARO_INBOX_AUTHORITY,
+    functions: ['operation'],
   },
   {
     username: 'contraloria.queretaro',

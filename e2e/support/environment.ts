@@ -39,6 +39,7 @@ export const E2E_ACCOUNTS = {
   iffeSupervision: 'oic-equipamiento.titular',
   iffeSubstantiation: 'oic-equipamiento.substanciacion',
   supervisor: 'supervision-oic',
+  operation: 'operacion.federal',
 } as const;
 
 /** Autoridad investigadora de las pruebas. */

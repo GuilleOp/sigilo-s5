@@ -19,12 +19,14 @@ import {
   NetworkTrustAnchorSchema,
   POW_HEADER,
   PowChallengeSchema,
+  RegistrationReceiptSchema,
   ROUTES,
   SubmitComplaintResponseSchema,
 } from '@sigilo/contracts';
 import type {
   AuthorityDirectory,
   EvidenceDescriptor,
+  RegistrationRequest,
   RoutedReply,
   SubmitComplaintRequest,
   SubmitComplaintResponse,
@@ -33,7 +35,9 @@ import {
   deriveReceiptKeys,
   formatPowHeader,
   fromBase64Url,
+  generateBoxKeyPair,
   generateReceiptPhrase,
+  generateSigningKeyPair,
   identityContextFor,
   keyIdFor,
   sealEscalation,
@@ -487,6 +491,121 @@ function martaPhoto(): Uint8Array {
   return buildBareJpeg();
 }
 
+/** Solicitud de alta sintética, con su llave privada guardada como la tendría la institución. */
+interface SeededRegistration {
+  institution: string;
+  folio: string;
+  fingerprint: string;
+  status: 'pending' | 'rejected';
+}
+
+/** Arma una solicitud de alta sintética y guarda su llave privada en `.red-demo/solicitudes/`. */
+function registrationRequest(
+  institutionName: string,
+  stateCode: string,
+  people: RegistrationRequest['people'],
+): RegistrationRequest {
+  const box = generateBoxKeyPair();
+  const signing = generateSigningKeyPair();
+  const keyId = keyIdFor(box.publicKey);
+  mkdirSync(join(OUT, 'solicitudes'), { recursive: true, mode: 0o700 });
+  writeFileSync(
+    join(OUT, 'solicitudes', `${keyId}.json`),
+    `${JSON.stringify(
+      {
+        version: 1,
+        keyId,
+        boxPublicKey: toBase64Url(box.publicKey),
+        boxPrivateKey: toBase64Url(box.privateKey),
+        signingPublicKey: toBase64Url(signing.publicKey),
+        signingPrivateKey: toBase64Url(signing.privateKey),
+      },
+      null,
+      2,
+    )}\n`,
+    { mode: 0o600 },
+  );
+  return {
+    institutionName,
+    stateCode,
+    governmentLevel: 'estatal',
+    role: 'investigating',
+    laws: ['LGRA'],
+    supervisorId: null,
+    applicant: {
+      fullName: 'Persona Solicitante Ficticia',
+      position: 'Titular del área de quejas, denuncias e investigación',
+      appointment: 'Oficio SCF/001/2026 del 2 de enero de 2026 (ficticio)',
+    },
+    people,
+    padlock: {
+      keyId,
+      boxPublicKey: toBase64Url(box.publicKey),
+      signingPublicKey: toBase64Url(signing.publicKey),
+    },
+  };
+}
+
+/**
+ * Solicitudes de alta en el nodo Federal: Oaxaca (sin nodo propio, irá al nodo común) queda
+ * pendiente para mostrar la confirmación de la huella; otra queda rechazada con su motivo.
+ */
+async function seedRegistrations(): Promise<SeededRegistration[]> {
+  const specs = [
+    {
+      request: registrationRequest('Secretaría de la Contraloría Ficticia de Oaxaca', '20', [
+        { fullName: 'Persona Ficticia Uno', functions: ['intake', 'investigation'] },
+        { fullName: 'Persona Ficticia Dos', functions: ['intake', 'investigation'] },
+        { fullName: 'Persona Ficticia Tres', functions: ['substantiation'] },
+      ]),
+      rejectReason: null,
+    },
+    {
+      request: registrationRequest('Contraloría Municipal Ficticia de Villa Ejemplo', '20', [
+        { fullName: 'Persona Ficticia Cuatro', functions: ['intake', 'investigation'] },
+      ]),
+      rejectReason:
+        'El oficio de nombramiento no coincide con el padrón de la contraloría estatal. Envíe el oficio vigente.',
+    },
+  ];
+  const seeded: SeededRegistration[] = [];
+  for (const spec of specs) {
+    const header = solved(
+      await json(
+        await fetch(`${NODES.federal}${ROUTES.powChallenge}?purpose=registration`),
+        'Reto',
+      ),
+    );
+    const receipt = RegistrationReceiptSchema.parse(
+      await json(
+        await postJson(`${NODES.federal}${ROUTES.registrationRequests}`, spec.request, {
+          [POW_HEADER]: header,
+        }),
+        'Solicitud de alta',
+      ),
+    );
+    if (spec.rejectReason !== null) {
+      await asAuthority(
+        'federal',
+        'operacion.federal',
+        ROUTES.operationRegistrationDecision(receipt.requestId),
+        { decision: 'reject', reason: spec.rejectReason },
+      );
+    }
+    const status = spec.rejectReason === null ? 'pending' : 'rejected';
+    say(
+      `- Solicitud de alta ${receipt.requestId} (${spec.request.institutionName}): ${status === 'pending' ? `pendiente, huella ${receipt.fingerprint}` : 'rechazada'}.`,
+    );
+    seeded.push({
+      institution: spec.request.institutionName,
+      folio: receipt.requestId,
+      fingerprint: receipt.fingerprint,
+      status,
+    });
+  }
+  return seeded;
+}
+
 async function main(): Promise<void> {
   if (!existsSync(CLOCK_FILE)) {
     throw new Error('No existe .red-demo/; ejecuta npm run red:demo y docker compose up primero.');
@@ -691,10 +810,12 @@ async function main(): Promise<void> {
     );
     say('- Marta se inconforma por la ventanilla única y abre su identidad solo para el recurso.');
   }
+  say('Alta de autoridades: solicitudes sintéticas en el nodo Federal.');
+  const solicitudes = await seedRegistrations();
   // Seguridad: las 8 palabras son secretas (sintéticas); el archivo queda solo para quien presenta.
   writeFileSync(
     join(OUT, 'semilla.json'),
-    `${JSON.stringify({ aviso: 'Folios y recibos sintéticos de la demostración.', casos: seeded }, null, 2)}\n`,
+    `${JSON.stringify({ aviso: 'Folios y recibos sintéticos de la demostración.', casos: seeded, solicitudes }, null, 2)}\n`,
     { mode: 0o600 },
   );
   say(`Escenario sembrado hasta el día ${until}. Folios y recibos en .red-demo/semilla.json.`);
