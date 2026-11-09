@@ -2,7 +2,8 @@
 // Federal y Querétaro, evaluador e índice): directorio del mismo origen verificado con la raíz
 // fijada, propuesta de la autoridad, envío cifrado por el enrutador con corroboración ciega y
 // seguimiento con las mismas 8 palabras, buscando el folio en todos los nodos; y el turnado entre
-// nodos que vuelve a cifrar en el navegador de recepción (SEC-19).
+// nodos que vuelve a cifrar en el navegador de recepción (SEC-19). Sin autoridad competente, la
+// denuncia llega al buzón general del nodo, que la turna (Bases de la PDN, arts. 56 y 58).
 import { describe, expect, it } from 'vitest';
 import { evaluatorKeyFromDirectory } from '@sigilo/corroboracion';
 import { DEMO_OCID, demoCase } from '@sigilo/corroboracion/demo';
@@ -19,6 +20,7 @@ import { SubmitComplaintResponseSchema } from '@sigilo/contracts';
 import { corroborateBlindly } from '../corroboration/blind-corroboration.ts';
 import { inlinePowSolver } from '../crypto/proof-of-work.ts';
 import { startTrackingSession, verifyTrackingReceipt } from '../crypto/tracking.ts';
+import { resolveDestination } from '../pages/report/destination.ts';
 import { submitReport } from '../pages/report/submit-report.ts';
 import type { SigiloApi } from '../services/api.ts';
 import { createApiClient } from '../services/api-client.ts';
@@ -72,6 +74,56 @@ describe('ventanilla única por la red', () => {
     expect(
       choice.options.some((option) => option.authorityId === 'authority.oversight-federal'),
     ).toBe(false);
+  });
+
+  it('sin autoridad competente envía al buzón general del nodo y se sigue con las mismas palabras', async () => {
+    const { network, client, directory } = await setup();
+    const draft = emptyDraft();
+    draft.mode = 'anonymous';
+    draft.facts = {
+      stateCode: '09',
+      municipalityCode: '',
+      entityId: 'VE-ADUANA',
+      offenseCode: 'LGRA-54',
+      periodMonth: '04',
+      periodYear: '2026',
+      accused: 'Servidor Ficticio Tres',
+      description: 'Hechos sintéticos sin autoridad competente en el directorio de la red.',
+    };
+    const resolved = resolveDestination(draft, { kind: 'verified', directory });
+    if (resolved.kind !== 'network') throw new Error(`Destino inesperado: ${resolved.kind}`);
+    expect(resolved.selected).toMatchObject({
+      authorityId: 'authority.buzon-federal',
+      kind: 'inbox',
+    });
+    expect(resolved.selected.reason).toContain('donde una persona la turna a quien corresponda');
+    const destination = destinationFor(directory, resolved.selected.authorityId);
+    const relayApi = createRelayApi(
+      { authorityId: destination.authority.id, node: destination.node },
+      sameOriginRelaySender(client),
+    );
+    const result = await submitReport(draft, UNUSED_API, () => undefined, {
+      solver: inlinePowSolver,
+      network: {
+        api: relayApi,
+        keys: keysForDestination(destination),
+        authorityName: destination.authority.name,
+        nodeName: destination.node.name,
+      },
+    });
+    expect(result.destination?.authorityName).toBe('Buzón general ficticio del nodo Federal');
+    const stored = network.federal.ctx.complaints.find(result.folio);
+    expect(stored?.assignedAuthorityId).toBe('authority.buzon-federal');
+    expect(stored?.managementState).toBe('received_in_inbox');
+    const session = startTrackingSession(result.folio, result.words);
+    const found = await trackAcrossNetwork(
+      directory,
+      session.credentials,
+      sameOriginRelaySender(client),
+    );
+    expect(found?.node.id).toBe('node.federal');
+    if (found === null) return;
+    expect(verifyTrackingReceipt(found.view, found.keys).isReceiptValid).toBe(true);
   });
 
   it('envía cifrado por el enrutador con corroboración y se sigue con las mismas palabras', async () => {

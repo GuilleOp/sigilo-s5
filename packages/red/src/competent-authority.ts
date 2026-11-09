@@ -1,5 +1,7 @@
 // Propuesta de la autoridad competente: función pura que el navegador ejecuta con el directorio
 // verificado y los datos de la denuncia (entidad, ente y conducta), con su razonamiento en claro.
+// Si ninguna es competente, la denuncia va al buzón general del nodo, que la turna: la ventanilla
+// es un canal único (Bases de la PDN, art. 56) con turno a la autoridad competente (art. 58).
 import { findEntity, findOffense, findState, offenseReference } from '@sigilo/contracts';
 import type {
   AuthorityDirectory,
@@ -26,16 +28,22 @@ export interface ComplaintRoutingInput {
 export interface AuthorityCandidate {
   authority: DirectoryAuthority;
   node: DirectoryNode;
-  /** `primary`: conoce la ley de la conducta elegida; `equivalent`: la de una conducta equivalente. */
-  lawMatch: 'primary' | 'equivalent';
+  /**
+   * `primary`: conoce la ley de la conducta elegida; `equivalent`: la de una conducta equivalente;
+   * `null`: es el buzón general, que no investiga y solo turna.
+   */
+  lawMatch: 'primary' | 'equivalent' | null;
   /** `specific`: atiende a ese ente por nombre; `general`: a todos los de su orden y entidad. */
-  entityMatch: 'specific' | 'general';
+  entityMatch: 'specific' | 'general' | null;
   reason: string;
 }
 
-/** Propuesta: la autoridad sugerida, alternativas y el razonamiento en lenguaje claro. */
+/**
+ * Propuesta: la autoridad sugerida, alternativas y el razonamiento en lenguaje claro. `inbox`: no
+ * hay autoridad competente y se propone el buzón general del nodo; `none`: tampoco hay buzón.
+ */
 export interface CompetentAuthorityProposal {
-  status: 'proposed' | 'none';
+  status: 'proposed' | 'inbox' | 'none';
   proposed: AuthorityCandidate | null;
   alternatives: AuthorityCandidate[];
   /** Si se propone por una regla de respaldo (ente municipal sin órgano municipal en el directorio). */
@@ -130,8 +138,10 @@ function candidatesFor(
   const nodes = new Map(directory.nodes.map((node) => [node.id, node]));
   const found: AuthorityCandidate[] = [];
   for (const authority of directory.authorities) {
-    // Las supervisoras reciben escalamientos, no denuncias directas (ADR 0007).
-    if (authority.role === 'supervisory' || !isAuthorityValidOn(authority, on)) continue;
+    // Las supervisoras reciben escalamientos, no denuncias directas (ADR 0007); el buzón general
+    // no investiga: solo recibe lo que no tiene autoridad competente.
+    const isExcluded = authority.role === 'supervisory' || authority.role === 'inbox';
+    if (isExcluded || !isAuthorityValidOn(authority, on)) continue;
     const node = nodes.get(authority.nodeId);
     if (node === undefined) continue;
     const candidate = matchCandidate(authority, node, input, level, laws);
@@ -143,13 +153,74 @@ function candidatesFor(
   );
 }
 
+/** Agrega por qué una segunda copia llega a la supervisora, si la autoridad tiene. */
+function pushSupervisorReason(
+  directory: AuthorityDirectory,
+  authority: DirectoryAuthority,
+  reasons: string[],
+): void {
+  const supervisor =
+    authority.supervisorId === null
+      ? undefined
+      : directory.authorities.find((item) => item.id === authority.supervisorId);
+  if (supervisor !== undefined) {
+    reasons.push(
+      `Si no actúa en los plazos legales, una segunda copia cifrada llega a ${supervisor.name}.`,
+    );
+  }
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLocaleLowerCase('es-MX') + text.slice(1);
+}
+
+/**
+ * Buzón general que recibe la denuncia sin autoridad competente: el del nodo estatal si la entidad
+ * tiene uno (un buzón vigente cuya competencia nombra la entidad) y, si no, el del nodo común (un
+ * buzón vigente de todo el país). Si el orden del ente se conoce, el buzón debe atenderlo.
+ */
+function inboxFor(
+  directory: AuthorityDirectory,
+  input: ComplaintRoutingInput,
+  level: GovernmentLevel | null,
+  on: string,
+): AuthorityCandidate | null {
+  const nodes = new Map(directory.nodes.map((node) => [node.id, node]));
+  const inboxes = directory.authorities
+    .filter(
+      (authority) =>
+        authority.role === 'inbox' &&
+        isAuthorityValidOn(authority, on) &&
+        nodes.has(authority.nodeId) &&
+        (level === null || authority.competence.governmentLevels.includes(level)),
+    )
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const ofState = inboxes.find((item) => item.competence.stateCodes.includes(input.stateCode));
+  const common = inboxes.find(
+    (item) => item.competence.stateCodes.length === 0 && nodes.get(item.nodeId)?.isCommonNode,
+  );
+  const nationwide = inboxes.find((item) => item.competence.stateCodes.length === 0);
+  const authority = ofState ?? common ?? nationwide;
+  const node = authority === undefined ? undefined : nodes.get(authority.nodeId);
+  if (authority === undefined || node === undefined) return null;
+  return {
+    authority,
+    node,
+    lawMatch: null,
+    entityMatch: null,
+    reason: `No encontramos en el directorio quién la investiga. La enviamos al ${lowerFirst(authority.name)}, donde una persona la turna a quien corresponda.`,
+  };
+}
+
 /**
  * Propone la autoridad competente para una denuncia con el directorio ya verificado y vigente el
  * día `on` (AAAA-MM-DD). Reglas, en orden: la conducta define la ley (LGRA o CPF); el ente define
  * el orden de gobierno; gana la autoridad que atiende al ente por nombre sobre la que atiende a
  * todo su orden en la entidad, y la ley de la conducta elegida sobre la de una equivalente. Si un
  * ente municipal no tiene órgano municipal en el directorio, se propone la autoridad estatal de la
- * entidad. Las supervisoras nunca se proponen.
+ * entidad. Las supervisoras nunca se proponen. Si ninguna autoridad es competente, se propone el
+ * buzón general del nodo de la entidad (o del nodo común), que la turna (Bases de la PDN, arts. 56
+ * y 58); solo si no hay buzón vigente en el directorio no se envía nada.
  * Seguridad: es una propuesta; la persona confirma antes de cifrar y nada sale del navegador.
  */
 export function proposeCompetentAuthority(
@@ -194,24 +265,25 @@ export function proposeCompetentAuthority(
   }
   const [proposed, ...alternatives] = candidates;
   if (proposed === undefined) {
+    const inbox = inboxFor(directory, input, level, on);
+    if (inbox === null) {
+      reasons.push(
+        'No encontramos en el directorio una autoridad competente ni un buzón general. No se envía nada: revisa el ente o la conducta.',
+      );
+      return { status: 'none', proposed: null, alternatives: [], isFallback, reasons };
+    }
+    reasons.push(inbox.reason);
     reasons.push(
-      'No encontramos en el directorio una autoridad competente. No se envía nada: revisa el ente o la conducta.',
+      `Su nodo es «${inbox.node.name}». La denuncia se cifra en tu navegador con la llave de ese buzón; el enrutador solo ve a quién va dirigida.`,
     );
-    return { status: 'none', proposed: null, alternatives: [], isFallback, reasons };
+    pushSupervisorReason(directory, inbox.authority, reasons);
+    return { status: 'inbox', proposed: inbox, alternatives: [], isFallback, reasons };
   }
   reasons.push(proposed.reason);
   reasons.push(
     `Su nodo es «${proposed.node.name}». La denuncia se cifra en tu navegador con la llave de esa autoridad; el enrutador solo ve a quién va dirigida.`,
   );
-  const supervisor =
-    proposed.authority.supervisorId === null
-      ? undefined
-      : directory.authorities.find((item) => item.id === proposed.authority.supervisorId);
-  if (supervisor !== undefined) {
-    reasons.push(
-      `Si no actúa en los plazos legales, una segunda copia cifrada llega a ${supervisor.name}.`,
-    );
-  }
+  pushSupervisorReason(directory, proposed.authority, reasons);
   for (const alternative of alternatives) {
     const why =
       alternative.lawMatch === 'equivalent'

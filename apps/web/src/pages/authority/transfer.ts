@@ -48,9 +48,9 @@ export interface TransferInput {
 }
 
 /**
- * Autoridades de otros nodos a las que se puede turnar (nunca supervisoras). El nodo propio se
- * reconoce por la primera autoridad conocida de `ownAuthorityIds` (el buzón general no está en el
- * directorio); si ninguna está, se listan todas y el servidor rechaza las del mismo nodo.
+ * Autoridades de otros nodos a las que se puede turnar (nunca supervisoras; sí su buzón general).
+ * El nodo propio se reconoce por la primera autoridad conocida de `ownAuthorityIds`; si ninguna
+ * está en el directorio, se listan todas y el servidor rechaza las del mismo nodo.
  */
 export function transferTargets(directory: AuthorityDirectory, ownAuthorityIds: readonly string[]) {
   const own = directory.authorities.find((item) => ownAuthorityIds.includes(item.id));

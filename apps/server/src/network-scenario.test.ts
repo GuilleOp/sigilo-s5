@@ -1,7 +1,8 @@
 // Recorrido de integración de la red (docs/demo-escenario.md) con todos los servicios en memoria:
 // Marta envía por el enrutador ciego al nodo Federal, Luis corrobora por la entrada propia del nodo,
 // el nodo alerta del conflicto de interés, el OIC archiva con plantilla, el auditor señala, las
-// reglas escalan a la supervisora y Marta lo ve en su seguimiento. También el turnado entre nodos.
+// reglas escalan a la supervisora y Marta lo ve en su seguimiento. También el turnado entre nodos y
+// la denuncia sin autoridad competente, que llega al buzón general del nodo y este la turna.
 import { describe, expect, it } from 'vitest';
 import {
   AppealResponseSchema,
@@ -26,7 +27,7 @@ import {
 import type { ReceiptKeys } from '@sigilo/core';
 import { templateQualificationText } from '@sigilo/auditor/eval';
 import { DEMO_OCID, demoCase } from '@sigilo/corroboracion/demo';
-import { openRoutedReply } from '@sigilo/red';
+import { openRoutedReply, proposeCompetentAuthority } from '@sigilo/red';
 import { corroborateInBrowser } from '../../corroboracion/src/test-support.ts';
 import { runNodeAudit } from './services/audit-service.ts';
 import { syncCorroboration } from './services/corroboration-service.ts';
@@ -500,5 +501,120 @@ describe('red del escenario de la demostración', () => {
       ROUTES.authorityComplaint(submitted.folio),
     );
     expect(gone.status).toBe(404);
+  });
+});
+
+describe('canal único: sin autoridad competente llega al buzón general (Bases de la PDN, 56 y 58)', () => {
+  /** Denuncia sintética contra un ente federal sin autoridad competente en el directorio. */
+  function aduanaRequest(keys: ReceiptKeys, stateCode: string): SubmitComplaintRequest {
+    return {
+      version: 1,
+      mode: 'anonymous',
+      facts: {
+        stateCode,
+        entityId: 'VE-ADUANA',
+        offenseCode: 'LGRA-54',
+        occurredPeriod: '2026-04',
+        accused: 'Servidor Ficticio Tres',
+        description: 'Hechos sintéticos sin autoridad competente en el directorio de la red.',
+      },
+      evidence: [],
+      protectionRequested: false,
+      reporterKeys: {
+        boxPublicKey: toBase64Url(keys.box.publicKey),
+        signingPublicKey: toBase64Url(keys.signing.publicKey),
+      },
+      authVerifier: keys.authVerifier,
+    };
+  }
+
+  it('la ventanilla propone el buzón del nodo común; queda en el buzón y este la turna al OIC', async () => {
+    const network = createTestNetwork();
+    const { federal } = network;
+    await network.runNodeTasks(federal);
+    const proposal = proposeCompetentAuthority(
+      network.services.directory,
+      { stateCode: '09', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
+      '2026-11-09',
+    );
+    expect(proposal.status).toBe('inbox');
+    const inbox = proposal.proposed?.authority;
+    expect(inbox?.id).toBe('authority.buzon-federal');
+    if (inbox === undefined) return;
+    // La llave del buzón en el directorio es la de `keys.json` del nodo: el buzón la abre.
+    expect(inbox.keyId).toBe(federal.ctx.deps.keys.publicKeySet.authority.keyId);
+
+    const keys = reporter();
+    const request = aduanaRequest(keys, '09');
+    request.escalationEnvelope = await sealEscalation(request, directoryKey(network, OVERSIGHT), {
+      authVerifier: request.authVerifier,
+      reporterKeys: request.reporterKeys,
+    });
+    const reply = await sendThroughRouter(network, inbox.id, {
+      operationId: 'submitComplaint',
+      body: request,
+    });
+    expect(reply.status).toBe(201);
+    if (reply.body.kind !== 'json') throw new Error('Respuesta sin cuerpo.');
+    const { folio } = SubmitComplaintResponseSchema.parse(reply.body.value);
+    // El enrutador solo vio el destino: nada de la denuncia.
+    expect(network.forwarded.join('')).not.toContain('Servidor Ficticio Tres');
+
+    const stored = federal.ctx.complaints.find(folio);
+    expect(stored?.assignedAuthorityId).toBe('authority.buzon-federal');
+    expect(stored?.managementState).toBe('received_in_inbox');
+    let view = await detail(federal, 'federalInboxIntake', folio);
+    expect(view.procedure?.managementState).toBe('received_in_inbox');
+
+    // Una persona del buzón la turna a quien corresponda.
+    const routed = await asAccount(
+      federal,
+      'federalInboxIntake',
+      ROUTES.authorityProcedure(folio),
+      {
+        action: 'route',
+        authorityId: IFFE,
+      },
+    );
+    expect(routed.status).toBe(200);
+    expect(federal.ctx.complaints.find(folio)?.assignedAuthorityId).toBe(IFFE);
+    view = await detail(federal, 'iffeIntake', folio);
+    expect(view.procedure?.managementState).toBe('routed');
+  });
+
+  it('con nodo estatal, llega al buzón de ese nodo con la identidad sellada hacia su llave', async () => {
+    const network = createTestNetwork();
+    const { queretaro } = network;
+    await network.runNodeTasks(queretaro);
+    const proposal = proposeCompetentAuthority(
+      network.services.directory,
+      { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
+      '2026-11-09',
+    );
+    expect(proposal.proposed?.authority.id).toBe('authority.buzon-queretaro');
+    const keys = reporter();
+    const request: SubmitComplaintRequest = {
+      ...aduanaRequest(keys, '22'),
+      mode: 'sealed',
+      protectionRequested: true,
+    };
+    request.sealedIdentity = await sealIdentity(
+      SYNTHETIC_IDENTITY,
+      directoryKey(network, 'authority.buzon-queretaro'),
+      identityContextFor(request),
+    );
+    const reply = await sendThroughRouter(network, 'authority.buzon-queretaro', {
+      operationId: 'submitComplaint',
+      body: request,
+    });
+    expect(reply.status).toBe(201);
+    if (reply.body.kind !== 'json') throw new Error('Respuesta sin cuerpo.');
+    const { folio } = SubmitComplaintResponseSchema.parse(reply.body.value);
+    const stored = queretaro.ctx.complaints.find(folio);
+    expect(stored?.assignedAuthorityId).toBe('authority.buzon-queretaro');
+    expect(stored?.managementState).toBe('received_in_inbox');
+    expect(stored?.sealedIdentity?.keyId).toBe(
+      queretaro.ctx.deps.keys.publicKeySet.authority.keyId,
+    );
   });
 });

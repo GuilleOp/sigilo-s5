@@ -13,15 +13,10 @@ import type {
   SignedAuthorityDirectory,
   SubmitComplaintRequest,
 } from '@sigilo/contracts';
-import {
-  buildPublicKeySet,
-  generateBoxKeyPair,
-  generateSigningKeyPair,
-  randomBytes,
-  toDayDate,
-} from '@sigilo/core';
+import { buildPublicKeySet, randomBytes, toDayDate } from '@sigilo/core';
 import type { KeyPair } from '@sigilo/core';
 import {
+  DEMO_INBOX_AUTHORITY_IDS,
   DEMO_WITNESS_IDS,
   cosignDirectory,
   demoWitnessPrivateKey,
@@ -184,7 +179,7 @@ export interface TestNode {
   ctx: AppContext;
   app: Hono;
   tasks: NetworkTasks;
-  /** Llave del buzón general del nodo (la de `keys.json`). */
+  /** Llave del buzón general del nodo (la de `keys.json`, que es la publicada en el directorio). */
   inboxBox: KeyPair;
 }
 
@@ -215,8 +210,10 @@ function createNode(
   relaySecret: Uint8Array,
 ): TestNode {
   const nodeKeys = services.network.nodes[nodeId];
-  const inboxBox = generateBoxKeyPair();
-  const inboxSigning = generateSigningKeyPair();
+  // El buzón general está en el directorio (papel `inbox`): `keys.json` lleva su llave publicada.
+  const inbox = services.network.authorities[DEMO_INBOX_AUTHORITY_IDS[nodeId]];
+  const inboxBox = inbox.box;
+  const inboxSigning = inbox.signing;
   const supervisor =
     nodeId === 'node.federal'
       ? services.network.authorities['authority.oversight-federal'].box.publicKey

@@ -1,23 +1,17 @@
 // Genera llaves sintéticas para toda la red de demostración (operación, nodos Querétaro y Federal,
-// seis autoridades, tres testigos y el evaluador OPRF), firma y cofirma el directorio con la llave
-// del evaluador, arma las cuentas individuales de cada nodo y deja listo `docker compose`.
+// seis autoridades más el buzón general de cada nodo, tres testigos y el evaluador OPRF), firma y
+// cofirma el directorio con la llave del evaluador, arma las cuentas individuales de cada nodo y
+// deja listo `docker compose`.
 // Todo se escribe en `.red-demo/`, que no se versiona. Uso: npm run red:demo [-- --force]
 import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import type { AuthorityDemoKey, KeysFile, SupervisorDemoKey } from '@sigilo/contracts';
-import {
-  buildPublicKeySet,
-  generateBoxKeyPair,
-  generateSigningKeyPair,
-  keyIdFor,
-  randomBytes,
-  toBase64Url,
-  toDayDate,
-} from '@sigilo/core';
+import { buildPublicKeySet, keyIdFor, randomBytes, toBase64Url, toDayDate } from '@sigilo/core';
 import type { KeyPair } from '@sigilo/core';
 import { buildEvaluatorKey, generateEvaluatorKeyPair } from '@sigilo/corroboracion';
 import {
   DEMO_AUTHORITY_IDS,
+  DEMO_INBOX_AUTHORITY_IDS,
   DEMO_NODE_IDS,
   DEMO_WITNESS_IDS,
   buildDemoDirectory,
@@ -87,8 +81,9 @@ function demoKey(box: KeyPair, signing: KeyPair): AuthorityDemoKey {
 
 /**
  * `keys.json` del servidor de referencia: su llave de firma es la del nodo en el directorio, la de
- * autoridad es la del buzón general del nodo (que no está en el directorio) y la supervisora es la
- * del directorio. Las demás autoridades del nodo usan sus llaves del directorio verificado.
+ * autoridad es la del buzón general del nodo (la misma que publica el directorio, papel `inbox`) y
+ * la supervisora es la del directorio. Las demás autoridades del nodo usan sus llaves del
+ * directorio verificado.
  */
 function nodeKeysFile(
   keys: DemoNetworkKeys,
@@ -199,7 +194,8 @@ function main(): void {
   for (const nodeId of DEMO_NODE_IDS) {
     const nodeDir = join(OUT, 'nodos', NODE_DIRS[nodeId]);
     const dataDir = join(nodeDir, 'data');
-    const inbox = { box: generateBoxKeyPair(), signing: generateSigningKeyPair() };
+    // El buzón general está en el directorio: su llave en `keys.json` es la publicada.
+    const inbox = keys.authorities[DEMO_INBOX_AUTHORITY_IDS[nodeId]];
     const keysFile = nodeKeysFile(keys, nodeId, inbox);
     const inboxKey = demoKey(inbox.box, inbox.signing);
     // Se valida con el mismo código con el que arranca el servidor.

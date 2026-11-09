@@ -1,6 +1,7 @@
 // «Tu denuncia llega a»: la autoridad que propone el sistema con el directorio verificado, en una
-// frase. El porqué (sencillo y técnico) y la opción de cambiarla quedan a un toque. Con un solo nodo
-// dice que llega al buzón general.
+// frase. El porqué (sencillo y técnico) y la opción de cambiarla quedan a un toque. Con un solo nodo,
+// o si el directorio no tiene autoridad competente, dice que llega al buzón general, que la turna
+// (Bases de la PDN, arts. 56 y 58).
 import { reportDraftStore } from '../../../state/report-draft.ts';
 import { Alert } from '../../../components/Alert.tsx';
 import type { DestinationOption } from '../../../network/routing.ts';
@@ -12,6 +13,7 @@ interface RoutingPanelProps {
 
 const KIND_TEXT: Readonly<Record<DestinationOption['kind'], string>> = {
   proposed: 'Propuesta',
+  inbox: 'Buzón general',
   alternative: 'También competente',
   other: 'Otra del directorio',
 };
@@ -64,9 +66,17 @@ function OptionList({
 
 /** Por qué esa autoridad, en una frase sencilla; el detalle técnico queda aparte. */
 function plainReason(option: DestinationOption): string {
-  return option.kind === 'proposed'
-    ? 'Es la que puede investigar la oficina y la conducta que elegiste.'
-    : 'La elegiste tú. También puede atender esta denuncia.';
+  if (option.kind === 'proposed') {
+    return 'Es la que puede investigar la oficina y la conducta que elegiste.';
+  }
+  // El motivo del buzón ya es lenguaje llano: no hay quién la investigue y ahí la turnan.
+  if (option.kind === 'inbox') return option.reason;
+  return 'La elegiste tú. También puede atender esta denuncia.';
+}
+
+/** Si la opción elegida es la propuesta del sistema (autoridad competente o buzón general). */
+function isSystemProposal(option: DestinationOption): boolean {
+  return option.kind === 'proposed' || option.kind === 'inbox';
 }
 
 /** Panel del destino, antes de enviar. */
@@ -109,14 +119,21 @@ export function RoutingPanel({ destination }: RoutingPanelProps) {
           <p className="routing__target" data-testid="routing-target">
             <strong>{destination.selected.name}</strong>
           </p>
-          <p>Solo esa autoridad puede leerla.</p>
+          {destination.selected.kind === 'inbox' ? (
+            <p data-testid="routing-inbox">
+              Ahí la revisan y la <strong>turnan</strong> a quien puede investigarla. Verás cada
+              paso en «Mi denuncia».
+            </p>
+          ) : (
+            <p>Solo esa autoridad puede leerla.</p>
+          )}
           <details className="more">
             <summary>¿Por qué ahí?</summary>
             <p>{plainReason(destination.selected)}</p>
             <details className="more more--minor">
               <summary>Detalle técnico</summary>
               <ul data-testid="routing-reasons">
-                {destination.selected.kind === 'proposed' ? (
+                {isSystemProposal(destination.selected) ? (
                   destination.choice.proposal.reasons.map((reason) => (
                     <li key={reason}>{reason}</li>
                   ))

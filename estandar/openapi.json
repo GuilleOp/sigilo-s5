@@ -9909,8 +9909,8 @@
           },
           "role": {
             "type": "string",
-            "enum": ["investigating", "supervisory", "prosecution"],
-            "description": "Papel: investigating (investiga faltas), supervisory (supervisa y recibe escalamientos) o prosecution (fiscalía de hechos de corrupción)."
+            "enum": ["investigating", "supervisory", "prosecution", "inbox"],
+            "description": "Papel: investigating (investiga faltas), supervisory (supervisa y recibe escalamientos), prosecution (fiscalía de hechos de corrupción) o inbox (buzón general del nodo: recibe lo que no tiene autoridad competente en el directorio y lo turna; Bases de la PDN, arts. 56 y 58)."
           },
           "competence": { "$ref": "#/components/schemas/AuthorityCompetence" },
           "keyId": {

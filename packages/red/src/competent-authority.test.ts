@@ -1,5 +1,6 @@
 // Pruebas de la propuesta de autoridad competente con el escenario de docs/demo-escenario.md.
 import { describe, expect, it } from 'vitest';
+import type { AuthorityDirectory } from '@sigilo/contracts';
 import { proposeCompetentAuthority } from './competent-authority.ts';
 import { FIXTURE_DAY, createNetworkFixture } from './test-fixtures.ts';
 
@@ -75,9 +76,9 @@ describe('propuesta de autoridad competente', () => {
       { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
       FIXTURE_DAY,
     );
-    // Solo la supervisora federal atiende a todo el orden federal: no se propone.
-    expect(proposal.status).toBe('none');
-    expect(proposal.proposed).toBeNull();
+    // Solo la supervisora federal atiende a todo el orden federal: no se propone; va al buzón.
+    expect(proposal.status).toBe('inbox');
+    expect(proposal.proposed?.authority.role).toBe('inbox');
     const equivalent = proposeCompetentAuthority(
       directory,
       { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-52' },
@@ -90,7 +91,65 @@ describe('propuesta de autoridad competente', () => {
       { stateCode: '22', entityId: 'VE-FINANZAS', offenseCode: 'LGRA-54' },
       '2026-11-01',
     );
+    // Antes de la vigencia tampoco hay buzón válido: no se envía nada.
     expect(before.status).toBe('none');
+    expect(before.proposed).toBeNull();
+    expect(before.reasons.join(' ')).toContain('No se envía nada');
+  });
+
+  it('sin autoridad competente va al buzón general del nodo estatal de la entidad', () => {
+    const proposal = proposeCompetentAuthority(
+      directory,
+      { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    expect(proposal.status).toBe('inbox');
+    expect(proposal.proposed?.authority.id).toBe('authority.buzon-queretaro');
+    expect(proposal.proposed?.node.id).toBe('node.queretaro');
+    expect(proposal.proposed?.lawMatch).toBeNull();
+    expect(proposal.alternatives).toEqual([]);
+    expect(proposal.reasons.join(' ')).toContain(
+      'No encontramos en el directorio quién la investiga. La enviamos al buzón general ficticio del nodo Querétaro, donde una persona la turna a quien corresponda.',
+    );
+    expect(proposal.reasons.join(' ')).not.toContain('No se envía nada');
+  });
+
+  it('sin autoridad competente ni nodo estatal va al buzón general del nodo común', () => {
+    const proposal = proposeCompetentAuthority(
+      directory,
+      { stateCode: '09', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    expect(proposal.status).toBe('inbox');
+    expect(proposal.proposed?.authority.id).toBe('authority.buzon-federal');
+    expect(proposal.proposed?.node.isCommonNode).toBe(true);
+    // El buzón del nodo Federal tiene supervisora: la segunda copia llega a ella.
+    expect(proposal.reasons.join(' ')).toContain('Unidad Ficticia de Supervisión');
+  });
+
+  it('el buzón general nunca se propone por competencia', () => {
+    const proposal = proposeCompetentAuthority(
+      directory,
+      { stateCode: '22', entityId: 'VE-FINANZAS', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    const ids = [proposal.proposed, ...proposal.alternatives].map((item) => item?.authority.id);
+    expect(ids).not.toContain('authority.buzon-queretaro');
+    expect(ids).not.toContain('authority.buzon-federal');
+  });
+
+  it('sin ningún buzón vigente en el directorio no se envía nada', () => {
+    const withoutInbox: AuthorityDirectory = {
+      ...directory,
+      authorities: directory.authorities.filter((item) => item.role !== 'inbox'),
+    };
+    const proposal = proposeCompetentAuthority(
+      withoutInbox,
+      { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    expect(proposal).toMatchObject({ status: 'none', proposed: null, alternatives: [] });
+    expect(proposal.reasons.join(' ')).toContain('No se envía nada');
   });
 
   it('ente municipal sin órgano municipal: respaldo en la contraloría estatal', () => {
