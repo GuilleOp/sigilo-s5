@@ -11,9 +11,9 @@ acto están en [demo.md](demo.md); el escenario y sus datos sintéticos, en
 - Una hora antes: `npm run demo:todo` (levanta la red en Docker y siembra el caso de Marta hasta el
   día 35) y abrir en pestañas:
   - la web del nodo Federal en `http://127.0.0.1:8782/`;
-  - el panel del OIC con `investigacion.iffe.uno` (credenciales en
+  - el panel del OIC con `oic-equipamiento.persona1` (credenciales en
     `.red-demo/nodos/federal/credenciales.json`);
-  - el panel de la supervisora con `supervision.federal.uno`;
+  - el panel de la supervisora con `supervision-oic`;
   - el reporte del validador del demo oficial (`estandar/reportes/`) y el de la referencia.
 - Tema claro y zoom del navegador al 125 % para la transmisión.
 - Plan B: el video de la demostración y las capturas en la presentación ejecutiva.

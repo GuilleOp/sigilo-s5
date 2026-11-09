@@ -48,19 +48,22 @@ test('el buzón turna, la autoridad acepta, investiga y cierra con acuerdo; la p
     'Listo: Turnar a una autoridad. La denuncia ya no está en tu bandeja.',
   );
 
-  // Recepción del OIC: acepta.
+  // El distintivo dice la función del buzón general: solo recepción y turnado.
+  await expect(page.getByTestId('profile-badge')).toHaveAttribute('data-kind', 'intake');
+
+  // El OIC recibe e investiga en la misma área: la misma persona acepta.
   await loginAsAuthority(page, E2E_ACCOUNTS.iffeIntake);
+  await expect(page.getByTestId('profile-badge')).toHaveAttribute(
+    'data-kind',
+    'intake_investigation',
+  );
   await openComplaint(page, folio);
   detail = page.getByTestId('complaint-detail');
   await expect(detail.getByTestId('procedure-action')).toHaveValue('accept');
   await detail.getByTestId('apply-procedure').click();
   await expect(detail.getByTestId('procedure-state')).toHaveText('Aceptada');
-  // Quien recibe y turna no tiene acciones de investigación.
-  await expect(detail.getByTestId('procedure-panel')).toContainText(
-    'Tu función no tiene acciones del trámite en este estado.',
-  );
 
-  // Investigación del OIC: inicia la investigación y cierra con fundamento y acuerdo.
+  // Y después inicia la investigación y cierra con fundamento y acuerdo.
   await loginAsAuthority(page, E2E_ACCOUNTS.iffeInvestigator);
   await openComplaint(page, folio);
   detail = page.getByTestId('complaint-detail');

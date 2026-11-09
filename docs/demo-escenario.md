@@ -56,6 +56,31 @@ Relaciones de supervisión (para el escalamiento):
 | `authority.comptroller-queretaro` | ninguna en la demo            |
 | `authority.comptroller-ejemplo`   | ninguna en la demo            |
 
+Cuentas del panel (una por persona; `npm run accounts:generate` o `npm run red:demo` les da
+contraseña). La LGRA no obliga a separar la recepción de la investigación: en los OIC y las
+contralorías es una sola área de quejas, denuncias e investigación, así que esas cuentas tienen las
+dos funciones. Sí obliga a separar la investigación de la substanciación y la resolución (LGRA,
+art. 3, fr. II a IV, y art. 115): la cuenta de substanciación del OIC IFFE es otra persona, que
+avanza las etapas desde que se presenta el Informe de Presunta Responsabilidad Administrativa
+(`report_filed`) y nunca turna ni abre identidades. El buzón general solo recibe y turna, y nunca
+abre identidades.
+
+| Usuario                           | Autoridad                             | Funciones                   |
+| --------------------------------- | ------------------------------------- | --------------------------- |
+| `buzon.federal`                   | Buzón general del nodo Federal        | Recepción y turnado         |
+| `oic-equipamiento.persona1`       | `authority.oic-iffe`                  | Recepción e investigación   |
+| `oic-equipamiento.persona2`       | `authority.oic-iffe`                  | Recepción e investigación   |
+| `oic-equipamiento.titular`        | `authority.oic-iffe`                  | Supervisión                 |
+| `oic-equipamiento.substanciacion` | `authority.oic-iffe`                  | Substanciación y resolución |
+| `oic-programas`                   | `authority.oic-dfps`                  | Recepción e investigación   |
+| `supervision-oic`                 | `authority.oversight-federal`         | Supervisión                 |
+| `fiscalia`                        | `authority.prosecutor-anticorruption` | Investigación               |
+| `contraloria-ejemplo`             | `authority.comptroller-ejemplo`       | Recepción e investigación   |
+| `buzon.queretaro`                 | Buzón general del nodo Querétaro      | Recepción y turnado         |
+| `contraloria.queretaro`           | `authority.comptroller-queretaro`     | Recepción e investigación   |
+
+Las dos personas del OIC IFFE permiten la apertura de identidad de 2 de N.
+
 ### 2.3 Observadores y testigos
 
 | Clave                         | Descripción                                             | Tipo     | Papel                                                                                               |

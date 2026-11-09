@@ -114,9 +114,9 @@ CORS queda desactivado.
 Panel de la autoridad (enlace «Panel de autoridad» del pie, o `http://127.0.0.1:5173/autoridad`):
 
 - Cuenta: un usuario y su contraseña de `apps/server/data/authority-demo-credentials.json`, que
-  `accounts:generate` crea (una cuenta por persona, con su autoridad y su función: recepción y
-  turnado, investigación o supervisión). Las denuncias nuevas llegan al buzón general
-  (`recepcion.buzon`), que las turna. Abrir una identidad exige dos personas de la autoridad.
+  `accounts:generate` crea (una cuenta por persona, con su autoridad y sus funciones: recepción y
+  turnado, investigación, las dos juntas, substanciación y resolución, o supervisión). Las
+  denuncias nuevas llegan al buzón general (`buzon.federal`), que las turna. Abrir una identidad exige dos personas de la autoridad.
 - Llave: importa el archivo `apps/server/data/authority-demo-key.json`.
 
 Otros comandos:
