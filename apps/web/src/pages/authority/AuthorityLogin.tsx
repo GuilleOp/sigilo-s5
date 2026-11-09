@@ -1,15 +1,21 @@
-// Acceso al panel: cuenta individual (usuario y contraseña) e importación local de
-// authority-demo-key.json.
+// Acceso al panel: cuenta individual (usuario y contraseña) e importación local de la llave de su
+// autoridad (la propia del directorio firmado en la red; la del buzón del nodo con un solo nodo).
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Alert } from '../../components/Alert.tsx';
 import { TextField } from '../../components/Field.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
-import { importAuthorityKey, wipeAuthorityKeys } from '../../crypto/authority.ts';
+import {
+  assertAuthorityKeyFor,
+  readAuthorityKeyFile,
+  wipeAuthorityKeys,
+} from '../../crypto/authority.ts';
 import type { AuthorityKeys } from '../../crypto/authority.ts';
+import { networkState } from '../../network/directory.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
+import { CreateAuthorityKeys } from './CreateAuthorityKeys.tsx';
 
 interface AuthorityLoginProps {
   onReady: (session: AuthoritySession) => void;
@@ -47,10 +53,14 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
     }
     setBusy(true);
     let keys: AuthorityKeys | null = null;
+    let token: string | null = null;
     try {
-      keys = importAuthorityKey(await file.text(), PINNED_KEYS);
+      keys = readAuthorityKeyFile(await file.text());
       const session = await api.login(username.trim(), password);
+      token = session.token;
       setPassword('');
+      // La llave debe ser la de la autoridad de ESTA cuenta, que solo se conoce tras entrar.
+      assertAuthorityKeyFor(keys, session.account.authorityId, await networkState(), PINNED_KEYS);
       // Seguridad: si la pantalla se cerró mientras tanto, la llave no se queda en memoria y la
       // sesión se cierra en el servidor.
       if (!isMounted.current) {
@@ -60,6 +70,9 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
       }
       onReady({ token: session.token, account: session.account, keys });
     } catch (failure) {
+      // Seguridad: con una llave que no es de la cuenta no se abre el panel; la sesión recién
+      // abierta se cierra también en el servidor.
+      if (token !== null) void api.logout(token).catch(() => undefined);
       if (keys !== null) wipeAuthorityKeys(keys);
       if (isMounted.current) {
         setError(
@@ -75,65 +88,68 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} noValidate data-testid="authority-login">
-      <Alert tone="info" title="Panel de demostración">
-        <p>
-          Entra con tu cuenta personal: cada acción queda registrada con tu cuenta. La sesión se
-          cierra sola tras 15 minutos sin actividad.
-        </p>
-        <p>
-          La llave privada se lee en tu navegador y se queda en memoria: no se sube ni se guarda. Al
-          recargar la página tendrás que importarla de nuevo.
-        </p>
-      </Alert>
-      {error && (
-        <Alert
-          tone="danger"
-          title="No se pudo abrir el panel"
-          role="alert"
-          testId="authority-error"
-        >
-          <p>{error}</p>
+    <>
+      <form onSubmit={(event) => void submit(event)} noValidate data-testid="authority-login">
+        <Alert tone="info" title="Panel de demostración">
+          <p>
+            Entra con tu cuenta personal: cada acción queda registrada con tu cuenta. La sesión se
+            cierra sola tras 15 minutos sin actividad.
+          </p>
+          <p>
+            La llave privada de tu autoridad se lee en tu navegador y se queda en memoria: no se
+            sube ni se guarda. Al recargar la página tendrás que importarla de nuevo.
+          </p>
         </Alert>
-      )}
-      <TextField
-        id="authority-username"
-        label="Usuario"
-        required
-        autoComplete="username"
-        value={username}
-        onChange={(event) => setUsername(event.target.value)}
-        data-testid="authority-username"
-      />
-      <TextField
-        id="authority-password"
-        label="Contraseña"
-        required
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        data-testid="authority-password"
-      />
-      <div className="field">
-        <label htmlFor="authority-key">Llave de la autoridad (authority-demo-key.json)</label>
-        <input
-          id="authority-key"
-          type="file"
-          aria-required="true"
-          accept="application/json,.json"
-          data-testid="authority-key-file"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+        {error && (
+          <Alert
+            tone="danger"
+            title="No se pudo abrir el panel"
+            role="alert"
+            testId="authority-error"
+          >
+            <p>{error}</p>
+          </Alert>
+        )}
+        <TextField
+          id="authority-username"
+          label="Usuario"
+          required
+          autoComplete="username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          data-testid="authority-username"
         />
-      </div>
-      <button
-        type="submit"
-        className="button"
-        aria-disabled={isBusy ? true : undefined}
-        data-testid="authority-login-submit"
-      >
-        {isBusy ? 'Verificando...' : 'Entrar al panel'}
-      </button>
-    </form>
+        <TextField
+          id="authority-password"
+          label="Contraseña"
+          required
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          data-testid="authority-password"
+        />
+        <div className="field">
+          <label htmlFor="authority-key">Llave de tu autoridad (archivo .json)</label>
+          <input
+            id="authority-key"
+            type="file"
+            aria-required="true"
+            accept="application/json,.json"
+            data-testid="authority-key-file"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          />
+        </div>
+        <button
+          type="submit"
+          className="button"
+          aria-disabled={isBusy ? true : undefined}
+          data-testid="authority-login-submit"
+        >
+          {isBusy ? 'Verificando...' : 'Entrar al panel'}
+        </button>
+      </form>
+      <CreateAuthorityKeys />
+    </>
   );
 }

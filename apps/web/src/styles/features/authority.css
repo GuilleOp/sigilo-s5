@@ -158,3 +158,13 @@
     display: block;
   }
 }
+
+/* «Crear mis llaves»: el candado (llave pública) se lee completo y se parte donde haga falta. */
+.authority-padlock {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: var(--space-2) 0 0;
+}

@@ -323,6 +323,31 @@ Las llaves públicas del servidor y de la autoridad se incluyen en el bundle del
 debe comparar las llaves que publica el servidor (`GET /keys`) con las fijadas y detenerse si no
 coinciden.
 
+En la red federada, la llave de autoridad fijada en el bundle es la del **buzón general** del nodo,
+que no está en el directorio. Cada autoridad del directorio tiene su par propio: el navegador de
+quien denuncia sella la identidad y los mensajes hacia la llave X25519 de la autoridad elegida,
+tomada del directorio verificado con la raíz fijada (`keysForDestination`). El panel acepta la
+llave importada según la cuenta (`assertAuthorityKeyFor`):
+
+- con un solo nodo, la fijada del bundle, para todas las cuentas;
+- en la red, la entrada de la autoridad de la cuenta (`account.authorityId`) en el directorio
+  verificado: `keyId`, `boxPublicKey` y `signingPublicKey` deben coincidir. Se rechaza la del buzón
+  y la de otra autoridad, con un mensaje que dice de quién es;
+- la cuenta del buzón general sigue con la fijada; si el directorio no verifica o no se descarga,
+  solo entra esa.
+
+La misma llave abre la identidad (si el sobre va hacia otro `keyId`, el panel lo dice antes de
+intentar abrirlo), abre los mensajes de la persona denunciante y firma las preguntas; el servidor
+verifica esa firma con la llave de la autoridad que tiene la denuncia. Una denuncia sellada que
+entró por la página propia del nodo sin pasar por la red va hacia la llave del buzón; si el buzón
+la turna dentro del nodo, la autoridad receptora no puede abrir su identidad con su llave (lo mismo
+con los mensajes que llegaron antes del turnado).
+
+La autoridad genera su par en su navegador («Crear mis llaves», `generateAuthorityKeys`), descarga
+la privada y entrega por oficio el candado (`keyId`, `boxPublicKey`, `signingPublicKey`). La huella
+que se confirma por teléfono son los primeros 16 caracteres hexadecimales de
+`sha256Hex(boxPublicKey ‖ signingPublicKey)` (bytes), en grupos de 4 (`padlockFingerprint`).
+
 ## Vectores de prueba
 
 Los vectores de prueba viven en las pruebas unitarias de `packages/core` y los sobres fijos en
@@ -581,9 +606,11 @@ red:demo` genera la llave del evaluador y la publica en el directorio, y `compos
 
 ### Turnado entre nodos (SEC-19)
 
-El navegador de recepción y turnado descifra la denuncia con la llave de su autoridad y la vuelve
-a cifrar en un sobre del enrutador hacia el nodo de la autoridad destino (`sealRoutedRequest`),
-conservando las llaves de seguimiento de la persona denunciante. El nodo de origen solo lleva ese
+El navegador de recepción y turnado arma de nuevo la denuncia con los hechos y las pruebas del
+detalle (no usa la llave de su autoridad: las denuncias con identidad sellada todavía no se turnan a
+otro nodo) y la cifra en un sobre del enrutador hacia el nodo de la autoridad destino
+(`sealRoutedRequest`), conservando las llaves de seguimiento de la persona denunciante. El nodo de
+origen solo lleva ese
 sobre al enrutador y registra `complaint.transferred` con el SHA-256 canónico del sobre y de la
 respuesta; nunca ve el contenido re-cifrado. El comprobante del nodo destino se verifica con la
 llave de firma de ese nodo en el directorio antes de avisar a la persona del folio nuevo. La

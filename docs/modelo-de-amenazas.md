@@ -215,6 +215,12 @@ Notas:
 - **D03.** La llave se importa en una página entregada por el mismo servidor. Si ese código se altera
   (A4), puede exfiltrarla en cuanto se importa. Mitigaciones futuras (P): descifrar con una
   herramienta separada y firmada, o con llaves no extraíbles (WebAuthn PRF).
+  En la red, cada autoridad genera su par en su equipo y solo entrega el candado (la pública) para
+  el directorio firmado; el panel acepta solo la llave de la autoridad de la cuenta según el
+  directorio verificado. Quien opera el nodo custodia la llave del buzón general, no la de cada
+  autoridad: puede leer los hechos de lo que llega a su nodo, nunca la identidad sellada para una
+  autoridad. Residual: lo que entra por la página propia del nodo sin pasar por la red (un solo
+  nodo, o un cliente que no usa el directorio) se sella hacia la llave del buzón.
 
 ## E. Seguimiento
 

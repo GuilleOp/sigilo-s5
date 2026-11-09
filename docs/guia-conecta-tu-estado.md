@@ -49,6 +49,32 @@ Cada autoridad genera **en su propio equipo** un par X25519 (cifrado) y un par E
 entrega solo las públicas. El nodo genera su llave de firma (la que firma su bitácora y su
 registro) y su llave X25519 de red (la que abre los sobres que llegan del enrutador).
 
+### Cómo genera la autoridad su par y entrega su candado
+
+1. La persona responsable abre el panel de autoridad de su nodo (`/autoridad`) y, debajo del
+   formulario de entrada, despliega **«¿Tu autoridad todavía no tiene llaves? Crear mis llaves»**.
+   No necesita cuenta: el par se genera en su navegador con las mismas primitivas de `@sigilo/core`
+   que usa el resto del proyecto, y nada se envía.
+2. Descarga su **llave privada** (`llave-autoridad-<keyId>.json`, con el formato de
+   `AuthorityDemoKeySchema`) y la guarda en un lugar seguro. Se queda en su equipo: nadie más la
+   tiene, tampoco quien opera el nodo. Si se pierde, se genera otro par y se cambia el candado.
+3. Envía por oficio su **candado**, la llave pública (`candado-<keyId>.json`: `keyId`,
+   `boxPublicKey` y `signingPublicKey`), a la operación de la ventanilla única, que lo copia en la
+   entrada de su autoridad del directorio (paso 1) antes de firmar (paso 3).
+4. Confirman por teléfono la **huella** que muestra la pantalla (16 caracteres en grupos de 4): los
+   primeros 16 caracteres hexadecimales del SHA-256 de `boxPublicKey` seguida de `signingPublicKey`
+   (los bytes, no el texto base64url). Cubre las dos llaves; si no coincide, el candado no se
+   agrega.
+5. Cuando el directorio firmado ya trae su candado, cada cuenta de esa autoridad entra al panel con
+   su usuario, su contraseña y ese archivo. El panel compara la llave con la entrada de **su**
+   autoridad en el directorio verificado (`keyId`, `boxPublicKey` y `signingPublicKey`) y rechaza la
+   de otra autoridad o la del buzón general del nodo.
+
+Quien opera el nodo custodia solo la llave del **buzón general** (`authority-demo-key.json`), que
+usan las cuentas del buzón y con la que se sellan las denuncias que entran por la página propia del
+nodo sin pasar por la red. Puede leer los hechos de lo que llega a su nodo, pero nunca la identidad
+sellada para una autoridad.
+
 Para practicar, `npm run red:demo` genera todo sintético en `.red-demo/` (no se versiona):
 
 ```text
@@ -64,7 +90,7 @@ Para practicar, `npm run red:demo` genera todo sintético en `.red-demo/` (no se
   nodos/<nodo>/credenciales.json       usuarios y contraseñas sintéticas del panel
   nodos/<nodo>/web/pinned-keys.json    llaves públicas que fija la web del nodo
   nodos/<nodo>/node.env                red, fuentes sintéticas, índice y reloj simulado
-  autoridades/<id>.json                llaves de cada autoridad (las abre su panel)
+  autoridades/<id>.json                llave privada de cada autoridad (la importa su panel)
   evaluador/ e indice/                 llave del evaluador OPRF; directorio del índice
   reloj/desfase                        reloj simulado común de la demostración
   testigos/<id>/                       llave y raíz fijada de cada testigo observador

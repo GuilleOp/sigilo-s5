@@ -60,7 +60,8 @@ Para el guion manual (sin Docker) necesitas además:
      Se entra con una cuenta de `apps/server/data/authority-demo-credentials.json` (por ejemplo,
      `recepcion.buzon` para turnar e `investigacion.iffe.uno` e `investigacion.iffe.dos` para
      investigar y abrir una identidad 2 de 3); la llave se importa desde
-     `apps/server/data/authority-demo-key.json`.
+     `apps/server/data/authority-demo-key.json` (con un solo nodo, todas las cuentas usan esa
+     llave; en la red, cada autoridad usa la suya, ver más abajo).
    - Verificación: enlace «Verificar bitácora» del pie.
    - Una terminal libre.
 
@@ -138,15 +139,24 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 
 ### Qué deja listo
 
-| Qué                        | Dónde                                                                    |
-| -------------------------- | ------------------------------------------------------------------------ |
-| Web del nodo Querétaro     | <http://127.0.0.1:8781/>                                                 |
-| Web del nodo Federal       | <http://127.0.0.1:8782/> (panel: <http://127.0.0.1:8782/autoridad>)      |
-| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                             |
-| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)        |
-| Llave que importa el panel | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (cualquier cuenta) |
-| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso)                |
-| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                             |
+| Qué                        | Dónde                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Web del nodo Querétaro     | <http://127.0.0.1:8781/>                                                                             |
+| Web del nodo Federal       | <http://127.0.0.1:8782/> (panel: <http://127.0.0.1:8782/autoridad>)                                  |
+| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                         |
+| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                    |
+| Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta) |
+| Llave del buzón general    | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (solo las cuentas `recepcion.buzon…`)          |
+| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso)                                            |
+| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                         |
+
+Cada autoridad abre el panel con **su propia llave**, la que corresponde a su entrada en el
+directorio firmado: es la llave con la que el navegador de quien denuncia sella la identidad y los
+mensajes hacia esa autoridad. El panel la compara con el directorio verificado y rechaza la de otra
+autoridad o la del buzón. Solo las cuentas del buzón general del nodo (que no está en el directorio)
+entran con `authority-demo-key.json`, la del buzón del nodo. Así, quien opera el nodo custodia la
+llave del buzón, no la de cada autoridad: puede leer los hechos de lo que llega a su nodo, pero
+nunca la identidad sellada para una autoridad.
 
 `red:demo` deja en `.red-demo/` las llaves, el directorio firmado con la llave del evaluador, las
 cuentas de cada nodo y el reloj simulado común (`reloj/desfase`, que leen los nodos y el índice).
@@ -223,9 +233,19 @@ duplica los casos y regresa el reloj al día 0: para repetir, usa `npm run demo:
 - **«No se pudo ejecutar la tarea periódica…» en los registros de un nodo durante los primeros
   segundos.** Es normal: los nodos arrancan antes que el enrutador, que espera a que estén sanos.
   Desaparece en cuanto el enrutador responde.
-- **El panel dice «Esta llave no corresponde a la autoridad de este despliegue».** Se importó otra
-  llave. El panel de cada nodo acepta solo `.red-demo/nodos/<nodo>/data/authority-demo-key.json` de
-  ese nodo, que cambia en cada `demo:todo`.
+- **El panel rechaza la llave («Esta llave es de…», «Esta es la llave del buzón general…» o «no
+  corresponde a … en el directorio firmado»).** Se importó la llave de otra cuenta. Cada cuenta
+  entra con la de su autoridad: `.red-demo/autoridades/<id>.json`, con el `authorityId` de la cuenta
+  en `credenciales.json`; las cuentas del buzón general, con
+  `.red-demo/nodos/<nodo>/data/authority-demo-key.json` de ese nodo. Todas cambian en cada
+  `demo:todo`.
+- **«No pudimos verificar el directorio firmado de la red…».** La web no pudo descargar o verificar
+  el directorio; mientras tanto solo entra la llave del buzón. Revisa que el enrutador esté en
+  marcha y vuelve a intentarlo.
+- **«La identidad de esta denuncia se selló con otra llave…».** La denuncia llegó por la página
+  propia del nodo sin pasar por la red (se sella con la llave del buzón) y después el buzón la
+  turnó. Con la llave de la autoridad no se abre; en la red, el navegador sella hacia la autoridad
+  elegida y este caso no ocurre.
 - **El seguimiento no reconoce el folio.** `.red-demo/semilla.json` es de otra ejecución. Usa el
   de la red en marcha o vuelve a correr `npm run demo:todo`.
 
