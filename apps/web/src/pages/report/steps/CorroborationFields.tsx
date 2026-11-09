@@ -1,6 +1,7 @@
 // Corroboración ciega opcional: la persona puede indicar el contrato, el RFC del proveedor o la
-// persona servidora pública para saber si otras personas, por separado, denunciaron lo mismo. Se
-// explica qué se compara y qué no; el dato nunca sale del navegador en claro.
+// persona servidora pública para que su denuncia sume con otras que, por separado, señalan lo
+// mismo. Se presenta por su beneficio (más prioridad) y el «cómo» queda plegado; el dato nunca
+// sale del navegador en claro.
 import { TextField } from '../../../components/Field.tsx';
 import { identifierFromDraft } from '../../../corroboration/blind-corroboration.ts';
 import { useNetworkState } from '../../../network/use-network-state.ts';
@@ -16,9 +17,9 @@ interface CorroborationFieldsProps {
 
 const KINDS: readonly { value: CorroborationKindDraft; label: string }[] = [
   { value: '', label: 'No, gracias' },
-  { value: 'ocid', label: 'El contrato o procedimiento de compra' },
-  { value: 'rfc', label: 'La empresa proveedora (por su RFC)' },
-  { value: 'servidor', label: 'La persona servidora pública denunciada' },
+  { value: 'ocid', label: 'Un contrato o compra de gobierno' },
+  { value: 'rfc', label: 'Una empresa (por su RFC)' },
+  { value: 'servidor', label: 'La persona servidora pública que denuncias' },
 ];
 
 function setCorroboration(patch: Partial<CorroborationDraft>): void {
@@ -44,39 +45,39 @@ export function CorroborationFields({ corroboration, entityId, errors }: Corrobo
       aria-labelledby="corroboration-title"
       data-testid="corroboration-fields"
     >
-      <h3 id="corroboration-title">¿Otras personas denunciaron lo mismo? (opcional)</h3>
+      <h3 id="corroboration-title">Haz que tu denuncia sume con otras (opcional)</h3>
+      <p>
+        Si otras personas, por separado, ya denunciaron el mismo contrato, empresa o persona, la
+        autoridad verá que no es un caso aislado y le dará más prioridad. Nunca sabrá quiénes son.
+      </p>
       <details className="corroboration__explain">
-        <summary>Qué se compara y qué no</summary>
+        <summary>¿Cómo se hace sin revelar nada?</summary>
         <ul>
           <li>
-            Se compara solo el dato que elijas (un contrato, una empresa o una persona servidora
-            pública), convertido en tu navegador en una «huella» que no se puede revertir.
+            Tu navegador convierte el dato que elijas en un código que no se puede revertir. Ese
+            código, y no el dato, es lo que se busca entre otras denuncias.
+          </li>
+          <li>Nadie recibe el dato en claro: ni los servicios que buscan, ni la red.</li>
+          <li>
+            Tu nombre, tu relato y tus pruebas no se usan para buscar. Del relato solo viaja, bajo
+            llave, un resumen para notar si dos denuncias las escribió la misma persona.
           </li>
           <li>
-            Nadie recibe el dato en claro: ni el servicio que calcula la huella, ni el que la
-            compara, ni la red.
-          </li>
-          <li>
-            No se compara tu nombre, tu relato completo ni tus pruebas. Del relato solo viaja, bajo
-            llave, un resumen que sirve para notar si dos denuncias parecen escritas por la misma
-            persona.
-          </li>
-          <li>
-            Si coincide con otras denuncias independientes, la autoridad ve cuántas personas
-            coinciden, nunca quiénes son. Solo puede subir la prioridad; nunca descarta tu denuncia.
+            La autoridad solo ve cuántas personas señalan lo mismo. Eso puede subir la prioridad;
+            nunca hace que descarten tu denuncia.
           </li>
         </ul>
       </details>
       {!isAvailable ? (
         <p data-testid="corroboration-unavailable">
           {network.kind === 'loading'
-            ? 'Revisando si esta red ofrece la comparación.'
-            : 'Esta comparación no está disponible en este sistema. Tu denuncia se envía igual.'}
+            ? 'Revisando si este sistema puede buscar denuncias iguales.'
+            : 'Este sistema no tiene activada la búsqueda de denuncias iguales. Tu denuncia se envía igual.'}
         </p>
       ) : (
         <>
           <fieldset className="field">
-            <legend>¿Qué quieres comparar?</legend>
+            <legend>¿Con qué dato buscamos denuncias iguales?</legend>
             <div className="choice-list">
               {KINDS.map((kind) => (
                 <div key={kind.value || 'none'} className="choice">
@@ -117,7 +118,7 @@ export function CorroborationFields({ corroboration, entityId, errors }: Corrobo
             <TextField
               id="corroboration-person"
               label="Nombre y apellido de la persona servidora pública"
-              hint="Se compara junto con la oficina que elegiste. Variantes del nombre no coinciden."
+              hint="Escríbelo completo, como aparece en documentos oficiales. Se busca junto con la oficina que elegiste; si alguien lo escribió distinto, no se junta."
               value={corroboration.personName}
               maxLength={200}
               error={error}

@@ -27,6 +27,7 @@ import {
 import { FIXTURE_FILES } from './support/synthetic-files.ts';
 import { openTracking, readTrackingError } from './support/tracking.ts';
 import { openAccessibilityMenu } from './support/accessibility-menu.ts';
+import { chooseOption } from './support/combobox.ts';
 
 test('las pantallas públicas no tienen violaciones de accesibilidad', async ({ page }) => {
   await page.goto('/');
@@ -304,8 +305,8 @@ for (const theme of THEMES) {
       await startReport(page, 'anonymous');
       await continueTo(page, 'facts');
       await page.getByTestId('state-select').selectOption('22');
-      await page.getByTestId('entity-select').selectOption('VE-INSTITUTO');
-      await page.getByTestId('offense-select').selectOption('LGRA-59');
+      await chooseOption(page, 'entity-select', 'VE-INSTITUTO');
+      await chooseOption(page, 'offense-select', 'LGRA-59');
       await page.getByTestId('period-month').selectOption('03');
       await page.getByTestId('period-year').selectOption(String(new Date().getFullYear()));
       await page.getByTestId('accused-input').fill(NEUTRAL_FACTS.accused);

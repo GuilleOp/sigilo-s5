@@ -11,6 +11,7 @@ import { expect, test } from './support/fixtures.ts';
 import { continueTo, expectStep, reachSubmitStep, startReport } from './support/report-wizard.ts';
 import { openTracking } from './support/tracking.ts';
 import { turnOnEasyReading } from './support/accessibility-menu.ts';
+import { chooseOption } from './support/combobox.ts';
 
 /** Hechos del caso de Marta (docs/demo-escenario.md, sección 4.1), ya corregidos. */
 const MARTA_FACTS = syntheticFacts({
@@ -30,8 +31,8 @@ test('la persona ve el aviso de su grupo de anonimato, su factor en el semáforo
   await startReport(page, 'anonymous');
   await continueTo(page, 'facts');
   await page.getByTestId('state-select').selectOption('22');
-  await page.getByTestId('entity-select').selectOption('VE-INSTITUTO');
-  await page.getByTestId('offense-select').selectOption('LGRA-59');
+  await chooseOption(page, 'entity-select', 'VE-INSTITUTO');
+  await chooseOption(page, 'offense-select', 'LGRA-59');
   await page.getByTestId('period-month').selectOption('03');
   await page.getByTestId('period-year').selectOption(String(new Date().getFullYear()));
   await page.getByTestId('accused-input').fill(MARTA_FACTS.accused);
@@ -40,7 +41,7 @@ test('la persona ve el aviso de su grupo de anonimato, su factor en el semáforo
   await page.getByTestId('workplace-area').fill('Departamento de Compras');
   await continueTo(page, 'evidence');
   // Con un solo nodo no hay evaluador en el directorio: se dice y se envía igual.
-  await expect(page.getByTestId('corroboration-unavailable')).toContainText('no está disponible');
+  await expect(page.getByTestId('corroboration-unavailable')).toContainText('no tiene activada');
   await continueTo(page, 'review');
 
   const notice = page.getByTestId('anonymity-notice');

@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test';
 import { expect } from './fixtures.ts';
 import { fixturesDir } from './environment.ts';
 import type { FIXTURE_FILES } from './synthetic-files.ts';
+import { chooseOption } from './combobox.ts';
 
 /** Identificador de cada paso del asistente. */
 export type WizardStep = 'mode' | 'facts' | 'evidence' | 'review' | 'submit';
@@ -64,8 +65,8 @@ export async function startReport(
 export async function fillFacts(page: Page, facts: SyntheticFacts = NEUTRAL_FACTS): Promise<void> {
   await expectStep(page, 'facts');
   await page.getByTestId('state-select').selectOption('22');
-  await page.getByTestId('entity-select').selectOption({ index: 1 });
-  await page.getByTestId('offense-select').selectOption({ index: 1 });
+  await chooseOption(page, 'entity-select');
+  await chooseOption(page, 'offense-select');
   await page.getByTestId('period-month').selectOption('01');
   await page.getByTestId('period-year').selectOption(String(new Date().getFullYear()));
   await page.getByTestId('accused-input').fill(facts.accused);
