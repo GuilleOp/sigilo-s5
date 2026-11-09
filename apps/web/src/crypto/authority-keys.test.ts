@@ -49,7 +49,8 @@ function keyFile(box: KeyPair, signing: KeyPair): string {
 /** Nodo Federal sintético: directorio verificado, llave del buzón fijada y sus archivos de llave. */
 function federalNode() {
   const { keys, signed } = createNetworkFixture();
-  const inbox = { box: generateBoxKeyPair(), signing: generateSigningKeyPair() };
+  // Como en la red de la demostración: el buzón está en el directorio con la llave fijada del nodo.
+  const inbox = keys.authorities[INBOX_ACCOUNT];
   const pinned = parsePinnedKeys(
     buildPublicKeySet({
       serverSigningPublicKey: keys.nodes['node.federal'].signing.publicKey,
@@ -116,7 +117,7 @@ describe('assertAuthorityKeyFor', () => {
     expect(() => assertAuthorityKeyFor(mixed, OIC, network, pinned)).toThrow(/no corresponde/);
   });
 
-  it('la cuenta del buzón general (fuera del directorio) sigue con la llave del buzón', () => {
+  it('la cuenta del buzón general sigue con la llave del buzón, que es la de su directorio', () => {
     const { pinned, network, inboxFile, authorityFile } = federalNode();
     expect(() =>
       assertAuthorityKeyFor(readAuthorityKeyFile(inboxFile), INBOX_ACCOUNT, network, pinned),
@@ -129,7 +130,7 @@ describe('assertAuthorityKeyFor', () => {
         pinned,
       ),
     ).toThrow(
-      `Esta llave es de «${OIC_NAME}». La cuenta del buzón general usa la llave del buzón del nodo.`,
+      `Esta llave es de «${OIC_NAME}», no de «Buzón general ficticio del nodo Federal», la autoridad de tu cuenta.`,
     );
   });
 
