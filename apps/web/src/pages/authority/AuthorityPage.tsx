@@ -13,7 +13,8 @@ import { authorityProfileStore } from '../../state/profile.ts';
 import { api, AUTHORITY_PAGE_SIZE } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import { AuthorityLogin } from './AuthorityLogin.tsx';
-import type { AuthoritySession } from './authority-session.ts';
+import type { AuthoritySession, OperationSession } from './authority-session.ts';
+import { OperationInbox } from './OperationInbox.tsx';
 import { ComplaintDetailView } from './ComplaintDetailView.tsx';
 import { ComplaintList } from './ComplaintList.tsx';
 import { EscalationsPanel } from './EscalationsPanel.tsx';
@@ -36,6 +37,7 @@ const LIST_TITLES: Readonly<Record<AuthorityRole, string>> = {
 export function AuthorityPage() {
   useDocumentTitle('Panel de autoridad');
   const [session, setSession] = useState<AuthoritySession | null>(null);
+  const [operation, setOperation] = useState<OperationSession | null>(null);
   const [complaints, setComplaints] = useState<ComplaintSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -116,6 +118,11 @@ export function AuthorityPage() {
     };
   }, [account, token]);
   useEffect(() => () => authorityProfileStore.set(() => null), []);
+  // La operación del nodo no tiene autoridad que mostrar: el distintivo solo dice su función.
+  useEffect(() => {
+    if (operation !== null)
+      authorityProfileStore.set(() => ({ role: 'operation', authorityName: null }));
+  }, [operation]);
 
   // Seguridad: las llaves se borran al cambiar de llaves o al salir de la pantalla. Una sesión
   // renovada (nuevo token tras vencer) conserva las mismas llaves y no las borra.
@@ -130,11 +137,24 @@ export function AuthorityPage() {
   return (
     <>
       <h1>Panel de autoridad</h1>
-      {session === null ? (
+      {operation !== null ? (
+        <OperationInbox
+          session={operation}
+          onLogout={() => {
+            setOperation(null);
+            authorityProfileStore.set(() => null);
+            focusAfterRender(() => document.querySelector<HTMLElement>('#contenido h1'));
+          }}
+        />
+      ) : session === null ? (
         <AuthorityLogin
           onReady={(ready) => {
             setSession(ready);
             focusAfterRender(LIST_TITLE_ID);
+          }}
+          onOperation={(ready) => {
+            setOperation(ready);
+            focusAfterRender('registration-list-title');
           }}
         />
       ) : (

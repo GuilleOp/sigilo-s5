@@ -10,4 +10,5 @@ export const PATHS = {
   verify: '/verificar',
   observatory: '/observatorio',
   protection: '/como-te-cuidamos',
+  registration: '/solicitar-alta',
 } as const;

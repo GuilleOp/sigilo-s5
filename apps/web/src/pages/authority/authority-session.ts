@@ -9,3 +9,12 @@ export interface AuthoritySession {
   account: AuthorityAccountView;
   keys: AuthorityKeys;
 }
+
+/**
+ * Sesión de la cuenta de operación del nodo: solo resuelve solicitudes de alta, así que no importa
+ * llave de autoridad ni ve denuncias.
+ */
+export interface OperationSession {
+  token: string;
+  account: AuthorityAccountView;
+}

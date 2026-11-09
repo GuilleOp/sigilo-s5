@@ -1,7 +1,8 @@
-// «Crear mis llaves» en la entrada del panel (plegado): la autoridad genera su par en este
-// navegador, descarga la llave privada y entrega por oficio el candado (la llave pública) para que
-// se agregue a su entrada del directorio firmado. Nada se envía.
+// «Crear mis llaves» en la entrada del panel (plegado) y dentro de la solicitud de alta: la
+// autoridad genera su par en este navegador y descarga la llave privada; el candado (la llave
+// pública) se agrega a su entrada del directorio firmado. Generar no envía nada.
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { generateAuthorityKeys, toKeyFileText } from '../../crypto/authority-keygen.ts';
 import type { GeneratedAuthorityKeys } from '../../crypto/authority-keygen.ts';
 
@@ -21,8 +22,21 @@ function withDownloads(keys: GeneratedAuthorityKeys): Generated {
   };
 }
 
-/** Sección plegable para generar las llaves de una autoridad. */
-export function CreateAuthorityKeys() {
+interface AuthorityKeyGeneratorProps {
+  /** Avisa del par nuevo (p. ej. para adjuntar el candado a la solicitud de alta). */
+  onGenerated?: (keys: GeneratedAuthorityKeys) => void;
+  /** Qué hacer con el candado, según dónde se usa el generador. */
+  padlockStep: ReactNode;
+  /** Último paso, según dónde se usa el generador. */
+  closing: ReactNode;
+}
+
+/** Botón para crear el par, descarga de la privada, candado y huella. */
+export function AuthorityKeyGenerator({
+  onGenerated,
+  padlockStep,
+  closing,
+}: AuthorityKeyGeneratorProps) {
   const [generated, setGenerated] = useState<Generated | null>(null);
 
   // Seguridad: el enlace al archivo privado deja de existir al regenerar o al salir de la pantalla.
@@ -37,28 +51,16 @@ export function CreateAuthorityKeys() {
 
   const file = generated === null ? '' : `llave-autoridad-${generated.keys.padlock.keyId}.json`;
   return (
-    <details className="more more--minor" data-testid="create-authority-keys">
-      <summary>¿Tu autoridad todavía no tiene llaves? Crear mis llaves</summary>
-      <p>
-        Tu autoridad necesita un par de llaves. Se crean aquí, en tu navegador: no se envía nada.
-      </p>
-      <ul>
-        <li>
-          <strong>La llave privada</strong> se queda en tu equipo. Con ella abres las identidades
-          selladas y los mensajes que te envían. Guárdala en un lugar seguro y no la compartas: ni
-          quien opera el nodo debe tenerla.
-        </li>
-        <li>
-          <strong>La llave pública</strong> es tu «candado»: con él la gente cierra lo que solo tú
-          puedes abrir. Se agrega a tu entrada del directorio firmado de la red. Envíalo por oficio
-          y confirma la huella por teléfono con quien opera la red.
-        </li>
-      </ul>
+    <>
       <div className="actions">
         <button
           type="button"
           className="button button--secondary"
-          onClick={() => setGenerated(withDownloads(generateAuthorityKeys()))}
+          onClick={() => {
+            const keys = generateAuthorityKeys();
+            setGenerated(withDownloads(keys));
+            onGenerated?.(keys);
+          }}
           data-testid="create-authority-keys-generate"
         >
           {generated === null ? 'Crear mis llaves' : 'Crear otro par'}
@@ -81,7 +83,7 @@ export function CreateAuthorityKeys() {
               Descargar mi llave privada
             </a>
           </div>
-          <p>2. Envía este candado por oficio (puedes adjuntar el archivo o copiar el texto).</p>
+          <p>2. {padlockStep}</p>
           <pre className="mono authority-padlock" data-testid="authority-padlock">
             {toKeyFileText(generated.keys.padlock)}
           </pre>
@@ -105,12 +107,37 @@ export function CreateAuthorityKeys() {
               {generated.keys.fingerprint}
             </strong>
           </p>
-          <p>
-            Cuando tu candado ya esté en el directorio firmado, entra al panel con tu cuenta y este
-            archivo de llave.
-          </p>
+          <p>{closing}</p>
         </div>
       )}
+    </>
+  );
+}
+
+/** Sección plegable de la entrada del panel para generar las llaves de una autoridad. */
+export function CreateAuthorityKeys() {
+  return (
+    <details className="more more--minor" data-testid="create-authority-keys">
+      <summary>¿Tu autoridad todavía no tiene llaves? Crear mis llaves</summary>
+      <p>
+        Tu autoridad necesita un par de llaves. Se crean aquí, en tu navegador: no se envía nada.
+      </p>
+      <ul>
+        <li>
+          <strong>La llave privada</strong> se queda en tu equipo. Con ella abres las identidades
+          selladas y los mensajes que te envían. Guárdala en un lugar seguro y no la compartas: ni
+          quien opera el nodo debe tenerla.
+        </li>
+        <li>
+          <strong>La llave pública</strong> es tu «candado»: con él la gente cierra lo que solo tú
+          puedes abrir. Se agrega a tu entrada del directorio firmado de la red. Envíalo por oficio
+          y confirma la huella por teléfono con quien opera la red.
+        </li>
+      </ul>
+      <AuthorityKeyGenerator
+        padlockStep="Envía este candado por oficio (puedes adjuntar el archivo o copiar el texto)."
+        closing="Cuando tu candado ya esté en el directorio firmado, entra al panel con tu cuenta y este archivo de llave."
+      />
     </details>
   );
 }

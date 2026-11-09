@@ -14,6 +14,9 @@ import {
   OpenIdentityResponseSchema,
   POW_HEADER,
   PowChallengeSchema,
+  RegistrationListSchema,
+  RegistrationReceiptSchema,
+  RegistrationViewSchema,
   ProcedureStateSchema,
   PublicKeySetSchema,
   ROUTES,
@@ -39,6 +42,11 @@ import type {
   OpenIdentityResponse,
   PowChallenge,
   PowPurpose,
+  RegistrationDecision,
+  RegistrationList,
+  RegistrationReceipt,
+  RegistrationRequest,
+  RegistrationView,
   ProcedureActionRequest,
   ProcedureState,
   PublicKeySet,
@@ -95,6 +103,16 @@ export interface SigiloApi {
   sendReporterMessage(request: ReporterMessageRequest, proof: string): Promise<MailboxMessage>;
   /** Inconformidad contra la calificación de no grave; `proof` es de un reto `message`. */
   fileAppeal(request: AppealRequest, proof: string): Promise<AppealResponse>;
+  /** Solicitud de alta de una institución; `proof` es de un reto `registration`. */
+  submitRegistration(request: RegistrationRequest, proof: string): Promise<RegistrationReceipt>;
+  /** Solicitudes de alta del nodo (solo la cuenta de operación). */
+  listRegistrations(token: string): Promise<RegistrationList>;
+  /** Aprueba con la huella confirmada o rechaza con motivo una solicitud de alta. */
+  decideRegistration(
+    token: string,
+    requestId: string,
+    decision: RegistrationDecision,
+  ): Promise<RegistrationView>;
   /** Inicio de sesión con la cuenta individual de la autoridad. */
   login(username: string, password: string): Promise<AuthoritySession>;
   /**
@@ -194,6 +212,18 @@ export function createSigiloApi(
       client.json(ROUTES.trackingAppeal, AppealResponseSchema, {
         json: request,
         headers: { [POW_HEADER]: proof },
+      }),
+    submitRegistration: (request, proof) =>
+      client.json(ROUTES.registrationRequests, RegistrationReceiptSchema, {
+        json: request,
+        headers: { [POW_HEADER]: proof },
+      }),
+    listRegistrations: (token) =>
+      client.json(ROUTES.operationRegistrations, RegistrationListSchema, { bearer: token }),
+    decideRegistration: (token, requestId, decision) =>
+      client.json(ROUTES.operationRegistrationDecision(requestId), RegistrationViewSchema, {
+        bearer: token,
+        json: decision,
       }),
     login: (username, password) =>
       client.json(ROUTES.authLogin, AuthoritySessionSchema, { json: { username, password } }),

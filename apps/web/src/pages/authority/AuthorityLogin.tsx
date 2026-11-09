@@ -2,6 +2,9 @@
 // autoridad (la propia del directorio firmado en la red; la del buzón del nodo con un solo nodo).
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router';
+import { hasFunction } from '@sigilo/contracts';
+import { PATHS } from '../../app/paths.ts';
 import { Alert } from '../../components/Alert.tsx';
 import { TextField } from '../../components/Field.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
@@ -14,17 +17,21 @@ import type { AuthorityKeys } from '../../crypto/authority.ts';
 import { networkState } from '../../network/directory.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
-import type { AuthoritySession } from './authority-session.ts';
+import type { AuthoritySession, OperationSession } from './authority-session.ts';
 import { CreateAuthorityKeys } from './CreateAuthorityKeys.tsx';
 
 interface AuthorityLoginProps {
   onReady: (session: AuthoritySession) => void;
+  /** Entrada de la cuenta de operación del nodo, que no usa llave de autoridad. */
+  onOperation: (session: OperationSession) => void;
 }
+
+const MISSING_KEY = 'Elige el archivo de llave de la autoridad.';
 
 const MIN_PASSWORD_LENGTH = 12;
 
 /** Formulario de acceso de la autoridad. */
-export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
+export function AuthorityLogin({ onReady, onOperation }: AuthorityLoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -47,18 +54,25 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
       setError(`Escribe tu usuario y tu contraseña (al menos ${MIN_PASSWORD_LENGTH} caracteres).`);
       return;
     }
-    if (file === null) {
-      setError('Elige el archivo de llave de la autoridad.');
-      return;
-    }
     setBusy(true);
     let keys: AuthorityKeys | null = null;
     let token: string | null = null;
     try {
-      keys = readAuthorityKeyFile(await file.text());
+      keys = file === null ? null : readAuthorityKeyFile(await file.text());
       const session = await api.login(username.trim(), password);
       token = session.token;
       setPassword('');
+      // La operación del nodo solo revisa solicitudes de alta: no necesita llave ni la conserva.
+      if (hasFunction(session.account, 'operation')) {
+        if (keys !== null) wipeAuthorityKeys(keys);
+        if (!isMounted.current) {
+          void api.logout(session.token).catch(() => undefined);
+          return;
+        }
+        onOperation({ token: session.token, account: session.account });
+        return;
+      }
+      if (keys === null) throw new Error(MISSING_KEY);
       // La llave debe ser la de la autoridad de ESTA cuenta, que solo se conoce tras entrar.
       assertAuthorityKeyFor(keys, session.account.authorityId, await networkState(), PINNED_KEYS);
       // Seguridad: si la pantalla se cerró mientras tanto, la llave no se queda en memoria y la
@@ -131,7 +145,11 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
         />
         <div className="field">
           <label htmlFor="authority-key">Llave de tu autoridad (archivo .json)</label>
+          <p id="authority-key-hint" className="field__hint">
+            La cuenta de operación del nodo no la necesita.
+          </p>
           <input
+            aria-describedby="authority-key-hint"
             id="authority-key"
             type="file"
             aria-required="true"
@@ -150,6 +168,12 @@ export function AuthorityLogin({ onReady }: AuthorityLoginProps) {
         </button>
       </form>
       <CreateAuthorityKeys />
+      <p className="registration-link">
+        ¿Tu institución todavía no está en la red?{' '}
+        <Link to={PATHS.registration} data-testid="registration-link">
+          Solicita su alta
+        </Link>
+      </p>
     </>
   );
 }
