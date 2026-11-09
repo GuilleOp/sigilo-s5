@@ -1075,7 +1075,7 @@ paths:
                 summary: Ejemplo sintético
                 description: También en `ejemplos/login.request.json`.
                 value:
-                  username: investigacion.uno
+                  username: oic-equipamiento.persona1
                   password: contraseña-sintética-de-ejemplo
       responses:
         '200':
@@ -1101,7 +1101,9 @@ paths:
                     account:
                       accountId: acct-5f0c2a9d1e7b3c44
                       authorityId: authority.oic-iffe
-                      function: investigation
+                      functions:
+                        - intake
+                        - investigation
         '400':
           description: '`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.'
           headers:
@@ -1265,7 +1267,9 @@ paths:
                     account:
                       accountId: acct-5f0c2a9d1e7b3c44
                       authorityId: authority.oic-iffe
-                      function: investigation
+                      functions:
+                        - intake
+                        - investigation
                     authority:
                       authorityId: authority.oic-iffe
                       name: Órgano Interno de Control Ficticio
@@ -7043,14 +7047,23 @@ components:
           description: Identificador estable de la autoridad.
           examples:
             - authority.oic-iffe
-        function:
-          $ref: '#/components/schemas/AuthorityFunction'
+        functions:
+          minItems: 1
+          maxItems: 2
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorityFunction'
+          description: 'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan.'
+          examples:
+            - - investigation
+            - - intake
+              - investigation
       required:
         - accountId
         - authorityId
-        - function
+        - functions
       additionalProperties: false
-      description: 'Cuenta de la sesión: seudónimo, autoridad y función.'
+      description: 'Cuenta de la sesión: seudónimo, autoridad y funciones.'
     AuthorityProfile:
       type: object
       properties:
@@ -8723,7 +8736,8 @@ components:
         - intake
         - investigation
         - supervision
-      description: 'Función de la cuenta: intake (recepción y turnado), investigation (investigación) o supervision (supervisión).'
+        - substantiation
+      description: 'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).'
     AccountId:
       type: string
       pattern: ^acct-[0-9a-f]{16}$

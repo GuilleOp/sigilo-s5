@@ -53,7 +53,7 @@ describe('registro de autoridades y cuentas', () => {
   it('encuentra cuentas por usuario y por seudónimo, y la supervisión', () => {
     const registry = createAuthorityRegistry(accountsFile(), { minScryptLogN: 10 });
     expect(registry.findByUsername('recepcion.uno')?.accountId).toBe('acct-00000000000000aa');
-    expect(registry.findAccount('acct-00000000000000aa')?.function).toBe('intake');
+    expect(registry.findAccount('acct-00000000000000aa')?.functions).toEqual(['intake']);
     expect(registry.findByUsername('nadie')).toBeNull();
     expect(registry.supervisorOf('authority.oic')).toBe('authority.supervisora');
     expect(registry.supervisorAuthorityId).toBe('authority.supervisora');

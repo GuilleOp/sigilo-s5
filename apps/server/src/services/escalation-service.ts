@@ -1,6 +1,7 @@
 // Escalamiento a la autoridad supervisora (segunda llave, ADR 0007): listado de las denuncias
 // escaladas y entrega del sobre de escalamiento, solo cuando una regla pública se cumplió.
 import type { EscalationDelivery, EscalationSummary } from '@sigilo/contracts';
+import { hasFunction } from '@sigilo/contracts';
 import { sealedIdentityDigest } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import { ApiFailure } from '../http/errors.ts';
@@ -11,7 +12,7 @@ import { ruleTriggerView } from './procedure-view.ts';
 /** Indica si la cuenta es de supervisión de la autoridad que custodia la segunda llave. */
 function isSupervisor(ctx: AppContext, account: AuthorityAccount): boolean {
   return (
-    account.function === 'supervision' &&
+    hasFunction(account, 'supervision') &&
     account.authorityId === ctx.authorities.supervisorAuthorityId
   );
 }

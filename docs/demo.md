@@ -58,8 +58,9 @@ Para el guion manual (sin Docker) necesitas además:
    - Persona denunciante: «Denunciar» y «Dar seguimiento».
    - Panel de autoridad: enlace «Panel de autoridad» del pie (o `http://127.0.0.1:5173/autoridad`).
      Se entra con una cuenta de `apps/server/data/authority-demo-credentials.json` (por ejemplo,
-     `recepcion.buzon` para turnar e `investigacion.iffe.uno` e `investigacion.iffe.dos` para
-     investigar y abrir una identidad 2 de 3); la llave se importa desde
+     `buzon.federal` para turnar y `oic-equipamiento.persona1` y `oic-equipamiento.persona2`,
+     que reciben e investigan en el OIC, para abrir una identidad 2 de 3; la lista completa está en
+     `docs/demo-escenario.md`, sección 2.2); la llave se importa desde
      `apps/server/data/authority-demo-key.json` (con un solo nodo, todas las cuentas usan esa
      llave; en la red, cada autoridad usa la suya, ver más abajo).
    - Verificación: enlace «Verificar bitácora» del pie.
@@ -176,11 +177,11 @@ Lo que se ve, comprobado con la red en Docker:
 - Seguimiento de Marta (folio y 8 palabras de `semilla.json`, en la web de cualquiera de los dos
   nodos): la calificación como falta no grave, el aviso del buzón y «Presentaste tu
   inconformidad…», con el plazo de la Sala.
-- Panel del nodo Federal con `investigacion.iffe.uno`: en el detalle de Marta, prioridad alta
+- Panel del nodo Federal con `oic-equipamiento.persona1`: en el detalle de Marta, prioridad alta
   (85 puntos), alerta de posible conflicto de interés con el procedimiento del art. 58,
   «2 o más personas independientes denuncian lo mismo», las señales AUD-01 y AUD-03 y las reglas que
   escalaron a la supervisora.
-- Supervisora (`supervision.federal.uno`): «Escalamientos que recibiste» lista 5 denuncias
+- Supervisora (`supervision-oic`): «Escalamientos que recibiste» lista 5 denuncias
   escaladas, cada una con su folio, el día, la autoridad de origen y las reglas que se cumplieron.
   La de Marta llega por «Acto resolutivo con conflicto de interés sin excusa» y por «Calificación
   de no grave con dos o más señales del auditor»; las demás, por «Falta grave sin iniciar el
@@ -286,11 +287,13 @@ puertas.
 
 ## Acto 2. Trámite (1 min)
 
-1. En el panel, entrar como `recepcion.buzon`, abrir la denuncia (hechos, pruebas limpias e
+1. En el panel, entrar como `buzon.federal`, abrir la denuncia (hechos, pruebas limpias e
    identidad «sellada») y turnarla al OIC del Instituto Federal Ficticio de Equipamiento. Quien
    turna no ve el formulario para abrir la identidad.
-2. Entrar como `recepcion.iffe` y aceptarla; después como `investigacion.iffe.uno` y avanzar a la
-   etapa «Investigación». El panel muestra los plazos que corren.
+2. Entrar como `oic-equipamiento.persona1` (recibe e investiga en el OIC), aceptarla y avanzar a
+   la etapa «Investigación». El panel muestra los plazos que corren. Después del informe de
+   presunta responsabilidad, las etapas las avanza otra persona, `oic-equipamiento.substanciacion`
+   (LGRA, art. 115).
 3. Enviar por el buzón: «¿Recuerda el número de contrato?».
 
 ## Acto 3. Seguimiento (1 min 30 s)
@@ -304,8 +307,8 @@ puertas.
 
 ## Acto 4. Apertura con rendición de cuentas (1 min 30 s)
 
-1. En el panel, `investigacion.iffe.uno` solicita abrir la identidad con un fundamento escrito:
-   sola no puede. En otra ventana, `investigacion.iffe.dos` aprueba con su propio fundamento.
+1. En el panel, `oic-equipamiento.persona1` solicita abrir la identidad con un fundamento escrito:
+   sola no puede. En otra ventana, `oic-equipamiento.persona2` aprueba con su propio fundamento.
    Entonces la primera abre el sobre y el panel la muestra como «Identidad declarada por la
    persona, no verificada».
 2. La identidad se descifra solo en el navegador de la autoridad.

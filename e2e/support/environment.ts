@@ -26,14 +26,19 @@ export function e2ePassword(username: string): string {
   return `contrasena-e2e-${username}`;
 }
 
-/** Cuentas de las pruebas: una por persona, con su autoridad y su función. */
+/**
+ * Cuentas de las pruebas: una por persona, con su autoridad y sus funciones. En el OIC IFFE, la
+ * misma persona recibe e investiga (`iffeIntake` e `iffeInvestigator` son la misma cuenta); la
+ * segunda persona sirve para la apertura 2 de N.
+ */
 export const E2E_ACCOUNTS = {
-  inboxIntake: 'recepcion.buzon',
-  iffeIntake: 'recepcion.iffe',
-  iffeInvestigator: 'investigacion.iffe.uno',
-  iffeInvestigator2: 'investigacion.iffe.dos',
-  iffeSupervision: 'supervision.iffe',
-  supervisor: 'supervision.federal.uno',
+  inboxIntake: 'buzon.federal',
+  iffeIntake: 'oic-equipamiento.persona1',
+  iffeInvestigator: 'oic-equipamiento.persona1',
+  iffeInvestigator2: 'oic-equipamiento.persona2',
+  iffeSupervision: 'oic-equipamiento.titular',
+  iffeSubstantiation: 'oic-equipamiento.substanciacion',
+  supervisor: 'supervision-oic',
 } as const;
 
 /** Autoridad investigadora de las pruebas. */

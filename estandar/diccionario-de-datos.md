@@ -301,7 +301,7 @@ Inicio de sesión de una persona de la autoridad con su cuenta propia.
 
 | Campo      | Nombre   | Tipo   | Formato                                       | Obligatorio | Descripción                                                            | Valores permitidos o catálogo | Ejemplo                           |
 | ---------- | -------- | ------ | --------------------------------------------- | ----------- | ---------------------------------------------------------------------- | ----------------------------- | --------------------------------- |
-| `username` | username | cadena | patrón `^[a-z0-9._-]+$`; de 3 a 64 caracteres | Sí          | Nombre de usuario de la cuenta (minúsculas, dígitos, punto y guiones). |                               | `investigacion.uno`               |
+| `username` | username | cadena | patrón `^[a-z0-9._-]+$`; de 3 a 64 caracteres | Sí          | Nombre de usuario de la cuenta (minúsculas, dígitos, punto y guiones). |                               | `oic-equipamiento.persona1`       |
 | `password` | password | cadena | de 12 a 256 caracteres                        | Sí          | Contraseña de la cuenta, de 12 a 256 caracteres.                       |                               | `contraseña-sintética-de-ejemplo` |
 
 ### AuthoritySession
@@ -313,7 +313,7 @@ Sesión iniciada: token, vencimientos y cuenta.
 | `token`                  | token                  | cadena                        | patrón `^[A-Za-z0-9_-]+$` | Sí          | Token de sesión opaco para `Authorization: Bearer`. Vence por inactividad y por duración, y se invalida al cerrar sesión. |                               | `Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq` |
 | `idleTimeoutSeconds`     | idleTimeoutSeconds     | entero                        |                           | Sí          | Segundos de inactividad tras los que vence la sesión.                                                                     |                               | `900`                                         |
 | `absoluteTimeoutSeconds` | absoluteTimeoutSeconds | entero                        |                           | Sí          | Segundos tras los que vence la sesión aunque haya actividad.                                                              |                               | `28800`                                       |
-| `account`                | account                | objeto (AuthorityAccountView) |                           | Sí          | Cuenta de la sesión: seudónimo, autoridad y función.                                                                      |                               |                                               |
+| `account`                | account                | objeto (AuthorityAccountView) |                           | Sí          | Cuenta de la sesión: seudónimo, autoridad y funciones.                                                                    |                               |                                               |
 
 ### AuthoritySessionInfo
 
@@ -321,20 +321,20 @@ Sesión vigente: cuenta, su autoridad y vencimientos.
 
 | Campo                    | Nombre                 | Tipo                          | Formato | Obligatorio | Descripción                                                  | Valores permitidos o catálogo | Ejemplo |
 | ------------------------ | ---------------------- | ----------------------------- | ------- | ----------- | ------------------------------------------------------------ | ----------------------------- | ------- |
-| `account`                | account                | objeto (AuthorityAccountView) |         | Sí          | Cuenta de la sesión: seudónimo, autoridad y función.         |                               |         |
+| `account`                | account                | objeto (AuthorityAccountView) |         | Sí          | Cuenta de la sesión: seudónimo, autoridad y funciones.       |                               |         |
 | `authority`              | authority              | objeto (AuthorityProfile)     |         | Sí          | Autoridad alojada en el nodo.                                |                               |         |
 | `idleTimeoutSeconds`     | idleTimeoutSeconds     | entero                        |         | Sí          | Segundos de inactividad tras los que vence la sesión.        |                               | `900`   |
 | `absoluteTimeoutSeconds` | absoluteTimeoutSeconds | entero                        |         | Sí          | Segundos tras los que vence la sesión aunque haya actividad. |                               | `28800` |
 
 ### AuthorityAccountView
 
-Cuenta de la sesión: seudónimo, autoridad y función.
+Cuenta de la sesión: seudónimo, autoridad y funciones.
 
-| Campo         | Nombre      | Tipo                       | Formato                                        | Obligatorio | Descripción                                                                                                         | Valores permitidos o catálogo      | Ejemplo                 |
-| ------------- | ----------- | -------------------------- | ---------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------- |
-| `accountId`   | accountId   | cadena (AccountId)         |                                                | Sí          | Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora. |                                    | `acct-5f0c2a9d1e7b3c44` |
-| `authorityId` | authorityId | cadena                     | patrón `^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$` | Sí          | Identificador estable de la autoridad.                                                                              |                                    | `authority.oic-iffe`    |
-| `function`    | function    | cadena (AuthorityFunction) |                                                | Sí          | Función de la cuenta: intake (recepción y turnado), investigation (investigación) o supervision (supervisión).      | intake; investigation; supervision | `investigation`         |
+| Campo         | Nombre      | Tipo                         | Formato                                        | Obligatorio | Descripción                                                                                                                                                     | Valores permitidos o catálogo | Ejemplo                 |
+| ------------- | ----------- | ---------------------------- | ---------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------- |
+| `accountId`   | accountId   | cadena (AccountId)           |                                                | Sí          | Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.                                             |                               | `acct-5f0c2a9d1e7b3c44` |
+| `authorityId` | authorityId | cadena                       | patrón `^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$` | Sí          | Identificador estable de la autoridad.                                                                                                                          |                               | `authority.oic-iffe`    |
+| `functions`   | functions   | arreglo de AuthorityFunction | hasta 2 elementos                              | Sí          | Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan. |                               |                         |
 
 ### AuthorityProfile
 
@@ -852,11 +852,11 @@ Efecto de la regla: escalate (entrega el sobre de escalamiento a la supervisora)
 
 ### AuthorityFunction
 
-Función de la cuenta: intake (recepción y turnado), investigation (investigación) o supervision (supervisión).
+Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).
 
-| Campo   | Nombre            | Tipo   | Formato | Obligatorio | Descripción                                                                                                    | Valores permitidos o catálogo      | Ejemplo         |
-| ------- | ----------------- | ------ | ------- | ----------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------- |
-| (valor) | AuthorityFunction | cadena |         | Sí          | Función de la cuenta: intake (recepción y turnado), investigation (investigación) o supervision (supervisión). | intake; investigation; supervision | `investigation` |
+| Campo   | Nombre            | Tipo   | Formato | Obligatorio | Descripción                                                                                                                                                  | Valores permitidos o catálogo                      | Ejemplo  |
+| ------- | ----------------- | ------ | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | -------- |
+| (valor) | AuthorityFunction | cadena |         | Sí          | Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución). | intake; investigation; supervision; substantiation | `intake` |
 
 ### AccountId
 

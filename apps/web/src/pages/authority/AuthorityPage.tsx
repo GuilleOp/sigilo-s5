@@ -1,7 +1,10 @@
 // Pantalla /autoridad: panel de demostración para la autoridad competente.
 import { startTour } from '../../components/GuidedTour.tsx';
+import { authorityRoleOf } from '../../lib/authority-role.ts';
+import type { AuthorityRole } from '../../lib/authority-role.ts';
 import { authorityTour } from '../../lib/tours.ts';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { hasFunction } from '@sigilo/contracts';
 import type { ComplaintSummary } from '@sigilo/contracts';
 import { wipeAuthorityKeys } from '../../crypto/authority.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
@@ -19,12 +22,14 @@ import { SessionGuard } from './SessionGuard.tsx';
 /** Encabezado del listado: destino del foco al entrar y al volver del detalle. */
 const LIST_TITLE_ID = 'complaint-list-title';
 
-/** Título de la lista según la función de la cuenta, con los nombres de la bandeja del S5. */
-const LIST_TITLES = {
+/** Título de la lista según el perfil de la cuenta, con los nombres de la bandeja del S5. */
+const LIST_TITLES: Readonly<Record<AuthorityRole, string>> = {
   intake: 'Bandeja general de turnado',
   investigation: 'Denuncias asignadas',
+  intake_investigation: 'Denuncias asignadas',
+  substantiation: 'Expedientes en substanciación',
   supervision: 'Denuncias de tu institución',
-} as const;
+};
 
 /** Panel de autoridad. */
 export function AuthorityPage() {
@@ -92,7 +97,10 @@ export function AuthorityPage() {
       authorityProfileStore.set(() => null);
       return;
     }
-    authorityProfileStore.set(() => ({ role: account.function, authorityName: null }));
+    authorityProfileStore.set(() => ({
+      role: authorityRoleOf(account.functions),
+      authorityName: null,
+    }));
     let isActive = true;
     api.listAuthorities(token).then(
       (list) => {
@@ -155,7 +163,10 @@ export function AuthorityPage() {
               id="tour-start-authority"
               className="button button--secondary"
               onClick={() =>
-                startTour(authorityTour(session.account.function), 'tour-start-authority')
+                startTour(
+                  authorityTour(authorityRoleOf(session.account.functions)),
+                  'tour-start-authority',
+                )
               }
               data-testid="tour-start-authority"
             >
@@ -169,9 +180,11 @@ export function AuthorityPage() {
           )}
           {selected === null ? (
             <>
-              {session.account.function === 'supervision' && <EscalationsPanel session={session} />}
+              {hasFunction(session.account, 'supervision') && (
+                <EscalationsPanel session={session} />
+              )}
               <h2 id={LIST_TITLE_ID} tabIndex={-1}>
-                {LIST_TITLES[session.account.function]}
+                {LIST_TITLES[authorityRoleOf(session.account.functions)]}
               </h2>
               <ComplaintList
                 complaints={complaints}

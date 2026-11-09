@@ -1,6 +1,7 @@
 // Turnado a otro nodo de la red (SEC-19): la denuncia se vuelve a cifrar en este navegador hacia el
 // nodo destino; el servidor solo la transporta al enrutador ciego y avisa a quien denunció.
 import { useRef, useState } from 'react';
+import { hasFunction } from '@sigilo/contracts';
 import type { AuthorityDirectory, ComplaintDetail } from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
 import { SelectField, TextAreaField } from '../../components/Field.tsx';
@@ -63,7 +64,7 @@ export function TransferPanel({ session, detail, directory }: TransferPanelProps
     }
   }
 
-  if (session.account.function !== 'intake' || detail.summary.managementState === 'closed') {
+  if (!hasFunction(session.account, 'intake') || detail.summary.managementState === 'closed') {
     return null;
   }
   return (

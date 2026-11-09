@@ -497,31 +497,31 @@ async function main(): Promise<void> {
   await advanceTo(0);
   const directory = await verifiedDirectory();
   say('Día 0: semilla de acuerdos y denuncias de Marta y la persona denunciante de Querétaro.');
-  const imported = await asAuthority('federal', 'recepcion.iffe', ROUTES.authorityClosureImports, {
-    acts: Array.from({ length: 31 }, (_, i) => {
-      const fileNumber = `OIC-IFFE-INV-${String(i + 1).padStart(4, '0')}`;
-      return {
-        fileNumber,
-        issuedOn: dayDate(base, -330 + 10 * i),
-        reason: 'insufficient_information',
-        agreement: templateAgreement(fileNumber, i),
-      };
-    }),
-  });
-  say(`- 31 acuerdos con plantilla importados: ${JSON.stringify(imported)}.`);
-  await asAuthority(
-    'queretaro',
-    'recepcion.contraloria.queretaro',
+  const imported = await asAuthority(
+    'federal',
+    'oic-equipamiento.persona1',
     ROUTES.authorityClosureImports,
     {
-      acts: CONTROL_ACTS.map((act, i) => ({
-        fileNumber: `CEF-CTRL-${String(i + 1).padStart(4, '0')}`,
-        issuedOn: dayDate(base, -200 + 20 * i),
-        reason: act.reason,
-        agreement: act.text,
-      })),
+      acts: Array.from({ length: 31 }, (_, i) => {
+        const fileNumber = `OIC-IFFE-INV-${String(i + 1).padStart(4, '0')}`;
+        return {
+          fileNumber,
+          issuedOn: dayDate(base, -330 + 10 * i),
+          reason: 'insufficient_information',
+          agreement: templateAgreement(fileNumber, i),
+        };
+      }),
     },
   );
+  say(`- 31 acuerdos con plantilla importados: ${JSON.stringify(imported)}.`);
+  await asAuthority('queretaro', 'contraloria.queretaro', ROUTES.authorityClosureImports, {
+    acts: CONTROL_ACTS.map((act, i) => ({
+      fileNumber: `CEF-CTRL-${String(i + 1).padStart(4, '0')}`,
+      issuedOn: dayDate(base, -200 + 20 * i),
+      reason: act.reason,
+      agreement: act.text,
+    })),
+  });
   say('- 5 acuerdos de control de la Contraloría de Querétaro importados.');
   const marta = await submitViaRouter(
     directory,
@@ -539,9 +539,14 @@ async function main(): Promise<void> {
   seeded.push({ key: marta.key, folio: marta.folio, words: marta.words });
   if (until >= 1) {
     await advanceTo(1);
-    await asAuthority('federal', 'recepcion.iffe', ROUTES.authorityProcedure(marta.folio), {
-      action: 'accept',
-    });
+    await asAuthority(
+      'federal',
+      'oic-equipamiento.persona1',
+      ROUTES.authorityProcedure(marta.folio),
+      {
+        action: 'accept',
+      },
+    );
     say('- El OIC acepta el turnado de Marta sin excusarse.');
     const routing = await submitViaRouter(
       directory,
@@ -585,13 +590,18 @@ async function main(): Promise<void> {
     seeded.push(luis);
     // El buzón general la turna al OIC, que la acepta: solo entonces el nodo la confirma ante el
     // índice y cuenta como fuente independiente para Marta.
-    await asAuthority('federal', 'recepcion.buzon', ROUTES.authorityProcedure(luis.folio), {
+    await asAuthority('federal', 'buzon.federal', ROUTES.authorityProcedure(luis.folio), {
       action: 'route',
       authorityId: 'authority.oic-iffe',
     });
-    await asAuthority('federal', 'recepcion.iffe', ROUTES.authorityProcedure(luis.folio), {
-      action: 'accept',
-    });
+    await asAuthority(
+      'federal',
+      'oic-equipamiento.persona1',
+      ROUTES.authorityProcedure(luis.folio),
+      {
+        action: 'accept',
+      },
+    );
     say('- El buzón turna la denuncia de Luis al OIC y el OIC la acepta.');
   }
   for (const [day, key] of [
@@ -609,7 +619,7 @@ async function main(): Promise<void> {
     // Al aceptarla, el nodo la confirma ante el índice y cuenta como fuente independiente.
     await asAuthority(
       'queretaro',
-      'recepcion.contraloria.queretaro',
+      'contraloria.queretaro',
       ROUTES.authorityProcedure(citizen.folio),
       { action: 'accept' },
     );
@@ -617,7 +627,7 @@ async function main(): Promise<void> {
   }
   if (until >= 30) {
     await advanceTo(30);
-    const investigator = 'investigacion.iffe.uno';
+    const investigator = 'oic-equipamiento.persona1';
     const procedure = ROUTES.authorityProcedure(marta.folio);
     await asAuthority('federal', investigator, procedure, {
       action: 'advance_stage',
@@ -655,7 +665,7 @@ async function main(): Promise<void> {
     await advanceTo(32);
     await asAuthority(
       'federal',
-      'supervision.federal.uno',
+      'supervision-oic',
       ROUTES.authorityEscalationEnvelope(marta.folio),
       {},
     );

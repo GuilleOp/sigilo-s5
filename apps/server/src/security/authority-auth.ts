@@ -1,5 +1,6 @@
 // Autenticación de la autoridad con sesiones de cuentas individuales y separación de funciones.
 import type { Context, MiddlewareHandler } from 'hono';
+import { hasAnyFunction } from '@sigilo/contracts';
 import type { AuthorityFunction } from '@sigilo/contracts';
 import { folioDigest } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
@@ -76,7 +77,7 @@ export function currentAccount(c: Context): AuthorityAccount {
 }
 
 /**
- * Exige que la función de la cuenta esté entre `allowed`, antes de buscar el folio (así la
+ * Exige que la cuenta tenga alguna función de `allowed`, antes de buscar el folio (así la
  * respuesta no revela si existe). Lanza `forbidden` y lo registra si no.
  */
 export function requireFunction(
@@ -85,7 +86,7 @@ export function requireFunction(
   allowed: readonly AuthorityFunction[],
 ): AuthorityAccount {
   const account = currentAccount(c);
-  if (!allowed.includes(account.function)) {
+  if (!hasAnyFunction(account, allowed)) {
     logSecurityEvent(ctx, 'function_denied', account.accountId);
     throw new ApiFailure('forbidden');
   }

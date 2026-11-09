@@ -5,6 +5,6 @@
   "account": {
     "accountId": "acct-5f0c2a9d1e7b3c44",
     "authorityId": "authority.oic-iffe",
-    "function": "investigation"
+    "functions": ["intake", "investigation"]
   }
 }

@@ -26,7 +26,7 @@ describe('inicio de sesión', () => {
     expect(session.account).toEqual({
       accountId,
       authorityId: TEST_ACCOUNTS.oicInvestigator.authorityId,
-      function: 'investigation',
+      functions: ['investigation'],
     });
     expect(session.idleTimeoutSeconds).toBeLessThanOrEqual(30 * 60);
     const info = await getAsAuthority(server.app, ROUTES.authSession, session.token);

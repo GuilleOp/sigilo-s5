@@ -35,6 +35,12 @@ const CLOSE: ProcedureActionRequest = {
   agreement: SYNTHETIC_AGREEMENT,
 };
 
+const QUALIFICATION = {
+  severity: 'non_serious',
+  legalBasis: 'LGRA, art. 100: calificación sintética de prueba.',
+  agreement: 'Acuerdo sintético de calificación de la conducta como falta no grave.',
+} as const;
+
 async function setup(offenseCode?: string) {
   const server = createTestServer();
   const reporter = createReporter();
@@ -224,6 +230,103 @@ describe('separación de funciones y competencia', () => {
     expect(denied.length).toBeGreaterThanOrEqual(4);
   });
 
+  it('una cuenta de recepción e investigación acepta, investiga y presenta el IPRA, y también reasigna', async () => {
+    const { server, folio } = await setup();
+    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    expect((await act(server, 'oicIntakeInvestigator', folio, { action: 'accept' })).status).toBe(
+      200,
+    );
+    for (const request of [
+      { action: 'advance_stage', stage: 'investigation' },
+      { action: 'advance_stage', stage: 'qualification', qualification: QUALIFICATION },
+      { action: 'advance_stage', stage: 'report_filed' },
+    ] as const satisfies ProcedureActionRequest[]) {
+      expect((await act(server, 'oicIntakeInvestigator', folio, request)).status).toBe(200);
+    }
+    // Turnar: la misma cuenta reasigna lo que le llegó a otra autoridad.
+    const fresh = await setup();
+    await act(fresh.server, 'inboxIntake', fresh.folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+    });
+    const reassigned = await act(fresh.server, 'oicIntakeInvestigator', fresh.folio, {
+      action: 'reassign',
+      authorityId: TEST_AUTHORITIES.other,
+      note: 'Corresponde a otra autoridad por la materia (nota sintética).',
+    });
+    expect(reassigned.status).toBe(200);
+  });
+
+  it('después del IPRA solo substanciación avanza y resuelve; investigación ya no (LGRA, art. 115)', async () => {
+    const { server, folio } = await setup();
+    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    // Substanciación no acepta, no reasigna, no devuelve ni avanza la investigación.
+    expect((await act(server, 'oicSubstantiation', folio, { action: 'accept' })).status).toBe(403);
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'reassign',
+          authorityId: TEST_AUTHORITIES.other,
+          note: 'Nota sintética de reasignación.',
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (await act(server, 'oicSubstantiation', folio, { action: 'return', note: 'Nota sintética.' }))
+        .status,
+    ).toBe(403);
+    await act(server, 'oicIntake', folio, { action: 'accept' });
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'advance_stage',
+          stage: 'investigation',
+        })
+      ).status,
+    ).toBe(403);
+    await act(server, 'oicInvestigator', folio, {
+      action: 'advance_stage',
+      stage: 'investigation',
+    });
+    await act(server, 'oicInvestigator', folio, {
+      action: 'advance_stage',
+      stage: 'qualification',
+      qualification: QUALIFICATION,
+    });
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'advance_stage',
+          stage: 'report_filed',
+        })
+      ).status,
+    ).toBe(403);
+    // Sin el IPRA presentado, la substanciación no empieza: no se salta `report_filed`.
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'advance_stage',
+          stage: 'evidence_hearing',
+        })
+      ).status,
+    ).toBe(409);
+    await act(server, 'oicInvestigator', folio, { action: 'advance_stage', stage: 'report_filed' });
+    // Investigación (sola o con recepción) ya no avanza ni cierra lo que se substancia.
+    for (const name of ['oicInvestigator', 'oicIntakeInvestigator'] as const) {
+      expect(
+        (await act(server, name, folio, { action: 'advance_stage', stage: 'evidence_hearing' }))
+          .status,
+      ).toBe(403);
+      expect((await act(server, name, folio, CLOSE)).status).toBe(403);
+    }
+    for (const stage of ['evidence_hearing', 'closing_arguments', 'resolution'] as const) {
+      expect(
+        (await act(server, 'oicSubstantiation', folio, { action: 'advance_stage', stage })).status,
+      ).toBe(200);
+    }
+    expect((await act(server, 'oicSubstantiation', folio, CLOSE)).status).toBe(200);
+  });
+
   it('otra autoridad recibe 404, igual que un folio inexistente', async () => {
     const { server, folio } = await setup();
     const other = await act(server, 'oicIntake', folio, { action: 'accept' });
@@ -255,7 +358,7 @@ describe('separación de funciones y competencia', () => {
     // Las etapas no se saltan ni retroceden.
     expect(
       (
-        await act(server, 'oicInvestigator', folio, {
+        await act(server, 'oicSubstantiation', folio, {
           action: 'advance_stage',
           stage: 'resolution',
         })

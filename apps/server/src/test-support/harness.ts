@@ -62,55 +62,69 @@ export const TEST_ACCOUNTS = {
     accountId: 'acct-0000000000000001',
     username: 'recepcion.buzon',
     authorityId: TEST_AUTHORITIES.inbox,
-    function: 'intake',
+    functions: ['intake'],
   },
   inboxInvestigator: {
     accountId: 'acct-0000000000000002',
     username: 'investigacion.buzon.uno',
     authorityId: TEST_AUTHORITIES.inbox,
-    function: 'investigation',
+    functions: ['investigation'],
   },
   inboxInvestigator2: {
     accountId: 'acct-0000000000000003',
     username: 'investigacion.buzon.dos',
     authorityId: TEST_AUTHORITIES.inbox,
-    function: 'investigation',
+    functions: ['investigation'],
   },
   inboxSupervision: {
     accountId: 'acct-0000000000000004',
     username: 'supervision.buzon',
     authorityId: TEST_AUTHORITIES.inbox,
-    function: 'supervision',
+    functions: ['supervision'],
   },
   oicIntake: {
     accountId: 'acct-0000000000000005',
     username: 'recepcion.oic',
     authorityId: TEST_AUTHORITIES.oic,
-    function: 'intake',
+    functions: ['intake'],
   },
   oicInvestigator: {
     accountId: 'acct-0000000000000006',
     username: 'investigacion.oic.uno',
     authorityId: TEST_AUTHORITIES.oic,
-    function: 'investigation',
+    functions: ['investigation'],
   },
   oicInvestigator2: {
     accountId: 'acct-0000000000000007',
     username: 'investigacion.oic.dos',
     authorityId: TEST_AUTHORITIES.oic,
-    function: 'investigation',
+    functions: ['investigation'],
   },
   otherInvestigator: {
     accountId: 'acct-0000000000000008',
     username: 'investigacion.otra',
     authorityId: TEST_AUTHORITIES.other,
-    function: 'investigation',
+    functions: ['investigation'],
   },
   supervisor: {
     accountId: 'acct-0000000000000009',
     username: 'supervision.central',
     authorityId: TEST_AUTHORITIES.supervisor,
-    function: 'supervision',
+    functions: ['supervision'],
+  },
+  /** Recepción e investigación en la misma cuenta, como el área de quejas de un OIC. */
+  oicIntakeInvestigator: {
+    accountId: 'acct-000000000000000a',
+    username: 'oic.recepcion-investigacion',
+    authorityId: TEST_AUTHORITIES.oic,
+    functions: ['intake', 'investigation'],
+  },
+  /** Substanciación y resolución del OIC: avanza lo posterior al IPRA. */
+  oicSubstantiation: {
+    accountId: 'acct-000000000000000b',
+    username: 'oic.substanciacion',
+    authorityId: TEST_AUTHORITIES.oic,
+    functions: ['substantiation'],
   },
 } as const;
 
@@ -161,6 +175,7 @@ export function testAuthorityRegistry(): AuthorityRegistry {
       ],
       accounts: Object.entries(TEST_ACCOUNTS).map(([name, account]) => ({
         ...account,
+        functions: [...account.functions],
         passwordHash: hashPassword(testPassword(name as TestAccountName), 10),
       })),
     },

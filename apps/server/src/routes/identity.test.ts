@@ -190,6 +190,27 @@ describe('apertura de identidad 2 de 3', () => {
     expect((await approve(server, folio, pending.requestId, 'supervisor')).status).toBe(404);
   });
 
+  it('la cuenta de recepción e investigación abre identidades; substanciación nunca', async () => {
+    const { server, folio } = await setup();
+    await moveTo(server, folio, 'routed');
+    const bySubstantiation = await post(
+      server,
+      ROUTES.authorityIdentityRequests(folio),
+      { legalBasis: FIRST_BASIS },
+      'oicSubstantiation',
+    );
+    expect(bySubstantiation.status).toBe(403);
+    const pending = await request(server, folio, 'oicIntakeInvestigator');
+    expect((await approve(server, folio, pending.requestId, 'oicSubstantiation')).status).toBe(403);
+    expect((await approve(server, folio, pending.requestId, 'oicInvestigator')).status).toBe(200);
+    expect((await envelope(server, folio, pending.requestId, 'oicSubstantiation')).status).toBe(
+      403,
+    );
+    expect((await envelope(server, folio, pending.requestId, 'oicIntakeInvestigator')).status).toBe(
+      200,
+    );
+  });
+
   it('la solicitud vence a los 7 días sin la segunda aprobación', async () => {
     const { server, folio } = await setup();
     const pending = await request(server, folio, 'inboxInvestigator');

@@ -14,6 +14,10 @@ import {
   ADMINISTRATIVE_STAGES,
   CRIMINAL_STAGES,
   findLegalStage,
+  functionForStage,
+  functionInChargeAt,
+  hasAnyFunction,
+  hasFunction,
   isManagementTransition,
 } from '@sigilo/contracts';
 import { randomBytes, sha256Hex, toDayDate, toHex, toMexicoCentralDay } from '@sigilo/core';
@@ -92,8 +96,11 @@ interface PlannedStep {
  * calcula el estado resultante. Lanza `forbidden` si la función no puede, `not_found` si la cuenta
  * no es de la autoridad que tiene la denuncia y `conflict` si el flujo no lo admite.
  * Seguridad (separación de funciones): recepción y turnado (`intake`) turna, acepta, reasigna y
- * devuelve; investigación avanza etapas y cierra lo aceptado; el buzón general puede cerrar como
- * improcedente lo que nunca turnó.
+ * devuelve; investigación avanza las etapas hasta presentar el IPRA (`report_filed`) y cierra lo
+ * que investiga; substanciación y resolución avanza las etapas posteriores al informe y cierra lo
+ * que substancia (LGRA art. 3 fr. III y IV, art. 115: nunca la misma cuenta que investiga); el
+ * buzón general puede cerrar como improcedente lo que nunca turnó. Una cuenta de recepción e
+ * investigación hace lo de ambas.
  */
 function plan(
   ctx: AppContext,
@@ -111,7 +118,7 @@ function plan(
     note: null,
   };
   const requireIntake = () => {
-    if (account.function !== 'intake') throw new ApiFailure('forbidden');
+    if (!hasFunction(account, 'intake')) throw new ApiFailure('forbidden');
   };
   const requireTarget = (authorityId: string) => {
     if (ctx.authorities.authority(authorityId) === null || authorityId === inbox) {
@@ -141,11 +148,11 @@ function plan(
         note: request.note ?? null,
       };
     case 'accept': {
-      // Aceptar también reabre una denuncia cerrada por nuevos indicios (LGRA, art. 100).
+      // Aceptar también reabre una denuncia cerrada por nuevos indicios (LGRA, art. 100): lo hace
+      // quien recibe o investiga, nunca supervisión ni substanciación.
       const isReopen = current === 'closed';
-      if (isReopen ? account.function === 'supervision' : account.function !== 'intake') {
-        throw new ApiFailure('forbidden');
-      }
+      const allowed = isReopen ? (['intake', 'investigation'] as const) : (['intake'] as const);
+      if (!hasAnyFunction(account, allowed)) throw new ApiFailure('forbidden');
       requireTransition('accepted');
       return {
         ...base,
@@ -180,12 +187,24 @@ function plan(
         note: request.note,
       };
     case 'advance_stage': {
-      if (account.function !== 'investigation') throw new ApiFailure('forbidden');
+      // Investigación avanza hasta el IPRA; substanciación, lo que sigue (`functionForStage`).
+      if (!hasFunction(account, functionForStage(request.stage))) {
+        throw new ApiFailure('forbidden');
+      }
       // La calificación solo acompaña el paso a la etapa de calificación (LGRA, art. 100).
       if (request.qualification !== undefined && request.stage !== 'qualification') {
         throw new ApiFailure('bad_request');
       }
-      if (current !== 'accepted' || !isStageAdvance(complaint.legalStage, request.stage)) {
+      // La substanciación empieza con el IPRA presentado: no se salta `report_filed`.
+      const skipsReport =
+        functionForStage(request.stage) === 'substantiation' &&
+        (complaint.legalStage === null ||
+          functionInChargeAt(complaint.legalStage) !== 'substantiation');
+      if (
+        current !== 'accepted' ||
+        !isStageAdvance(complaint.legalStage, request.stage) ||
+        skipsReport
+      ) {
         throw new ApiFailure('conflict');
       }
       const isNonSerious = request.qualification?.severity === 'non_serious';
@@ -201,8 +220,14 @@ function plan(
     }
     case 'close': {
       const isInboxClosure = current === 'received_in_inbox' || current === 'returned_to_inbox';
-      const allowed = isInboxClosure ? 'intake' : 'investigation';
-      if (account.function !== allowed) throw new ApiFailure('forbidden');
+      // Fuera del buzón cierra quien lleva la etapa actual: investigación o, desde que se presentó
+      // el IPRA, substanciación (que resuelve).
+      const allowed = isInboxClosure
+        ? 'intake'
+        : complaint.legalStage === null
+          ? 'investigation'
+          : functionInChargeAt(complaint.legalStage);
+      if (!hasFunction(account, allowed)) throw new ApiFailure('forbidden');
       requireTransition('closed');
       return {
         ...base,
@@ -217,7 +242,9 @@ function plan(
     case 'respond_conflict': {
       // Excusa o justificación ante un posible conflicto de interés (LGRA, art. 58): no cambia el
       // estado del trámite, pero evita el escalamiento por resolver con conflicto.
-      if (account.function === 'supervision') throw new ApiFailure('forbidden');
+      if (!hasAnyFunction(account, ['intake', 'investigation', 'substantiation'])) {
+        throw new ApiFailure('forbidden');
+      }
       const review = ctx.integration.lastConflictReview(complaint.folio);
       const isPending =
         review !== null &&
