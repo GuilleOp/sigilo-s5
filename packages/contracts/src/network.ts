@@ -116,10 +116,12 @@ export const DirectoryNodeSchema = z
   .meta({ description: 'Nodo de la red: estatal (SESEA) o común.' });
 export type DirectoryNode = z.infer<typeof DirectoryNodeSchema>;
 
-export const AuthorityRoleSchema = z.enum(['investigating', 'supervisory', 'prosecution']).meta({
-  description:
-    'Papel: investigating (investiga faltas), supervisory (supervisa y recibe escalamientos) o prosecution (fiscalía de hechos de corrupción).',
-});
+export const AuthorityRoleSchema = z
+  .enum(['investigating', 'supervisory', 'prosecution', 'inbox'])
+  .meta({
+    description:
+      'Papel: investigating (investiga faltas), supervisory (supervisa y recibe escalamientos), prosecution (fiscalía de hechos de corrupción) o inbox (buzón general del nodo: recibe lo que no tiene autoridad competente en el directorio y lo turna; Bases de la PDN, arts. 56 y 58).',
+  });
 export type AuthorityRole = z.infer<typeof AuthorityRoleSchema>;
 
 export const AuthorityCompetenceSchema = z

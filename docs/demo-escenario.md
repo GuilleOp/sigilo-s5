@@ -46,6 +46,16 @@ solo a la **estructura** de esos sistemas, imitada con datos inventados.
 | `authority.prosecutor-anticorruption` | Fiscalía Ficticia Especializada en Hechos de Corrupción                           | `node.federal`              | Recibe la vista por posibles delitos del Código Penal Federal.                                                                                                 |
 | `authority.comptroller-queretaro`     | Contraloría Estatal Ficticia de Querétaro                                         | `node.queretaro`            | Autoridad estatal de referencia: archiva poco, motiva sus acuerdos y sus sanciones aparecen en el S3 ficticio.                                                 |
 | `authority.comptroller-ejemplo`       | Contraloría Ficticia del Estado Ejemplo                                           | `node.federal` (nodo común) | Autoridad de una entidad sin CPC y sin S3 conectado: sus sanciones quedan «sin cobertura».                                                                     |
+| `authority.buzon-federal`             | Buzón general ficticio del nodo Federal                                           | `node.federal` (nodo común) | Buzón general (papel `inbox`): recibe lo que llega sin autoridad competente desde cualquier entidad sin nodo propio y lo turna. Su supervisora es la federal.  |
+| `authority.buzon-queretaro`           | Buzón general ficticio del nodo Querétaro                                         | `node.queretaro`            | Buzón general (papel `inbox`) de la entidad `22`: recibe lo que llega sin autoridad competente desde Querétaro y lo turna.                                     |
+
+Los dos buzones generales están en el directorio con la llave de `keys.json` de su nodo. La
+ventanilla única nunca los propone por competencia: si no encuentra autoridad competente para la
+entidad, el ente y la conducta, propone el buzón del nodo estatal de la entidad (o, si no tiene, el
+del nodo común) con el motivo «No encontramos en el directorio quién la investiga. La enviamos al
+buzón general…, donde una persona la turna a quien corresponda.» Así funciona el canal único con
+turno (Bases de la PDN, arts. 56 y 58), igual que la bandeja general del S5. Las autoridades
+también pueden devolver una denuncia al buzón (`returned_to_inbox`).
 
 Relaciones de supervisión (para el escalamiento):
 
@@ -55,6 +65,8 @@ Relaciones de supervisión (para el escalamiento):
 | `authority.oic-dfps`              | `authority.oversight-federal` |
 | `authority.comptroller-queretaro` | ninguna en la demo            |
 | `authority.comptroller-ejemplo`   | ninguna en la demo            |
+| `authority.buzon-federal`         | `authority.oversight-federal` |
+| `authority.buzon-queretaro`       | ninguna en la demo            |
 
 ### 2.3 Observadores y testigos
 

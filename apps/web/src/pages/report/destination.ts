@@ -24,9 +24,12 @@ const BLOCKED_INVALID =
 const BLOCKED_UNAVAILABLE =
   'No pudimos descargar el directorio de autoridades. Revisa tu conexión e inténtalo de nuevo; no se ha enviado nada.';
 const BLOCKED_NONE =
-  'No encontramos en el directorio una autoridad para esta denuncia. Revisa la oficina o la conducta que elegiste, o elige tú una autoridad de la lista.';
+  'No encontramos en el directorio una autoridad ni un buzón general para esta denuncia. Revisa la oficina o la conducta que elegiste, o elige tú una autoridad de la lista.';
 
-/** Resuelve el destino. La elección de la persona gana sobre la propuesta si está en la lista. */
+/**
+ * Resuelve el destino. La elección de la persona gana sobre la propuesta si está en la lista; sin
+ * autoridad competente, la propuesta es el buzón general del nodo.
+ */
 export function resolveDestination(draft: ReportDraft, state: NetworkStatus): ResolvedDestination {
   if (state.kind === 'loading') return { kind: 'loading' };
   if (state.kind === 'single-node') return { kind: 'single-node' };
@@ -34,7 +37,7 @@ export function resolveDestination(draft: ReportDraft, state: NetworkStatus): Re
   if (state.kind === 'unavailable') return { kind: 'blocked', reason: BLOCKED_UNAVAILABLE };
   const choice = routingChoiceFor(state.directory, draft.facts);
   const chosen = choice.options.find((item) => item.authorityId === draft.destinationAuthorityId);
-  const proposed = choice.options.find((item) => item.kind === 'proposed');
+  const proposed = choice.options.find((item) => item.kind === 'proposed' || item.kind === 'inbox');
   const selected = chosen ?? proposed;
   if (selected === undefined) {
     return { kind: 'needs-choice', directory: state.directory, choice, reason: BLOCKED_NONE };

@@ -1,5 +1,5 @@
 // Red sintética del escenario de la demostración (docs/demo-escenario.md, sección 2): nodos,
-// autoridades, observadores y testigos 2 de 3, con llaves generadas al momento. Nada es real.
+// autoridades (con el buzón general de cada nodo), observadores y testigos 2 de 3, con llaves generadas al momento. Nada es real.
 import type {
   AuthorityCompetence,
   AuthorityDirectory,
@@ -22,8 +22,19 @@ export const DEMO_AUTHORITY_IDS = [
   'authority.prosecutor-anticorruption',
   'authority.comptroller-queretaro',
   'authority.comptroller-ejemplo',
+  'authority.buzon-federal',
+  'authority.buzon-queretaro',
 ] as const;
 export type DemoAuthorityId = (typeof DEMO_AUTHORITY_IDS)[number];
+
+/**
+ * Buzón general de cada nodo: recibe lo que no tiene autoridad competente en el directorio y una
+ * persona lo turna (Bases de la PDN, arts. 56 y 58). Su llave es la de `keys.json` del nodo.
+ */
+export const DEMO_INBOX_AUTHORITY_IDS: Readonly<Record<DemoNodeId, DemoAuthorityId>> = {
+  'node.federal': 'authority.buzon-federal',
+  'node.queretaro': 'authority.buzon-queretaro',
+};
 
 export const DEMO_OBSERVER_IDS = ['observer.cpc-queretaro', 'observer.university-ejemplo'] as const;
 export type DemoObserverId = (typeof DEMO_OBSERVER_IDS)[number];
@@ -151,6 +162,36 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
       stateCodes: ['state.ejemplo'],
       entityIds: [],
       laws: ['LGRA'],
+    },
+    supervisorId: null,
+  },
+  // Buzones generales: no se proponen por competencia; reciben lo que no encuentra autoridad. El
+  // del nodo común atiende a todo el país; el estatal, a su entidad.
+  'authority.buzon-federal': {
+    name: 'Buzón general ficticio del nodo Federal',
+    nodeId: 'node.federal',
+    governmentLevel: 'federal',
+    stateCode: null,
+    role: 'inbox',
+    competence: {
+      governmentLevels: ['federal', 'estatal', 'municipal'],
+      stateCodes: [],
+      entityIds: [],
+      laws: ['LGRA', 'CPF'],
+    },
+    supervisorId: 'authority.oversight-federal',
+  },
+  'authority.buzon-queretaro': {
+    name: 'Buzón general ficticio del nodo Querétaro',
+    nodeId: 'node.queretaro',
+    governmentLevel: 'estatal',
+    stateCode: '22',
+    role: 'inbox',
+    competence: {
+      governmentLevels: ['federal', 'estatal', 'municipal'],
+      stateCodes: ['22'],
+      entityIds: [],
+      laws: ['LGRA', 'CPF'],
     },
     supervisorId: null,
   },

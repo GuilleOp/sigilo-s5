@@ -1,5 +1,6 @@
 // Llaves de cada autoridad que aloja el nodo: las del directorio firmado de la red cuando el nodo
-// está en una, y las de `keys.json` para el buzón general y en el perfil de nodo único.
+// está en una, y las de `keys.json` en el perfil de nodo único. En la red, el buzón general figura
+// en el directorio (papel `inbox`) con la misma llave que `keys.json`.
 import { fromBase64Url } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import {
@@ -35,8 +36,9 @@ export function authorityKeysFor(ctx: AppContext, authorityId: string): Authorit
 }
 
 /**
- * Autoridad del nodo hacia cuya llave se cifró un sobre de identidad, o `null` si es la llave de
- * `keys.json` (llega al buzón general) o una llave que el nodo no aloja.
+ * Autoridad del nodo hacia cuya llave se cifró un sobre de identidad (puede ser el buzón general,
+ * si está en el directorio), o `null` si es la llave de `keys.json` sin autoridad del directorio o
+ * una llave que el nodo no aloja.
  */
 export function authorityOfKeyId(ctx: AppContext, keyId: string): string | null {
   const network = ctx.deps.network;

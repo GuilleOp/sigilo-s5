@@ -1,5 +1,6 @@
 // Propuesta de la autoridad competente en el navegador, con el directorio verificado. La persona ve
-// a quién va su denuncia y por qué, y puede elegir otra autoridad del directorio.
+// a quién va su denuncia y por qué, y puede elegir otra autoridad del directorio. Si ninguna es
+// competente, la propuesta es el buzón general del nodo, que la turna (Bases de la PDN, 56 y 58).
 import { findEntity } from '@sigilo/contracts';
 import type { AuthorityDirectory, DirectoryAuthority } from '@sigilo/contracts';
 import { toDayDate } from '@sigilo/core';
@@ -7,12 +8,15 @@ import { isAuthorityValidOn, proposeCompetentAuthority } from '@sigilo/red';
 import type { CompetentAuthorityProposal } from '@sigilo/red';
 import type { FactsDraft } from '../state/report-draft.ts';
 
-/** Opción de destino para la persona: autoridad, su nodo y si es la propuesta o una alternativa. */
+/**
+ * Opción de destino para la persona: autoridad, su nodo y si es la propuesta, el buzón general
+ * propuesto porque ninguna es competente, una alternativa u otra del directorio.
+ */
 export interface DestinationOption {
   authorityId: string;
   name: string;
   nodeName: string;
-  kind: 'proposed' | 'alternative' | 'other';
+  kind: 'proposed' | 'inbox' | 'alternative' | 'other';
   reason: string;
 }
 
@@ -60,14 +64,21 @@ export function routingChoiceFor(
     });
   };
   if (proposal.proposed !== null) {
-    push(proposal.proposed.authority, 'proposed', proposal.proposed.reason);
+    const kind = proposal.status === 'inbox' ? 'inbox' : 'proposed';
+    push(proposal.proposed.authority, kind, proposal.proposed.reason);
   }
   for (const alternative of proposal.alternatives) {
     push(alternative.authority, 'alternative', alternative.reason);
   }
   for (const authority of directory.authorities) {
     if (authority.role === 'supervisory' || !isAuthorityValidOn(authority, today)) continue;
-    push(authority, 'other', 'La elegiste tú. Si no es competente, puede canalizarla.');
+    push(
+      authority,
+      'other',
+      authority.role === 'inbox'
+        ? 'La elegiste tú. El buzón general la turna a quien corresponda.'
+        : 'La elegiste tú. Si no es competente, puede canalizarla.',
+    );
   }
   return { proposal, options };
 }

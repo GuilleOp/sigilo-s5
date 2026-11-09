@@ -265,7 +265,13 @@ flowchart LR
   la ley (LGRA o CPF), el ente el orden de gobierno, y gana quien atiende al ente por nombre sobre
   quien atiende a todo su orden en la entidad. Devuelve el razonamiento en lenguaje claro. Las
   supervisoras nunca se proponen; un ente municipal sin órgano municipal cae en la contraloría
-  estatal, marcado como respaldo.
+  estatal, marcado como respaldo. Si ninguna autoridad es competente, la propuesta es el **buzón
+  general** del nodo (papel `inbox` en el directorio, estado `inbox` de la propuesta): el del nodo
+  estatal si la entidad tiene uno y, si no, el del nodo común. Ahí una persona la turna a quien
+  corresponda, como en la bandeja general del S5: la ventanilla es un canal único (Bases de la
+  PDN, art. 56) con protocolos de recepción y turno a la autoridad competente (art. 58). Solo si el
+  directorio no tiene un buzón vigente no se envía nada. El buzón figura en el directorio con la
+  misma llave que `keys.json` de su nodo y nunca se propone por competencia.
 - **Enrutador ciego.** El navegador cifra con HPKE hacia la llave del nodo una petición de la API
   v1 (`RoutedRequest`) rellenada a un tramo fijo (4 KiB, 64 KiB, 1 MiB o 16 MiB) e incluye una
   llave efímera para la respuesta. El encabezado externo solo dice la autoridad destino. El
@@ -281,7 +287,8 @@ flowchart LR
   enrutador (acepta sobres), publica su cabeza después de cada cierre y, si el directorio lo nombra
   testigo, cofirma la cabeza nacional. Aloja varias autoridades con sus llaves del directorio
   verificado. Una denuncia que llega por el enrutador queda turnada a la autoridad que eligió el
-  navegador; el turnado a otro nodo lo re-cifra el navegador de la autoridad y el nodo solo lo
+  navegador; si va dirigida al buzón general (o a una supervisora), queda en el buzón como
+  `received_in_inbox` y su recepción la turna, reasigna o cierra; el turnado a otro nodo lo re-cifra el navegador de la autoridad y el nodo solo lo
   transporta (SEC-19), con `complaint.transferred` en la bitácora y el folio nuevo en el
   seguimiento.
 - **Contexto, auditor y corroboración en el nodo.** Al turnar, el nodo revisa el conflicto de

@@ -51,6 +51,13 @@ especificación cuando se publique. El panel de SIGILO muestra el código en la 
 titula la lista según la función de la cuenta: «Bandeja general de turnado» (recepción),
 «Denuncias asignadas» (investigación) o «Denuncias de tu institución» (supervisión).
 
+En la red, la ventanilla única propone la autoridad competente con el directorio. Si no encuentra
+ninguna, no rechaza la denuncia: la envía al buzón general del nodo de la entidad (o del nodo común),
+donde queda como `received_in_inbox` (`SIN_TURNAR`) y la recepción la turna, igual que la bandeja
+general del S5. Es el canal único con protocolos de recepción y turno de las Bases de la PDN
+(arts. 56 y 58). Al integrar, el buzón general del S5 se publica en el directorio con el papel
+`inbox` y la misma llave que su nodo usa como autoridad en `keys.json`.
+
 El semáforo de la bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2
 días. SIGILO no tiene ese semáforo fijo: mide los plazos legales de cada etapa (LGRA) y escala a la
 supervisora con reglas públicas. Agregar un semáforo de turnado con los mismos días sería un ajuste

@@ -386,7 +386,7 @@ DirectoryAuthority,name,name,cadena,de 1 a 300 caracteres,sí,Nombre de la autor
 DirectoryAuthority,nodeId,nodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable del nodo.,,node.queretaro
 DirectoryAuthority,governmentLevel,governmentLevel,cadena,,sí,"Orden de gobierno: federal, estatal o municipal.",federal; estatal; municipal,estatal
 DirectoryAuthority,stateCode,stateCode,valor,,sí,Entidad de la autoridad; null si es federal.,,22
-DirectoryAuthority,role,role,cadena,,sí,"Papel: investigating (investiga faltas), supervisory (supervisa y recibe escalamientos) o prosecution (fiscalía de hechos de corrupción).",investigating; supervisory; prosecution,investigating
+DirectoryAuthority,role,role,cadena,,sí,"Papel: investigating (investiga faltas), supervisory (supervisa y recibe escalamientos), prosecution (fiscalía de hechos de corrupción) o inbox (buzón general del nodo: recibe lo que no tiene autoridad competente en el directorio y lo turna; Bases de la PDN, arts. 56 y 58).",investigating; supervisory; prosecution; inbox,investigating
 DirectoryAuthority,competence,competence,objeto (AuthorityCompetence),,sí,Competencia declarada: con ella se propone la autoridad competente.,,
 DirectoryAuthority,keyId,keyId,cadena,patrón ^[0-9a-f]{16}$,sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,,9a0be41c77d25f13
 DirectoryAuthority,boxPublicKey,boxPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Llave pública X25519 hacia la que se cifran hechos, identidad y mensajes.",,TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f
