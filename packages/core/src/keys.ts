@@ -43,6 +43,25 @@ export function keyIdFor(publicKey: Uint8Array): string {
   return sha256Hex(publicKey).slice(0, 16);
 }
 
+/**
+ * Huella del candado de una autoridad: los primeros 16 caracteres hexadecimales del SHA-256 de la
+ * llave pública de cifrado seguida de la de firma, en grupos de 4 (p. ej. `3f2a 9c01 b7e4 55d0`).
+ * Seguridad: cubre las dos llaves públicas, no solo el `keyId` (que es solo de la de cifrado); así,
+ * un candado al que le cambiaron la llave de firma en el camino no tiene la misma huella. Es la que
+ * la institución lee por teléfono para confirmar su solicitud de alta.
+ */
+export function padlockFingerprint(boxPublicKey: Uint8Array, signingPublicKey: Uint8Array): string {
+  const joined = new Uint8Array(boxPublicKey.length + signingPublicKey.length);
+  joined.set(boxPublicKey, 0);
+  joined.set(signingPublicKey, boxPublicKey.length);
+  return groupsOfFour(sha256Hex(joined).slice(0, 16));
+}
+
+/** Separa un texto en grupos de 4 caracteres para leerlo en voz alta. */
+export function groupsOfFour(text: string): string {
+  return (text.match(/.{1,4}/g) ?? []).join(' ');
+}
+
 function assertKeyLengths(keys: readonly Uint8Array[]): void {
   if (keys.some((key) => key.length !== KEY_LENGTH)) {
     throw new Error(`Las llaves deben medir ${KEY_LENGTH} bytes.`);

@@ -18,6 +18,8 @@ import { createIdentityRequestsRepository } from './db/identity-requests-reposit
 import type { IdentityRequestsRepository } from './db/identity-requests-repository.ts';
 import { createProcedureRepository } from './db/procedure-repository.ts';
 import type { ProcedureRepository } from './db/procedure-repository.ts';
+import { createRegistrationsRepository } from './db/registrations-repository.ts';
+import type { RegistrationsRepository } from './db/registrations-repository.ts';
 import { createSecurityLogRepository } from './db/security-log-repository.ts';
 import type { SecurityLogRepository } from './db/security-log-repository.ts';
 import { createIntegrationRepository } from './db/integration-repository.ts';
@@ -157,6 +159,7 @@ export interface AppContext {
   /** Calificaciones de la falta e inconformidades (migración 9). */
   qualifications: QualificationRepository;
   securityLog: SecurityLogRepository;
+  registrations: RegistrationsRepository;
   authorities: AuthorityRegistry;
   sessions: SessionStore;
   statusHistory: StatusRepository;
@@ -207,6 +210,7 @@ export function createContext(deps: AppDeps): AppContext {
     integration: createIntegrationRepository(deps.db),
     qualifications: createQualificationRepository(deps.db),
     securityLog: createSecurityLogRepository(deps.db),
+    registrations: createRegistrationsRepository(deps.db),
     authorities: deps.authorities ?? emptyAuthorityRegistry(),
     sessions:
       deps.sessions ??

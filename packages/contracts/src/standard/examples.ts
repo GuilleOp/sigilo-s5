@@ -43,6 +43,8 @@ import type {
   SubmitComplaintResponse,
   TrackingCredentials,
   TrackingView,
+  RegistrationRequest,
+  RegistrationView,
 } from '../index.ts';
 import type { ApiError } from '../errors.ts';
 import { HPKE_SUITE_V1 } from '../envelope.ts';
@@ -521,11 +523,70 @@ const apiError: ApiError = {
   error: { code: 'proof_required', message: 'Falta una prueba de trabajo válida y vigente.' },
 };
 
+const registrationRequest: RegistrationRequest = {
+  institutionName: 'Secretaría de la Contraloría Ficticia de Oaxaca',
+  stateCode: '20',
+  governmentLevel: 'estatal',
+  role: 'investigating',
+  laws: ['LGRA'],
+  supervisorId: null,
+  applicant: {
+    fullName: 'Persona Solicitante Ficticia',
+    position: 'Titular del área de quejas, denuncias e investigación',
+    appointment: 'Oficio SCF/001/2026 del 2 de enero de 2026',
+  },
+  people: [
+    { fullName: 'Persona Ficticia Uno', functions: ['intake', 'investigation'] },
+    { fullName: 'Persona Ficticia Dos', functions: ['substantiation'] },
+  ],
+  padlock: {
+    keyId: 'f7bc219ff223a248',
+    boxPublicKey: 'NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA',
+    signingPublicKey: 'Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA',
+  },
+};
+
+const registrationView: RegistrationView = {
+  requestId: 'ALTA-3F2A9C01B7E4',
+  receivedOn: '2026-11-09',
+  status: 'approved',
+  request: registrationRequest,
+  decision: { on: '2026-11-10', accountId: ACCOUNT_ID, reason: null },
+  directoryEntry: {
+    id: 'authority.secretaria-de-la-contraloria-ficticia-de-oaxaca',
+    name: registrationRequest.institutionName,
+    nodeId: 'node.federal',
+    governmentLevel: 'estatal',
+    stateCode: '20',
+    role: 'investigating',
+    competence: {
+      governmentLevels: ['estatal'],
+      stateCodes: ['20'],
+      entityIds: [],
+      laws: ['LGRA'],
+    },
+    keyId: registrationRequest.padlock.keyId,
+    boxPublicKey: registrationRequest.padlock.boxPublicKey,
+    signingPublicKey: registrationRequest.padlock.signingPublicKey,
+    supervisorId: null,
+    validFrom: '2026-11-10',
+    validUntil: null,
+  },
+};
+
 /**
  * Ejemplo de cada cuerpo, por nombre de archivo en `estandar/ejemplos/` (sin `.json`). La prueba del
  * estándar valida cada uno con el esquema de su operación.
  */
 export const STANDARD_EXAMPLES = {
+  'submit-registration.request': registrationRequest,
+  'submit-registration.response': {
+    requestId: 'ALTA-3F2A9C01B7E4',
+    fingerprint: '3f2a 9c01 b7e4 55d0',
+  },
+  'list-registrations.response': { nodeId: 'node.federal', registrations: [registrationView] },
+  'decide-registration.request': { decision: 'approve', fingerprint: '3f2a 9c01 b7e4 55d0' },
+  'decide-registration.response': registrationView,
   'get-public-keys.response': publicKeySet,
   'get-pow-challenge.response': powChallenge,
   'upload-evidence.response': evidence,

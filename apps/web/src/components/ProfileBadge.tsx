@@ -18,6 +18,7 @@ const LABELS: Readonly<Record<BadgeKind, string>> = {
   intake_investigation: 'Recepción e investigación',
   substantiation: 'Substanciación y resolución',
   supervision: 'Supervisión',
+  operation: 'Operación del nodo',
 };
 
 /** Pantallas de quien denuncia: las demás públicas son de consulta. */

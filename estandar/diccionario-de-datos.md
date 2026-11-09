@@ -330,11 +330,11 @@ Sesión vigente: cuenta, su autoridad y vencimientos.
 
 Cuenta de la sesión: seudónimo, autoridad y funciones.
 
-| Campo         | Nombre      | Tipo                         | Formato                                        | Obligatorio | Descripción                                                                                                                                                     | Valores permitidos o catálogo | Ejemplo                 |
-| ------------- | ----------- | ---------------------------- | ---------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------- |
-| `accountId`   | accountId   | cadena (AccountId)           |                                                | Sí          | Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.                                             |                               | `acct-5f0c2a9d1e7b3c44` |
-| `authorityId` | authorityId | cadena                       | patrón `^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$` | Sí          | Identificador estable de la autoridad.                                                                                                                          |                               | `authority.oic-iffe`    |
-| `functions`   | functions   | arreglo de AuthorityFunction | hasta 2 elementos                              | Sí          | Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan. |                               |                         |
+| Campo         | Nombre      | Tipo                         | Formato                                        | Obligatorio | Descripción                                                                                                                                                                | Valores permitidos o catálogo | Ejemplo                 |
+| ------------- | ----------- | ---------------------------- | ---------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------- |
+| `accountId`   | accountId   | cadena (AccountId)           |                                                | Sí          | Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.                                                        |                               | `acct-5f0c2a9d1e7b3c44` |
+| `authorityId` | authorityId | cadena                       | patrón `^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$` | Sí          | Identificador estable de la autoridad.                                                                                                                                     |                               | `authority.oic-iffe`    |
+| `functions`   | functions   | arreglo de AuthorityFunction | hasta 2 elementos                              | Sí          | Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan. |                               |                         |
 
 ### AuthorityProfile
 
@@ -748,11 +748,11 @@ Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad,
 
 ### PowPurpose
 
-Propósito del reto: complaint (una denuncia con sus pruebas) o message (un mensaje del buzón).
+Propósito del reto: complaint (una denuncia con sus pruebas), message (un mensaje del buzón) o registration (una solicitud de alta de autoridad).
 
-| Campo   | Nombre     | Tipo   | Formato | Obligatorio | Descripción                                                                                    | Valores permitidos o catálogo | Ejemplo |
-| ------- | ---------- | ------ | ------- | ----------- | ---------------------------------------------------------------------------------------------- | ----------------------------- | ------- |
-| (valor) | PowPurpose | cadena |         | Sí          | Propósito del reto: complaint (una denuncia con sus pruebas) o message (un mensaje del buzón). | complaint; message            |         |
+| Campo   | Nombre     | Tipo   | Formato | Obligatorio | Descripción                                                                                                                                       | Valores permitidos o catálogo    | Ejemplo |
+| ------- | ---------- | ------ | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------- |
+| (valor) | PowPurpose | cadena |         | Sí          | Propósito del reto: complaint (una denuncia con sus pruebas), message (un mensaje del buzón) o registration (una solicitud de alta de autoridad). | complaint; message; registration |         |
 
 ### ManagementState
 
@@ -852,11 +852,11 @@ Efecto de la regla: escalate (entrega el sobre de escalamiento a la supervisora)
 
 ### AuthorityFunction
 
-Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).
+Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta).
 
-| Campo   | Nombre            | Tipo   | Formato | Obligatorio | Descripción                                                                                                                                                  | Valores permitidos o catálogo                      | Ejemplo  |
-| ------- | ----------------- | ------ | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | -------- |
-| (valor) | AuthorityFunction | cadena |         | Sí          | Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución). | intake; investigation; supervision; substantiation | `intake` |
+| Campo   | Nombre            | Tipo   | Formato | Obligatorio | Descripción                                                                                                                                                                                                            | Valores permitidos o catálogo                                 | Ejemplo  |
+| ------- | ----------------- | ------ | ------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | -------- |
+| (valor) | AuthorityFunction | cadena |         | Sí          | Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta). | intake; investigation; supervision; substantiation; operation | `intake` |
 
 ### AccountId
 
@@ -865,6 +865,67 @@ Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. E
 | Campo   | Nombre    | Tipo   | Formato                      | Obligatorio | Descripción                                                                                                         | Valores permitidos o catálogo | Ejemplo                 |
 | ------- | --------- | ------ | ---------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------- |
 | (valor) | AccountId | cadena | patrón `^acct-[0-9a-f]{16}$` | Sí          | Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora. |                               | `acct-5f0c2a9d1e7b3c44` |
+
+### RegistrationRequest
+
+Solicitud de alta de una institución en el nodo.
+
+| Campo                      | Nombre           | Tipo                         | Formato                                        | Obligatorio | Descripción                                                                                                                                                                | Valores permitidos o catálogo           | Ejemplo                                            |
+| -------------------------- | ---------------- | ---------------------------- | ---------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------- |
+| `institutionName`          | institutionName  | cadena                       | de 2 a 300 caracteres                          | Sí          | Nombre oficial de la institución.                                                                                                                                          |                                         | `Secretaría de la Contraloría Ficticia de Oaxaca`  |
+| `stateCode`                | stateCode        | valor                        |                                                | Sí          | Entidad de la institución; null si es federal.                                                                                                                             |                                         | `20`                                               |
+| `governmentLevel`          | governmentLevel  | cadena                       |                                                | Sí          | Orden de gobierno: federal, estatal o municipal.                                                                                                                           | federal; estatal; municipal             | `estatal`                                          |
+| `role`                     | role             | cadena                       |                                                | Sí          | Papel: investigating (investiga faltas), supervisory (supervisa) o prosecution (fiscalía).                                                                                 | investigating; supervisory; prosecution | `investigating`                                    |
+| `laws`                     | laws             | arreglo de cadena            | hasta 2 elementos                              | Sí          | Leyes de las conductas que conoce.                                                                                                                                         | LGRA; CPF                               |                                                    |
+| `supervisorId`             | supervisorId     | valor                        |                                                | Sí          | Autoridad supervisora en el directorio, si tiene.                                                                                                                          |                                         | `null`                                             |
+| `applicant`                | applicant        | objeto                       |                                                | Sí          | Quien solicita el alta, con su cargo y nombramiento.                                                                                                                       |                                         |                                                    |
+| `applicant.fullName`       | fullName         | cadena                       | de 2 a 120 caracteres                          | Sí          | Nombre de quien solicita.                                                                                                                                                  |                                         | `Persona Solicitante Ficticia`                     |
+| `applicant.position`       | position         | cadena                       | de 2 a 200 caracteres                          | Sí          | Cargo de quien solicita.                                                                                                                                                   |                                         | `Titular del área de quejas, denuncias e investi…` |
+| `applicant.appointment`    | appointment      | cadena                       | de 2 a 200 caracteres                          | Sí          | Número y fecha del oficio de nombramiento.                                                                                                                                 |                                         | `Oficio SCF/001/2026 del 2 de enero de 2026`       |
+| `people`                   | people           | arreglo de objeto            | hasta 12 elementos                             | Sí          | Personas de la institución que tendrán cuenta.                                                                                                                             |                                         |                                                    |
+| `people[].fullName`        | fullName         | cadena                       | de 2 a 120 caracteres                          | Sí          | Nombre de la persona que tendrá cuenta.                                                                                                                                    |                                         | `Persona Ficticia Uno`                             |
+| `people[].functions`       | functions        | arreglo de AuthorityFunction | hasta 2 elementos                              | Sí          | Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan. |                                         |                                                    |
+| `padlock`                  | padlock          | objeto                       |                                                | Sí          | Candado de la autoridad: solo sus llaves públicas, nunca la privada.                                                                                                       |                                         |                                                    |
+| `padlock.keyId`            | keyId            | cadena                       | patrón `^[0-9a-f]{16}$`                        | Sí          | Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.                                                                              |                                         | `f7bc219ff223a248`                                 |
+| `padlock.boxPublicKey`     | boxPublicKey     | cadena                       | patrón `^[A-Za-z0-9_-]+$`; hasta 64 caracteres | Sí          | Llave pública X25519 de la autoridad.                                                                                                                                      |                                         | `NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA`      |
+| `padlock.signingPublicKey` | signingPublicKey | cadena                       | patrón `^[A-Za-z0-9_-]+$`; hasta 64 caracteres | Sí          | Llave pública Ed25519 de la autoridad.                                                                                                                                     |                                         | `Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA`      |
+
+### RegistrationReceipt
+
+Folio de la solicitud y huella del candado recibido.
+
+| Campo         | Nombre      | Tipo   | Formato                                 | Obligatorio | Descripción                                                                                             | Valores permitidos o catálogo | Ejemplo               |
+| ------------- | ----------- | ------ | --------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- | ----------------------------- | --------------------- |
+| `requestId`   | requestId   | cadena | patrón `^ALTA-[0-9A-F]{12}$`            | Sí          | Folio de la solicitud de alta.                                                                          |                               | `ALTA-3F2A9C01B7E4`   |
+| `fingerprint` | fingerprint | cadena | patrón `^[0-9a-f]{4}( [0-9a-f]{4}){3}$` | Sí          | Huella del candado: 16 caracteres hexadecimales del SHA-256 de las dos llaves públicas, en grupos de 4. |                               | `3f2a 9c01 b7e4 55d0` |
+
+### RegistrationList
+
+| Campo           | Nombre        | Tipo                        | Formato | Obligatorio | Descripción                                      | Valores permitidos o catálogo | Ejemplo        |
+| --------------- | ------------- | --------------------------- | ------- | ----------- | ------------------------------------------------ | ----------------------------- | -------------- |
+| `nodeId`        | nodeId        | valor                       |         | Sí          | Nodo de este servidor, o null sin red.           |                               | `node.federal` |
+| `registrations` | registrations | arreglo de RegistrationView |         | Sí          | Solicitudes de la más reciente a la más antigua. |                               |                |
+
+### RegistrationView
+
+Solicitud de alta con su estado y, si ya se resolvió, quién y cuándo.
+
+| Campo            | Nombre         | Tipo                         | Formato                      | Obligatorio | Descripción                                                                                                        | Valores permitidos o catálogo | Ejemplo             |
+| ---------------- | -------------- | ---------------------------- | ---------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ------------------- |
+| `requestId`      | requestId      | cadena                       | patrón `^ALTA-[0-9A-F]{12}$` | Sí          | Folio de la solicitud de alta.                                                                                     |                               | `ALTA-3F2A9C01B7E4` |
+| `receivedOn`     | receivedOn     | cadena                       | patrón `^\d{4}-\d{2}-\d{2}$` | Sí          | Fecha redondeada al día, en UTC (AAAA-MM-DD).                                                                      |                               | `2026-11-09`        |
+| `status`         | status         | cadena                       |                              | Sí          | Estado: pending (pendiente), approved (aprobada) o rejected (rechazada).                                           | pending; approved; rejected   | `approved`          |
+| `request`        | request        | objeto (RegistrationRequest) |                              | Sí          | Solicitud de alta de una institución en el nodo.                                                                   |                               |                     |
+| `decision`       | decision       | valor                        |                              | Sí          | Quién resolvió (seudónimo de la cuenta), qué día y, si rechazó, el motivo.                                         |                               |                     |
+| `directoryEntry` | directoryEntry | valor                        |                              | Sí          | Si se aprobó: entrada propuesta para el directorio, lista para agregarla, firmarla y que los testigos la cofirmen. |                               |                     |
+
+### RegistrationDecision
+
+Aprobar con la huella confirmada o rechazar con un motivo.
+
+| Campo   | Nombre               | Tipo  | Formato | Obligatorio | Descripción                                                | Valores permitidos o catálogo | Ejemplo |
+| ------- | -------------------- | ----- | ------- | ----------- | ---------------------------------------------------------- | ----------------------------- | ------- |
+| (valor) | RegistrationDecision | valor |         | Sí          | Aprobar con la huella confirmada o rechazar con un motivo. |                               |         |
 
 ### SignedAuthorityDirectory
 

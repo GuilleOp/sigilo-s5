@@ -132,6 +132,7 @@ describe('documento OpenAPI', () => {
       'fileAppeal',
       'sendReporterMessage',
       'submitComplaint',
+      'submitRegistration',
       'uploadEvidence',
     ]);
     const authority = STANDARD_OPERATIONS.filter((operation) =>

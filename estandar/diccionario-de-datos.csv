@@ -153,7 +153,7 @@ AuthoritySessionInfo,idleTimeoutSeconds,idleTimeoutSeconds,entero,,sí,Segundos 
 AuthoritySessionInfo,absoluteTimeoutSeconds,absoluteTimeoutSeconds,entero,,sí,Segundos tras los que vence la sesión aunque haya actividad.,,28800
 AuthorityAccountView,accountId,accountId,cadena (AccountId),,sí,Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.,,acct-5f0c2a9d1e7b3c44
 AuthorityAccountView,authorityId,authorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.oic-iffe
-AuthorityAccountView,functions,functions,arreglo de AuthorityFunction,hasta 2 elementos,sí,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan.",,
+AuthorityAccountView,functions,functions,arreglo de AuthorityFunction,hasta 2 elementos,sí,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.",,
 AuthorityProfile,authorityId,authorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.oic-iffe
 AuthorityProfile,name,name,cadena,de 1 a 200 caracteres,sí,Nombre de la autoridad.,,Órgano Interno de Control Ficticio
 AuthorityProfile,supervisorId,supervisorId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,no,"Autoridad supervisora que recibe los escalamientos, si tiene.",,authority.oversight-federal
@@ -340,7 +340,7 @@ ApiError,error.message,message,cadena,,sí,Mensaje fijo en español; nunca inclu
 ComplaintMode,(valor),ComplaintMode,cadena,,sí,"Modo de la denuncia: anonymous (sin identidad) o sealed (identidad cifrada que solo abre la autoridad, con registro público).",anonymous; sealed,sealed
 ComplaintStatus,(valor),ComplaintStatus,cadena,,sí,Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.,received (Recibida); routing (Buscando a la autoridad que debe atenderla); routed (Turnada a la autoridad competente); investigating (En investigación); classified (Revisada: la autoridad decidió si la falta es grave); archived (Archivada); resolved (Concluida),investigating
 LedgerEventType,(valor),LedgerEventType,cadena,,sí,"Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo o señal del auditor.",complaint.received; complaint.status_changed; identity.opened; message.sent; evidence.discarded; identity.approved; rule.triggered; complaint.transferred; audit.signal; closures.imported; appeal.filed; identity.released; corroboration.viewed; corroboration.confirmed; corroboration.withdrawn,complaint.received
-PowPurpose,(valor),PowPurpose,cadena,,sí,Propósito del reto: complaint (una denuncia con sus pruebas) o message (un mensaje del buzón).,complaint; message,
+PowPurpose,(valor),PowPurpose,cadena,,sí,"Propósito del reto: complaint (una denuncia con sus pruebas), message (un mensaje del buzón) o registration (una solicitud de alta de autoridad).",complaint; message; registration,
 ManagementState,(valor),ManagementState,cadena,,sí,Estado del flujo de gestión del S5. Nombres y explicaciones en el catálogo MANAGEMENT_STATES.,received_in_inbox (Recibida en el buzón general); routed (Turnada); accepted (Aceptada); reassigned (Reasignada); returned_to_inbox (Devuelta al buzón general); closed (Cerrada),accepted
 ClosureReason,(valor),ClosureReason,cadena,,sí,Motivo de cierre del flujo de gestión. Nombres y explicaciones en CLOSURE_REASONS.,attended (Atendido); channeled (Canalizado); inadmissible (Improcedente); insufficient_information (Información insuficiente); joined (Acumulado); other (Otro),attended
 LegalTrack,(valor),LegalTrack,cadena,,sí,Vía legal: administrative (falta administrativa) o criminal (hecho de corrupción).,administrative; criminal,
@@ -353,8 +353,36 @@ ProcedureAction,(valor),ProcedureAction,cadena,,sí,"Acción del trámite: recep
 OffenseSeverity,(valor),OffenseSeverity,cadena,,sí,"Gravedad de la conducta: non_serious (falta no grave), serious (grave), private_party (de particulares) o crime (delito).",non_serious; serious; private_party; crime,
 EscalationRuleKey,(valor),EscalationRuleKey,cadena,,sí,Regla pública de escalamiento o de alerta del catálogo ESCALATION_RULES.,escalation.grave-stalled; escalation.archive-unnotified; escalation.conflict; escalation.archive-signals; escalation.downgrade-signals; escalation.declined-serious; escalation.conflict-justified; escalation.transfer-unconfirmed; alert.prescription-12m; alert.prescription-6m; alert.prescription-3m; alert.inactivity-warning; alert.inactivity-expiry; alert.expiry-warning; alert.expiry-reached,escalation.grave-stalled
 RuleEffect,(valor),RuleEffect,cadena,,sí,Efecto de la regla: escalate (entrega el sobre de escalamiento a la supervisora) o alert (solo avisa).,escalate; alert,escalate
-AuthorityFunction,(valor),AuthorityFunction,cadena,,sí,"Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).",intake; investigation; supervision; substantiation,intake
+AuthorityFunction,(valor),AuthorityFunction,cadena,,sí,"Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta).",intake; investigation; supervision; substantiation; operation,intake
 AccountId,(valor),AccountId,cadena,patrón ^acct-[0-9a-f]{16}$,sí,Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.,,acct-5f0c2a9d1e7b3c44
+RegistrationRequest,institutionName,institutionName,cadena,de 2 a 300 caracteres,sí,Nombre oficial de la institución.,,Secretaría de la Contraloría Ficticia de Oaxaca
+RegistrationRequest,stateCode,stateCode,valor,,sí,Entidad de la institución; null si es federal.,,20
+RegistrationRequest,governmentLevel,governmentLevel,cadena,,sí,"Orden de gobierno: federal, estatal o municipal.",federal; estatal; municipal,estatal
+RegistrationRequest,role,role,cadena,,sí,"Papel: investigating (investiga faltas), supervisory (supervisa) o prosecution (fiscalía).",investigating; supervisory; prosecution,investigating
+RegistrationRequest,laws,laws,arreglo de cadena,hasta 2 elementos,sí,Leyes de las conductas que conoce.,LGRA; CPF,
+RegistrationRequest,supervisorId,supervisorId,valor,,sí,"Autoridad supervisora en el directorio, si tiene.",,null
+RegistrationRequest,applicant,applicant,objeto,,sí,"Quien solicita el alta, con su cargo y nombramiento.",,
+RegistrationRequest,applicant.fullName,fullName,cadena,de 2 a 120 caracteres,sí,Nombre de quien solicita.,,Persona Solicitante Ficticia
+RegistrationRequest,applicant.position,position,cadena,de 2 a 200 caracteres,sí,Cargo de quien solicita.,,"Titular del área de quejas, denuncias e investi…"
+RegistrationRequest,applicant.appointment,appointment,cadena,de 2 a 200 caracteres,sí,Número y fecha del oficio de nombramiento.,,Oficio SCF/001/2026 del 2 de enero de 2026
+RegistrationRequest,people,people,arreglo de objeto,hasta 12 elementos,sí,Personas de la institución que tendrán cuenta.,,
+RegistrationRequest,people[].fullName,fullName,cadena,de 2 a 120 caracteres,sí,Nombre de la persona que tendrá cuenta.,,Persona Ficticia Uno
+RegistrationRequest,people[].functions,functions,arreglo de AuthorityFunction,hasta 2 elementos,sí,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.",,
+RegistrationRequest,padlock,padlock,objeto,,sí,"Candado de la autoridad: solo sus llaves públicas, nunca la privada.",,
+RegistrationRequest,padlock.keyId,keyId,cadena,patrón ^[0-9a-f]{16}$,sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,,f7bc219ff223a248
+RegistrationRequest,padlock.boxPublicKey,boxPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$; hasta 64 caracteres,sí,Llave pública X25519 de la autoridad.,,NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA
+RegistrationRequest,padlock.signingPublicKey,signingPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$; hasta 64 caracteres,sí,Llave pública Ed25519 de la autoridad.,,Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA
+RegistrationReceipt,requestId,requestId,cadena,patrón ^ALTA-[0-9A-F]{12}$,sí,Folio de la solicitud de alta.,,ALTA-3F2A9C01B7E4
+RegistrationReceipt,fingerprint,fingerprint,cadena,patrón ^[0-9a-f]{4}( [0-9a-f]{4}){3}$,sí,"Huella del candado: 16 caracteres hexadecimales del SHA-256 de las dos llaves públicas, en grupos de 4.",,3f2a 9c01 b7e4 55d0
+RegistrationList,nodeId,nodeId,valor,,sí,"Nodo de este servidor, o null sin red.",,node.federal
+RegistrationList,registrations,registrations,arreglo de RegistrationView,,sí,Solicitudes de la más reciente a la más antigua.,,
+RegistrationView,requestId,requestId,cadena,patrón ^ALTA-[0-9A-F]{12}$,sí,Folio de la solicitud de alta.,,ALTA-3F2A9C01B7E4
+RegistrationView,receivedOn,receivedOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",,2026-11-09
+RegistrationView,status,status,cadena,,sí,"Estado: pending (pendiente), approved (aprobada) o rejected (rechazada).",pending; approved; rejected,approved
+RegistrationView,request,request,objeto (RegistrationRequest),,sí,Solicitud de alta de una institución en el nodo.,,
+RegistrationView,decision,decision,valor,,sí,"Quién resolvió (seudónimo de la cuenta), qué día y, si rechazó, el motivo.",,
+RegistrationView,directoryEntry,directoryEntry,valor,,sí,"Si se aprobó: entrada propuesta para el directorio, lista para agregarla, firmarla y que los testigos la cofirmen.",,
+RegistrationDecision,(valor),RegistrationDecision,valor,,sí,Aprobar con la huella confirmada o rechazar con un motivo.,,
 SignedAuthorityDirectory,directory,directory,objeto (AuthorityDirectory),,sí,Directorio de autoridades: cada versión la firma la operación y la cofirman m de n testigos.,,
 SignedAuthorityDirectory,digest,digest,cadena,patrón ^[0-9a-f]{64}$,sí,SHA-256 de la forma canónica de directory.,,3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9…
 SignedAuthorityDirectory,operatorSignature,operatorSignature,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Firma Ed25519 de la operación sobre ""sigilo/red/directory/operator/v1:"" + digest.",,7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg…

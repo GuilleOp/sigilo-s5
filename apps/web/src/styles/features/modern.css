@@ -364,6 +364,7 @@
   --role-investigation: #9a5b00;
   --role-supervision: #6b46c1;
   --role-substantiation: #a3324a;
+  --role-operation: #3f5a75;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -374,6 +375,7 @@
     --role-investigation: #ffc978;
     --role-supervision: #b9a2ff;
     --role-substantiation: #ff9fb0;
+    --role-operation: #a9c4e0;
   }
 }
 
@@ -384,6 +386,7 @@
   --role-investigation: #ffc978;
   --role-supervision: #b9a2ff;
   --role-substantiation: #ff9fb0;
+  --role-operation: #a9c4e0;
 }
 
 .profile-badge {
@@ -425,6 +428,10 @@
 
 .profile-badge--substantiation {
   --role: var(--role-substantiation);
+}
+
+.profile-badge--operation {
+  --role: var(--role-operation);
 }
 
 /* Recepción e investigación en la misma cuenta: el punto lleva los dos colores. */

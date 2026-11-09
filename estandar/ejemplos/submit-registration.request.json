@@ -1,0 +1,22 @@
+{
+  "institutionName": "Secretaría de la Contraloría Ficticia de Oaxaca",
+  "stateCode": "20",
+  "governmentLevel": "estatal",
+  "role": "investigating",
+  "laws": ["LGRA"],
+  "supervisorId": null,
+  "applicant": {
+    "fullName": "Persona Solicitante Ficticia",
+    "position": "Titular del área de quejas, denuncias e investigación",
+    "appointment": "Oficio SCF/001/2026 del 2 de enero de 2026"
+  },
+  "people": [
+    { "fullName": "Persona Ficticia Uno", "functions": ["intake", "investigation"] },
+    { "fullName": "Persona Ficticia Dos", "functions": ["substantiation"] }
+  ],
+  "padlock": {
+    "keyId": "f7bc219ff223a248",
+    "boxPublicKey": "NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA",
+    "signingPublicKey": "Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA"
+  }
+}

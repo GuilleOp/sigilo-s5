@@ -43,6 +43,13 @@ import {
 } from '../index.ts';
 import type { ApiErrorCode } from '../errors.ts';
 import { ApiErrorSchema } from '../errors.ts';
+import {
+  RegistrationDecisionSchema,
+  RegistrationListSchema,
+  RegistrationReceiptSchema,
+  RegistrationRequestSchema,
+  RegistrationViewSchema,
+} from '../registration.ts';
 import { HpkeEnvelopeSchema } from '../envelope.ts';
 import { IdentityBlockSchema, ReporterKeysSchema, ComplaintFactsSchema } from '../complaint.ts';
 import { ComplaintModeSchema, ComplaintStatusSchema, SignedReceiptSchema } from '../complaint.ts';
@@ -164,6 +171,11 @@ export const STANDARD_COMPONENTS = {
   RuleEffect: RuleEffectSchema,
   AuthorityFunction: AuthorityFunctionSchema,
   AccountId: AccountIdSchema,
+  RegistrationRequest: RegistrationRequestSchema,
+  RegistrationReceipt: RegistrationReceiptSchema,
+  RegistrationList: RegistrationListSchema,
+  RegistrationView: RegistrationViewSchema,
+  RegistrationDecision: RegistrationDecisionSchema,
 } as const satisfies Record<string, z.ZodType>;
 
 export type StandardComponentName = keyof typeof STANDARD_COMPONENTS;
@@ -176,6 +188,7 @@ export type StandardTag =
   | 'Autoridad'
   | 'Bitácora pública'
   | 'Datos abiertos'
+  | 'Alta de autoridades'
   | 'Llaves y retos';
 
 /** Descripción de cada sección, en el orden en que se muestran. */
@@ -204,6 +217,11 @@ export const STANDARD_TAGS: readonly { name: StandardTag; description: string }[
     description: 'Registro de solo agregar, encadenado y firmado, que cualquiera puede verificar.',
   },
   { name: 'Datos abiertos', description: 'Conteos agregados con redondeo y supresión.' },
+  {
+    name: 'Alta de autoridades',
+    description:
+      'Solicitud pública de alta de una institución con su candado (solo llaves públicas) y bandeja de la cuenta de operación del nodo, que aprueba con la huella confirmada por teléfono o rechaza con motivo.',
+  },
   {
     name: 'Llaves y retos',
     description: 'Llaves públicas del despliegue y retos de prueba de trabajo.',
@@ -264,6 +282,14 @@ const REQUEST_ID_PARAMETER: StandardParameter = {
   required: true,
   description: 'Identificador de la solicitud de apertura (16 bytes en hexadecimal).',
   schema: { type: 'string', pattern: '^[0-9a-f]{32}$' },
+};
+
+const REGISTRATION_ID_PARAMETER: StandardParameter = {
+  name: 'requestId',
+  in: 'path',
+  required: true,
+  description: 'Folio de la solicitud de alta.',
+  schema: { type: 'string', pattern: '^ALTA-[0-9A-F]{12}$' },
 };
 
 const PAGE_PARAMETERS: readonly StandardParameter[] = [
@@ -980,6 +1006,75 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
       },
     },
     errors: [],
+  },
+  {
+    operationId: 'submitRegistration',
+    method: 'post',
+    path: ROUTES.registrationRequests,
+    tag: 'Alta de autoridades',
+    summary: 'Solicitar el alta de una institución',
+    description:
+      'Recibe la institución, su competencia, quien solicita con su nombramiento, las personas que tendrán cuenta y el candado (llaves públicas X25519 y Ed25519 con su `keyId`). Rechaza campos desconocidos, cualquier llave privada y un candado inconsistente. Responde el folio y la huella del candado, que la institución leerá por teléfono.',
+    security: 'proofOfWork',
+    parameters: [],
+    requestBody: {
+      kind: 'json',
+      component: 'RegistrationRequest',
+      example: 'submit-registration.request',
+    },
+    success: {
+      status: 201,
+      description: 'Solicitud recibida.',
+      body: {
+        kind: 'json',
+        component: 'RegistrationReceipt',
+        example: 'submit-registration.response',
+      },
+    },
+    errors: [...JSON_ERRORS, 'proof_required'],
+  },
+  {
+    operationId: 'listRegistrations',
+    method: 'get',
+    path: ROUTES.operationRegistrations,
+    tag: 'Alta de autoridades',
+    summary: 'Solicitudes de alta del nodo',
+    description:
+      'Solo para la cuenta de operación del nodo, que nunca ve denuncias. Incluye, para las aprobadas, la entrada propuesta del directorio.',
+    security: 'authorityBearer',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Solicitudes de la más reciente a la más antigua.',
+      body: { kind: 'json', component: 'RegistrationList', example: 'list-registrations.response' },
+    },
+    errors: ['unauthorized', 'forbidden'],
+  },
+  {
+    operationId: 'decideRegistration',
+    method: 'post',
+    path: templated(ROUTES.operationRegistrationDecision, 'requestId'),
+    tag: 'Alta de autoridades',
+    summary: 'Aprobar o rechazar una solicitud de alta',
+    description:
+      'Aprobar exige la huella que la institución leyó por teléfono; si no coincide con la del candado responde `409` y no cambia nada. Rechazar exige motivo. Una solicitud resuelta no se vuelve a resolver. Firmar el directorio y crear las cuentas son pasos aparte.',
+    security: 'authorityBearer',
+    parameters: [REGISTRATION_ID_PARAMETER],
+    requestBody: {
+      kind: 'json',
+      component: 'RegistrationDecision',
+      example: 'decide-registration.request',
+    },
+    success: {
+      status: 200,
+      description: 'Solicitud resuelta.',
+      body: {
+        kind: 'json',
+        component: 'RegistrationView',
+        example: 'decide-registration.response',
+      },
+    },
+    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden', 'not_found', 'conflict'],
   },
 ];
 

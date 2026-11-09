@@ -34,6 +34,8 @@ tags:
     description: Registro de solo agregar, encadenado y firmado, que cualquiera puede verificar.
   - name: Datos abiertos
     description: Conteos agregados con redondeo y supresión.
+  - name: Alta de autoridades
+    description: Solicitud pública de alta de una institución con su candado (solo llaves públicas) y bandeja de la cuenta de operación del nodo, que aprueba con la huella confirmada por teléfono o rechaza con motivo.
   - name: Llaves y retos
     description: Llaves públicas del despliegue y retos de prueba de trabajo.
   - name: Red
@@ -108,6 +110,7 @@ paths:
             enum:
               - complaint
               - message
+              - registration
       responses:
         '200':
           description: Reto vigente.
@@ -3916,6 +3919,516 @@ paths:
                 error:
                   code: internal
                   message: Error interno del servidor.
+  /api/v1/registration/requests:
+    post:
+      operationId: submitRegistration
+      tags:
+        - Alta de autoridades
+      summary: Solicitar el alta de una institución
+      description: Recibe la institución, su competencia, quien solicita con su nombramiento, las personas que tendrán cuenta y el candado (llaves públicas X25519 y Ed25519 con su `keyId`). Rechaza campos desconocidos, cualquier llave privada y un candado inconsistente. Responde el folio y la huella del candado, que la institución leerá por teléfono.
+      security:
+        - proofOfWork: []
+      requestBody:
+        required: true
+        description: Cuerpo de la petición.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+            examples:
+              sintetico:
+                summary: Ejemplo sintético
+                description: También en `ejemplos/submit-registration.request.json`.
+                value:
+                  institutionName: Secretaría de la Contraloría Ficticia de Oaxaca
+                  stateCode: '20'
+                  governmentLevel: estatal
+                  role: investigating
+                  laws:
+                    - LGRA
+                  supervisorId: null
+                  applicant:
+                    fullName: Persona Solicitante Ficticia
+                    position: Titular del área de quejas, denuncias e investigación
+                    appointment: Oficio SCF/001/2026 del 2 de enero de 2026
+                  people:
+                    - fullName: Persona Ficticia Uno
+                      functions:
+                        - intake
+                        - investigation
+                    - fullName: Persona Ficticia Dos
+                      functions:
+                        - substantiation
+                  padlock:
+                    keyId: f7bc219ff223a248
+                    boxPublicKey: NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA
+                    signingPublicKey: Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA
+      responses:
+        '201':
+          description: Solicitud recibida.
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationReceipt'
+              examples:
+                sintetico:
+                  summary: Ejemplo sintético
+                  description: También en `ejemplos/submit-registration.response.json`.
+                  value:
+                    requestId: ALTA-3F2A9C01B7E4
+                    fingerprint: 3f2a 9c01 b7e4 55d0
+        '400':
+          description: '`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: bad_request
+                  message: La solicitud no es válida.
+        '413':
+          description: '`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: payload_too_large
+                  message: El contenido excede el tamaño permitido.
+        '415':
+          description: '`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: unsupported_media_type
+                  message: Tipo de contenido no admitido.
+        '428':
+          description: '`proof_required`: Falta la prueba de trabajo, no es válida, venció o ya se usó.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: proof_required
+                  message: Falta una prueba de trabajo válida y vigente.
+        '500':
+          description: '`internal`: Error interno, sin detalles.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: internal
+                  message: Error interno del servidor.
+  /api/v1/operation/registrations:
+    get:
+      operationId: listRegistrations
+      tags:
+        - Alta de autoridades
+      summary: Solicitudes de alta del nodo
+      description: Solo para la cuenta de operación del nodo, que nunca ve denuncias. Incluye, para las aprobadas, la entrada propuesta del directorio.
+      security:
+        - authorityBearer: []
+      responses:
+        '200':
+          description: Solicitudes de la más reciente a la más antigua.
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationList'
+              examples:
+                sintetico:
+                  summary: Ejemplo sintético
+                  description: También en `ejemplos/list-registrations.response.json`.
+                  value:
+                    nodeId: node.federal
+                    registrations:
+                      - requestId: ALTA-3F2A9C01B7E4
+                        receivedOn: '2026-11-09'
+                        status: approved
+                        request:
+                          institutionName: Secretaría de la Contraloría Ficticia de Oaxaca
+                          stateCode: '20'
+                          governmentLevel: estatal
+                          role: investigating
+                          laws:
+                            - LGRA
+                          supervisorId: null
+                          applicant:
+                            fullName: Persona Solicitante Ficticia
+                            position: Titular del área de quejas, denuncias e investigación
+                            appointment: Oficio SCF/001/2026 del 2 de enero de 2026
+                          people:
+                            - fullName: Persona Ficticia Uno
+                              functions:
+                                - intake
+                                - investigation
+                            - fullName: Persona Ficticia Dos
+                              functions:
+                                - substantiation
+                          padlock:
+                            keyId: f7bc219ff223a248
+                            boxPublicKey: NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA
+                            signingPublicKey: Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA
+                        decision:
+                          'on': '2026-11-10'
+                          accountId: acct-5f0c2a9d1e7b3c44
+                          reason: null
+                        directoryEntry:
+                          id: authority.secretaria-de-la-contraloria-ficticia-de-oaxaca
+                          name: Secretaría de la Contraloría Ficticia de Oaxaca
+                          nodeId: node.federal
+                          governmentLevel: estatal
+                          stateCode: '20'
+                          role: investigating
+                          competence:
+                            governmentLevels:
+                              - estatal
+                            stateCodes:
+                              - '20'
+                            entityIds: []
+                            laws:
+                              - LGRA
+                          keyId: f7bc219ff223a248
+                          boxPublicKey: NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA
+                          signingPublicKey: Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA
+                          supervisorId: null
+                          validFrom: '2026-11-10'
+                          validUntil: null
+        '401':
+          description: '`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+            WWW-Authenticate:
+              description: Siempre `Bearer`.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: unauthorized
+                  message: No autorizado.
+        '403':
+          description: '`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: forbidden
+                  message: Tu función no permite esta acción.
+        '500':
+          description: '`internal`: Error interno, sin detalles.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: internal
+                  message: Error interno del servidor.
+  /api/v1/operation/registrations/{requestId}/decision:
+    post:
+      operationId: decideRegistration
+      tags:
+        - Alta de autoridades
+      summary: Aprobar o rechazar una solicitud de alta
+      description: Aprobar exige la huella que la institución leyó por teléfono; si no coincide con la del candado responde `409` y no cambia nada. Rechazar exige motivo. Una solicitud resuelta no se vuelve a resolver. Firmar el directorio y crear las cuentas son pasos aparte.
+      security:
+        - authorityBearer: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          description: Folio de la solicitud de alta.
+          schema:
+            type: string
+            pattern: ^ALTA-[0-9A-F]{12}$
+      requestBody:
+        required: true
+        description: Cuerpo de la petición.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationDecision'
+            examples:
+              sintetico:
+                summary: Ejemplo sintético
+                description: También en `ejemplos/decide-registration.request.json`.
+                value:
+                  decision: approve
+                  fingerprint: 3f2a 9c01 b7e4 55d0
+      responses:
+        '200':
+          description: Solicitud resuelta.
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationView'
+              examples:
+                sintetico:
+                  summary: Ejemplo sintético
+                  description: También en `ejemplos/decide-registration.response.json`.
+                  value:
+                    requestId: ALTA-3F2A9C01B7E4
+                    receivedOn: '2026-11-09'
+                    status: approved
+                    request:
+                      institutionName: Secretaría de la Contraloría Ficticia de Oaxaca
+                      stateCode: '20'
+                      governmentLevel: estatal
+                      role: investigating
+                      laws:
+                        - LGRA
+                      supervisorId: null
+                      applicant:
+                        fullName: Persona Solicitante Ficticia
+                        position: Titular del área de quejas, denuncias e investigación
+                        appointment: Oficio SCF/001/2026 del 2 de enero de 2026
+                      people:
+                        - fullName: Persona Ficticia Uno
+                          functions:
+                            - intake
+                            - investigation
+                        - fullName: Persona Ficticia Dos
+                          functions:
+                            - substantiation
+                      padlock:
+                        keyId: f7bc219ff223a248
+                        boxPublicKey: NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA
+                        signingPublicKey: Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA
+                    decision:
+                      'on': '2026-11-10'
+                      accountId: acct-5f0c2a9d1e7b3c44
+                      reason: null
+                    directoryEntry:
+                      id: authority.secretaria-de-la-contraloria-ficticia-de-oaxaca
+                      name: Secretaría de la Contraloría Ficticia de Oaxaca
+                      nodeId: node.federal
+                      governmentLevel: estatal
+                      stateCode: '20'
+                      role: investigating
+                      competence:
+                        governmentLevels:
+                          - estatal
+                        stateCodes:
+                          - '20'
+                        entityIds: []
+                        laws:
+                          - LGRA
+                      keyId: f7bc219ff223a248
+                      boxPublicKey: NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA
+                      signingPublicKey: Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA
+                      supervisorId: null
+                      validFrom: '2026-11-10'
+                      validUntil: null
+        '400':
+          description: '`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: bad_request
+                  message: La solicitud no es válida.
+        '401':
+          description: '`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+            WWW-Authenticate:
+              description: Siempre `Bearer`.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: unauthorized
+                  message: No autorizado.
+        '403':
+          description: '`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: forbidden
+                  message: Tu función no permite esta acción.
+        '404':
+          description: '`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: not_found
+                  message: No encontrado.
+        '409':
+          description: '`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: conflict
+                  message: La acción no corresponde al estado actual del trámite.
+        '413':
+          description: '`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: payload_too_large
+                  message: El contenido excede el tamaño permitido.
+        '415':
+          description: '`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: unsupported_media_type
+                  message: Tipo de contenido no admitido.
+        '500':
+          description: '`internal`: Error interno, sin detalles.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: internal
+                  message: Error interno del servidor.
   /api/v1/red/directory:
     servers:
       - url: http://127.0.0.1:8790
@@ -7218,7 +7731,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuthorityFunction'
-          description: 'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan.'
+          description: 'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.'
           examples:
             - - investigation
             - - intake
@@ -8713,7 +9226,8 @@ components:
       enum:
         - complaint
         - message
-      description: 'Propósito del reto: complaint (una denuncia con sus pruebas) o message (un mensaje del buzón).'
+        - registration
+      description: 'Propósito del reto: complaint (una denuncia con sus pruebas), message (un mensaje del buzón) o registration (una solicitud de alta de autoridad).'
     ManagementState:
       type: string
       enum:
@@ -8902,13 +9416,284 @@ components:
         - investigation
         - supervision
         - substantiation
-      description: 'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).'
+        - operation
+      description: 'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta).'
     AccountId:
       type: string
       pattern: ^acct-[0-9a-f]{16}$
       description: Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.
       examples:
         - acct-5f0c2a9d1e7b3c44
+    RegistrationRequest:
+      type: object
+      properties:
+        institutionName:
+          type: string
+          minLength: 2
+          maxLength: 300
+          description: Nombre oficial de la institución.
+        stateCode:
+          anyOf:
+            - type: string
+              pattern: ^(?:\d{2}|state\.[a-z0-9]+(?:-[a-z0-9]+)*)$
+              description: 'Entidad federativa: clave INEGI de dos dígitos o clave `state.*` de una entidad sintética sin clave INEGI.'
+              examples:
+                - '22'
+            - type: 'null'
+          description: Entidad de la institución; null si es federal.
+        governmentLevel:
+          type: string
+          enum:
+            - federal
+            - estatal
+            - municipal
+          description: 'Orden de gobierno: federal, estatal o municipal.'
+        role:
+          type: string
+          enum:
+            - investigating
+            - supervisory
+            - prosecution
+          description: 'Papel: investigating (investiga faltas), supervisory (supervisa) o prosecution (fiscalía).'
+        laws:
+          minItems: 1
+          maxItems: 2
+          type: array
+          items:
+            type: string
+            enum:
+              - LGRA
+              - CPF
+          description: Leyes de las conductas que conoce.
+        supervisorId:
+          anyOf:
+            - type: string
+              pattern: ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$
+              description: Identificador estable de la autoridad.
+              examples:
+                - authority.oic-iffe
+            - type: 'null'
+          description: Autoridad supervisora en el directorio, si tiene.
+        applicant:
+          type: object
+          properties:
+            fullName:
+              type: string
+              minLength: 2
+              maxLength: 120
+              description: Nombre de quien solicita.
+            position:
+              type: string
+              minLength: 2
+              maxLength: 200
+              description: Cargo de quien solicita.
+            appointment:
+              type: string
+              minLength: 2
+              maxLength: 200
+              description: Número y fecha del oficio de nombramiento.
+          required:
+            - fullName
+            - position
+            - appointment
+          additionalProperties: false
+          description: Quien solicita el alta, con su cargo y nombramiento.
+        people:
+          minItems: 1
+          maxItems: 12
+          type: array
+          items:
+            type: object
+            properties:
+              fullName:
+                type: string
+                minLength: 2
+                maxLength: 120
+                description: Nombre de la persona que tendrá cuenta.
+              functions:
+                minItems: 1
+                maxItems: 2
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuthorityFunction'
+                description: 'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.'
+                examples:
+                  - - investigation
+                  - - intake
+                    - investigation
+            required:
+              - fullName
+              - functions
+            additionalProperties: false
+            description: Persona de la institución que tendrá cuenta en el panel.
+          description: Personas de la institución que tendrán cuenta.
+        padlock:
+          type: object
+          properties:
+            keyId:
+              type: string
+              pattern: ^[0-9a-f]{16}$
+              description: 'Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.'
+              examples:
+                - 3f9a1c0b7d2e4a68
+            boxPublicKey:
+              type: string
+              maxLength: 64
+              pattern: ^[A-Za-z0-9_-]+$
+              description: Llave pública X25519 de la autoridad.
+            signingPublicKey:
+              type: string
+              maxLength: 64
+              pattern: ^[A-Za-z0-9_-]+$
+              description: Llave pública Ed25519 de la autoridad.
+          required:
+            - keyId
+            - boxPublicKey
+            - signingPublicKey
+          additionalProperties: false
+          description: 'Candado de la autoridad: solo sus llaves públicas, nunca la privada.'
+      required:
+        - institutionName
+        - stateCode
+        - governmentLevel
+        - role
+        - laws
+        - supervisorId
+        - applicant
+        - people
+        - padlock
+      additionalProperties: false
+      description: Solicitud de alta de una institución en el nodo.
+    RegistrationReceipt:
+      type: object
+      properties:
+        requestId:
+          type: string
+          pattern: ^ALTA-[0-9A-F]{12}$
+          description: Folio de la solicitud de alta.
+          examples:
+            - ALTA-3F2A9C01B7E4
+        fingerprint:
+          type: string
+          pattern: ^[0-9a-f]{4}( [0-9a-f]{4}){3}$
+          description: 'Huella del candado: 16 caracteres hexadecimales del SHA-256 de las dos llaves públicas, en grupos de 4.'
+          examples:
+            - 3f2a 9c01 b7e4 55d0
+      required:
+        - requestId
+        - fingerprint
+      additionalProperties: false
+      description: Folio de la solicitud y huella del candado recibido.
+    RegistrationList:
+      type: object
+      properties:
+        nodeId:
+          description: Nodo de este servidor, o null sin red.
+          type:
+            - string
+            - 'null'
+        registrations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistrationView'
+          description: Solicitudes de la más reciente a la más antigua.
+      required:
+        - nodeId
+        - registrations
+      additionalProperties: false
+    RegistrationView:
+      type: object
+      properties:
+        requestId:
+          type: string
+          pattern: ^ALTA-[0-9A-F]{12}$
+          description: Folio de la solicitud de alta.
+          examples:
+            - ALTA-3F2A9C01B7E4
+        receivedOn:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Fecha redondeada al día, en UTC (AAAA-MM-DD).
+          examples:
+            - '2026-11-05'
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+          description: 'Estado: pending (pendiente), approved (aprobada) o rejected (rechazada).'
+        request:
+          $ref: '#/components/schemas/RegistrationRequest'
+        decision:
+          anyOf:
+            - type: object
+              properties:
+                'on':
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                  description: Fecha redondeada al día, en UTC (AAAA-MM-DD).
+                  examples:
+                    - '2026-11-05'
+                accountId:
+                  $ref: '#/components/schemas/AccountId'
+                reason:
+                  anyOf:
+                    - type: string
+                      maxLength: 500
+                    - type: 'null'
+              required:
+                - 'on'
+                - accountId
+                - reason
+              additionalProperties: false
+            - type: 'null'
+          description: Quién resolvió (seudónimo de la cuenta), qué día y, si rechazó, el motivo.
+        directoryEntry:
+          anyOf:
+            - $ref: '#/components/schemas/DirectoryAuthority'
+            - type: 'null'
+          description: 'Si se aprobó: entrada propuesta para el directorio, lista para agregarla, firmarla y que los testigos la cofirmen.'
+      required:
+        - requestId
+        - receivedOn
+        - status
+        - request
+        - decision
+        - directoryEntry
+      additionalProperties: false
+      description: Solicitud de alta con su estado y, si ya se resolvió, quién y cuándo.
+    RegistrationDecision:
+      oneOf:
+        - type: object
+          properties:
+            decision:
+              type: string
+              const: approve
+            fingerprint:
+              type: string
+              pattern: ^[0-9a-f]{4}( [0-9a-f]{4}){3}$
+              description: 'Huella del candado: 16 caracteres hexadecimales del SHA-256 de las dos llaves públicas, en grupos de 4.'
+              examples:
+                - 3f2a 9c01 b7e4 55d0
+          required:
+            - decision
+            - fingerprint
+          additionalProperties: false
+        - type: object
+          properties:
+            decision:
+              type: string
+              const: reject
+            reason:
+              type: string
+              minLength: 5
+              maxLength: 500
+          required:
+            - decision
+            - reason
+          additionalProperties: false
+      description: Aprobar con la huella confirmada o rechazar con un motivo.
     SignedAuthorityDirectory:
       type: object
       properties:

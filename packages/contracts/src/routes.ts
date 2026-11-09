@@ -60,6 +60,13 @@ export const ROUTES = {
    */
   ledgerEvents: `${API_PREFIX}/ledger/events`,
   openDataCsv: `${API_PREFIX}/open-data/complaints.csv`,
+  /** `POST` (público, con prueba de trabajo): solicitud de alta de una autoridad en el nodo. */
+  registrationRequests: `${API_PREFIX}/registration/requests`,
+  /** `GET`: solicitudes de alta del nodo, para la cuenta de operación. */
+  operationRegistrations: `${API_PREFIX}/operation/registrations`,
+  /** `POST`: aprueba (con la huella confirmada por teléfono) o rechaza una solicitud de alta. */
+  operationRegistrationDecision: (requestId: string) =>
+    `${API_PREFIX}/operation/registrations/${requestId}/decision`,
 } as const;
 
 /** Umbral de supresión de celdas pequeñas en datos abiertos (conteo real menor que este valor). */

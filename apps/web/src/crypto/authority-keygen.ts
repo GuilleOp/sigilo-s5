@@ -6,9 +6,12 @@ import {
   generateBoxKeyPair,
   generateSigningKeyPair,
   keyIdFor,
-  sha256Hex,
+  padlockFingerprint,
   toBase64Url,
 } from '@sigilo/core';
+
+// La huella vive en @sigilo/core porque el servidor y la bandeja de operación la recalculan.
+export { groupsOfFour, padlockFingerprint } from '@sigilo/core';
 
 /** Parte pública que se agrega a la entrada de la autoridad en el directorio firmado. */
 export interface AuthorityPadlock {
@@ -23,24 +26,6 @@ export interface GeneratedAuthorityKeys {
   padlock: AuthorityPadlock;
   /** Huella corta legible del candado, para confirmarlo por teléfono. */
   fingerprint: string;
-}
-
-/**
- * Huella del candado: los primeros 16 caracteres hexadecimales del SHA-256 de la llave pública de
- * cifrado seguida de la de firma, en grupos de 4 (p. ej. `3f2a 9c01 b7e4 55d0`).
- * Seguridad: cubre las dos llaves públicas, no solo el `keyId` (que es solo de la de cifrado); así,
- * un candado al que le cambiaron la llave de firma en el camino no tiene la misma huella.
- */
-export function padlockFingerprint(boxPublicKey: Uint8Array, signingPublicKey: Uint8Array): string {
-  const joined = new Uint8Array(boxPublicKey.length + signingPublicKey.length);
-  joined.set(boxPublicKey, 0);
-  joined.set(signingPublicKey, boxPublicKey.length);
-  return groupsOfFour(sha256Hex(joined).slice(0, 16));
-}
-
-/** Separa un texto en grupos de 4 caracteres para leerlo en voz alta. */
-export function groupsOfFour(text: string): string {
-  return (text.match(/.{1,4}/g) ?? []).join(' ');
 }
 
 /**

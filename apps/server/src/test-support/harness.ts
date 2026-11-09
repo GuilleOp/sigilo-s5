@@ -126,6 +126,13 @@ export const TEST_ACCOUNTS = {
     authorityId: TEST_AUTHORITIES.oic,
     functions: ['substantiation'],
   },
+  /** Operación del nodo: solo resuelve solicitudes de alta; nunca ve denuncias. */
+  nodeOperation: {
+    accountId: 'acct-000000000000000c',
+    username: 'operacion.nodo',
+    authorityId: TEST_AUTHORITIES.inbox,
+    functions: ['operation'],
+  },
 } as const;
 
 /** Nombre de una cuenta sintética de prueba. */

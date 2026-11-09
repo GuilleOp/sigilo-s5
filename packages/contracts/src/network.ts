@@ -96,7 +96,7 @@ export const NetworkStateKeySchema = z
     examples: ['22'],
   });
 
-const GovernmentLevelSchema = z
+export const GovernmentLevelSchema = z
   .enum(['federal', 'estatal', 'municipal'])
   .meta({ description: 'Orden de gobierno: federal, estatal o municipal.' });
 

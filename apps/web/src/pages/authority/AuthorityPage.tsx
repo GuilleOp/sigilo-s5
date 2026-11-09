@@ -29,6 +29,7 @@ const LIST_TITLES: Readonly<Record<AuthorityRole, string>> = {
   intake_investigation: 'Denuncias asignadas',
   substantiation: 'Expedientes en substanciación',
   supervision: 'Denuncias de tu institución',
+  operation: 'Solicitudes de alta',
 };
 
 /** Panel de autoridad. */

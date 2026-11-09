@@ -785,6 +785,24 @@ BEGIN
 END;
 `;
 
+/**
+ * Migración 14: solicitudes de alta de autoridades (pasos 1 y 3 del protocolo de alta). La
+ * solicitud se guarda como JSON validado; la decisión registra el seudónimo de la cuenta de
+ * operación, el día y, al rechazar, el motivo.
+ */
+const AUTHORITY_REGISTRATIONS = `
+CREATE TABLE authority_registrations (
+  request_id TEXT PRIMARY KEY,
+  received_on TEXT NOT NULL,
+  request_json TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'rejected')),
+  decided_on TEXT,
+  decided_by TEXT,
+  decision_reason TEXT
+) WITHOUT ROWID;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -800,6 +818,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 11, sql: TRANSFER_NOTE },
   { version: 12, sql: CORROBORATION_CONFIRMATION },
   { version: 13, sql: CORROBORATION_DIGEST },
+  { version: 14, sql: AUTHORITY_REGISTRATIONS },
 ];
 
 /** Versión más reciente del esquema. */

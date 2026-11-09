@@ -81,6 +81,10 @@ const AUTHORITY_INTRO: Readonly<Record<AuthorityRole, TourStep>> = {
     title: 'Tu función: supervisión',
     text: 'Recibes las denuncias que una autoridad no atendió a tiempo, con los hechos y nunca con el nombre.',
   },
+  operation: {
+    title: 'Tu función: operación del nodo',
+    text: 'Revisas las solicitudes de alta de las instituciones. No ves denuncias.',
+  },
 };
 
 const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
@@ -103,6 +107,10 @@ const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
   supervision: {
     title: 'Lo que puedes hacer',
     text: 'Abres la segunda llave para leer los hechos y das seguimiento sin depender de la autoridad que se tardó.',
+  },
+  operation: {
+    title: 'Confirma la huella por teléfono',
+    text: 'Llama a la institución y pide que te lea su huella. Solo si coincide con la que calcula tu navegador puedes aprobar.',
   },
 };
 

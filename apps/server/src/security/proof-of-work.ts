@@ -57,6 +57,7 @@ export const POW_LOAD_WINDOW_MS = 60 * 60 * 1000;
 export const DEFAULT_POW_LOAD_THRESHOLDS: Readonly<Record<PowPurpose, number>> = {
   complaint: 60,
   message: 300,
+  registration: 20,
 };
 
 /**
@@ -194,7 +195,7 @@ interface SpentChallenge {
 }
 
 function purposeOf(use: PowUse): PowPurpose {
-  return use === 'message' ? 'message' : 'complaint';
+  return use === 'evidence' ? 'complaint' : use;
 }
 
 function canUse(entry: SpentChallenge | undefined, use: PowUse): boolean {
@@ -232,6 +233,7 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
   const load: Record<PowPurpose, SlidingCounter> = {
     complaint: createSlidingCounter(loadWindowMs, now),
     message: createSlidingCounter(loadWindowMs, now),
+    registration: createSlidingCounter(loadWindowMs, now),
   };
   const spent = new Map<string, SpentChallenge>();
   let lastSweepAt = Number.NEGATIVE_INFINITY;

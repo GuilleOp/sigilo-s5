@@ -36,13 +36,15 @@ export type AccountId = z.infer<typeof AccountIdSchema>;
  *   persona que investiga, así que no se combina con ninguna otra función; tampoco turna ni abre
  *   identidades.
  * - `supervision` aprueba aperturas, ve los cierres y recibe los escalamientos.
+ * - `operation` (operación del nodo) solo revisa y resuelve las solicitudes de alta de
+ *   autoridades: no ve denuncias, no turna ni abre identidades, y no se combina con otra función.
  * Quien solo turna nunca puede abrir identidades.
  */
 export const AuthorityFunctionSchema = z
-  .enum(['intake', 'investigation', 'supervision', 'substantiation'])
+  .enum(['intake', 'investigation', 'supervision', 'substantiation', 'operation'])
   .meta({
     description:
-      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión) o substantiation (substanciación y resolución).',
+      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta).',
   });
 export type AuthorityFunction = z.infer<typeof AuthorityFunctionSchema>;
 
@@ -57,6 +59,7 @@ export const AUTHORITY_FUNCTION_SETS: readonly (readonly AuthorityFunction[])[] 
   ['investigation'],
   ['supervision'],
   ['substantiation'],
+  ['operation'],
   ['intake', 'investigation'],
 ];
 
@@ -76,7 +79,7 @@ export const AuthorityFunctionsSchema = z
   .refine(isAllowedFunctionSet, 'Combinación de funciones inválida')
   .meta({
     description:
-      'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation y supervision nunca se combinan.',
+      'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.',
     examples: [['investigation'], ['intake', 'investigation']],
   });
 

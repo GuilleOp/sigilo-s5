@@ -5,11 +5,11 @@ import { z } from 'zod';
  * Escritura que protege un reto; un reto de un propósito no sirve para otro. `complaint`: una
  * denuncia junto con sus pruebas (el mismo reto resuelto sirve para hasta `MAX_EVIDENCE_ITEMS`
  * subidas de pruebas y después para el envío de la denuncia). `message`: respuesta de la persona
- * denunciante por el buzón.
+ * denunciante por el buzón. `registration`: una solicitud de alta de autoridad.
  */
-export const PowPurposeSchema = z.enum(['complaint', 'message']).meta({
+export const PowPurposeSchema = z.enum(['complaint', 'message', 'registration']).meta({
   description:
-    'Propósito del reto: complaint (una denuncia con sus pruebas) o message (un mensaje del buzón).',
+    'Propósito del reto: complaint (una denuncia con sus pruebas), message (un mensaje del buzón) o registration (una solicitud de alta de autoridad).',
 });
 export type PowPurpose = z.infer<typeof PowPurposeSchema>;
 

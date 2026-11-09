@@ -22,6 +22,6 @@ describe('PowChallengeSchema', () => {
   });
 
   it('solo admite los propósitos de las escrituras protegidas', () => {
-    expect(PowPurposeSchema.options).toEqual(['complaint', 'message']);
+    expect(PowPurposeSchema.options).toEqual(['complaint', 'message', 'registration']);
   });
 });

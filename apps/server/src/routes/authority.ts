@@ -122,6 +122,12 @@ function serveEvidence(ctx: AppContext, c: Context): Response {
  */
 export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   app.use(`${API_PREFIX}/authority/*`, requireAuthoritySession(ctx));
+  // Seguridad: la cuenta de operación del nodo solo resuelve solicitudes de alta; nunca ve
+  // denuncias, autoridades ni nada del panel.
+  app.use(`${API_PREFIX}/authority/*`, async (c, next) => {
+    requireFunction(ctx, c, ['intake', 'investigation', 'supervision', 'substantiation']);
+    await next();
+  });
 
   app.get(ROUTES.authorityAuthorities, (c) => c.json(ctx.authorities.listAuthorities()));
 

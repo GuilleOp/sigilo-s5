@@ -16,6 +16,7 @@ import { registerLedgerRoutes } from './routes/ledger.ts';
 import { registerNetworkRoutes } from './routes/network.ts';
 import { registerOpenDataRoutes } from './routes/open-data.ts';
 import { registerPowRoutes } from './routes/pow.ts';
+import { registerRegistrationRoutes } from './routes/registration.ts';
 import { registerTrackingRoutes } from './routes/tracking.ts';
 import { isApiPath, securityHeaders } from './security/headers.ts';
 
@@ -76,6 +77,7 @@ export function createAppFromContext(ctx: AppContext): Hono {
   registerTrackingRoutes(app, ctx);
   registerAuthRoutes(app, ctx);
   registerAuthorityRoutes(app, ctx);
+  registerRegistrationRoutes(app, ctx);
   registerLedgerRoutes(app, ctx);
   registerOpenDataRoutes(app, ctx);
   registerNetworkRoutes(app, ctx);
