@@ -1,5 +1,5 @@
 // Punto de entrada del enrutador: lee la configuración y sus archivos, verifica el directorio,
-// abre la base, programa la recolección de cabezas y escucha.
+// abre la base, programa la recolección de cabezas y el corte nacional de datos abiertos, y escucha.
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
 import type { DirectoryNode } from '@sigilo/contracts';
@@ -7,10 +7,11 @@ import { toDayDate, toHourDate } from '@sigilo/core';
 import { checkNodeHistory } from '@sigilo/red';
 import { createRouterApp } from './app.ts';
 import { collectNodeHeads } from './collector.ts';
-import { loadRelaySecrets, loadRouterConfig, loadRouterFiles } from './config.ts';
+import { loadRelaySecrets, loadRouterConfig, loadRouterFiles, openDataClock } from './config.ts';
 import { openRouterDatabase } from './database.ts';
 import { loadDirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
+import { createOpenDataAggregator } from './open-data-aggregator.ts';
 import { createRelayService } from './relay-service.ts';
 
 function start(): void {
@@ -36,10 +37,18 @@ function start(): void {
     fetch: doFetch,
     relaySecret: (node) => relaySecrets.get(node.id) ?? null,
   });
+  const openData = createOpenDataAggregator({
+    directory: directory.directory,
+    national,
+    nodeUrl,
+    fetch: doFetch,
+    now: openDataClock(process.env),
+  });
   const app = createRouterApp({
     directory,
     national,
     relay,
+    openData,
     now,
     hstsMaxAgeSeconds: config.hstsMaxAgeSeconds,
   });
@@ -49,19 +58,30 @@ function start(): void {
     if (isCollecting) return;
     isCollecting = true;
     try {
-      const nodes = await collectNodeHeads({
-        national,
-        directory: directory.directory,
-        nodeUrl,
-        fetch: doFetch,
-        today,
-      });
+      let nodes: Awaited<ReturnType<typeof collectNodeHeads>> | null = null;
+      try {
+        nodes = await collectNodeHeads({
+          national,
+          directory: directory.directory,
+          nodeUrl,
+          fetch: doFetch,
+          today,
+        });
+      } catch {
+        console.error('No se pudo completar la recolección de cabezas.');
+      }
+      // Después de las cabezas, para que el corte cite la cabeza más reciente de cada nodo.
+      let openDataNodes: Record<string, string> | null = null;
+      try {
+        const cut = await openData.run();
+        openDataNodes = Object.fromEntries(cut.nodes.map((node) => [node.nodeId, node.status]));
+      } catch {
+        console.error('No se pudo completar el corte nacional de datos abiertos.');
+      }
       // Seguridad: una línea agregada por vuelta, sin destinos, IP ni contenidos.
       process.stdout.write(
-        `${JSON.stringify({ hour: toHourDate(now()), relay: relay.drainCounters(), nodes })}\n`,
+        `${JSON.stringify({ hour: toHourDate(now()), relay: relay.drainCounters(), nodes, openData: openDataNodes })}\n`,
       );
-    } catch {
-      console.error('No se pudo completar la recolección de cabezas.');
     } finally {
       isCollecting = false;
     }

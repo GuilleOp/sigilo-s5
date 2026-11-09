@@ -17,6 +17,11 @@ const PORTS = [8781, 8782, 8790, 8791, 8792];
 /** Lo que se comprueba por HTTP después de que Docker reporta los servicios sanos. */
 const ENDPOINTS = [
   { name: 'Enrutador (directorio firmado)', url: 'http://127.0.0.1:8790/api/v1/red/directory' },
+  // El enrutador hace el primer corte al arrancar y lo rehace en cada vuelta (cada minuto).
+  {
+    name: 'Enrutador (corte nacional de datos abiertos)',
+    url: 'http://127.0.0.1:8790/api/v1/red/national/open-data',
+  },
   { name: 'Nodo Querétaro (web)', url: 'http://127.0.0.1:8781/' },
   { name: 'Nodo Querétaro (API)', url: 'http://127.0.0.1:8781/api/v1/keys' },
   { name: 'Nodo Federal (web)', url: 'http://127.0.0.1:8782/' },
@@ -298,6 +303,7 @@ async function main(): Promise<void> {
   say('  Cuentas del panel:    .red-demo/nodos/<nodo>/credenciales.json');
   say('  Llave del panel:      .red-demo/nodos/<nodo>/data/authority-demo-key.json');
   say('  Folios y recibos:     .red-demo/semilla.json');
+  say('  Corte nacional:       http://127.0.0.1:8790/api/v1/red/national/open-data (cada minuto)');
   say('  Guion: docs/demo.md. Para bajarla y limpiar: npm run demo:apagar');
 }
 

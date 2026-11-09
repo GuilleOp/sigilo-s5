@@ -32,11 +32,12 @@ describe('conformidad con el estándar', () => {
       ...STANDARD_OPERATIONS,
       ...NETWORK_OPERATIONS.filter((operation) => operation.servedBy === 'node'),
     ];
-    // Copias del mismo origen para la web (directorio, enrutador y evaluador): son operaciones del
+    // Copias del mismo origen para la web (directorio, enrutador, corte nacional y evaluador): son operaciones del
     // estándar que sirven otros servicios; el nodo solo las pasa, sin cambiarlas.
     const sameOriginPassThroughs = [
       `GET ${NETWORK_ROUTES.directory}`,
       `POST ${NETWORK_ROUTES.relay}`,
+      `GET ${NETWORK_ROUTES.nationalOpenData}`,
       `GET ${CORROBORATION_ROUTES.evaluatorChallenge}`,
       `POST ${CORROBORATION_ROUTES.evaluations}`,
     ];

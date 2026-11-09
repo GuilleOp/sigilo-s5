@@ -59,6 +59,8 @@ export interface NationalLedgerService {
     head: SignedLedgerHead,
     today: string,
   ): Promise<NodeHeadAcceptance>;
+  /** Última cabeza aceptada del nodo y la entrada nacional que la contiene, o `null`. */
+  latestNodeHead(nodeId: string): { head: SignedLedgerHead; entrySeq: number } | null;
   /** Rechazos de cabezas de nodo registrados, del más reciente al más antiguo. */
   rejections(limit: number): { nodeId: string; day: string; reason: string }[];
   /** Emite una cabeza nacional nueva si hay entradas posteriores a la última; si no, `null`. */
@@ -216,6 +218,16 @@ export function createNationalLedgerService(deps: NationalLedgerDeps): NationalL
         ).run(node.id, entry.seq, JSON.stringify(parsed));
         return { nodeId: node.id, status: 'recorded', entrySeq: entry.seq };
       });
+    },
+    latestNodeHead(nodeId) {
+      const row = db
+        .prepare('SELECT entry_seq, head FROM latest_node_heads WHERE node_id = ?')
+        .get(nodeId);
+      if (row === undefined) return null;
+      return {
+        head: SignedLedgerHeadSchema.parse(JSON.parse(readText(row, 'head'))),
+        entrySeq: readInteger(row, 'entry_seq'),
+      };
     },
     rejections(limit) {
       return db

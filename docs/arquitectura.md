@@ -236,7 +236,7 @@ sin cambiar la API v1 del nodo:
 | Pieza                 | Ubicación                    | Responsabilidad                                                                                         |
 | --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Red (funciones puras) | `packages/red`               | Directorio firmado y cofirmado, autoridad competente, sobres de red, bitácora nacional, cliente de nodo |
-| Enrutador ciego       | `apps/enrutador`             | Publica el directorio, reenvía sobres opacos, lleva la bitácora nacional                                |
+| Enrutador ciego       | `apps/enrutador`             | Publica el directorio, reenvía sobres opacos, lleva la bitácora nacional y el corte de datos abiertos   |
 | Testigos              | `apps/enrutador/src/witness` | Verifican que la bitácora nacional solo creció y cofirman su cabeza (m de n)                            |
 
 ```mermaid
@@ -277,6 +277,28 @@ flowchart LR
   firma la operación y vale con m cofirmas; cada testigo cofirma solo después de recalcular el
   tramo desde su última cofirma. `GET /api/v1/red/national/inclusion` entrega la prueba de que una
   cabeza de nodo quedó incluida, que el navegador verifica con `verifyNodeHeadInclusion`.
+- **Corte nacional de datos abiertos (Bases de la PDN, arts. 60 y 61).** Igual que en el S1, donde
+  cada entidad publica y la SESNA consulta por API, aquí **la SESNA consulta números y pruebas,
+  nunca denuncias**. En cada vuelta el enrutador descarga el CSV público de cada nodo del
+  directorio (`GET /api/v1/open-data/complaints.csv`, el mismo que cualquiera puede bajar), lo
+  valida y descarta completo el que no cumpla: encabezado exacto, claves de los catálogos, solo
+  meses anteriores al mes en curso, conteos múltiplos de 5 y de al menos 5, sin celdas repetidas y
+  con su fila de suprimidas. Suma por entidad, conducta, mes y estatus, vuelve a aplicar la celda
+  mínima después de sumar y publica el corte en `GET /api/v1/red/national/open-data` (JSON) y
+  `GET /api/v1/red/national/open-data.csv`. Un nodo que no responde queda `unreachable` («sin
+  datos de ese nodo en este corte») y el corte se publica igual. La web lo lee por el paso del
+  mismo origen del nodo y el observatorio lo muestra; sin red, el observatorio usa la línea base
+  sintética rotulada «Datos de ejemplo».
+  - **Qué se verifica:** que cada CSV cumple las reglas de publicación (un nodo que publica un
+    mes abierto o una celda pequeña no entra al corte) y que la suma es reproducible: cualquiera
+    puede rehacerla con los CSV públicos de los nodos.
+  - **Qué no se verifica:** que los conteos correspondan a las denuncias reales del nodo. El CSV
+    no está firmado y la bitácora del nodo no contiene conteos. Cada nodo del corte lleva la cabeza
+    firmada de su bitácora vigente en la bitácora nacional solo como referencia de integridad del
+    momento del corte, no como prueba de los números. El corte tampoco lo firma la operación: el
+    nodo que lo pasa a la web podría alterarlo, y se compara contra el del enrutador.
+  - El reloj del corte es el reloj real; en la demostración, con `SIGILO_ROUTER_CLOCK_FILE`, es el
+    reloj simulado de los nodos, para que «mes cerrado» signifique lo mismo en ambos lados.
 - **El nodo en la red.** El servidor de referencia monta el buzón de red, se registra ante el
   enrutador (acepta sobres), publica su cabeza después de cada cierre y, si el directorio lo nombra
   testigo, cofirma la cabeza nacional. Aloja varias autoridades con sus llaves del directorio

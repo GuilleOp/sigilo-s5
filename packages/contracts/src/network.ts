@@ -1,10 +1,18 @@
 // Red federada «un S5, muchas llaves» (ADR 0005): directorio de autoridades firmado por la operación
 // y cofirmado por testigos m de n, enrutador ciego, registro de nodos y bitácora nacional.
 import { z } from 'zod';
+import { ComplaintStatusSchema, OffenseCodeSchema, StateCodeSchema } from './complaint.ts';
 import { DirectoryCorroborationSchema } from './corroboration-key.ts';
 import { HpkeEnvelopeSchema } from './envelope.ts';
 import { SignedLedgerHeadSchema } from './ledger.ts';
-import { Base64UrlSchema, DayDateSchema, KeyIdSchema, Sha256HexSchema } from './primitives.ts';
+import {
+  Base64UrlSchema,
+  DayDateSchema,
+  HourDateSchema,
+  KeyIdSchema,
+  MonthPeriodSchema,
+  Sha256HexSchema,
+} from './primitives.ts';
 
 /** Prefijo de las rutas de la red (enrutador y buzón de red de cada nodo). */
 export const NETWORK_API_PREFIX = '/api/v1/red';
@@ -29,6 +37,10 @@ export const NETWORK_ROUTES = {
   nationalEntries: `${NETWORK_API_PREFIX}/national/entries`,
   /** `GET ?nodeId=&seq=&hash=`: prueba de que una cabeza de nodo está en la bitácora nacional. */
   nationalInclusion: `${NETWORK_API_PREFIX}/national/inclusion`,
+  /** `GET`: último corte nacional de datos abiertos (suma de los CSV públicos de los nodos). */
+  nationalOpenData: `${NETWORK_API_PREFIX}/national/open-data`,
+  /** `GET`: el mismo corte en CSV, con las columnas del CSV de cada nodo. */
+  nationalOpenDataCsv: `${NETWORK_API_PREFIX}/national/open-data.csv`,
   /** `POST` en el nodo: recibe del enrutador un sobre de red y responde con un sobre de vuelta. */
   nodeInbox: `${NETWORK_API_PREFIX}/inbox`,
 } as const;
@@ -600,3 +612,99 @@ export const NationalInclusionProofSchema = z
       'Prueba de que la cabeza de un nodo está en la bitácora nacional: la entrada, el tramo hasta la cabeza y la cabeza cofirmada.',
   });
 export type NationalInclusionProof = z.infer<typeof NationalInclusionProofSchema>;
+
+export const NationalOpenDataCellSchema = z
+  .object({
+    stateCode: StateCodeSchema,
+    offenseCode: OffenseCodeSchema,
+    month: MonthPeriodSchema.meta({ description: 'Mes de recepción (AAAA-MM), ya cerrado.' }),
+    status: ComplaintStatusSchema,
+    count: z.number().int().min(1).meta({
+      description:
+        'Suma de los conteos publicados por los nodos (ya redondeados): múltiplo del redondeo y al menos la celda mínima.',
+    }),
+  })
+  .strict()
+  .meta({ description: 'Celda del corte nacional: entidad, conducta, mes y estatus.' });
+export type NationalOpenDataCell = z.infer<typeof NationalOpenDataCellSchema>;
+
+/** Por qué el agregador descartó el CSV de un nodo en un corte. */
+export const NATIONAL_OPEN_DATA_REJECTIONS = [
+  'too-large',
+  'header',
+  'row',
+  'open-month',
+  'rounding',
+  'min-cell',
+  'duplicate',
+  'suppressed-row',
+] as const;
+
+export const NationalOpenDataNodeSchema = z
+  .object({
+    nodeId: NodeIdSchema,
+    name: z.string().min(1).max(200).meta({ description: 'Nombre del nodo en el directorio.' }),
+    status: z.enum(['included', 'unreachable', 'rejected']).meta({
+      description:
+        'included: su CSV se sumó; unreachable: no respondió (sin datos de ese nodo en este corte); rejected: su CSV no cumplió las reglas y no se sumó.',
+    }),
+    rejection: z.enum(NATIONAL_OPEN_DATA_REJECTIONS).nullable().meta({
+      description:
+        'Regla que no cumplió el CSV: too-large, header, row, open-month (mes no cerrado), rounding, min-cell, duplicate o suppressed-row; null si no se rechazó.',
+    }),
+    cells: z
+      .number()
+      .int()
+      .nonnegative()
+      .meta({ description: 'Filas publicadas que aportó el nodo (0 si no se sumó).' }),
+    total: z.number().int().nonnegative().meta({
+      description: 'Denuncias que aportó el nodo: sus filas más su fila de suprimidas.',
+    }),
+    ledgerHead: SignedLedgerHeadSchema.nullable().meta({
+      description:
+        'Cabeza firmada de la bitácora del nodo vigente en la bitácora nacional al hacer el corte, como referencia de integridad; null si aún no hay. No prueba los conteos.',
+    }),
+    nationalEntrySeq: z.number().int().nonnegative().nullable().meta({
+      description: 'Entrada de la bitácora nacional que contiene esa cabeza, o null.',
+    }),
+  })
+  .strict()
+  .meta({ description: 'Participación de un nodo en el corte nacional.' });
+export type NationalOpenDataNode = z.infer<typeof NationalOpenDataNodeSchema>;
+
+export const NationalOpenDataSchema = z
+  .object({
+    v: z.literal(1).meta({ description: 'Versión del formato.' }),
+    cutAt: HourDateSchema.meta({ description: 'Hora del corte (UTC).' }),
+    closedBefore: MonthPeriodSchema.meta({
+      description:
+        'Mes en curso al hacer el corte: solo se aceptan meses anteriores (cerrados y congelados en cada nodo).',
+    }),
+    directorySerial: z
+      .number()
+      .int()
+      .min(1)
+      .meta({ description: 'Versión del directorio con la que se eligieron los nodos.' }),
+    minCell: z
+      .number()
+      .int()
+      .min(1)
+      .meta({ description: 'Celda mínima, aplicada en cada nodo y otra vez después de sumar.' }),
+    rounding: z.number().int().min(1).meta({ description: 'Múltiplo de los conteos publicados.' }),
+    nodes: z.array(NationalOpenDataNodeSchema).meta({
+      description: 'Todos los nodos del directorio, sumados o no, en el orden del directorio.',
+    }),
+    cells: z.array(NationalOpenDataCellSchema).meta({
+      description: 'Celdas nacionales ordenadas por mes, entidad, conducta y estatus.',
+    }),
+    suppressed: z.number().int().nonnegative().meta({
+      description:
+        'Suprimidas: la suma de la fila de suprimidas de cada nodo más las celdas que quedaron bajo la celda mínima después de sumar.',
+    }),
+  })
+  .strict()
+  .meta({
+    description:
+      'Corte nacional de datos abiertos: suma por entidad, conducta, mes y estatus de los CSV públicos de los nodos. Solo números: ninguna denuncia, folio ni persona. No está firmado; cualquiera puede rehacerlo con los CSV de cada nodo.',
+  });
+export type NationalOpenData = z.infer<typeof NationalOpenDataSchema>;

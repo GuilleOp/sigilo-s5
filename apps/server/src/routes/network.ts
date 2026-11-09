@@ -1,13 +1,15 @@
 // Buzón de red del nodo (`POST /api/v1/red/inbox`): abre los sobres que entrega el enrutador ciego,
 // pasa la operación a las propias rutas v1 del nodo y cifra la respuesta hacia el navegador. Además,
-// para la web servida en el mismo origen: copia del directorio firmado, paso de sobres al enrutador
-// y paso de evaluaciones al evaluador OPRF (la web no hace peticiones a otros orígenes).
+// para la web servida en el mismo origen: copia del directorio firmado, paso de sobres al enrutador,
+// paso del corte nacional de datos abiertos y paso de evaluaciones al evaluador OPRF (la web no hace
+// peticiones a otros orígenes).
 import type { Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import {
   CORROBORATION_ROUTES,
   CorroborationEvaluationRequestSchema,
   NETWORK_ROUTES,
+  NationalOpenDataSchema,
   POW_HEADER,
   RelayRequestSchema,
 } from '@sigilo/contracts';
@@ -118,6 +120,24 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
       }
     },
   );
+
+  // Paso del corte nacional de datos abiertos (solo números agregados) para el observatorio.
+  app.get(NETWORK_ROUTES.nationalOpenData, async (c) => {
+    if (network === undefined || network.routerUrl === null) return errorResponse(c, 'not_found');
+    try {
+      const response = await network.fetch(
+        `${network.routerUrl}${NETWORK_ROUTES.nationalOpenData}`,
+        {
+          method: 'GET',
+        },
+      );
+      if (response.status === 404) return errorResponse(c, 'not_found');
+      const parsed = NationalOpenDataSchema.safeParse(response.ok ? await response.json() : null);
+      return parsed.success ? c.json(parsed.data) : errorResponse(c, 'internal');
+    } catch {
+      return errorResponse(c, 'internal');
+    }
+  });
 
   // Paso al evaluador OPRF: el nodo solo ve el elemento cegado, que no revela el identificador.
   const evaluatorUrl = network?.directory.corroboration?.evaluatorUrl ?? null;

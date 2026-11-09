@@ -1,5 +1,6 @@
 # Red federada de demostración de SIGILO, toda en local y con datos sintéticos:
-#   enrutador        enrutador ciego, directorio firmado y bitácora nacional   127.0.0.1:8790
+#   enrutador        enrutador ciego, directorio firmado, bitácora nacional    127.0.0.1:8790
+#                    y corte nacional de datos abiertos
 #   nodo-queretaro   servidor de referencia como nodo estatal, con su web      127.0.0.1:8781
 #   nodo-federal     servidor de referencia como nodo Federal y común          127.0.0.1:8782
 #   evaluador        evaluador OPRF de la corroboración ciega                  127.0.0.1:8791
@@ -64,9 +65,16 @@ services:
     environment:
       # Direcciones internas de los nodos en la red de compose (las públicas están en el directorio).
       SIGILO_ROUTER_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080
+      # Cada vuelta recoge las cabezas de los nodos y rehace el corte nacional de datos abiertos.
       SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS: '60'
+      # El corte usa el reloj simulado de los nodos para saber qué meses están cerrados (solo en la
+      # demostración); la bitácora nacional y el directorio siguen con el reloj real.
+      NODE_ENV: development
+      SIGILO_DEMO: '1'
+      SIGILO_ROUTER_CLOCK_FILE: /reloj/desfase
     volumes:
       - ./.red-demo/enrutador:/data
+      - ./.red-demo/reloj:/reloj:ro
     depends_on:
       nodo-queretaro:
         condition: service_healthy

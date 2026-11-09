@@ -464,6 +464,28 @@ NationalLedgerPage,head,head,valor,,sí,"Última cabeza con m cofirmas, o null s
 NationalInclusionProof,entry,entry,valor (NationalLedgerEntry),,sí,Entrada de la bitácora nacional: hash es el SHA-256 de la forma canónica de la entrada sin ese campo y prevHash el de la anterior (64 ceros en la primera).,,
 NationalInclusionProof,chain,chain,arreglo de NationalLedgerEntry,,sí,"Tramo desde la entrada (incluida) hasta la de la cabeza, sin huecos.",,
 NationalInclusionProof,head,head,objeto (CosignedNationalHead),,sí,Cabeza nacional con la firma de la operación y las cofirmas.,,
+NationalOpenData,v,v,número,valor fijo 1,sí,Versión del formato.,,1
+NationalOpenData,cutAt,cutAt,cadena,patrón ^\d{4}-\d{2}-\d{2}T\d{2}:00Z$,sí,Hora del corte (UTC).,,2026-11-09T17:00Z
+NationalOpenData,closedBefore,closedBefore,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,sí,Mes en curso al hacer el corte: solo se aceptan meses anteriores (cerrados y congelados en cada nodo).,,2026-11
+NationalOpenData,directorySerial,directorySerial,entero,mínimo 1,sí,Versión del directorio con la que se eligieron los nodos.,,1
+NationalOpenData,minCell,minCell,entero,mínimo 1,sí,"Celda mínima, aplicada en cada nodo y otra vez después de sumar.",,5
+NationalOpenData,rounding,rounding,entero,mínimo 1,sí,Múltiplo de los conteos publicados.,,5
+NationalOpenData,nodes,nodes,arreglo de NationalOpenDataNode,,sí,"Todos los nodos del directorio, sumados o no, en el orden del directorio.",,
+NationalOpenData,cells,cells,arreglo de NationalOpenDataCell,,sí,"Celdas nacionales ordenadas por mes, entidad, conducta y estatus.",,
+NationalOpenData,suppressed,suppressed,entero,mínimo 0,sí,Suprimidas: la suma de la fila de suprimidas de cada nodo más las celdas que quedaron bajo la celda mínima después de sumar.,,5
+NationalOpenDataNode,nodeId,nodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable del nodo.,,node.queretaro
+NationalOpenDataNode,name,name,cadena,de 1 a 200 caracteres,sí,Nombre del nodo en el directorio.,,Nodo estatal Querétaro
+NationalOpenDataNode,status,status,cadena,,sí,included: su CSV se sumó; unreachable: no respondió (sin datos de ese nodo en este corte); rejected: su CSV no cumplió las reglas y no se sumó.,included; unreachable; rejected,included
+NationalOpenDataNode,rejection,rejection,valor,,sí,"Regla que no cumplió el CSV: too-large, header, row, open-month (mes no cerrado), rounding, min-cell, duplicate o suppressed-row; null si no se rechazó.",,null
+NationalOpenDataNode,cells,cells,entero,mínimo 0,sí,Filas publicadas que aportó el nodo (0 si no se sumó).,,2
+NationalOpenDataNode,total,total,entero,mínimo 0,sí,Denuncias que aportó el nodo: sus filas más su fila de suprimidas.,,25
+NationalOpenDataNode,ledgerHead,ledgerHead,valor,,sí,"Cabeza firmada de la bitácora del nodo vigente en la bitácora nacional al hacer el corte, como referencia de integridad; null si aún no hay. No prueba los conteos.",,
+NationalOpenDataNode,nationalEntrySeq,nationalEntrySeq,valor,,sí,"Entrada de la bitácora nacional que contiene esa cabeza, o null.",,1
+NationalOpenDataCell,stateCode,stateCode,cadena,patrón ^\d{2}$,sí,Clave INEGI de la entidad federativa (2 dígitos).,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
+NationalOpenDataCell,offenseCode,offenseCode,cadena,hasta 64 caracteres,sí,Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).,Catálogo OFFENSES: conductas de la LGRA y del Código Penal Federal (LEY-artículo),LGRA-52
+NationalOpenDataCell,month,month,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,sí,"Mes de recepción (AAAA-MM), ya cerrado.",,2026-10
+NationalOpenDataCell,status,status,cadena (ComplaintStatus),,sí,Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.,received (Recibida); routing (Buscando a la autoridad que debe atenderla); routed (Turnada a la autoridad competente); investigating (En investigación); classified (Revisada: la autoridad decidió si la falta es grave); archived (Archivada); resolved (Concluida),investigating
+NationalOpenDataCell,count,count,entero,mínimo 1,sí,Suma de los conteos publicados por los nodos (ya redondeados): múltiplo del redondeo y al menos la celda mínima.,,10
 CorroborationEvaluatorKey,suite,suite,cadena,valor fijo ristretto255-SHA512/VOPRF,sí,"Suite OPRF de RFC 9497: ristretto255-SHA512, modo VOPRF (0x01).",,ristretto255-SHA512/VOPRF
 CorroborationEvaluatorKey,epoch,epoch,entero,mínimo 1,sí,Época de la llave. Cambia solo al rotarla por compromiso; las etiquetas de épocas distintas no coinciden.,,1
 CorroborationEvaluatorKey,keyId,keyId,cadena,patrón ^[0-9a-f]{16}$,sí,Primeros 16 hexadecimales del SHA-256 de la llave pública OPRF.,,7c2e9a4b1d0f3856

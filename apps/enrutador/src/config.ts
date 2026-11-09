@@ -94,6 +94,36 @@ export function loadRouterConfig(env: NodeJS.ProcessEnv): RouterConfig {
   };
 }
 
+const OFFSET_PATTERN = /^\d{1,15}$/u;
+const MAX_DEMO_OFFSET_MS = 400 * 24 * 60 * 60 * 1000;
+
+/**
+ * Reloj del corte nacional de datos abiertos. Con `SIGILO_ROUTER_CLOCK_FILE` (solo con
+ * `SIGILO_DEMO=1` y fuera de producción) suma al reloj real el desfase en milisegundos del archivo,
+ * el mismo reloj simulado de los nodos en la demostración, para que «mes cerrado» signifique lo
+ * mismo en los nodos y en el agregador. Sin la variable, el reloj real. Lanza error si se pide
+ * fuera de una demostración.
+ * Seguridad: solo lo usa el agregador; la bitácora nacional y el directorio siguen con el reloj
+ * real.
+ */
+export function openDataClock(env: NodeJS.ProcessEnv): () => Date {
+  const file = env.SIGILO_ROUTER_CLOCK_FILE ?? '';
+  if (file === '') return () => new Date();
+  if (env.SIGILO_DEMO !== '1' || env.NODE_ENV === 'production') {
+    throw new Error('SIGILO_ROUTER_CLOCK_FILE solo se usa en demostración (SIGILO_DEMO=1).');
+  }
+  return () => {
+    let text: string;
+    try {
+      text = existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
+    } catch {
+      text = '';
+    }
+    const offset = OFFSET_PATTERN.test(text) ? Number(text) : 0;
+    return new Date(Date.now() + Math.min(offset, MAX_DEMO_OFFSET_MS));
+  };
+}
+
 /** Archivo `operator-key.json`: semilla Ed25519 de la operación. */
 export const OperatorKeyFileSchema = z
   .object({ version: z.literal(1), keyId: z.string(), signingPrivateKey: Base64UrlSchema })
