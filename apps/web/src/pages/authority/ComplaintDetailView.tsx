@@ -17,6 +17,7 @@ import { OpenIdentityPanel } from './OpenIdentityPanel.tsx';
 import { ProcedurePanel } from './ProcedurePanel.tsx';
 import { AuditSignalsPanel } from './AuditSignalsPanel.tsx';
 import { ConflictPanel } from './ConflictPanel.tsx';
+import { LocalLawReferences } from './LocalLawReferences.tsx';
 import { ContextSheetPanel } from './ContextSheetPanel.tsx';
 import { CorroborationPanel } from './CorroborationPanel.tsx';
 import { TransferPanel } from './TransferPanel.tsx';
@@ -124,6 +125,14 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <dd>{findEntity(facts.entityId)?.name ?? facts.entityId}</dd>
         <dt>Conducta</dt>
         <dd>{findOffense(facts.offenseCode)?.label ?? facts.offenseCode}</dd>
+        <dt>En la ley que aplica</dt>
+        <dd>
+          <LocalLawReferences
+            entityId={facts.entityId}
+            stateCode={facts.stateCode}
+            offenseCode={facts.offenseCode}
+          />
+        </dd>
         <dt>Periodo</dt>
         <dd>{formatMonthPeriod(facts.occurredPeriod)}</dd>
         <dt>Persona o cargo denunciado</dt>
