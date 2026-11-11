@@ -70,13 +70,18 @@ entradas con la ley de responsabilidades y el código penal de cada una de las 3
 LGRA y el CPF como entidad federal (`entidad` 33), con su clasificación (falta grave, no grave o
 hecho de corrupción) y si la comete una persona servidora pública o un particular.
 
-SIGILO conserva su catálogo corto en lenguaje llano (34 conductas en 5 situaciones, con la clave
+SIGILO conserva su catálogo corto en lenguaje llano (38 conductas en 5 situaciones, cotejadas con la LGRA y el CPF vigentes, con la clave
 de la LGRA o del CPF) y lo enlaza con el del S5:
 
 - `scripts/s5-equivalencias.ts` empareja cada entrada del S5 con una clave de SIGILO por su
   clasificación, su nombre y quién la comete, y genera `datos/s5/equivalencias-faltas.json`:
-  3,012 entradas con equivalente; las 547 restantes (sobre todo delitos contra la procuración y
-  administración de justicia, tortura y desaparición forzada) quedan listadas en `sinEquivalente`.
+  3,388 entradas con equivalente (95 %). Las 171 restantes quedan listadas en `sinEquivalente`
+  y se dejan fuera a propósito: tortura y desaparición forzada (tienen leyes y fiscalías propias),
+  desobediencia o resistencia de particulares, falsedad, quebrantamiento de sellos, lavado de
+  dinero, acoso sexual y rubros genéricos como «faltas administrativas graves» que no nombran una
+  conducta.
+- El S5 incluye en el cohecho el art. 80 Bis de la LGRA: no es otra falta, sino la regla que
+  convierte en no grave un cohecho o desvío de monto menor ya devuelto.
 - El panel muestra, bajo la conducta, «En la ley que aplica»: los artículos de la ley de la entidad
   de los hechos, o de la LGRA y el CPF si la oficina es federal. El `id` del S5 de cada artículo
   queda en el archivo para enviarlo a la bandeja del S5.
