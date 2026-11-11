@@ -1,6 +1,7 @@
 // Paso 3: pruebas. Se limpian en el navegador y solo se envían las copias limpias.
 import { MAX_EVIDENCE_ITEMS } from '@sigilo/contracts';
 import { Alert } from '../../../components/Alert.tsx';
+import { FilePicker } from '../../../components/FilePicker.tsx';
 import { CorroborationFields } from './CorroborationFields.tsx';
 import { focusAfterRender } from '../../../lib/focus.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
@@ -34,9 +35,15 @@ export function EvidenceStep({ draft, errors }: EvidenceStepProps) {
           Puedes elegir varios archivos. Llevas {cleanImageCount(draft)} de {MAX_EVIDENCE_ITEMS}{' '}
           imágenes limpias.
         </p>
-        <input
+        <FilePicker
           id={EVIDENCE_INPUT_ID}
-          type="file"
+          status={
+            draft.evidence.length === 0
+              ? undefined
+              : draft.evidence.length === 1
+                ? '1 archivo agregado'
+                : `${draft.evidence.length} archivos agregados`
+          }
           multiple
           accept={ACCEPT}
           aria-describedby={errors['evidence'] ? 'evidence-hint evidence-error' : 'evidence-hint'}

@@ -88,10 +88,12 @@ code,
   outline-offset: 2px;
 }
 
-/* Destinos de foco programático (encabezados, resúmenes): indicador suave, pero visible. */
-[tabindex='-1']:focus {
-  outline: 2px dotted var(--color-focus);
-  outline-offset: 4px;
+/* Destinos de foco programático (títulos de los pasos y del panel, resúmenes): no son controles y
+   no se activan con el teclado, así que no llevan recuadro; el lector de pantalla los anuncia igual.
+   El anillo de foco queda solo para los controles (`:focus-visible`). */
+[tabindex='-1']:focus,
+[tabindex='-1']:focus-visible {
+  outline: none;
 }
 
 /* Los controles enfocados y los destinos de ancla no quedan debajo de la barra fija. */
