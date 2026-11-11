@@ -751,9 +751,15 @@ del prototipo:
 | Querétaro (`22`) | Sí (`observer.cpc-queretaro`) | Sí  | Sí  | Sí  | No (S6 solo federal) | `node.queretaro` |
 | Estado Ejemplo   | **No**                        | No  | No  | No  | No                   | Nodo común       |
 
-El mapa nunca muestra coordenadas: solo entidad y municipio, sin servicios de terceros. El Estado
-Ejemplo se dibuja como una fila o tarjeta aparte, no sobre el mapa real. La matriz real por entidad
-requiere procesar los reportes de cobertura fuera del repositorio y queda pendiente.
+El mapa del observatorio es un coroplético de las 32 entidades con el contorno del INEGI (Marco
+Geoestadístico, diciembre de 2025; proyectado y simplificado por `scripts/mapa-entidades.ts`, ver
+`datos/mapa-entidades/metodologia.md`), servido desde el mismo origen y sin servicios de terceros.
+Nunca baja a nivel municipal ni muestra coordenadas. Tiene tres capas: **cobertura de la PDN**
+(cuántos de S1, S2, S3S, S3P y S6 tienen datos, de `datos/cobertura/matriz.json`), **protección del
+anonimato** (porcentaje de personas cuya área tiene k ≥ 10, de
+`datos/abiertos/grupos-anonimato/resumen.csv`) y **modelo de nodo** (Querétaro con nodo propio; las
+demás, nodo común). Lo federal y el Estado Ejemplo no tienen lugar en el mapa: aparecen solo en la
+tabla de cobertura, que es el equivalente en texto.
 
 ### 8.3 Casos resueltos agregados («¿Sirvió denunciar?»)
 

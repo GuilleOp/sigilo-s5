@@ -89,9 +89,16 @@ estado real está en la tabla de conformidad de abajo.
 - Piezas de B y C en el lenguaje de A: el talón del recibo (al imprimir solo sale el talón), los
   sellos fechados con nota al margen para «turnada», la regla del plazo («Han pasado X de N días» en
   texto), el sello de lacre con su libro de aperturas (tabla con encabezados), el grafo del
-  conflicto y el mapa de nodos de la cobertura. El grafo y el mapa son `aria-hidden` y cada uno tiene
-  su tabla equivalente; la leyenda del mapa usa ícono y texto. Los sellos dejan de inclinarse con
-  `prefers-reduced-motion`.
+  conflicto y el mapa de México del observatorio. El grafo es `aria-hidden` y tiene su tabla
+  equivalente. Los sellos dejan de inclinarse con `prefers-reduced-motion`.
+- Mapa de México del observatorio (`CoverageMap.tsx`): tres capas en botones con `aria-pressed`;
+  un resumen calculado en texto («11 de 32 entidades tienen 4 o 5 sistemas…») ligado al mapa con
+  `aria-describedby`; cada entidad es un `role="button"` con nombre y valor, con tabulación itinerante
+  (una sola parada; flechas, Inicio y Fin para recorrer, Enter para elegir) y ficha visible al
+  enfocar, tocar o pasar el cursor. Escala de un solo tono (tokens del tema, sin rojo-verde) y
+  «sin datos» con trama además de color; leyenda con texto. Un recuadro ampliado vuelve tocables a
+  Aguascalientes, la Ciudad de México, Morelos y Tlaxcala. La tabla de las 32 entidades sigue como
+  equivalente y la entidad elegida se marca en ella.
 - «Saltar al contenido» se oculta con recorte, no con una posición negativa, para que no asome bajo
   la barra fija en celular.
 - Objetivos táctiles de al menos 44 px, incluido el botón del campo de archivo.
@@ -128,7 +135,7 @@ de la sección siguiente.
 
 Otros hallazgos corregidos (no son fallas AA, pero afectaban el uso): H4 talón impreso con palabras
 numeradas en una columna de cuatro y el folio sin cruzar la perforación; H12 etiquetas del grafo y
-del mapa sin recortes; H13 espacios entre el plazo y su situación y entre el sello y su fecha; H14
+del recuadro del mapa sin recortes; H13 espacios entre el plazo y su situación y entre el sello y su fecha; H14
 periodos legibles («Sin fecha», «2020 a 2023»); H15 los modos de uso hacen y dicen exactamente lo
 mismo (poca conexión: hasta 4 reintentos con más espera); H16 la respuesta al conflicto no viene
 preseleccionada y pide confirmar antes de registrarse en la bitácora; y la confirmación vacía del

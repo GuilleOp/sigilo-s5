@@ -184,9 +184,44 @@ test('el quiosco no deja copiar el recibo y borra todo al terminar; la franja de
   await expect(page.locator('html')).toHaveAttribute('data-reading', 'easy');
 });
 
+test('el mapa de México cambia de capa, se recorre con el teclado y marca la fila en la tabla', async ({
+  page,
+}) => {
+  await page.goto('/observatorio');
+  const map = page.getByTestId('coverage-map');
+  await expect(map.getByTestId('map-summary')).toContainText('de 32 entidades tienen 4 o 5');
+  await expect(map.getByTestId('map-credit')).toContainText(
+    'Fuente: INEGI, Marco Geoestadístico, diciembre de 2025.',
+  );
+  // Teclado: una sola entidad en el orden de tabulación; las flechas recorren las demás.
+  await map.getByTestId('map-entity-01').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(map.getByTestId('map-entity-02')).toBeFocused();
+  await expect(map.getByTestId('map-card')).toContainText('Baja California');
+  // Elegir Querétaro marca su fila en la tabla de cobertura.
+  await map.getByTestId('map-entity-22').focus();
+  await page.keyboard.press('Enter');
+  await expect(map.getByTestId('map-entity-22')).toHaveAttribute('aria-pressed', 'true');
+  await map.getByTestId('map-show-row').click();
+  await expect(page.locator('#coverage-row-22')).toHaveAttribute('data-selected', 'true');
+  await expect(page.locator('#coverage-row-22')).toBeFocused();
+  // Capas: anonimato (del resumen abierto) y modelo de nodo.
+  await map.getByTestId('map-layer-anonymity').click();
+  await expect(map.getByTestId('map-layer-anonymity')).toHaveAttribute('aria-pressed', 'true');
+  await expect(map.getByTestId('map-summary')).toContainText('tienen datos del S1');
+  await map.getByTestId('map-layer-node').click();
+  await expect(map.getByTestId('map-summary')).toContainText('Querétaro opera su propio nodo');
+  await expectNoAccessibilityViolations(page, 'mapa del observatorio');
+});
+
 test('en un celular de 390 px el observatorio no se desplaza a lo ancho', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/observatorio');
+  // El mapa y su recuadro ampliado caben en la pantalla; la ficha se abre con un toque.
+  const map = page.getByTestId('coverage-map');
+  await expect(map.locator('svg.coverage-map')).toBeVisible();
+  await map.locator('.coverage-map-inset path').first().click();
+  await expect(map.getByTestId('map-card').locator('h3')).toBeVisible();
   await page.getByText('Ver la tabla de las 32 entidades').click();
   await expect(page.getByTestId('coverage-matrix')).toBeVisible();
   const overflow = await page.evaluate(

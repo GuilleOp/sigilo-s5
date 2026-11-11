@@ -363,9 +363,11 @@ test('H12 y H14: las etiquetas del mapa caben en su lienzo y los periodos se lee
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/observatorio');
-  const map = page.locator('.coverage-map');
-  await expect(map).toBeVisible();
-  const outside = await map.evaluate((svg) => {
+  // El mapa de México no lleva rótulos; los del recuadro ampliado caben en su lienzo.
+  await expect(page.locator('.coverage-map')).toBeVisible();
+  const inset = page.locator('.coverage-map-inset');
+  await expect(inset).toBeVisible();
+  const outside = await inset.evaluate((svg) => {
     const box = (svg as SVGSVGElement).viewBox.baseVal;
     return [...svg.querySelectorAll('text')].filter((text) => {
       const b = (text as SVGTextElement).getBBox();
