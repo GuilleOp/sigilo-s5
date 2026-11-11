@@ -1,5 +1,7 @@
 // Pantalla /datos-abiertos: tabla del CSV agregado y descarga, con supresión de celdas pequeñas.
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
+import { PATHS } from '../../app/paths.ts';
 import { TableScroll } from '../../components/TableScroll.tsx';
 import {
   ComplaintStatusSchema,
@@ -57,6 +59,11 @@ export function OpenDataPage() {
         Número de denuncias por estado, conducta, mes en que llegaron y estatus. No incluye folios,
         descripciones ni datos de personas.
       </p>
+      <p data-testid="open-data-scope">
+        <strong>Esta tabla es solo de este nodo:</strong> cuenta las denuncias que llegaron a las
+        autoridades que atiende este servidor. Cada nodo de la red publica la suya; la suma de{' '}
+        <strong>toda la red</strong> está en el <Link to={PATHS.observatory}>Observatorio</Link>.
+      </p>
       <Alert tone="info" title="Cómo protegemos a quienes denuncian">
         <p>
           Los números están redondeados de {OPEN_DATA_ROUNDING} en {OPEN_DATA_ROUNDING}, a veces
@@ -88,10 +95,11 @@ export function OpenDataPage() {
           <p>{error}</p>
         </Alert>
       )}
-      {/* Región persistente: anuncia la carga y su fin. */}
+      {/* Región persistente: anuncia la carga y su fin (el fin solo lo oyen los lectores de pantalla:
+          en pantalla ya se ve la tabla). */}
       <p role="status" aria-live="polite">
         {table === null && !error ? 'Cargando datos.' : ''}
-        {table !== null ? 'Datos cargados.' : ''}
+        {table !== null && <span className="visually-hidden">Datos cargados.</span>}
       </p>
       {table !== null && (
         <>
