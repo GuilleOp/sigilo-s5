@@ -8,6 +8,7 @@ import type { ReportDraft } from '../../../state/report-draft.ts';
 import type { FieldErrors } from '../../../state/report-validation.ts';
 import { CatalogFields } from './CatalogFields.tsx';
 import { LocationFields } from './LocationFields.tsx';
+import { StoryHelpers } from './StoryHelpers.tsx';
 import { WorkplaceFields } from './WorkplaceFields.tsx';
 
 interface FactsStepProps {
@@ -104,7 +105,7 @@ export function FactsStep({ draft, errors }: FactsStepProps) {
       <ReviewedTextArea
         id="description"
         label="Describe lo que pasó"
-        hint="Qué pasó, quién y cómo. Evita detalles que solo tú sabes."
+        hint="Cuéntalo como se lo explicarías a alguien de confianza, con tus palabras. Evita detalles que solo tú sabes."
         required
         value={facts.description}
         minLength={DESCRIPTION_MIN}
@@ -112,6 +113,7 @@ export function FactsStep({ draft, errors }: FactsStepProps) {
         error={errors['description']}
         onChange={(value) => setFact('description', value)}
       />
+      <StoryHelpers facts={facts} />
     </>
   );
 }

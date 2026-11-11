@@ -219,3 +219,73 @@
 .combobox__check {
   color: var(--color-primary);
 }
+
+/* Ayudas del relato: partes que se marcan solas y conductas que se le parecen. */
+.story-helpers {
+  display: grid;
+  gap: var(--space-3);
+  margin-block: var(--space-2) var(--space-4);
+}
+
+.story-parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-part {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.story-part--done {
+  border-style: solid;
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.story-part__mark {
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.story-part--done .story-part__mark {
+  color: var(--color-success);
+}
+
+.story-part__tip {
+  display: block;
+  color: var(--color-text-muted);
+}
+
+.story-suggestions ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.story-suggestion__tag {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
