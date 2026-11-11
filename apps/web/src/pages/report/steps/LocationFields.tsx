@@ -1,6 +1,6 @@
 // Estado y municipio opcional, con los catálogos de contracts (los mismos que valida el servidor):
 // los municipios y alcaldías del INEGI de las 32 entidades, ordenados alfabéticamente.
-import { municipalitiesOf, STATES } from '@sigilo/contracts';
+import { isEntityOfState, municipalitiesOf, STATES } from '@sigilo/contracts';
 import { SelectField } from '../../../components/Field.tsx';
 import { setFact } from '../../../state/report-draft.ts';
 import type { FactsDraft } from '../../../state/report-draft.ts';
@@ -28,6 +28,8 @@ export function LocationFields({ facts, errors }: LocationFieldsProps) {
         onChange={(event) => {
           setFact('stateCode', event.target.value);
           setFact('municipalityCode', '');
+          // Un ente estatal o municipal real de otra entidad deja de valer.
+          if (!isEntityOfState(facts.entityId, event.target.value)) setFact('entityId', '');
         }}
         data-testid="state-select"
       >

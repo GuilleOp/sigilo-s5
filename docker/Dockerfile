@@ -47,7 +47,8 @@ COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps/web apps/web
 # Datos agregados que la web publica en su mismo origen bajo /datos/ (apps/web/static-data.ts):
-# la matriz de cobertura y los datos abiertos (las equivalencias del S5 vienen en packages/contracts).
+# la matriz de cobertura y los datos abiertos (las equivalencias del S5 y el catálogo de entes de la
+# PDN, que se parte en /datos/entes/<clave>.json, vienen en packages/contracts).
 # Nada de datos/proceso ni de datos/grupos-anonimato.
 COPY datos/cobertura datos/cobertura
 COPY datos/abiertos datos/abiertos

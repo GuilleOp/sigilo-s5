@@ -1,6 +1,7 @@
 // «Ver lo que leerá la autoridad»: vista fiel de lo que recibirá quien tramite la denuncia, cerrada
 // hasta que la persona la abre.
-import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
+import { findMunicipality, findOffense, findState } from '@sigilo/contracts';
+import { EntityName } from '../../../catalogs/EntityName.tsx';
 import { formatMonthPeriod } from '../../../lib/format.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
 
@@ -38,7 +39,9 @@ export function AuthorityPreview({ draft }: AuthorityPreviewProps) {
           {municipality ? `, municipio de ${municipality}` : ' (sin municipio)'}
         </dd>
         <dt>Oficina o institución de gobierno</dt>
-        <dd>{findEntity(facts.entityId)?.name ?? 'Sin indicar'}</dd>
+        <dd>
+          <EntityName entityId={facts.entityId} fallback="Sin indicar" />
+        </dd>
         <dt>Qué hizo la persona</dt>
         <dd>{findOffense(facts.offenseCode)?.label ?? 'Sin indicar'}</dd>
         <dt>Cuándo pasó</dt>

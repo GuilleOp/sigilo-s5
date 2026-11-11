@@ -1,11 +1,14 @@
 // Datos estáticos que la web publica en su mismo origen, bajo /datos/: el catálogo del grupo de
 // anonimato (sintético en la demo, o el de datos/grupos-anonimato con VITE_ANONYMITY_DATA=real), la
-// matriz de cobertura y los conjuntos de datos abiertos agregados de datos/abiertos.
+// matriz de cobertura, los conjuntos de datos abiertos agregados de datos/abiertos y los entes
+// públicos reales de la PDN partidos en un fragmento por entidad (/datos/entes/<clave>.json).
 // Seguridad: así la web nunca pide datos a otro origen; todo sale del mismo servidor que la sirve.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import type { Plugin } from 'vite';
 import { DEMO_FILES } from '@sigilo/anonimato/demo';
+import { ENTITY_FRAGMENT_BASE_PATH, entityFragmentsFrom, STATES } from '@sigilo/contracts';
+import type { RealEntityCatalogFile } from '@sigilo/contracts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '../..');
 
@@ -24,6 +27,28 @@ function addDirectory(files: StaticFiles, dir: string, publicPrefix: string, pat
     const name = relative(dir, path).split(sep).join('/');
     if (pattern.test(name)) files.set(`${publicPrefix}${name}`, readFileSync(path));
   }
+}
+
+/**
+ * Un fragmento por entidad (y `00`, el federal) con los entes reales de la PDN. El asistente solo
+ * descarga el de la entidad elegida y el federal: el catálogo completo (~1 MB) no va en el bundle.
+ */
+export function entityFragmentFiles(): StaticFiles {
+  const catalog = JSON.parse(
+    readFileSync(join(REPO_ROOT, 'packages/contracts/src/entes/entes-pdn.json'), 'utf8'),
+  ) as RealEntityCatalogFile;
+  const names = Object.fromEntries([
+    ['00', 'Federación'],
+    ...STATES.map((state) => [state.code, state.name] as const),
+  ]);
+  const files: StaticFiles = new Map();
+  for (const [code, fragment] of Object.entries(entityFragmentsFrom(catalog, names))) {
+    files.set(
+      `${ENTITY_FRAGMENT_BASE_PATH}${code}.json`,
+      new TextEncoder().encode(JSON.stringify(fragment)),
+    );
+  }
+  return files;
 }
 
 /** Reúne los archivos que se publican bajo /datos/. */
@@ -49,6 +74,7 @@ export function collectStaticData(anonymitySource: string | undefined): StaticFi
   addDirectory(files, join(REPO_ROOT, 'datos/abiertos'), '/datos/abiertos/', /\.(csv|md)$/u);
   // Equivalencias con el catálogo de faltas del S5: artículo de la ley de cada estado.
   addDirectory(files, join(REPO_ROOT, 'packages/contracts/src/s5'), '/datos/s5/', /\.json$/u);
+  for (const [path, content] of entityFragmentFiles()) files.set(path, content);
   return files;
 }
 

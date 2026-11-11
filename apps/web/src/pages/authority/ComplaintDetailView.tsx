@@ -2,9 +2,10 @@
 // de conflicto, corroboración, señales del auditor, pruebas, trámite, turnado entre nodos, identidad
 // y buzón.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
+import { findMunicipality, findOffense, findState } from '@sigilo/contracts';
 import type { ComplaintDetail } from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
+import { EntityName } from '../../catalogs/EntityName.tsx';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate, formatMonthPeriod, STATUS_LABELS } from '../../lib/format.ts';
 import { api } from '../../services/api.ts';
@@ -122,7 +123,9 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
           {municipality ? `, ${municipality}` : ' (sin municipio)'}
         </dd>
         <dt>Oficina o institución de gobierno</dt>
-        <dd>{findEntity(facts.entityId)?.name ?? facts.entityId}</dd>
+        <dd>
+          <EntityName entityId={facts.entityId} />
+        </dd>
         <dt>Conducta</dt>
         <dd>{findOffense(facts.offenseCode)?.label ?? facts.offenseCode}</dd>
         <dt>En la ley que aplica</dt>
