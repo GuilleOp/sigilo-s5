@@ -4084,7 +4084,7 @@
         "operationId": "listEscalations",
         "tags": ["Autoridad"],
         "summary": "Denuncias escaladas",
-        "description": "Denuncias que una regla pública de escalamiento entregó a la autoridad supervisora de la cuenta, sin contenido. Solo supervisión de la supervisora.",
+        "description": "Denuncias que una regla pública de escalamiento entregó a la autoridad supervisora de la cuenta, y las que tienen un aviso para supervisión (turnado vencido, `effect: alert`, sin sobre), sin contenido. Solo supervisión de la supervisora.",
         "security": [{ "authorityBearer": [] }],
         "responses": {
           "200": {
@@ -9881,12 +9881,12 @@
             "minItems": 1,
             "type": "array",
             "items": { "$ref": "#/components/schemas/RuleTriggerView" },
-            "description": "Reglas de escalamiento que se cumplieron."
+            "description": "Reglas que se cumplieron: de escalamiento (effect escalate, entregan el sobre) o avisos para supervisión (effect alert, como el turnado vencido, sin sobre)."
           }
         },
         "required": ["folio", "escalatedOn", "fromAuthorityId", "rules"],
         "additionalProperties": false,
-        "description": "Denuncia escalada a la supervisora por una regla pública."
+        "description": "Denuncia escalada a la supervisora por una regla pública, o con un aviso para supervisión (turnado vencido) que no entrega el sobre."
       },
       "EscalationDelivery": {
         "type": "object",
@@ -10575,6 +10575,7 @@
           "escalation.declined-serious",
           "escalation.conflict-justified",
           "escalation.transfer-unconfirmed",
+          "alert.turn-overdue",
           "alert.prescription-12m",
           "alert.prescription-6m",
           "alert.prescription-3m",

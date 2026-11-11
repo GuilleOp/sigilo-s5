@@ -140,7 +140,7 @@ export function createProcedureRepository(db: DatabaseSync): ProcedureRepository
     'SELECT * FROM rule_triggers WHERE folio = ? ORDER BY triggered_on, rule_key',
   );
   const listEscalationsStatement = db.prepare(
-    `SELECT * FROM rule_triggers WHERE supervisor_id = ? AND effect = 'escalate'
+    `SELECT * FROM rule_triggers WHERE supervisor_id = ?
      ORDER BY triggered_on DESC, folio, rule_key`,
   );
   return {

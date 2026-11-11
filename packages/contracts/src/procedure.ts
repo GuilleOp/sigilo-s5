@@ -186,6 +186,7 @@ export const EscalationRuleKeySchema = z
     'escalation.declined-serious',
     'escalation.conflict-justified',
     'escalation.transfer-unconfirmed',
+    'alert.turn-overdue',
     'alert.prescription-12m',
     'alert.prescription-6m',
     'alert.prescription-3m',

@@ -96,6 +96,11 @@ de escalamiento:
   nodo anterior que no lo envía sigue cumpliendo el esquema. El panel lo muestra en la columna
   «Plazo de turnado» y en el detalle como insignia con ícono y texto («A tiempo», «Por vencer»,
   «Vencida»), nunca solo con color.
+- Al vencer, el motor de reglas registra la alerta pública `alert.turn-overdue` («Turnado
+  vencido», reglas 1.3.0) con la supervisora de la autoridad que la tiene. Es un aviso, no un
+  escalamiento: la supervisión la ve en «Escalamientos que recibiste» sin el sobre de la segunda
+  llave (`authorityEscalationEnvelope` sigue exigiendo una regla `escalate`), y la denuncia sigue
+  con quien la tiene. Una nueva espera (devolución o reasignación) puede generar un aviso nuevo.
 
 ## Catálogo de conductas y leyes locales
 

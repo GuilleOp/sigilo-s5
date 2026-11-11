@@ -58,7 +58,8 @@ describe('motor de reglas', () => {
   it('escala una falta grave sin iniciar el procedimiento al día 31 y solo una vez', async () => {
     const { server, folio, reporter } = await setup();
     server.setNow(new Date('2026-11-19T18:00:00Z'));
-    expect(server.runRules().triggered).toBe(0);
+    // Sigue sin turnar en el buzón: solo el aviso de turnado vencido, sin escalamiento.
+    expect(server.runRules()).toMatchObject({ triggered: 1, escalated: 0 });
     server.setNow(DAY_31);
     expect(server.runRules()).toMatchObject({ triggered: 1, escalated: 1 });
     expect(server.runRules().triggered).toBe(0);
@@ -66,6 +67,7 @@ describe('motor de reglas', () => {
       await (await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter))).json(),
     );
     expect(view.procedure?.rules).toEqual([
+      expect.objectContaining({ ruleKey: 'alert.turn-overdue', effect: 'alert' }),
       expect.objectContaining({
         ruleKey: 'escalation.grave-stalled',
         effect: 'escalate',
@@ -79,8 +81,47 @@ describe('motor de reglas', () => {
       await (await server.app.request(`${ROUTES.ledgerEvents}?limit=500`)).json(),
     );
     const triggered = page.events.filter((event) => event.type === 'rule.triggered');
-    expect(triggered).toHaveLength(1);
-    expect(triggered[0]?.actorRole).toBe('system');
+    expect(triggered).toHaveLength(2);
+    expect(triggered.every((event) => event.actorRole === 'system')).toBe(true);
+  });
+
+  it('avisa a la supervisión del turnado vencido sin entregarle el sobre', async () => {
+    const { server, folio } = await setup();
+    // Recibida el martes 20 de octubre: el jueves 22 cumple 2 días hábiles sin turnar.
+    server.setNow(new Date('2026-10-21T18:00:00Z'));
+    expect(server.runRules().triggered).toBe(0);
+    server.setNow(new Date('2026-10-22T18:00:00Z'));
+    expect(server.runRules()).toMatchObject({ triggered: 1, escalated: 0 });
+    const summaries = EscalationSummarySchema.array().parse(
+      await (
+        await getAsAuthority(server.app, ROUTES.authorityEscalations, testToken('supervisor'))
+      ).json(),
+    );
+    expect(summaries).toEqual([
+      {
+        folio,
+        escalatedOn: '2026-10-22',
+        fromAuthorityId: TEST_AUTHORITIES.inbox,
+        rules: [
+          expect.objectContaining({
+            ruleKey: 'alert.turn-overdue',
+            effect: 'alert',
+            dueOn: '2026-10-22',
+          }),
+        ],
+      },
+    ]);
+    // Es un aviso: la segunda llave sigue exigiendo una regla de escalamiento.
+    expect((await deliver(server, folio)).status).toBe(404);
+    // Al turnarse y aceptarse ya no espera: no hay aviso nuevo.
+    await procedureAs(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
+    await procedureAs(server, 'oicIntake', folio, { action: 'accept' });
+    server.setNow(new Date('2026-10-30T18:00:00Z'));
+    expect(server.runRules().triggered).toBe(0);
   });
 
   it('no escala si la investigación inició a tiempo', async () => {

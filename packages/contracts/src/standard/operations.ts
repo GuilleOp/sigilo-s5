@@ -905,7 +905,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Autoridad',
     summary: 'Denuncias escaladas',
     description:
-      'Denuncias que una regla pública de escalamiento entregó a la autoridad supervisora de la cuenta, sin contenido. Solo supervisión de la supervisora.',
+      'Denuncias que una regla pública de escalamiento entregó a la autoridad supervisora de la cuenta, y las que tienen un aviso para supervisión (turnado vencido, `effect: alert`, sin sobre), sin contenido. Solo supervisión de la supervisora.',
     security: 'authorityBearer',
     parameters: [],
     success: {

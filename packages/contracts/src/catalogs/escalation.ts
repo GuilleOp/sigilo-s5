@@ -9,10 +9,11 @@ import type {
 } from '../procedure.ts';
 import type { ComplaintMode } from '../complaint.ts';
 import type { OffenseSeverity } from '../procedure.ts';
+import { TURN_SEMAPHORE } from './procedure.ts';
 import type { LegalReference } from './procedure.ts';
 
 /** Versión de las reglas; cambia con cualquier ajuste y queda en cada evento `rule.triggered`. */
-export const ESCALATION_RULES_VERSION = '1.2.0';
+export const ESCALATION_RULES_VERSION = '1.3.0';
 
 /**
  * Hecho del trámite desde el que corre el plazo de una regla:
@@ -26,6 +27,8 @@ export const ESCALATION_RULES_VERSION = '1.2.0';
  * - `archived_or_declined`: día legal del archivo o de un cierre que declina.
  * - `conflict_justified`: día legal en que la autoridad con posible conflicto se justificó.
  * - `transfer_pending`: día del turnado a otro nodo que sigue sin comprobante válido del destino.
+ * - `turn_pending`: día legal en que la denuncia quedó esperando turno (buzón general) o
+ *   aceptación (turnada o reasignada); deja de existir al aceptarse o cerrarse.
  * - `last_activity`: día legal de la última actuación de la autoridad.
  * - `prescription`: fecha de prescripción calculada desde el mes de los hechos; el plazo de la
  *   regla se cuenta **antes** de ella (por ejemplo, 12 meses antes).
@@ -40,6 +43,7 @@ export type RuleAnchor =
   | 'archived_or_declined'
   | 'conflict_justified'
   | 'transfer_pending'
+  | 'turn_pending'
   | 'last_activity'
   | 'prescription';
 
@@ -87,6 +91,11 @@ export interface EscalationRule {
   stages?: readonly LegalStage[];
   /** Nunca en estas etapas legales (la vigente). */
   exceptStages?: readonly LegalStage[];
+  /**
+   * Solo en alertas: la supervisora de la autoridad también la ve en sus escalamientos, sin sobre
+   * de escalamiento (la denuncia sigue con la autoridad que la tiene).
+   */
+  notifiesSupervisor?: boolean;
   legalBasis: readonly LegalReference[];
 }
 
@@ -233,6 +242,19 @@ export const ESCALATION_RULES: readonly EscalationRule[] = [
       { law: 'LGRA', article: '64', fraction: 'I' },
       { law: 'LGRA', article: '102' },
     ],
+  },
+  {
+    key: 'alert.turn-overdue',
+    name: 'Turnado vencido',
+    explanation:
+      'Si la denuncia cumple 2 días hábiles en el buzón general sin turnarse, o turnada sin que la autoridad la acepte, la supervisión recibe un aviso para revisarla (semáforo de turnado del S5). Es un aviso: la denuncia sigue con quien la tiene y la supervisión no recibe la copia cerrada con la segunda llave.',
+    effect: 'alert',
+    anchor: 'turn_pending',
+    term: { unit: TURN_SEMAPHORE.unit, amount: TURN_SEMAPHORE.overdueAfter },
+    firesWhen: 'reached',
+    satisfiedBy: [],
+    notifiesSupervisor: true,
+    legalBasis: [{ law: 'BPDN', article: '58' }],
   },
   prescriptionAlert('alert.prescription-12m', 12),
   prescriptionAlert('alert.prescription-6m', 6),

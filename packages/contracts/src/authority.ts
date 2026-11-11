@@ -280,12 +280,15 @@ export const EscalationSummarySchema = z
     folio: FolioSchema,
     escalatedOn: DayDateSchema,
     fromAuthorityId: AuthorityIdSchema,
-    rules: z
-      .array(RuleTriggerViewSchema)
-      .min(1)
-      .meta({ description: 'Reglas de escalamiento que se cumplieron.' }),
+    rules: z.array(RuleTriggerViewSchema).min(1).meta({
+      description:
+        'Reglas que se cumplieron: de escalamiento (effect escalate, entregan el sobre) o avisos para supervisión (effect alert, como el turnado vencido, sin sobre).',
+    }),
   })
-  .meta({ description: 'Denuncia escalada a la supervisora por una regla pública.' });
+  .meta({
+    description:
+      'Denuncia escalada a la supervisora por una regla pública, o con un aviso para supervisión (turnado vencido) que no entrega el sobre.',
+  });
 export type EscalationSummary = z.infer<typeof EscalationSummarySchema>;
 
 /**
