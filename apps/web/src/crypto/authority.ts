@@ -245,17 +245,52 @@ export type ReporterKeysVerification =
  * denunciante contra su comprobante; si coincide, las llaves del buzón, los hechos y las pruebas
  * del detalle son los que ella envió, también en modo anónimo.
  */
-export async function verifyReporterKeys(
+export function verifyReporterKeys(
   detail: ComplaintDetail,
   fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
   pinned: PinnedKeys,
   anchors: readonly LedgerAnchor[] = [],
 ): Promise<ReporterKeysVerification> {
-  const seq = detail.receivedEventSeq;
+  return verifyReceivedEvent(
+    {
+      folio: detail.summary.folio,
+      seq: detail.receivedEventSeq,
+      receivedOn: detail.summary.receivedOn,
+      submissionDigest: submissionDigestFromDetail(detail),
+    },
+    fetchPage,
+    pinned,
+    anchors,
+  );
+}
+
+/** Lo que se compara con el evento `complaint.received` publicado. */
+export interface ReceivedEventClaim {
+  folio: string;
+  /** Secuencia del evento; `undefined` mientras no se publica. */
+  seq: number | undefined;
+  /** Día de recepción que debe tener el evento, si se conoce. */
+  receivedOn?: string;
+  /** `submissionDigest` recalculado en el navegador, nunca el que dice el servidor. */
+  submissionDigest: string;
+}
+
+/**
+ * Comprueba que el evento `complaint.received` publicado en la secuencia `claim.seq` sea del folio
+ * y lleve el digesto del envío recalculado (ver `verifyReporterKeys`): lo usan el detalle de la
+ * autoridad y la supervisora al abrir el sobre de escalamiento.
+ */
+export async function verifyReceivedEvent(
+  claim: ReceivedEventClaim,
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>,
+  pinned: PinnedKeys,
+  anchors: readonly LedgerAnchor[] = [],
+): Promise<ReporterKeysVerification> {
+  const seq = claim.seq;
   if (seq === undefined) return 'pending';
   const first = await fetchPage(seq, LEDGER_PAGE_SIZE);
   const event = first.events[0];
-  const folio = detail.summary.folio;
+  const folio = claim.folio;
   if (event === undefined || event.seq !== seq || first.head.seq < seq) return 'mismatch';
   const chain = await downloadSegment(fetchPage, seq, first.head, first.events);
   const inChain = await verifyEventWithAnchors(
@@ -270,10 +305,10 @@ export async function verifyReporterKeys(
   const isAuthentic =
     (inChain.valid || isNotComparable) &&
     event.type === 'complaint.received' &&
-    event.at === detail.summary.receivedOn &&
+    (claim.receivedOn === undefined || event.at === claim.receivedOn) &&
     event.folioDigest === folioDigest(folio);
   if (!isAuthentic) return 'mismatch';
-  const expected = receivedPayloadDigest(folio, submissionDigestFromDetail(detail));
+  const expected = receivedPayloadDigest(folio, claim.submissionDigest);
   if (event.payloadDigest !== expected) return 'mismatch';
   return isNotComparable ? 'anchors-not-comparable' : 'verified';
 }

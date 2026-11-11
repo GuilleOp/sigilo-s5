@@ -4,6 +4,7 @@ import {
   AuthoritySessionSchema,
   AuthoritySessionInfoSchema,
   ComplaintDetailSchema,
+  EscalationDeliverySchema,
   EscalationSummarySchema,
   IdentityOpeningRequestViewSchema,
   ComplaintSummarySchema,
@@ -32,6 +33,7 @@ import type {
   AuthoritySession,
   AuthoritySessionInfo,
   ComplaintDetail,
+  EscalationDelivery,
   EscalationSummary,
   ComplaintSummary,
   DiscardEvidenceResponse,
@@ -170,6 +172,11 @@ export interface SigiloApi {
   confirmTransfer(token: string, folio: string, request: TransferReceiptRequest): Promise<void>;
   /** Denuncias escaladas a la supervisora de la sesión (solo cuentas de supervisión). */
   listEscalations(token: string): Promise<EscalationSummary[]>;
+  /**
+   * Sobre de escalamiento de una denuncia escalada (segunda llave). Cada entrega queda en el
+   * registro de seguridad del nodo.
+   */
+  deliverEscalation(token: string, folio: string): Promise<EscalationDelivery>;
   getLedgerHead(): Promise<SignedLedgerHead>;
   getLedgerEvents(from: number, limit: number): Promise<LedgerPage>;
   /** Página desde el último evento anterior a `day` (`AAAA-MM-DD`), su vecino. */
@@ -284,6 +291,11 @@ export function createSigiloApi(
     },
     listEscalations: (token) =>
       client.json(ROUTES.authorityEscalations, EscalationListSchema, { bearer: token }),
+    deliverEscalation: (token, folio) =>
+      client.json(ROUTES.authorityEscalationEnvelope(folio), EscalationDeliverySchema, {
+        bearer: token,
+        method: 'POST',
+      }),
     getLedgerHead: () => client.json(ROUTES.ledgerHead, SignedLedgerHeadSchema),
     getLedgerEvents: (from, limit) =>
       client.json(ROUTES.ledgerEvents, LedgerPageSchema, {

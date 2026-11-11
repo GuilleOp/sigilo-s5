@@ -776,6 +776,15 @@
   gap: var(--space-2);
 }
 
+/* Un grupo por regla: su explicación una sola vez y las denuncias debajo. */
+.escalations__group {
+  margin-block-start: var(--space-4);
+}
+
+.escalations__group > h3 {
+  margin-block-end: var(--space-2);
+}
+
 @media (forced-colors: active) {
   .icon,
   .sys-badge__ring,
