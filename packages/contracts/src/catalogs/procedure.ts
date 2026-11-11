@@ -12,6 +12,8 @@ import type {
   LegalTrack,
   ManagementState,
   ProcedureActor,
+  TurnSemaphoreStatus,
+  TurnWait,
 } from '../procedure.ts';
 
 /** Ordenamiento citado como fundamento. */
@@ -184,6 +186,74 @@ export const MANAGEMENT_STATES: readonly ManagementStateOption[] = [
     legalBasis: [{ law: 'LGRA', article: '100' }],
   },
 ];
+
+/**
+ * Semáforo de turnado de la bandeja del S5: una denuncia sin turnar (en el buzón general) o
+ * turnada sin aceptar pasa a «por vencer» al cumplir `warningAfter` días y a «vencida» al cumplir
+ * `overdueAfter`, contados desde el día en que entró a ese estado.
+ * Decisión: días hábiles, como los demás plazos cortos del trámite (aviso del archivo, solicitud de
+ * información, inconformidad). Así una denuncia que llega el viernes no aparece vencida el lunes
+ * por la mañana; el S5 de pruebas cuenta días naturales y la diferencia solo aparece en fines de
+ * semana y días inhábiles del calendario oficial.
+ */
+export const TURN_SEMAPHORE = {
+  unit: 'business_days',
+  warningAfter: 1,
+  overdueAfter: 2,
+  states: {
+    received_in_inbox: 'routing',
+    returned_to_inbox: 'routing',
+    routed: 'acceptance',
+    reassigned: 'acceptance',
+  },
+} as const satisfies {
+  unit: Extract<DeadlineUnit, 'natural_days' | 'business_days'>;
+  warningAfter: number;
+  overdueAfter: number;
+  states: Partial<Record<ManagementState, TurnWait>>;
+};
+
+/** Qué espera una denuncia en el estado `state` según el semáforo, o `null` si no aplica. */
+export function turnWaitFor(state: ManagementState): TurnWait | null {
+  const states: Partial<Record<ManagementState, TurnWait>> = TURN_SEMAPHORE.states;
+  return states[state] ?? null;
+}
+
+/** Situación del semáforo con su nombre y su símbolo (no solo el color). */
+export interface TurnSemaphoreStatusOption {
+  key: TurnSemaphoreStatus;
+  name: string;
+  /** Símbolo que acompaña al nombre, para no depender del color. */
+  symbol: string;
+  explanation: string;
+}
+
+export const TURN_SEMAPHORE_STATUSES: readonly TurnSemaphoreStatusOption[] = [
+  {
+    key: 'a_tiempo',
+    name: 'A tiempo',
+    symbol: '●',
+    explanation: 'Todavía no cumple un día hábil esperando.',
+  },
+  {
+    key: 'por_vencer',
+    name: 'Por vencer',
+    symbol: '▲',
+    explanation: 'Cumplió un día hábil esperando: atiéndela hoy.',
+  },
+  {
+    key: 'vencida',
+    name: 'Vencida',
+    symbol: '■',
+    explanation: 'Cumplió dos días hábiles o más esperando; la supervisión recibe un aviso.',
+  },
+];
+
+/**
+ * Reasignaciones que admite una denuncia, como en el S5. La cuarta se rechaza: la autoridad la
+ * devuelve al buzón general para que se turne de nuevo, o la supervisión la revisa.
+ */
+export const MAX_REASSIGNMENTS = 3;
 
 /** Motivo de cierre del flujo de gestión. */
 export interface ClosureReasonOption {

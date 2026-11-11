@@ -14,6 +14,8 @@ import {
   OFFICIAL_REST_DAYS,
   OFFICIAL_REST_DAYS_COVERAGE,
   PROCEDURE_ACTORS,
+  TURN_SEMAPHORE,
+  TURN_SEMAPHORE_STATUSES,
   formatLegalReference,
 } from '@sigilo/contracts';
 import { STANDARD_VERSION } from '@sigilo/contracts/standard';
@@ -520,6 +522,7 @@ export function buildProcedureCatalog(): JsonObject {
     actors: PROCEDURE_ACTORS,
     deadlines: DEADLINE_RULES,
     complaintStatuses: COMPLAINT_STATUSES,
+    turnSemaphore: { ...TURN_SEMAPHORE, statuses: TURN_SEMAPHORE_STATUSES },
     officialRestDays: { coverage: OFFICIAL_REST_DAYS_COVERAGE, days: OFFICIAL_REST_DAYS },
   };
 }

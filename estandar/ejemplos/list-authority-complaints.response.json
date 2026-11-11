@@ -1,5 +1,24 @@
 [
   {
+    "folio": "K7PD-2M4X-RT9C",
+    "mode": "sealed",
+    "status": "received",
+    "receivedOn": "2026-11-04",
+    "stateCode": "22",
+    "offenseCode": "LGRA-51",
+    "protectionRequested": false,
+    "managementState": "received_in_inbox",
+    "assignedAuthorityId": "authority.buzon-general",
+    "turnSemaphore": {
+      "waitingFor": "routing",
+      "status": "por_vencer",
+      "sinceOn": "2026-11-04",
+      "elapsedDays": 1,
+      "warningOn": "2026-11-05",
+      "overdueOn": "2026-11-06"
+    }
+  },
+  {
     "folio": "K7Q2-M9XP-4RTD",
     "mode": "sealed",
     "status": "investigating",

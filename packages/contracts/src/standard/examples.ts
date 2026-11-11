@@ -458,6 +458,27 @@ const anonymousSummary: ComplaintSummary = {
   protectionRequested: false,
 };
 
+/** Denuncia que cumplió un día hábil sin turnar: el semáforo la marca «por vencer». */
+const inboxSummary: ComplaintSummary = {
+  folio: 'K7PD-2M4X-RT9C',
+  mode: 'sealed',
+  status: 'received',
+  receivedOn: '2026-11-04',
+  stateCode: '22',
+  offenseCode: 'LGRA-51',
+  protectionRequested: false,
+  managementState: 'received_in_inbox',
+  assignedAuthorityId: 'authority.buzon-general',
+  turnSemaphore: {
+    waitingFor: 'routing',
+    status: 'por_vencer',
+    sinceOn: '2026-11-04',
+    elapsedDays: 1,
+    warningOn: '2026-11-05',
+    overdueOn: '2026-11-06',
+  },
+};
+
 const complaintDetail: ComplaintDetail = {
   summary,
   version: 1,
@@ -598,7 +619,7 @@ export const STANDARD_EXAMPLES = {
   'file-appeal.response': appealResponse,
   'send-reporter-message.request': reporterMessageRequest,
   'send-reporter-message.response': { ...reporterMessage, sequence: 1 },
-  'list-authority-complaints.response': [summary, anonymousSummary],
+  'list-authority-complaints.response': [inboxSummary, summary, anonymousSummary],
   'get-authority-complaint.response': complaintDetail,
   'login.request': loginRequest,
   'login.response': authoritySession,

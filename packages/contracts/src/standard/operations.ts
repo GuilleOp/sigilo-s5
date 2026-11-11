@@ -40,6 +40,7 @@ import {
   RuleTriggerViewSchema,
   SubmitComplaintRequestSchema,
   SubmitComplaintResponseSchema,
+  TurnSemaphoreSchema,
 } from '../index.ts';
 import type { ApiErrorCode } from '../errors.ts';
 import { ApiErrorSchema } from '../errors.ts';
@@ -75,6 +76,8 @@ import {
   ProcedureActionSchema,
   ProcedureActorSchema,
   RuleEffectSchema,
+  TurnSemaphoreStatusSchema,
+  TurnWaitSchema,
 } from '../procedure.ts';
 import { FOLIO_PATTERN } from '../primitives.ts';
 import { ROUTES } from '../routes.ts';
@@ -126,6 +129,7 @@ export const STANDARD_COMPONENTS = {
   AuthorityAccountView: AuthorityAccountViewSchema,
   AuthorityProfile: AuthorityProfileSchema,
   ComplaintSummary: ComplaintSummarySchema,
+  TurnSemaphore: TurnSemaphoreSchema,
   ComplaintDetail: ComplaintDetailSchema,
   ProcedureActionRequest: ProcedureActionRequestSchema,
   ProcedureState: ProcedureStateSchema,
@@ -165,6 +169,8 @@ export const STANDARD_COMPONENTS = {
   DeadlineKey: DeadlineKeySchema,
   DeadlineUnit: DeadlineUnitSchema,
   DeadlineStatus: DeadlineStatusSchema,
+  TurnSemaphoreStatus: TurnSemaphoreStatusSchema,
+  TurnWait: TurnWaitSchema,
   ProcedureAction: ProcedureActionSchema,
   OffenseSeverity: OffenseSeveritySchema,
   EscalationRuleKey: EscalationRuleKeySchema,

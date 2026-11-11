@@ -417,6 +417,37 @@
       "managementState": "closed"
     }
   ],
+  "turnSemaphore": {
+    "unit": "business_days",
+    "warningAfter": 1,
+    "overdueAfter": 2,
+    "states": {
+      "received_in_inbox": "routing",
+      "returned_to_inbox": "routing",
+      "routed": "acceptance",
+      "reassigned": "acceptance"
+    },
+    "statuses": [
+      {
+        "key": "a_tiempo",
+        "name": "A tiempo",
+        "symbol": "●",
+        "explanation": "Todavía no cumple un día hábil esperando."
+      },
+      {
+        "key": "por_vencer",
+        "name": "Por vencer",
+        "symbol": "▲",
+        "explanation": "Cumplió un día hábil esperando: atiéndela hoy."
+      },
+      {
+        "key": "vencida",
+        "name": "Vencida",
+        "symbol": "■",
+        "explanation": "Cumplió dos días hábiles o más esperando; la supervisión recibe un aviso."
+      }
+    ]
+  },
   "officialRestDays": {
     "coverage": { "from": "2025-01-01", "through": "2028-12-31" },
     "days": [

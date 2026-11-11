@@ -129,6 +129,14 @@ describe('listado y detalle', () => {
         protectionRequested: true,
         managementState: 'received_in_inbox',
         assignedAuthorityId: TEST_AUTHORITIES.inbox,
+        turnSemaphore: {
+          waitingFor: 'routing',
+          status: 'a_tiempo',
+          sinceOn: '2026-10-20',
+          elapsedDays: 0,
+          warningOn: '2026-10-21',
+          overdueOn: '2026-10-22',
+        },
       },
     ]);
     expect(raw).not.toContain('sealedIdentity');

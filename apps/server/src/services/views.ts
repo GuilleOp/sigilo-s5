@@ -18,6 +18,7 @@ import { assignedAuthorityOf } from './procedure-service.ts';
 import { buildProcedureView } from './procedure-view.ts';
 import { auditSignalViews } from './audit-service.ts';
 import { conflictReview, contextSheetView } from './pdn-context.ts';
+import { summaryWithSemaphore } from './turn-semaphore.ts';
 
 /** Resumen de la denuncia con la clave principal de la conducta; nunca incluye el sobre. */
 export function toSummary(ctx: AppContext, complaint: ComplaintRecord): ComplaintSummary {
@@ -127,7 +128,7 @@ export function buildComplaintDetail(
   const receivedEvent = publishedReceivedEvent(ctx, complaint);
   const deletionOn = evidenceDeletionOn(ctx, complaint);
   return {
-    summary: toSummary(ctx, complaint),
+    summary: summaryWithSemaphore(ctx, complaint, toSummary(ctx, complaint)),
     version: 1,
     facts: complaint.facts,
     evidence: ctx.evidence.listByFolio(complaint.folio),

@@ -73,6 +73,16 @@ export interface OpenDataCell {
   count: number;
 }
 
+/** Resumen del listado con el día en que la denuncia entró a su estado de gestión actual. */
+export interface ListedComplaint {
+  summary: ComplaintSummary;
+  /**
+   * Día legal del último paso que dejó la denuncia en el buzón, turnada o reasignada (recepción,
+   * turno, reasignación o devolución); el día legal de recepción si no hay pasos.
+   */
+  stateSinceOn: string;
+}
+
 /** Operaciones sobre la tabla `complaints`. */
 export interface ComplaintsRepository {
   exists(folio: string): boolean;
@@ -98,6 +108,13 @@ export interface ComplaintsRepository {
     offset: number,
     limit: number,
   ): ComplaintSummary[];
+  /** Como `listSummariesForAuthority`, con el día de entrada al estado (semáforo de turnado). */
+  listForAuthority(
+    authorityId: string,
+    inboxAuthorityId: string,
+    offset: number,
+    limit: number,
+  ): ListedComplaint[];
   updateStatus(folio: string, status: ComplaintStatus): void;
   /** Guarda el estado del trámite después de una acción. */
   updateProcedure(folio: string, fields: ProcedureFields): void;
@@ -206,7 +223,14 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
   );
   // Dentro del mismo día se ordena por folio (aleatorio) para no revelar el orden de llegada.
   const listForAuthorityStatement = db.prepare(
-    `SELECT ${SUMMARY_COLUMNS} FROM complaints
+    `SELECT ${SUMMARY_COLUMNS},
+       COALESCE(
+         (SELECT legal_on FROM procedure_steps AS step
+          WHERE step.folio = complaints.folio
+            AND step.action IN ('received', 'routed', 'reassigned', 'returned_to_inbox')
+          ORDER BY step.position DESC LIMIT 1),
+         received_legal_on, received_on) AS state_since_on
+     FROM complaints
      WHERE COALESCE(assigned_authority, ?) = ?
      ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
   );
@@ -283,6 +307,11 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
       listForAuthorityStatement
         .all(inboxAuthorityId, authorityId, limit, offset)
         .map((row) => toListedSummary(row, inboxAuthorityId)),
+    listForAuthority: (authorityId, inboxAuthorityId, offset, limit) =>
+      listForAuthorityStatement.all(inboxAuthorityId, authorityId, limit, offset).map((row) => ({
+        summary: toListedSummary(row, inboxAuthorityId),
+        stateSinceOn: readText(row, 'state_since_on'),
+      })),
     updateStatus: (folio, status) => {
       updateStatusStatement.run(status, folio);
     },

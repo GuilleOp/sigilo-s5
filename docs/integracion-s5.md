@@ -58,10 +58,28 @@ general del S5. Es el canal único con protocolos de recepción y turno de las B
 (arts. 56 y 58). Al integrar, el buzón general del S5 se publica en el directorio con el papel
 `inbox` y la misma llave que su nodo usa como autoridad en `keys.json`.
 
-El semáforo de la bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2
-días. SIGILO no tiene ese semáforo fijo: mide los plazos legales de cada etapa (LGRA) y escala a la
-supervisora con reglas públicas. Agregar un semáforo de turnado con los mismos días sería un ajuste
-menor del panel.
+### Semáforo de turnado
+
+La bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2 días. SIGILO
+tiene el mismo semáforo, además de los plazos legales de cada etapa (LGRA) y de las reglas públicas
+de escalamiento:
+
+- Aplica a las denuncias que esperan turno (`received_in_inbox` y `returned_to_inbox`, en el buzón
+  general) y a las que esperan aceptación (`routed` y `reassigned`). Cuenta desde el día en que
+  entraron a ese estado (recepción, turno, reasignación o devolución); al aceptarse o cerrarse
+  desaparece.
+- `a_tiempo` el mismo día, `por_vencer` al cumplir 1 día y `vencida` al cumplir 2. Los umbrales
+  están en `TURN_SEMAPHORE` (`packages/contracts/src/catalogs/procedure.ts`) y se publican en
+  `catalogo-del-tramite.json`.
+- **Días hábiles**, no naturales: es la unidad de los demás plazos cortos del trámite (aviso del
+  archivo, solicitud de información, inconformidad), con el mismo calendario oficial de días
+  inhábiles. Una denuncia que llega el viernes no aparece vencida el lunes; el S5 de pruebas cuenta
+  días naturales, así que solo difieren en fines de semana y días inhábiles.
+- Los días los cuenta el reloj del nodo (el simulado en la demo), en la hora del centro de México.
+- La API lo entrega en `ComplaintSummary.turnSemaphore` (listado y detalle), un campo opcional: un
+  nodo anterior que no lo envía sigue cumpliendo el esquema. El panel lo muestra en la columna
+  «Plazo de turnado» y en el detalle como insignia con ícono y texto («A tiempo», «Por vencer»,
+  «Vencida»), nunca solo con color.
 
 ## Catálogo de conductas y leyes locales
 

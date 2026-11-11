@@ -95,3 +95,15 @@
 .closure {
   margin-top: var(--space-4);
 }
+
+/* Semáforo de turnado de la bandeja del S5: la píldora (ícono y texto) y los días que lleva. */
+.turn-semaphore {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.turn-semaphore__days {
+  font-size: var(--text-xs);
+}

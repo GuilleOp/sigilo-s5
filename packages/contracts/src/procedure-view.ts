@@ -17,6 +17,8 @@ import {
   ProcedureActionSchema,
   RuleEffectSchema,
   QualificationSeveritySchema,
+  TurnSemaphoreStatusSchema,
+  TurnWaitSchema,
 } from './procedure.ts';
 
 /** Día civil en la hora del centro de México con el que se cuentan los plazos legales. */
@@ -24,6 +26,30 @@ export const LegalDaySchema = DayDateSchema.meta({
   description:
     'Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.',
 });
+
+/**
+ * Semáforo de turnado de la bandeja del S5 para una denuncia que espera turno o aceptación. Los
+ * días cuentan en días hábiles (`TURN_SEMAPHORE`) con el reloj del nodo.
+ */
+export const TurnSemaphoreSchema = z
+  .object({
+    waitingFor: TurnWaitSchema,
+    status: TurnSemaphoreStatusSchema,
+    sinceOn: LegalDaySchema.meta({
+      description:
+        'Día en que la denuncia entró al estado que espera (recepción, turno o devolución).',
+    }),
+    elapsedDays: z.number().int().nonnegative().meta({
+      description: 'Días hábiles completos desde sinceOn hasta hoy.',
+    }),
+    warningOn: LegalDaySchema.meta({ description: 'Día desde el que queda «por vencer».' }),
+    overdueOn: LegalDaySchema.meta({ description: 'Día desde el que queda «vencida».' }),
+  })
+  .meta({
+    description:
+      'Semáforo de turnado del S5: cuánto lleva la denuncia sin turnarse o sin aceptarse. Solo en las denuncias que esperan.',
+  });
+export type TurnSemaphore = z.infer<typeof TurnSemaphoreSchema>;
 
 /** Nota pública de la autoridad: la persona denunciante la lee tal cual en su seguimiento. */
 export const PublicNoteSchema = z
