@@ -465,7 +465,7 @@ const inboxSummary: ComplaintSummary = {
   status: 'received',
   receivedOn: '2026-11-04',
   stateCode: '22',
-  offenseCode: 'LGRA-51',
+  offenseCode: 'LGRA-54',
   protectionRequested: false,
   managementState: 'received_in_inbox',
   assignedAuthorityId: 'authority.buzon-general',
