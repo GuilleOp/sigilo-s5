@@ -110,3 +110,21 @@ export function offenseSeverity(code: string): OffenseSeverity | undefined {
   if (article <= 50) return 'non_serious';
   return article <= 64 ? 'serious' : 'private_party';
 }
+
+/** Quién comete la conducta: una persona servidora pública o un particular. */
+export type OffenseActor = 'public-servant' | 'private-party';
+
+/** Conductas de particulares fuera de LGRA arts. 65 a 72 (que son todas de particulares). */
+const PRIVATE_PARTY_CRIMES: ReadonlySet<string> = new Set(['CPF-222-BIS']);
+
+/**
+ * Quién comete la conducta según su clave principal: LGRA arts. 65 a 72 y el cohecho a servidores
+ * públicos extranjeros son de particulares; lo demás, de personas servidoras públicas. Sirve para
+ * mostrar menos opciones a quien denuncia; `undefined` si la clave no existe.
+ */
+export function offenseActor(code: string): OffenseActor | undefined {
+  const primary = primaryOffenseCode(code);
+  if (primary === undefined) return undefined;
+  if (PRIVATE_PARTY_CRIMES.has(primary)) return 'private-party';
+  return offenseSeverity(primary) === 'private_party' ? 'private-party' : 'public-servant';
+}

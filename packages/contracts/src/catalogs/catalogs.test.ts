@@ -15,6 +15,7 @@ import {
   isOffenseCode,
   isStateCode,
   municipalitiesOf,
+  offenseActor,
   offenseReference,
   offenseSeverity,
   primaryOffenseCode,
@@ -84,6 +85,10 @@ describe('conductas', () => {
     expect(findOffense('CPF-217-BIS')).toBe(findOffense('CPF-217'));
     expect(offenseReference('LGRA-63-BIS')).toEqual({ law: 'LGRA', article: '63 Bis' });
     expect(offenseSeverity('LGRA-63-BIS')).toBe('serious');
+    expect(offenseActor('LGRA-66')).toBe('private-party');
+    expect(offenseActor('CPF-222-BIS')).toBe('private-party');
+    expect(offenseActor('CPF-222')).toBe('public-servant');
+    expect(offenseActor('LGRA-99')).toBeUndefined();
   });
 
   it('escribe primero lo que pasó y el término legal entre paréntesis', () => {

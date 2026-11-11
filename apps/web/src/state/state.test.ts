@@ -24,6 +24,7 @@ function filledDraft(): ReportDraft {
     periodYear: '2026',
     accused: 'Servidor Ficticio Dos',
     description: 'Adjudicación directa irregular de un contrato sintético de obra.',
+    accusedRole: '',
   };
   return draft;
 }

@@ -63,6 +63,28 @@ días. SIGILO no tiene ese semáforo fijo: mide los plazos legales de cada etapa
 supervisora con reglas públicas. Agregar un semáforo de turnado con los mismos días sería un ajuste
 menor del panel.
 
+## Catálogo de conductas y leyes locales
+
+El S5 publica su catálogo de faltas en `GET /next-api/public/catalogos?catalog=faltas`: 3,559
+entradas con la ley de responsabilidades y el código penal de cada una de las 32 entidades, más la
+LGRA y el CPF como entidad federal (`entidad` 33), con su clasificación (falta grave, no grave o
+hecho de corrupción) y si la comete una persona servidora pública o un particular.
+
+SIGILO conserva su catálogo corto en lenguaje llano (34 conductas en 5 situaciones, con la clave
+de la LGRA o del CPF) y lo enlaza con el del S5:
+
+- `scripts/s5-equivalencias.ts` empareja cada entrada del S5 con una clave de SIGILO por su
+  clasificación, su nombre y quién la comete, y genera `datos/s5/equivalencias-faltas.json`:
+  3,012 entradas con equivalente; las 547 restantes (sobre todo delitos contra la procuración y
+  administración de justicia, tortura y desaparición forzada) quedan listadas en `sinEquivalente`.
+- El panel muestra, bajo la conducta, «En la ley que aplica»: los artículos de la ley de la entidad
+  de los hechos, o de la LGRA y el CPF si la oficina es federal. El `id` del S5 de cada artículo
+  queda en el archivo para enviarlo a la bandeja del S5.
+- Quien denuncia puede decir si lo hizo una persona servidora pública o un particular; la lista se
+  acorta con eso y el dato no sale del navegador.
+
+Las equivalencias son automáticas: revísalas antes de usarlas como fundamento.
+
 ## Pasos
 
 1. **Llaves.** Generar el par X25519 y Ed25519 de la autoridad competente fuera del servidor y fijar

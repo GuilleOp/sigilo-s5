@@ -4,6 +4,7 @@
 import {
   findOffense,
   GOVERNMENT_LEVEL_LABELS,
+  offenseActor,
   OFFENSE_SITUATIONS,
   OFFENSES,
   PUBLIC_ENTITIES,
@@ -30,6 +31,13 @@ const OFFENSE_OPTIONS: readonly ComboboxOption[] = OFFENSES.map((offense) => ({
   group: offense.situation,
 }));
 
+/** «¿Quién lo hizo?»: solo acorta la lista de conductas; nunca sale del navegador. */
+const ROLE_CHOICES: readonly { value: FactsDraft['accusedRole']; label: string }[] = [
+  { value: 'public-servant', label: 'Una persona servidora pública' },
+  { value: 'private-party', label: 'Un particular: empresa, proveedor o persona' },
+  { value: '', label: 'No sé' },
+];
+
 const OFFENSE_GROUPS = OFFENSE_SITUATIONS.map(({ situation, label }) => ({
   key: situation,
   label,
@@ -44,6 +52,14 @@ function offenseSearchText(option: ComboboxOption): string {
 /** Campos de oficina y conducta. */
 export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
   const selectedOffense = findOffense(facts.offenseCode);
+  // La conducta ya elegida sigue en la lista aunque no sea del grupo elegido.
+  const offenseOptions =
+    facts.accusedRole === ''
+      ? OFFENSE_OPTIONS
+      : OFFENSE_OPTIONS.filter(
+          (option) =>
+            offenseActor(option.value) === facts.accusedRole || option.value === facts.offenseCode,
+        );
   return (
     <fieldset>
       <legend>¿Quién y qué?</legend>
@@ -59,6 +75,28 @@ export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
         noun="oficinas"
         testId="entity-select"
       />
+      <fieldset className="field">
+        <legend>¿Quién lo hizo?</legend>
+        <p className="field__hint" id="accused-role-hint">
+          Nos ayuda a mostrarte menos opciones. Si no sabes, elige «No sé».
+        </p>
+        <div className="choice-list">
+          {ROLE_CHOICES.map((choice) => (
+            <div key={choice.value || 'unknown'} className="choice">
+              <input
+                type="radio"
+                id={`accused-role-${choice.value || 'unknown'}`}
+                name="accused-role"
+                aria-describedby="accused-role-hint"
+                checked={facts.accusedRole === choice.value}
+                onChange={() => setFact('accusedRole', choice.value)}
+                data-testid={`accused-role-${choice.value || 'unknown'}`}
+              />
+              <label htmlFor={`accused-role-${choice.value || 'unknown'}`}>{choice.label}</label>
+            </div>
+          ))}
+        </div>
+      </fieldset>
       <ComboboxField
         id="offenseCode"
         label="¿Qué hizo la persona? Elige lo más parecido"
@@ -67,7 +105,7 @@ export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
           'Escribe una palabra (dinero, contrato, familiar) o abre la lista. Si dudas, elige lo más cercano: la autoridad lo revisará.'
         }
         required
-        options={OFFENSE_OPTIONS}
+        options={offenseOptions}
         groups={OFFENSE_GROUPS}
         value={facts.offenseCode}
         error={errors['offenseCode']}

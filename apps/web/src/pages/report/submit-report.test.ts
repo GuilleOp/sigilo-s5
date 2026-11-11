@@ -58,6 +58,7 @@ function filledDraft(mode: 'anonymous' | 'sealed' = 'anonymous'): ReportDraft {
     periodYear: '2026',
     accused: 'Servidor\u200b Ficticio Dos',
     description: 'Adjudicación directa irregular de un contrato\u2060 sintético de obra.',
+    accusedRole: '',
   };
   draft.evidence = [cleanItem('a'), cleanItem('b')];
   return draft;

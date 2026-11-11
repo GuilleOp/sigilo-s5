@@ -48,6 +48,11 @@ export interface FactsDraft {
   periodYear: string;
   accused: string;
   description: string;
+  /**
+   * Quién lo hizo, solo para mostrar menos conductas: `public-servant`, `private-party` o `''` (no
+   * sabe). Nunca sale del navegador.
+   */
+  accusedRole: '' | 'public-servant' | 'private-party';
 }
 
 /**
@@ -108,6 +113,7 @@ export function emptyDraft(): ReportDraft {
       periodYear: '',
       accused: '',
       description: '',
+      accusedRole: '',
     },
     evidence: [],
     rejected: [],
