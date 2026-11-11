@@ -31,6 +31,7 @@ import {
 } from './qualification-service.ts';
 import { conflictFacts, sanctionCheckView } from './pdn-context.ts';
 import { assignedAuthorityOf } from './procedure-service.ts';
+import { turnPendingSince } from './turn-semaphore.ts';
 
 /** Día legal (hora del centro) de un mensaje fechado a la hora en UTC (`AAAA-MM-DDTHH:00Z`). */
 function legalDayOfHour(hour: string): string {
@@ -92,6 +93,7 @@ export function procedureSnapshot(ctx: AppContext, complaint: ComplaintRecord): 
     appealFiledOn: ctx.qualifications.findAppeal(complaint.folio)?.legalOn ?? null,
     downgradeSignalCount: downgradeSignalCount(ctx, complaint.folio),
     transferPendingOn: unconfirmedTransferOn(ctx, complaint.folio),
+    turnPendingOn: turnPendingSince(complaint, steps),
   };
 }
 

@@ -19,6 +19,7 @@ async function routedComplaint(request: Parameters<typeof seedAnonymousComplaint
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, seeded.folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   return seeded;
 }

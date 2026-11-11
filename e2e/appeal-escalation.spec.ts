@@ -102,6 +102,7 @@ test('la supervisora ve en su panel la denuncia escalada por una justificación 
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   await applyProcedure(request, E2E_ACCOUNTS.iffeIntake, folio, {
     action: 'respond_conflict',
@@ -117,9 +118,19 @@ test('la supervisora ve en su panel la denuncia escalada por una justificación 
       timeout: 2_000,
     });
   }).toPass({ timeout: 30_000 });
-  const item = page.getByTestId('escalation-item').filter({ hasText: folio });
-  await expect(item).toContainText('Justificación propia');
+  // Agrupada por regla: el nombre y la explicación de la regla van una vez, en el grupo.
+  const group = page.getByTestId('escalation-group').filter({ hasText: folio });
+  await expect(group.getByRole('heading', { level: 3 })).toContainText('Justificación propia');
+  const item = group.getByTestId('escalation-item').filter({ hasText: folio });
   // La autoridad de origen va con su nombre, no con su identificador interno.
   await expect(item.getByTestId('escalation-origin')).not.toContainText('authority.');
   await expectNoAccessibilityViolations(page, 'panel: escalamientos de la supervisora');
+  // «Abrir» lleva a lo que permite abrir la segunda llave: pide la llave de la supervisora.
+  await item.getByTestId('escalation-open').click();
+  const opener = page.getByTestId('escalation-opener');
+  await expect(opener).toContainText(folio);
+  await expect(page.locator('#escalation-opener-title')).toBeFocused();
+  await expect(opener.getByTestId('supervisor-key-file')).toBeVisible();
+  await opener.getByRole('button', { name: 'Volver a los escalamientos' }).click();
+  await expect(page.getByTestId('escalations')).toBeVisible();
 });

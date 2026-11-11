@@ -116,6 +116,26 @@ export const DeadlineStatusSchema = z.enum(['running', 'due_soon', 'overdue']).m
 });
 export type DeadlineStatus = z.infer<typeof DeadlineStatusSchema>;
 
+/**
+ * Semáforo de turnado de la bandeja del S5: `a_tiempo`, `por_vencer` (cumplió el primer día sin
+ * turnarse o sin aceptarse) o `vencida` (cumplió el segundo). Umbrales y unidad en `TURN_SEMAPHORE`.
+ */
+export const TurnSemaphoreStatusSchema = z.enum(['a_tiempo', 'por_vencer', 'vencida']).meta({
+  description:
+    'Semáforo de turnado del S5: a_tiempo, por_vencer (1 día hábil sin turnar o sin aceptar) o vencida (2 días hábiles). Umbrales en TURN_SEMAPHORE.',
+});
+export type TurnSemaphoreStatus = z.infer<typeof TurnSemaphoreStatusSchema>;
+
+/**
+ * Qué espera la denuncia: `routing` (está en el buzón general, sin turnar o devuelta) o
+ * `acceptance` (turnada o reasignada, la autoridad todavía no la acepta).
+ */
+export const TurnWaitSchema = z.enum(['routing', 'acceptance']).meta({
+  description:
+    'Qué espera la denuncia: routing (en el buzón general, sin turnar o devuelta) o acceptance (turnada o reasignada, sin aceptar).',
+});
+export type TurnWait = z.infer<typeof TurnWaitSchema>;
+
 /** Acción del trámite que queda en la línea de tiempo (y en la bitácora). */
 export const ProcedureActionSchema = z
   .enum([
@@ -166,6 +186,7 @@ export const EscalationRuleKeySchema = z
     'escalation.declined-serious',
     'escalation.conflict-justified',
     'escalation.transfer-unconfirmed',
+    'alert.turn-overdue',
     'alert.prescription-12m',
     'alert.prescription-6m',
     'alert.prescription-3m',

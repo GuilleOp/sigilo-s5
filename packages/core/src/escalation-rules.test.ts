@@ -308,3 +308,27 @@ describe('calificación degradada y alertas de inactividad', () => {
     expect(idle('evidence_hearing')).not.toContain('alert.inactivity-expiry');
   });
 });
+
+describe('alert.turn-overdue (semáforo de turnado)', () => {
+  it('avisa al cumplir 2 días hábiles esperando turno o aceptación, no antes', () => {
+    // Lunes 9 de noviembre: el miércoles 11 cumple 2 días hábiles.
+    const waiting = marta({ turnPendingOn: '2026-11-09' });
+    expect(keysOn(waiting, '2026-11-10')).not.toContain('alert.turn-overdue');
+    expect(evaluateEscalationRules(waiting, '2026-11-11')).toContainEqual({
+      key: 'alert.turn-overdue',
+      effect: 'alert',
+      anchorOn: '2026-11-09',
+      dueOn: '2026-11-11',
+    });
+  });
+
+  it('no aplica si la denuncia ya no espera turno ni aceptación', () => {
+    expect(keysOn(marta({ turnPendingOn: null }), '2026-11-30')).not.toContain(
+      'alert.turn-overdue',
+    );
+    expect(ESCALATION_RULES.find((rule) => rule.key === 'alert.turn-overdue')).toMatchObject({
+      effect: 'alert',
+      notifiesSupervisor: true,
+    });
+  });
+});

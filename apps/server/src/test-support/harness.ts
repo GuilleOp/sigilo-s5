@@ -508,6 +508,7 @@ export async function moveTo(
     await procedureAs(server, 'inboxIntake', folio, {
       action: 'route',
       authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
     }),
   );
   if (status === 'routing') {

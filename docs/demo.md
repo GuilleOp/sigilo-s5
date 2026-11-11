@@ -182,12 +182,17 @@ Lo que se ve, comprobado con la red en Docker:
   (85 puntos), alerta de posible conflicto de interés con el procedimiento del art. 58,
   «2 o más personas independientes denuncian lo mismo», las señales AUD-01 y AUD-03 y las reglas que
   escalaron a la supervisora.
-- Supervisora (`supervision-oic`): «Escalamientos que recibiste» lista 5 denuncias
-  escaladas, cada una con su folio, el día, la autoridad de origen y las reglas que se cumplieron.
-  La de Marta llega por «Acto resolutivo con conflicto de interés sin excusa» y por «Calificación
-  de no grave con dos o más señales del auditor»; las demás, por «Falta grave sin iniciar el
-  procedimiento a los 30 días». Ninguna trae la identidad: los hechos llegan cerrados con la
-  segunda llave (`GET /api/v1/authority/escalations`).
+- Supervisora (`supervision-oic`): «Escalamientos que recibiste» agrupa por regla, de la más
+  grave a la menos grave, con la explicación de cada regla una sola vez y, debajo, las denuncias de
+  la más antigua a la más reciente (folio, día y autoridad de origen). Hay 5 denuncias escaladas:
+  la de Marta aparece en «Acto resolutivo con conflicto de interés sin excusa» y en «Calificación
+  de no grave con dos o más señales del auditor»; las demás, en «Falta grave sin iniciar el
+  procedimiento a los 30 días». Al final van los avisos de «Turnado vencido» de las denuncias que
+  pasaron 2 días hábiles sin turnar o sin aceptar, sin copia que abrir. «Abrir» pide la segunda
+  llave (`apps/server/data/supervisor-demo-key.json` o la de `.red-demo/`), recibe el sobre
+  (`POST /api/v1/authority/escalations/{folio}/envelope`), lo abre en el navegador y lo compara
+  con el registro público: muestra los hechos y las pruebas, nunca la identidad. El detalle completo
+  sigue siendo de la autoridad que tiene la denuncia.
 
 ### Paso a paso, sin el comando único
 
@@ -289,7 +294,10 @@ puertas.
 ## Acto 2. Trámite (1 min)
 
 1. En el panel, entrar como `buzon.federal`, abrir la denuncia (hechos, pruebas limpias e
-   identidad «sellada») y turnarla al OIC del Instituto Federal Ficticio de Equipamiento. Quien
+   identidad «sellada») y turnarla al OIC del Instituto Federal Ficticio de Equipamiento con su
+   motivo, que es obligatorio y la persona lee en su seguimiento (por ejemplo, «Los hechos
+   ocurrieron en el IFFE: le toca a su órgano interno de control»). En la bandeja, la columna
+   «Plazo de turnado» muestra el semáforo del S5 («A tiempo», «Por vencer», «Vencida»). Quien
    turna no ve el formulario para abrir la identidad.
 2. Entrar como `oic-equipamiento.persona1` (recibe e investiga en el OIC), aceptarla y avanzar a
    la etapa «Investigación». El panel muestra los plazos que corren. Después del informe de

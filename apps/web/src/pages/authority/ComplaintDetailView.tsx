@@ -23,6 +23,7 @@ import { ContextSheetPanel } from './ContextSheetPanel.tsx';
 import { CorroborationPanel } from './CorroborationPanel.tsx';
 import { TransferPanel } from './TransferPanel.tsx';
 import { useNetworkState } from '../../network/use-network-state.ts';
+import { TurnSemaphore } from './TurnSemaphore.tsx';
 
 interface ComplaintDetailViewProps {
   session: AuthoritySession;
@@ -109,6 +110,14 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
                   : ''
               }`}
         </dd>
+        {summary.turnSemaphore !== undefined && (
+          <>
+            <dt>Plazo de turnado</dt>
+            <dd>
+              <TurnSemaphore semaphore={summary.turnSemaphore} variant="detail" />
+            </dd>
+          </>
+        )}
         <dt>Identidad</dt>
         <dd>
           {summary.mode === 'sealed'

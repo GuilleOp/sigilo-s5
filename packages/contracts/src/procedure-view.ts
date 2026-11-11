@@ -17,6 +17,8 @@ import {
   ProcedureActionSchema,
   RuleEffectSchema,
   QualificationSeveritySchema,
+  TurnSemaphoreStatusSchema,
+  TurnWaitSchema,
 } from './procedure.ts';
 
 /** Día civil en la hora del centro de México con el que se cuentan los plazos legales. */
@@ -25,12 +27,55 @@ export const LegalDaySchema = DayDateSchema.meta({
     'Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.',
 });
 
+/**
+ * Semáforo de turnado de la bandeja del S5 para una denuncia que espera turno o aceptación. Los
+ * días cuentan en días hábiles (`TURN_SEMAPHORE`) con el reloj del nodo.
+ */
+export const TurnSemaphoreSchema = z
+  .object({
+    waitingFor: TurnWaitSchema,
+    status: TurnSemaphoreStatusSchema,
+    sinceOn: LegalDaySchema.meta({
+      description:
+        'Día en que la denuncia entró al estado que espera (recepción, turno o devolución).',
+    }),
+    elapsedDays: z.number().int().nonnegative().meta({
+      description: 'Días hábiles completos desde sinceOn hasta hoy.',
+    }),
+    warningOn: LegalDaySchema.meta({ description: 'Día desde el que queda «por vencer».' }),
+    overdueOn: LegalDaySchema.meta({ description: 'Día desde el que queda «vencida».' }),
+  })
+  .meta({
+    description:
+      'Semáforo de turnado del S5: cuánto lleva la denuncia sin turnarse o sin aceptarse. Solo en las denuncias que esperan.',
+  });
+export type TurnSemaphore = z.infer<typeof TurnSemaphoreSchema>;
+
 /** Nota pública de la autoridad: la persona denunciante la lee tal cual en su seguimiento. */
 export const PublicNoteSchema = z
   .string()
   .min(1)
   .max(2000)
   .meta({ description: 'Nota pública de la autoridad; la persona denunciante la lee tal cual.' });
+
+/** Mínimo de caracteres del motivo del turno, sin contar espacios al inicio ni al final. */
+export const MIN_ROUTING_NOTE_LENGTH = 10;
+
+/**
+ * Motivo del turno: por qué la denuncia va a esa autoridad. Obligatorio, como en la bandeja del
+ * S5; la persona denunciante lo lee tal cual en su seguimiento.
+ */
+export const RoutingNoteSchema = z
+  .string()
+  .min(MIN_ROUTING_NOTE_LENGTH)
+  .max(2000)
+  .refine((value) => value.trim().length >= MIN_ROUTING_NOTE_LENGTH, {
+    message: `El motivo del turno debe tener al menos ${MIN_ROUTING_NOTE_LENGTH} caracteres.`,
+  })
+  .meta({
+    description:
+      'Motivo del turno (al menos 10 caracteres sin contar espacios al inicio ni al final): por qué la denuncia va a esa autoridad. La persona denunciante lo lee tal cual.',
+  });
 
 /** Fundamento legal y motivo, visible para la persona denunciante. */
 export const LegalBasisTextSchema = z
@@ -48,7 +93,7 @@ export const AgreementTextSchema = z.string().min(50).max(20_000).meta({
 const RouteActionSchema = z.strictObject({
   action: z.literal('route'),
   authorityId: AuthorityIdSchema,
-  note: PublicNoteSchema.optional(),
+  note: RoutingNoteSchema,
 });
 const AcceptActionSchema = z.strictObject({
   action: z.literal('accept'),
@@ -118,7 +163,7 @@ export const ProcedureActionRequestSchema = z
   ])
   .meta({
     description:
-      'Acción del trámite: route, accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
+      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
   });
 export type ProcedureActionRequest = z.infer<typeof ProcedureActionRequestSchema>;
 

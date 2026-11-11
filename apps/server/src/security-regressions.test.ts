@@ -253,6 +253,7 @@ describe('H6: un mensaje anterior al acto no cuenta como su notificación', () =
     await procedureAs(server, 'inboxIntake', folio, {
       action: 'route',
       authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
     });
     await procedureAs(server, 'oicIntake', folio, { action: 'accept' });
     await procedureAs(server, 'oicInvestigator', folio, {
@@ -299,6 +300,7 @@ describe('H7: el sobre de identidad del recurso pide dos aprobaciones y vence co
     await procedureAs(server, 'inboxIntake', folio, {
       action: 'route',
       authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
     });
     await procedureAs(server, 'oicIntake', folio, { action: 'accept' });
     await procedureAs(server, 'oicInvestigator', folio, {

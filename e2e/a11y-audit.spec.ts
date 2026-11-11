@@ -155,6 +155,7 @@ test('H3, H8 y H16: el conflicto pide elegir, confirma antes de registrar y deja
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   await loginAsAuthority(page, E2E_ACCOUNTS.iffeIntake);
   await openComplaint(page, folio);
@@ -200,6 +201,7 @@ test('H3 y H8: el trámite marca sus errores, enfoca el primero y tras aplicar l
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   await applyProcedure(request, E2E_ACCOUNTS.iffeIntake, folio, { action: 'accept' });
   await loginAsAuthority(page, E2E_ACCOUNTS.iffeInvestigator);
@@ -266,6 +268,7 @@ test('H2: avisa antes de cerrar la sesión, la renueva y, si vence, pide entrar 
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   await applyProcedure(request, E2E_ACCOUNTS.iffeIntake, folio, { action: 'accept' });
   await page.clock.install();
@@ -388,6 +391,7 @@ test('H13: el nombre del plazo y su situación, y el sello y su fecha, van separ
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   await page.goto('/seguimiento');
   const form = page.getByTestId('tracking-login');

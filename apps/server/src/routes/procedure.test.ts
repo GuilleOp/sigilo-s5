@@ -145,7 +145,11 @@ describe('flujo del buzón general', () => {
 
   it('registra el seudónimo de la cuenta en los datos privados de cada evento', async () => {
     const { server, folio } = await setup();
-    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
     await act(server, 'oicIntake', folio, { action: 'accept' });
     const actors = storedPayloads(server).map((payload) => payload.actor);
     expect(actors).toEqual(
@@ -162,7 +166,11 @@ describe('flujo del buzón general', () => {
 
   it('reasigna y devuelve al buzón general con nota obligatoria', async () => {
     const { server, folio, reporter } = await setup();
-    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
     const withoutNote = await procedureAs(server, 'oicIntake', folio, {
       action: 'reassign',
       authorityId: TEST_AUTHORITIES.other,
@@ -197,6 +205,121 @@ describe('flujo del buzón general', () => {
       note: 'Los hechos son de otra dependencia (nota sintética).',
     });
   });
+
+  it('turnar exige el motivo: sin él, vacío o de menos de 10 caracteres responde 400', async () => {
+    const { server, folio, reporter } = await setup();
+    const attempts = [
+      { action: 'route', authorityId: TEST_AUTHORITIES.oic },
+      { action: 'route', authorityId: TEST_AUTHORITIES.oic, note: '' },
+      { action: 'route', authorityId: TEST_AUTHORITIES.oic, note: 'Al OIC.' },
+      { action: 'route', authorityId: TEST_AUTHORITIES.oic, note: '   Al OIC.          ' },
+    ];
+    for (const attempt of attempts) {
+      const response = await procedureAs(
+        server,
+        'inboxIntake',
+        folio,
+        attempt as unknown as ProcedureActionRequest,
+      );
+      expect(response.status, JSON.stringify(attempt)).toBe(400);
+    }
+    // Nada cambió: sigue en el buzón general.
+    expect((await tracking(server, folio, reporter)).procedure?.managementState).toBe(
+      'received_in_inbox',
+    );
+    const routed = await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: '  Los hechos ocurrieron en el ente del OIC.  ',
+    });
+    expect(routed.status).toBe(200);
+    // La persona lee el motivo tal cual, sin los espacios de los extremos.
+    expect((await tracking(server, folio, reporter)).procedure?.steps.at(-1)).toMatchObject({
+      action: 'routed',
+      note: 'Los hechos ocurrieron en el ente del OIC.',
+    });
+  });
+});
+
+describe('tope de reasignaciones', () => {
+  /**
+   * Turna la denuncia al OIC y le agrega `previous` reasignaciones sintéticas en su línea de tiempo
+   * (el nodo de prueba no tiene cuentas de recepción en las demás autoridades), dejándola
+   * reasignada al OIC.
+   */
+  async function withReassignments(previous: number) {
+    const fixture = await setup();
+    const { server, folio } = fixture;
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
+    for (let index = 0; index < previous; index += 1) {
+      server.ctx.procedure.insertStep(folio, {
+        action: 'reassigned',
+        on: '2026-10-20',
+        legalOn: '2026-10-20',
+        managementState: 'reassigned',
+        legalStage: null,
+        closureReason: null,
+        authorityId: TEST_AUTHORITIES.oic,
+        actorId: TEST_ACCOUNTS.oicIntake.accountId,
+        note: 'Reasignación sintética anterior.',
+      });
+    }
+    server.ctx.complaints.updateProcedure(folio, {
+      status: 'routed',
+      assignedAuthorityId: TEST_AUTHORITIES.oic,
+      managementState: previous === 0 ? 'routed' : 'reassigned',
+      legalStage: null,
+      closureReason: null,
+    });
+    return fixture;
+  }
+
+  const REASSIGN: ProcedureActionRequest = {
+    action: 'reassign',
+    authorityId: TEST_AUTHORITIES.other,
+    note: 'Los hechos son de otra dependencia (nota sintética).',
+  };
+
+  it('admite la tercera reasignación', async () => {
+    const { server, folio } = await withReassignments(2);
+    expect((await act(server, 'oicIntake', folio, REASSIGN)).status).toBe(200);
+  });
+
+  it('rechaza la cuarta con reassignment_limit (409) y deja devolver al buzón', async () => {
+    const { server, folio, reporter } = await withReassignments(3);
+    const fourth = await act(server, 'oicIntake', folio, REASSIGN);
+    expect(fourth.status).toBe(409);
+    expect(fourth.body).toEqual({
+      error: {
+        code: 'reassignment_limit',
+        message:
+          'La denuncia ya se reasignó 3 veces, el máximo. Devuélvela al buzón general para que se turne de nuevo.',
+      },
+    });
+    // Nada cambió: sigue con el OIC.
+    expect((await tracking(server, folio, reporter)).procedure?.steps.at(-1)?.action).toBe(
+      'reassigned',
+    );
+    const returned = await act(server, 'oicIntake', folio, {
+      action: 'return',
+      note: 'Pasó por tres autoridades: vuelve al buzón general (nota sintética).',
+    });
+    expect(returned.status).toBe(200);
+    // El buzón general la puede turnar de nuevo (turnar no es reasignar).
+    expect(
+      (
+        await act(server, 'inboxIntake', folio, {
+          action: 'route',
+          authorityId: TEST_AUTHORITIES.other,
+          note: 'Se turna a la dependencia de los hechos (motivo sintético).',
+        })
+      ).status,
+    ).toBe(200);
+  });
 });
 
 describe('separación de funciones y competencia', () => {
@@ -208,6 +331,7 @@ describe('separación de funciones y competencia', () => {
         await act(server, 'inboxInvestigator', folio, {
           action: 'route',
           authorityId: TEST_AUTHORITIES.oic,
+          note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
         })
       ).status,
     ).toBe(403);
@@ -216,7 +340,11 @@ describe('separación de funciones y competencia', () => {
     expect(
       (await act(server, 'inboxSupervision', 'ZZZZ-ZZZZ-ZZZZ', { action: 'accept' })).status,
     ).toBe(403);
-    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
     await act(server, 'oicIntake', folio, { action: 'accept' });
     // Recepción no avanza etapas ni cierra lo aceptado.
     expect(
@@ -232,7 +360,11 @@ describe('separación de funciones y competencia', () => {
 
   it('una cuenta de recepción e investigación acepta, investiga y presenta el IPRA, y también reasigna', async () => {
     const { server, folio } = await setup();
-    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
     expect((await act(server, 'oicIntakeInvestigator', folio, { action: 'accept' })).status).toBe(
       200,
     );
@@ -248,6 +380,7 @@ describe('separación de funciones y competencia', () => {
     await act(fresh.server, 'inboxIntake', fresh.folio, {
       action: 'route',
       authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
     });
     const reassigned = await act(fresh.server, 'oicIntakeInvestigator', fresh.folio, {
       action: 'reassign',
@@ -259,7 +392,11 @@ describe('separación de funciones y competencia', () => {
 
   it('después del IPRA solo substanciación avanza y resuelve; investigación ya no (LGRA, art. 115)', async () => {
     const { server, folio } = await setup();
-    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
     // Substanciación no acepta, no reasigna, no devuelve ni avanza la investigación.
     expect((await act(server, 'oicSubstantiation', folio, { action: 'accept' })).status).toBe(403);
     expect(
@@ -345,7 +482,11 @@ describe('separación de funciones y competencia', () => {
     const { server, folio } = await setup();
     // Desde el buzón no se acepta sin turnar.
     expect((await act(server, 'inboxIntake', folio, { action: 'accept' })).status).toBe(409);
-    await act(server, 'inboxIntake', folio, { action: 'route', authorityId: TEST_AUTHORITIES.oic });
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
     expect(
       (
         await act(server, 'oicInvestigator', folio, {
@@ -384,8 +525,13 @@ describe('separación de funciones y competencia', () => {
     const fresh = await setup();
     for (const authorityId of [TEST_AUTHORITIES.inbox, 'authority.no-existe']) {
       expect(
-        (await act(fresh.server, 'inboxIntake', fresh.folio, { action: 'route', authorityId }))
-          .status,
+        (
+          await act(fresh.server, 'inboxIntake', fresh.folio, {
+            action: 'route',
+            authorityId,
+            note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+          })
+        ).status,
       ).toBe(400);
     }
   });

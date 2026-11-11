@@ -1,7 +1,7 @@
 // Motor de plazos y escalamiento (ADR 0007): evalúa las reglas públicas de `ESCALATION_RULES` sobre
 // cada denuncia y registra en la bitácora las que se cumplen. Una regla de escalamiento deja la
 // denuncia disponible para la autoridad supervisora, que recibe la segunda llave.
-import { ESCALATION_RULES_VERSION } from '@sigilo/contracts';
+import { ESCALATION_RULES_VERSION, findEscalationRule } from '@sigilo/contracts';
 import {
   evaluateEscalationRules,
   randomBytes,
@@ -50,11 +50,14 @@ export function runEscalationRules(ctx: AppContext): RulesRunResult {
     );
     for (const rule of triggered) {
       if (known.has(`${rule.key}|${rule.anchorOn}`)) continue;
-      // Si la autoridad ya no es de este nodo (turnada a otro), la supervisora del nodo (H1).
-      const supervisorId =
-        rule.effect === 'escalate'
-          ? (ctx.authorities.supervisorOf(authorityId) ?? ctx.authorities.supervisorAuthorityId)
-          : null;
+      // Si la autoridad ya no es de este nodo (turnada a otro), la supervisora del nodo (H1). Una
+      // alerta para supervisión (turnado vencido) también la registra, pero sin sobre: la entrega
+      // de la segunda llave sigue exigiendo una regla `escalate`.
+      const isForSupervisor =
+        rule.effect === 'escalate' || findEscalationRule(rule.key)?.notifiesSupervisor === true;
+      const supervisorId = isForSupervisor
+        ? (ctx.authorities.supervisorOf(authorityId) ?? ctx.authorities.supervisorAuthorityId)
+        : null;
       withTransaction(ctx.deps.db, () => {
         const event = ctx.ledger.record(
           {
@@ -87,7 +90,7 @@ export function runEscalationRules(ctx: AppContext): RulesRunResult {
         });
       });
       result.triggered += 1;
-      if (supervisorId !== null) result.escalated += 1;
+      if (rule.effect === 'escalate' && supervisorId !== null) result.escalated += 1;
     }
   }
   return result;

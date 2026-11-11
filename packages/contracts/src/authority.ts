@@ -36,6 +36,7 @@ import {
   LegalBasisTextSchema,
   ProcedureViewSchema,
   RuleTriggerViewSchema,
+  TurnSemaphoreSchema,
 } from './procedure-view.ts';
 import { OpeningIdSchema } from './tracking.ts';
 
@@ -57,6 +58,10 @@ export const ComplaintSummarySchema = z
     managementState: ManagementStateSchema.optional(),
     assignedAuthorityId: AuthorityIdSchema.optional().meta({
       description: 'Autoridad que tiene la denuncia (el buzón general mientras no se turna).',
+    }),
+    turnSemaphore: TurnSemaphoreSchema.optional().meta({
+      description:
+        'Semáforo de turnado, solo si la denuncia espera turno o aceptación. Opcional: los nodos anteriores no lo envían.',
     }),
   })
   .meta({
@@ -275,12 +280,15 @@ export const EscalationSummarySchema = z
     folio: FolioSchema,
     escalatedOn: DayDateSchema,
     fromAuthorityId: AuthorityIdSchema,
-    rules: z
-      .array(RuleTriggerViewSchema)
-      .min(1)
-      .meta({ description: 'Reglas de escalamiento que se cumplieron.' }),
+    rules: z.array(RuleTriggerViewSchema).min(1).meta({
+      description:
+        'Reglas que se cumplieron: de escalamiento (effect escalate, entregan el sobre) o avisos para supervisión (effect alert, como el turnado vencido, sin sobre).',
+    }),
   })
-  .meta({ description: 'Denuncia escalada a la supervisora por una regla pública.' });
+  .meta({
+    description:
+      'Denuncia escalada a la supervisora por una regla pública, o con un aviso para supervisión (turnado vencido) que no entrega el sobre.',
+  });
 export type EscalationSummary = z.infer<typeof EscalationSummarySchema>;
 
 /**

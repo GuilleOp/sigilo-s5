@@ -10,6 +10,8 @@ import {
   functionInChargeAt,
   hasAnyFunction,
   hasFunction,
+  MAX_REASSIGNMENTS,
+  MIN_ROUTING_NOTE_LENGTH,
 } from '@sigilo/contracts';
 import type {
   AuthorityProfile,
@@ -18,6 +20,7 @@ import type {
   LegalStage,
   ProcedureActionRequest,
 } from '@sigilo/contracts';
+import { Alert } from '../../components/Alert.tsx';
 import { DeadlineList } from '../../components/DeadlineList.tsx';
 import { SelectField, TextAreaField, TextField } from '../../components/Field.tsx';
 import { VerificationResult } from '../../components/VerificationResult.tsx';
@@ -66,6 +69,16 @@ const EMPTY_SANCTION: SanctionDraft = {
   stateCode: '00',
 };
 
+/** Reasignaciones que ya tuvo la denuncia según su línea de tiempo. */
+function reassignmentsOf(detail: ComplaintDetail): number {
+  return (detail.procedure?.steps ?? []).filter((step) => step.action === 'reassigned').length;
+}
+
+/** Indica si la denuncia ya alcanzó el tope de reasignaciones del S5 (el nodo responde 409). */
+function isReassignmentCapped(detail: ComplaintDetail): boolean {
+  return reassignmentsOf(detail) >= MAX_REASSIGNMENTS;
+}
+
 /**
  * Acciones que las funciones de la cuenta pueden hacer en el estado actual del flujo (una cuenta
  * de recepción e investigación suma las de ambas). Después del IPRA, avanzar y cerrar es de
@@ -85,7 +98,9 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
   if (isExcused) {
     if (!hasFunction(account, 'intake')) return [];
     if (state === 'received_in_inbox' || state === 'returned_to_inbox') return ['route'];
-    if (state === 'routed' || state === 'reassigned') return ['reassign', 'return'];
+    if (state === 'routed' || state === 'reassigned') {
+      return isReassignmentCapped(detail) ? ['return'] : ['reassign', 'return'];
+    }
     return [];
   }
   const actions = new Set<ActionKey>();
@@ -94,7 +109,9 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
       actions.add('route').add('close');
     }
     if (state === 'routed' || state === 'reassigned') {
-      actions.add('accept').add('reassign').add('return');
+      actions.add('accept');
+      if (!isReassignmentCapped(detail)) actions.add('reassign');
+      actions.add('return');
     }
   }
   if (hasAnyFunction(account, ['intake', 'investigation']) && state === 'closed') {
@@ -185,6 +202,10 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     if ((action === 'route' || action === 'reassign') && authorityId === '') {
       found['procedure-authority'] = 'Elige la autoridad.';
     }
+    if (action === 'route' && trimmedNote.length < MIN_ROUTING_NOTE_LENGTH) {
+      found['procedure-note'] =
+        `Escribe por qué la envías a esta autoridad (al menos ${MIN_ROUTING_NOTE_LENGTH} caracteres).`;
+    }
     if ((action === 'reassign' || action === 'return') && trimmedNote === '') {
       found['procedure-note'] = 'Escribe la nota pública: la persona la leerá.';
     }
@@ -213,7 +234,9 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     const withNote = trimmedNote === '' ? {} : { note: trimmedNote };
     switch (action) {
       case 'route':
-        return authorityId === '' ? null : { action, authorityId, ...withNote };
+        return authorityId === '' || trimmedNote.length < MIN_ROUTING_NOTE_LENGTH
+          ? null
+          : { action, authorityId, note: trimmedNote };
       case 'accept':
         return { action, ...withNote };
       case 'reassign':
@@ -361,6 +384,29 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           )}
         </>
       )}
+      {actions.includes('return') && isReassignmentCapped(detail) && (
+        <Alert tone="warning" title="Ya no se puede reasignar" testId="reassignment-cap">
+          <p>
+            Esta denuncia ya se reasignó {MAX_REASSIGNMENTS} veces, el máximo (como en el S5). Si no
+            le corresponde a tu autoridad, devuélvela al buzón general con una nota para que la
+            turnen de nuevo. Si nadie la acepta, al vencer el plazo de turnado la supervisión recibe
+            un aviso para revisarla.
+          </p>
+          {action !== 'return' && (
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => {
+                setAction('return');
+                focusAfterRender('procedure-note');
+              }}
+              data-testid="reassignment-cap-return"
+            >
+              Devolver al buzón general
+            </button>
+          )}
+        </Alert>
+      )}
       {actions.length === 0 ? (
         <p>Tu función no tiene acciones del trámite en este estado.</p>
       ) : (
@@ -382,6 +428,11 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
             <SelectField
               id="procedure-authority"
               error={errors['procedure-authority']}
+              hint={
+                action === 'reassign'
+                  ? `Reasignaciones de esta denuncia: ${reassignmentsOf(detail)} de ${MAX_REASSIGNMENTS}.`
+                  : undefined
+              }
               label="Autoridad"
               value={authorityId}
               onChange={(event) => setAuthorityId(event.target.value)}
@@ -543,11 +594,17 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                 id="procedure-note"
                 error={errors['procedure-note']}
                 label={
-                  action === 'reassign' || action === 'return'
-                    ? 'Nota pública (obligatoria)'
-                    : 'Nota pública (opcional)'
+                  action === 'route'
+                    ? 'Motivo del turno (obligatorio)'
+                    : action === 'reassign' || action === 'return'
+                      ? 'Nota pública (obligatoria)'
+                      : 'Nota pública (opcional)'
                 }
-                hint="La persona denunciante la leerá tal cual en su seguimiento."
+                hint={
+                  action === 'route'
+                    ? `Por qué la envías a esta autoridad; la persona lo leerá. Al menos ${MIN_ROUTING_NOTE_LENGTH} caracteres.`
+                    : 'La persona denunciante la leerá tal cual en su seguimiento.'
+                }
                 rows={2}
                 maxLength={2000}
                 value={note}

@@ -54,6 +54,8 @@ export interface ProcedureSnapshot {
   appealFiledOn?: string | null;
   /** Día del turnado a otro nodo que sigue sin comprobante válido del destino. */
   transferPendingOn?: string | null;
+  /** Día en que la denuncia quedó esperando turno o aceptación (semáforo de turnado), o `null`. */
+  turnPendingOn?: string | null;
   /** Señales AUD-01, AUD-03 y AUD-04 del auditor sobre la calificación. */
   downgradeSignalCount?: number;
 }
@@ -131,6 +133,8 @@ function anchorOf(rule: EscalationRule, snapshot: ProcedureSnapshot): string | n
       return snapshot.conflictJustifiedOn ?? null;
     case 'transfer_pending':
       return snapshot.transferPendingOn ?? null;
+    case 'turn_pending':
+      return snapshot.turnPendingOn ?? null;
     case 'last_activity':
       return snapshot.lastActivityOn;
     case 'prescription':

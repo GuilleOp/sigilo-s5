@@ -42,6 +42,7 @@ import { applyProcedureAction, isCompetent } from '../services/procedure-service
 import { importClosures } from '../services/closure-import-service.ts';
 import { confirmTransfer, transferComplaint } from '../services/transfer-service.ts';
 import { buildComplaintDetail } from '../services/views.ts';
+import { listedWithSemaphore } from '../services/turn-semaphore.ts';
 import { MAX_INBOX_BODY_BYTES } from './network.ts';
 
 /** Lote de acuerdos importados: hasta 1000 acuerdos de 20 000 caracteres. */
@@ -135,13 +136,11 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   app.get(ROUTES.authorityComplaints, (c) => {
     const account = currentAccount(c);
     const { offset, limit } = parsePage(c);
+    // Cada resumen lleva el semáforo de turnado si espera turno o aceptación.
     return c.json(
-      ctx.complaints.listSummariesForAuthority(
-        account.authorityId,
-        ctx.authorities.inboxAuthorityId,
-        offset,
-        limit,
-      ),
+      ctx.complaints
+        .listForAuthority(account.authorityId, ctx.authorities.inboxAuthorityId, offset, limit)
+        .map((listed) => listedWithSemaphore(ctx, listed)),
     );
   });
 

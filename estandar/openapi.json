@@ -1680,6 +1680,25 @@
                     "description": "También en `ejemplos/list-authority-complaints.response.json`.",
                     "value": [
                       {
+                        "folio": "K7PD-2M4X-RT9C",
+                        "mode": "sealed",
+                        "status": "received",
+                        "receivedOn": "2026-11-04",
+                        "stateCode": "22",
+                        "offenseCode": "LGRA-54",
+                        "protectionRequested": false,
+                        "managementState": "received_in_inbox",
+                        "assignedAuthorityId": "authority.buzon-general",
+                        "turnSemaphore": {
+                          "waitingFor": "routing",
+                          "status": "por_vencer",
+                          "sinceOn": "2026-11-04",
+                          "elapsedDays": 1,
+                          "warningOn": "2026-11-05",
+                          "overdueOn": "2026-11-06"
+                        }
+                      },
+                      {
                         "folio": "K7Q2-M9XP-4RTD",
                         "mode": "sealed",
                         "status": "investigating",
@@ -2004,7 +2023,7 @@
         "operationId": "applyProcedureAction",
         "tags": ["Autoridad"],
         "summary": "Acción del trámite",
-        "description": "Turnar (`route`, solo recepción y turnado del buzón general), aceptar, reasignar o devolver al buzón general (recepción y turnado de la autoridad que la tiene), avanzar de etapa legal (investigación) o cerrar con uno de los seis motivos, su fundamento y la versión pública del acuerdo. Cada acción registra `complaint.status_changed` con el seudónimo de la cuenta y, si lleva nota, la persona denunciante la lee en su seguimiento. Responde `403` si la función no puede, `404` si la denuncia es de otra autoridad y `409` si el flujo no admite la acción.",
+        "description": "Turnar (`route`, solo recepción y turnado del buzón general), aceptar, reasignar o devolver al buzón general (recepción y turnado de la autoridad que la tiene), avanzar de etapa legal (investigación) o cerrar con uno de los seis motivos, su fundamento y la versión pública del acuerdo. Cada acción registra `complaint.status_changed` con el seudónimo de la cuenta y, si lleva nota, la persona denunciante la lee en su seguimiento. Responde `403` si la función no puede, `404` si la denuncia es de otra autoridad y `409` si el flujo no admite la acción (`conflict`) o si la denuncia ya se reasignó 3 veces, el tope del S5 (`reassignment_limit`). Turnar exige el motivo (`note`, al menos 10 caracteres).",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2137,7 +2156,7 @@
             }
           },
           "409": {
-            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).",
+            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).\n\n`reassignment_limit`: La denuncia ya se reasignó el máximo de veces (3, como en el S5): la autoridad puede devolverla al buzón general o la supervisión la revisa.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -2147,10 +2166,22 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
-                "example": {
-                  "error": {
-                    "code": "conflict",
-                    "message": "La acción no corresponde al estado actual del trámite."
+                "examples": {
+                  "conflict": {
+                    "value": {
+                      "error": {
+                        "code": "conflict",
+                        "message": "La acción no corresponde al estado actual del trámite."
+                      }
+                    }
+                  },
+                  "reassignment_limit": {
+                    "value": {
+                      "error": {
+                        "code": "reassignment_limit",
+                        "message": "La denuncia ya se reasignó 3 veces, el máximo. Devuélvela al buzón general para que se turne de nuevo."
+                      }
+                    }
                   }
                 }
               }
@@ -3748,7 +3779,7 @@
             }
           },
           "413": {
-            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.\n\n`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -3758,10 +3789,14 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
-                "example": {
-                  "error": {
-                    "code": "payload_too_large",
-                    "message": "El contenido excede el tamaño permitido."
+                "examples": {
+                  "payload_too_large": {
+                    "value": {
+                      "error": {
+                        "code": "payload_too_large",
+                        "message": "El contenido excede el tamaño permitido."
+                      }
+                    }
                   }
                 }
               }
@@ -4049,7 +4084,7 @@
         "operationId": "listEscalations",
         "tags": ["Autoridad"],
         "summary": "Denuncias escaladas",
-        "description": "Denuncias que una regla pública de escalamiento entregó a la autoridad supervisora de la cuenta, sin contenido. Solo supervisión de la supervisora.",
+        "description": "Denuncias que una regla pública de escalamiento entregó a la autoridad supervisora de la cuenta, y las que tienen un aviso para supervisión (turnado vencido, `effect: alert`, sin sobre), sin contenido. Solo supervisión de la supervisora.",
         "security": [{ "authorityBearer": [] }],
         "responses": {
           "200": {
@@ -9009,6 +9044,10 @@
             "type": "string",
             "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
             "examples": ["authority.oic-iffe"]
+          },
+          "turnSemaphore": {
+            "description": "Semáforo de turnado, solo si la denuncia espera turno o aceptación. Opcional: los nodos anteriores no lo envían.",
+            "$ref": "#/components/schemas/TurnSemaphore"
           }
         },
         "required": [
@@ -9022,6 +9061,40 @@
         ],
         "additionalProperties": false,
         "description": "Resumen de una denuncia en el listado de la autoridad; nunca trae la identidad."
+      },
+      "TurnSemaphore": {
+        "type": "object",
+        "properties": {
+          "waitingFor": { "$ref": "#/components/schemas/TurnWait" },
+          "status": { "$ref": "#/components/schemas/TurnSemaphoreStatus" },
+          "sinceOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día en que la denuncia entró al estado que espera (recepción, turno o devolución).",
+            "examples": ["2026-11-05"]
+          },
+          "elapsedDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Días hábiles completos desde sinceOn hasta hoy."
+          },
+          "warningOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día desde el que queda «por vencer».",
+            "examples": ["2026-11-05"]
+          },
+          "overdueOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día desde el que queda «vencida».",
+            "examples": ["2026-11-05"]
+          }
+        },
+        "required": ["waitingFor", "status", "sinceOn", "elapsedDays", "warningOn", "overdueOn"],
+        "additionalProperties": false,
+        "description": "Semáforo de turnado del S5: cuánto lleva la denuncia sin turnarse o sin aceptarse. Solo en las denuncias que esperan."
       },
       "ComplaintDetail": {
         "type": "object",
@@ -9397,12 +9470,12 @@
               },
               "note": {
                 "type": "string",
-                "minLength": 1,
+                "minLength": 10,
                 "maxLength": 2000,
-                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+                "description": "Motivo del turno (al menos 10 caracteres sin contar espacios al inicio ni al final): por qué la denuncia va a esa autoridad. La persona denunciante lo lee tal cual."
               }
             },
-            "required": ["action", "authorityId"],
+            "required": ["action", "authorityId", "note"],
             "additionalProperties": false
           },
           {
@@ -9572,7 +9645,7 @@
             "additionalProperties": false
           }
         ],
-        "description": "Acción del trámite: route, accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
+        "description": "Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
       },
       "ProcedureState": {
         "type": "object",
@@ -9808,12 +9881,12 @@
             "minItems": 1,
             "type": "array",
             "items": { "$ref": "#/components/schemas/RuleTriggerView" },
-            "description": "Reglas de escalamiento que se cumplieron."
+            "description": "Reglas que se cumplieron: de escalamiento (effect escalate, entregan el sobre) o avisos para supervisión (effect alert, como el turnado vencido, sin sobre)."
           }
         },
         "required": ["folio", "escalatedOn", "fromAuthorityId", "rules"],
         "additionalProperties": false,
-        "description": "Denuncia escalada a la supervisora por una regla pública."
+        "description": "Denuncia escalada a la supervisora por una regla pública, o con un aviso para supervisión (turnado vencido) que no entrega el sobre."
       },
       "EscalationDelivery": {
         "type": "object",
@@ -10304,6 +10377,7 @@
                   "unauthorized",
                   "forbidden",
                   "conflict",
+                  "reassignment_limit",
                   "payload_too_large",
                   "unsupported_media_type",
                   "rate_limited",
@@ -10458,6 +10532,16 @@
         "enum": ["running", "due_soon", "overdue"],
         "description": "Situación de un plazo: running (en curso), due_soon (por vencer) u overdue (vencido)."
       },
+      "TurnSemaphoreStatus": {
+        "type": "string",
+        "enum": ["a_tiempo", "por_vencer", "vencida"],
+        "description": "Semáforo de turnado del S5: a_tiempo, por_vencer (1 día hábil sin turnar o sin aceptar) o vencida (2 días hábiles). Umbrales en TURN_SEMAPHORE."
+      },
+      "TurnWait": {
+        "type": "string",
+        "enum": ["routing", "acceptance"],
+        "description": "Qué espera la denuncia: routing (en el buzón general, sin turnar o devuelta) o acceptance (turnada o reasignada, sin aceptar)."
+      },
       "ProcedureAction": {
         "type": "string",
         "enum": [
@@ -10491,6 +10575,7 @@
           "escalation.declined-serious",
           "escalation.conflict-justified",
           "escalation.transfer-unconfirmed",
+          "alert.turn-overdue",
           "alert.prescription-12m",
           "alert.prescription-6m",
           "alert.prescription-3m",

@@ -3,6 +3,7 @@ import { findManagementState, findOffense, findState } from '@sigilo/contracts';
 import { TableScroll } from '../../components/TableScroll.tsx';
 import type { ComplaintSummary } from '@sigilo/contracts';
 import { formatShortDate, STATUS_LABELS } from '../../lib/format.ts';
+import { TurnSemaphore } from './TurnSemaphore.tsx';
 
 interface ComplaintListProps {
   complaints: readonly ComplaintSummary[];
@@ -37,6 +38,7 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
             <th scope="col">Folio</th>
             <th scope="col">Conducta</th>
             <th scope="col">Estatus</th>
+            <th scope="col">Plazo de turnado</th>
             <th scope="col">Recibida</th>
             <th scope="col">Entidad</th>
             <th scope="col">Modo</th>
@@ -66,6 +68,9 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
                 <span className="complaint-list__status-text">
                   {STATUS_LABELS[complaint.status]}
                 </span>
+              </td>
+              <td data-label="Plazo de turnado">
+                <TurnSemaphore semaphore={complaint.turnSemaphore} />
               </td>
               <td data-label="Recibida" className="complaint-list__date">
                 {formatShortDate(complaint.receivedOn)}

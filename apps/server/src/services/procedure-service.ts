@@ -19,6 +19,8 @@ import {
   hasAnyFunction,
   hasFunction,
   isManagementTransition,
+  MAX_REASSIGNMENTS,
+  MIN_ROUTING_NOTE_LENGTH,
 } from '@sigilo/contracts';
 import { randomBytes, sha256Hex, toDayDate, toHex, toMexicoCentralDay } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
@@ -52,6 +54,11 @@ export function isCompetent(
   complaint: ComplaintRecord,
 ): boolean {
   return account.authorityId === assignedAuthorityOf(ctx, complaint);
+}
+
+/** Reasignaciones que ya tuvo la denuncia (pasos `reassigned` de su línea de tiempo). */
+export function reassignmentsOf(ctx: AppContext, folio: string): number {
+  return ctx.procedure.listSteps(folio).filter((step) => step.action === 'reassigned').length;
 }
 
 /** Estatus de la API v1 que corresponde a una etapa legal. */
@@ -139,13 +146,18 @@ function plan(
       requireIntake();
       requireTransition('routed');
       requireTarget(request.authorityId);
+      // El motivo del turno es obligatorio (como en el S5): el esquema ya lo exige; esta comprobación
+      // cubre a quien llame a `applyProcedureAction` sin pasar por la ruta.
+      if (request.note.trim().length < MIN_ROUTING_NOTE_LENGTH) {
+        throw new ApiFailure('bad_request');
+      }
       return {
         ...base,
         action: 'routed',
         managementState: 'routed',
         status: 'routed',
         assignedAuthorityId: request.authorityId,
-        note: request.note ?? null,
+        note: request.note.trim(),
       };
     case 'accept': {
       // Aceptar también reabre una denuncia cerrada por nuevos indicios (LGRA, art. 100): lo hace
@@ -167,6 +179,11 @@ function plan(
       requireTransition('reassigned');
       requireTarget(request.authorityId);
       if (request.authorityId === assigned) throw new ApiFailure('conflict');
+      // Tope de reasignaciones del S5: después de la tercera, la denuncia vuelve al buzón general
+      // (o la revisa supervisión) en lugar de pasar de mano en mano sin que nadie la acepte.
+      if (reassignmentsOf(ctx, complaint.folio) >= MAX_REASSIGNMENTS) {
+        throw new ApiFailure('reassignment_limit');
+      }
       return {
         ...base,
         action: 'reassigned',

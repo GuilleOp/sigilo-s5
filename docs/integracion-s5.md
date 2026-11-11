@@ -36,14 +36,14 @@ Revisado el 2026-11-07 con la cuenta compartida del buzón general de la versió
 usa los mismos nombres para que quien ya opera la bandeja de la SESNA reconozca el flujo; el
 catálogo los publica en `s5Code` (`packages/contracts/src/catalogs/procedure.ts`).
 
-| SIGILO (`managementState`) | Código en la bandeja del S5      | Lo que ve quien opera                                                          |
-| -------------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
-| `received_in_inbox`        | `SIN_TURNAR`                     | «Bandeja general de turnado» (buzón general)                                   |
-| `routed`                   | `TURNADA`                        | «Asignadas», en espera de que la institución acepte                            |
-| `accepted`                 | `ACEPTADA` (evento «Aceptación») | La institución la atiende                                                      |
-| `reassigned`               | `REASIGNADA`                     | «Reasignadas» (en el S5, máximo 3)                                             |
-| `returned_to_inbox`        | `DEVUELTA`                       | Vuelve a la bandeja general                                                    |
-| `closed`                   | `CERRADA`, con su motivo         | Atendida, canalizada, improcedente, información insuficiente, acumulada u otro |
+| SIGILO (`managementState`) | Código en la bandeja del S5      | Lo que ve quien opera                                                            |
+| -------------------------- | -------------------------------- | -------------------------------------------------------------------------------- |
+| `received_in_inbox`        | `SIN_TURNAR`                     | «Bandeja general de turnado» (buzón general)                                     |
+| `routed`                   | `TURNADA`                        | «Asignadas», en espera de que la institución acepte                              |
+| `accepted`                 | `ACEPTADA` (evento «Aceptación») | La institución la atiende                                                        |
+| `reassigned`               | `REASIGNADA`                     | «Reasignadas» (máximo 3, como en el S5; la cuarta responde `reassignment_limit`) |
+| `returned_to_inbox`        | `DEVUELTA`                       | Vuelve a la bandeja general                                                      |
+| `closed`                   | `CERRADA`, con su motivo         | Atendida, canalizada, improcedente, información insuficiente, acumulada u otro   |
 
 `SIN_TURNAR` y `TURNADA` se observaron en la API de la bandeja; los demás códigos siguen el mismo
 patrón y los nombres que la SESNA usó en el taller del 27 de octubre, y conviene confirmarlos con la
@@ -58,10 +58,49 @@ general del S5. Es el canal único con protocolos de recepción y turno de las B
 (arts. 56 y 58). Al integrar, el buzón general del S5 se publica en el directorio con el papel
 `inbox` y la misma llave que su nodo usa como autoridad en `keys.json`.
 
-El semáforo de la bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2
-días. SIGILO no tiene ese semáforo fijo: mide los plazos legales de cada etapa (LGRA) y escala a la
-supervisora con reglas públicas. Agregar un semáforo de turnado con los mismos días sería un ajuste
-menor del panel.
+### Motivo del turno
+
+Como en la bandeja del S5, turnar exige el motivo: `route` lleva `note` obligatoria de al menos 10
+caracteres (sin contar espacios al inicio ni al final; `RoutingNoteSchema`). Sin él, el nodo
+responde `bad_request` (400). El panel lo pide con «Por qué la envías a esta autoridad; la persona
+lo leerá», y la persona lo lee tal cual en su seguimiento.
+
+### Tope de reasignaciones
+
+Como en el S5, una denuncia admite como máximo 3 reasignaciones (`MAX_REASSIGNMENTS`), contadas en
+su línea de tiempo. La cuarta responde `409` con el código `reassignment_limit` y un mensaje fijo
+(«La denuncia ya se reasignó 3 veces, el máximo…»), distinto de `conflict` para que el cliente lo
+explique. El panel deja de ofrecer «Reasignar», dice por qué y ofrece «Devolver al buzón general»;
+el buzón puede turnarla de nuevo (turnar no cuenta como reasignar). Si nadie la acepta, el semáforo
+de turnado la marca vencida y la supervisión recibe el aviso.
+
+### Semáforo de turnado
+
+La bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2 días. SIGILO
+tiene el mismo semáforo, además de los plazos legales de cada etapa (LGRA) y de las reglas públicas
+de escalamiento:
+
+- Aplica a las denuncias que esperan turno (`received_in_inbox` y `returned_to_inbox`, en el buzón
+  general) y a las que esperan aceptación (`routed` y `reassigned`). Cuenta desde el día en que
+  entraron a ese estado (recepción, turno, reasignación o devolución); al aceptarse o cerrarse
+  desaparece.
+- `a_tiempo` el mismo día, `por_vencer` al cumplir 1 día y `vencida` al cumplir 2. Los umbrales
+  están en `TURN_SEMAPHORE` (`packages/contracts/src/catalogs/procedure.ts`) y se publican en
+  `catalogo-del-tramite.json`.
+- **Días hábiles**, no naturales: es la unidad de los demás plazos cortos del trámite (aviso del
+  archivo, solicitud de información, inconformidad), con el mismo calendario oficial de días
+  inhábiles. Una denuncia que llega el viernes no aparece vencida el lunes; el S5 de pruebas cuenta
+  días naturales, así que solo difieren en fines de semana y días inhábiles.
+- Los días los cuenta el reloj del nodo (el simulado en la demo), en la hora del centro de México.
+- La API lo entrega en `ComplaintSummary.turnSemaphore` (listado y detalle), un campo opcional: un
+  nodo anterior que no lo envía sigue cumpliendo el esquema. El panel lo muestra en la columna
+  «Plazo de turnado» y en el detalle como insignia con ícono y texto («A tiempo», «Por vencer»,
+  «Vencida»), nunca solo con color.
+- Al vencer, el motor de reglas registra la alerta pública `alert.turn-overdue` («Turnado
+  vencido», reglas 1.3.0) con la supervisora de la autoridad que la tiene. Es un aviso, no un
+  escalamiento: la supervisión la ve en «Escalamientos que recibiste» sin el sobre de la segunda
+  llave (`authorityEscalationEnvelope` sigue exigiendo una regla `escalate`), y la denuncia sigue
+  con quien la tiene. Una nueva espera (devolución o reasignación) puede generar un aviso nuevo.
 
 ## Catálogo de conductas y leyes locales
 

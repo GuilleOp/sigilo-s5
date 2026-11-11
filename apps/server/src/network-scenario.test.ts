@@ -224,6 +224,7 @@ describe('red del escenario de la demostración', () => {
     await asAccount(federal, 'federalInboxIntake', ROUTES.authorityProcedure(luisFolio), {
       action: 'route',
       authorityId: IFFE,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
     });
     await asAccount(federal, 'iffeIntake', ROUTES.authorityProcedure(luisFolio), {
       action: 'accept',
@@ -574,6 +575,7 @@ describe('canal único: sin autoridad competente llega al buzón general (Bases 
       {
         action: 'route',
         authorityId: IFFE,
+        note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
       },
     );
     expect(routed.status).toBe(200);

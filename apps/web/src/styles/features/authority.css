@@ -126,7 +126,7 @@
     font-weight: 700;
   }
 
-  .complaint-list td:nth-child(n + 5) {
+  .complaint-list td:nth-child(n + 6) {
     font-size: var(--text-sm);
     color: var(--color-text-muted);
   }
