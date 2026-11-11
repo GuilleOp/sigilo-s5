@@ -392,60 +392,156 @@
   font-size: 12px;
 }
 
-/* Mapa de nodos de la cobertura (C). */
+/* Mapa coroplético de las entidades (contorno del INEGI). Escala de un solo tono: el color de acción
+   del tema mezclado con la superficie fuerte, de claro a intenso en claro, oscuro y alto contraste.
+   «Sin datos» lleva trama (patrón SVG) además de color. Bordes sin escalar para que se vean igual
+   en el mapa y en el recuadro ampliado. */
 .coverage-figure {
   margin: var(--space-4) 0;
 }
 
-.coverage-map {
+.mexico-map {
+  --map-hue: var(--color-primary);
+  --map-low: var(--color-surface-strong);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mexico-map__layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.mexico-map__layer {
+  min-block-size: var(--target-min);
+  padding: var(--space-1) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mexico-map__layer[aria-pressed='true'] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.mexico-map__layer:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.mexico-map__summary {
+  margin: 0;
+  font-weight: 700;
+}
+
+.mexico-map__body {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* El mapa a todo el ancho; abajo, el recuadro ampliado y la ficha, lado a lado si caben. */
+.mexico-map__side {
+  display: grid;
+  gap: var(--space-3);
+  align-items: start;
+  min-inline-size: 0;
+}
+
+@media (min-width: 36rem) {
+  .mexico-map__side {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.mexico-map__inset {
+  margin: 0;
+}
+
+.coverage-map,
+.coverage-map-inset {
   display: block;
   inline-size: 100%;
-  max-inline-size: 40rem;
   block-size: auto;
 }
 
-.coverage-map__link {
-  stroke: var(--color-node);
-  stroke-width: 0.6;
-  opacity: 0.6;
+.coverage-map-inset {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
 }
 
-.coverage-map__link--own {
-  stroke: var(--color-node-protect);
-  stroke-width: 2.5;
-  opacity: 1;
+.coverage-map__entity {
+  stroke: var(--color-surface);
+  stroke-width: 1px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
 }
 
-.coverage-map__node[data-level='full'] {
-  fill: var(--color-node-cyan);
-  stroke: var(--color-text);
-  stroke-width: 1.2;
+.coverage-map__entity[data-step='1'] {
+  fill: color-mix(in oklab, var(--map-hue) 16%, var(--map-low));
 }
 
-.coverage-map__node[data-level='partial'] {
-  fill: var(--color-surface-strong);
-  stroke: var(--color-node);
-  stroke-width: 1.4;
+.coverage-map__entity[data-step='2'] {
+  fill: color-mix(in oklab, var(--map-hue) 36%, var(--map-low));
 }
 
-.coverage-map__node[data-level='none'] {
-  fill: none;
+.coverage-map__entity[data-step='3'] {
+  fill: color-mix(in oklab, var(--map-hue) 56%, var(--map-low));
+}
+
+.coverage-map__entity[data-step='4'] {
+  fill: color-mix(in oklab, var(--map-hue) 78%, var(--map-low));
+}
+
+.coverage-map__entity[data-step='5'] {
+  fill: var(--map-hue);
+}
+
+.coverage-map__entity:focus {
+  outline: none;
+}
+
+.coverage-map__hatch-bg {
+  fill: var(--color-surface);
+}
+
+.coverage-map__hatch {
   stroke: var(--color-no-coverage);
-  stroke-width: 1.8;
-  stroke-dasharray: 2.5 2;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
 }
 
-.coverage-map__node[data-own] {
-  fill: var(--color-protect-fill);
+/* Borde de la entidad elegida (continuo) y de la que tiene el cursor o el foco (punteado). */
+.coverage-map__highlight {
+  fill: none;
   stroke: var(--color-text);
-  stroke-width: 1.5;
-  stroke-dasharray: none;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
-.coverage-map__hub {
-  fill: var(--color-primary);
+.coverage-map__highlight[data-kind='active'] {
+  stroke: var(--color-focus);
+  stroke-width: 3px;
+}
+
+.coverage-map__inset-frame {
+  fill: none;
   stroke: var(--color-text);
-  stroke-width: 1.5;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .coverage-map__label {
@@ -455,6 +551,40 @@
   stroke: var(--color-bg);
   stroke-width: 3px;
   stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.coverage-card {
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.coverage-card__hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.coverage-card__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.coverage-card__facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.coverage-card__facts dt {
+  font-weight: 800;
+}
+
+.coverage-card__facts dd {
+  margin: 0;
 }
 
 .coverage-legend {
@@ -462,6 +592,7 @@
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
   list-style: none;
+  margin: 0;
   padding: 0;
   font-size: var(--text-sm);
 }
@@ -472,29 +603,19 @@
   gap: var(--space-1);
 }
 
-.coverage-legend__dot {
-  inline-size: 0.9rem;
-  block-size: 0.9rem;
-  border-radius: 50%;
-  border: 2px solid var(--color-text);
+.coverage-swatch {
+  inline-size: 1.5rem;
+  block-size: 1rem;
 }
 
-.coverage-legend__dot[data-level='full'] {
-  background: var(--color-node-cyan);
+.coverage-swatch .coverage-map__entity {
+  stroke: var(--color-text);
 }
 
-.coverage-legend__dot[data-level='partial'] {
-  background: var(--color-surface-strong);
-  border-color: var(--color-node);
-}
-
-.coverage-legend__dot[data-level='none'] {
-  border-style: dashed;
-  border-color: var(--color-no-coverage);
-}
-
-.coverage-legend__dot[data-own] {
-  background: var(--color-protect-fill);
+/* Fila de la tabla que corresponde a la entidad elegida en el mapa. */
+.coverage-matrix tr[data-selected] > * {
+  background: var(--color-mark-bg);
+  color: var(--color-on-mark);
 }
 
 /* Anclajes, opcionales y plegados al final del seguimiento. */
@@ -516,21 +637,19 @@
   .conflict-graph__edge,
   .conflict-graph__person,
   .conflict-graph__org,
-  .coverage-map__link,
-  .coverage-map__node,
-  .coverage-map__hub,
+  .coverage-map__entity,
+  .coverage-map__hatch,
+  .coverage-map__inset-frame,
   .wax-seal__ring,
   .wax-seal__mark {
     stroke: CanvasText;
   }
 
-  .wax-seal__wax,
-  .coverage-map__hub,
-  .coverage-map__node[data-own] {
+  .wax-seal__wax {
     fill: Highlight;
   }
 
-  .coverage-map__node[data-level='full'] {
-    fill: CanvasText;
+  .coverage-map__highlight {
+    stroke: Highlight;
   }
 }

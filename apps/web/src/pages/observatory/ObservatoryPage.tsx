@@ -3,7 +3,7 @@
 // abiertos descargables. Cada gráfica tiene su tabla equivalente y nada depende del color.
 // En modo red, los resultados agregados salen del corte nacional del enrutador; sin red, de la
 // línea base sintética, rotulada «Datos de ejemplo».
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { PATHS } from '../../app/paths.ts';
 import { TableScroll } from '../../components/TableScroll.tsx';
@@ -27,6 +27,8 @@ import {
   summarizeCoverage,
 } from './observatory-data.ts';
 import type { CoverageEntityRow, OutcomeCount } from './observatory-data.ts';
+import { parseAnonymitySummary } from './map-layers.ts';
+import type { AnonymityByState } from './map-layers.ts';
 import {
   cutTotal,
   EXAMPLE_REASONS,
@@ -72,6 +74,33 @@ function useCoverage(): CoverageState {
         },
         () => {
           if (isActive) setState({ kind: 'failed' });
+        },
+      );
+    return () => {
+      isActive = false;
+    };
+  }, []);
+  return state;
+}
+
+/** Porcentaje de personas con k ≥ 10 por entidad (datos abiertos); vacío si no se puede cargar. */
+function useAnonymitySummary(): AnonymityByState {
+  const [state, setState] = useState<AnonymityByState>(() => new Map());
+  useEffect(() => {
+    let isActive = true;
+    fetch('/datos/abiertos/grupos-anonimato/resumen.csv', {
+      credentials: 'omit',
+      cache: 'no-store',
+      referrerPolicy: 'no-referrer',
+      mode: 'same-origin',
+    })
+      .then((response) => (response.ok ? response.text() : Promise.reject(new Error('HTTP'))))
+      .then(
+        (text) => {
+          if (isActive) setState(parseAnonymitySummary(text));
+        },
+        () => {
+          // Sin el resumen, la capa muestra todas las entidades «sin datos».
         },
       );
     return () => {
@@ -142,6 +171,17 @@ function counters(outcomes: NetworkOutcomes): { label: string; value: string }[]
 export function ObservatoryPage() {
   useDocumentTitle('Observatorio: ¿sirvió denunciar?');
   const coverage = useCoverage();
+  const anonymity = useAnonymitySummary();
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const tableRef = useRef<HTMLDetailsElement>(null);
+  /** Abre la tabla de cobertura y lleva el foco a la fila de la entidad. */
+  const showRow = (code: string) => {
+    setSelectedState(code);
+    if (tableRef.current) tableRef.current.open = true;
+    const row = document.getElementById(`coverage-row-${code}`);
+    row?.scrollIntoView({ block: 'center' });
+    row?.focus();
+  };
   const outcomes = useNetworkOutcomes();
   const isNetwork = outcomes.kind === 'network';
   const outcomeRows: readonly OutcomeCount[] = isNetwork
@@ -290,35 +330,22 @@ export function ObservatoryPage() {
         )}
         {coverage.kind === 'ready' && (
           <figure className="coverage-figure" data-testid="coverage-map">
-            <CoverageMap rows={coverage.rows} />
-            <figcaption>
-              <p className="source">
-                Mapa de nodos de las 32 entidades. Es aproximado y no muestra ubicaciones de
-                personas. La tabla de abajo dice lo mismo.
-              </p>
-              <ul className="coverage-legend">
-                <li>
-                  <span className="coverage-legend__dot" data-level="full" aria-hidden="true" />
-                  <Icon name="check" /> 4 o 5 sistemas con datos
-                </li>
-                <li>
-                  <span className="coverage-legend__dot" data-level="partial" aria-hidden="true" />
-                  <Icon name="info" /> De 1 a 3 sistemas
-                </li>
-                <li>
-                  <span className="coverage-legend__dot" data-level="none" aria-hidden="true" />
-                  <Icon name="nocov" /> Sin cobertura
-                </li>
-                <li>
-                  <span className="coverage-legend__dot" data-own="true" aria-hidden="true" />
-                  <Icon name="route" /> Nodo propio (Querétaro); las demás usan el nodo común
-                </li>
-              </ul>
+            <CoverageMap
+              rows={coverage.rows}
+              anonymity={anonymity}
+              selected={selectedState}
+              onSelect={setSelectedState}
+              onShowRow={showRow}
+            />
+            <figcaption className="source">
+              Mapa de las 32 entidades; no muestra ubicaciones de personas. Lo federal y el Estado
+              Ejemplo (ficticio) no tienen lugar en el mapa: están en la tabla de abajo, que dice lo
+              mismo con texto.
             </figcaption>
           </figure>
         )}
         {coverage.kind === 'ready' && (
-          <details className="more">
+          <details className="more" ref={tableRef}>
             <summary>Ver la tabla de las 32 entidades</summary>
             <TableScroll labelledBy={'coverage-caption'}>
               <table
@@ -338,7 +365,13 @@ export function ObservatoryPage() {
                 </thead>
                 <tbody>
                   {coverage.rows.map((row) => (
-                    <tr key={row.stateCode} data-synthetic={row.isSynthetic || undefined}>
+                    <tr
+                      key={row.stateCode}
+                      id={`coverage-row-${row.stateCode}`}
+                      tabIndex={-1}
+                      data-synthetic={row.isSynthetic || undefined}
+                      data-selected={row.stateCode === selectedState || undefined}
+                    >
                       <th scope="row">{row.stateName}</th>
                       {COVERAGE_SYSTEMS.map((system) => {
                         const periods = row.periods[system];

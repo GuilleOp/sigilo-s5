@@ -113,6 +113,7 @@ S3, 1 s; escritura de productos, 3 s.
 | [`abiertos/cobertura/`](abiertos/cobertura/metodologia.md)                       | Dato abierto: matriz de cobertura                         | 40 KB         |
 | [`abiertos/contratacion-federal/`](abiertos/contratacion-federal/metodologia.md) | Dato abierto: indicadores por comprador federal y por año | 45 KB, 206 KB |
 | [`fuentes.json`](fuentes.json)                                                   | Manifiesto de fuentes con sha256                          | 2 KB          |
+| [`mapa-entidades/metodologia.md`](mapa-entidades/metodologia.md)                 | Contorno de las 32 entidades (INEGI) para el mapa         | 56 KB         |
 
 Cada conjunto de `abiertos/` trae `diccionario.csv` (archivo, campo, tipo, descripción) y
 `metodologia.md`.
