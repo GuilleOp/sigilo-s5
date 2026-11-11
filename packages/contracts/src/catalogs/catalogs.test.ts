@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MUNICIPALITIES,
+  MUNICIPALITY_SOURCE,
   OFFENSE_SITUATIONS,
   OFFENSES,
   PUBLIC_ENTITIES,
@@ -46,12 +47,42 @@ const ADDED_OFFENSE_CODES = [
 ];
 
 describe('entidades y municipios', () => {
-  it('incluye las 32 entidades y los 18 municipios de Querétaro con claves únicas', () => {
+  it('incluye las 32 entidades y los municipios del INEGI con claves únicas', () => {
     expect(STATES).toHaveLength(32);
     expect(new Set(STATES.map((state) => state.code)).size).toBe(32);
-    expect(MUNICIPALITIES).toHaveLength(18);
-    expect(municipalitiesOf('22')).toHaveLength(18);
-    expect(municipalitiesOf('09')).toEqual([]);
+    expect(MUNICIPALITY_SOURCE.total).toBe(MUNICIPALITIES.length);
+    expect(MUNICIPALITIES.length).toBeGreaterThan(2400);
+    const keys = MUNICIPALITIES.map((item) => `${item.stateCode}${item.code}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const state of STATES) expect(municipalitiesOf(state.code).length).toBeGreaterThan(0);
+    for (const item of MUNICIPALITIES) {
+      expect(isStateCode(item.stateCode)).toBe(true);
+      expect(item.code).toMatch(/^\d{3}$/u);
+    }
+    expect(municipalitiesOf('33')).toEqual([]);
+  });
+
+  it('conserva los 18 municipios de Querétaro con las mismas claves', () => {
+    expect(municipalitiesOf('22').map((item) => `${item.code} ${item.name}`)).toEqual([
+      '001 Amealco de Bonfil',
+      '002 Pinal de Amoles',
+      '003 Arroyo Seco',
+      '004 Cadereyta de Montes',
+      '005 Colón',
+      '006 Corregidora',
+      '007 Ezequiel Montes',
+      '008 Huimilpan',
+      '009 Jalpan de Serra',
+      '010 Landa de Matamoros',
+      '011 El Marqués',
+      '012 Pedro Escobedo',
+      '013 Peñamiller',
+      '014 Querétaro',
+      '015 San Joaquín',
+      '016 San Juan del Río',
+      '017 Tequisquiapan',
+      '018 Tolimán',
+    ]);
   });
 
   it('busca por clave y valida la pertenencia del municipio a la entidad', () => {
@@ -61,8 +92,15 @@ describe('entidades y municipios', () => {
     expect(isStateCode('Juan Perez es corrupto')).toBe(false);
     expect(findMunicipality('22', '014')?.name).toBe('Querétaro');
     expect(isMunicipalityOf('22', '016')).toBe(true);
-    expect(isMunicipalityOf('09', '016')).toBe(false);
     expect(isMunicipalityOf('22', '019')).toBe(false);
+    // La Ciudad de México empieza en 002 (Azcapotzalco): no hay alcaldía 001.
+    expect(findMunicipality('09', '002')?.name).toBe('Azcapotzalco');
+    expect(isMunicipalityOf('09', '001')).toBe(false);
+    expect(isMunicipalityOf('09', '016')).toBe(true);
+    expect(findMunicipality('20', '067')?.name).toBe('Oaxaca de Juárez');
+    expect(municipalitiesOf('20').length).toBeGreaterThan(500);
+    expect(isMunicipalityOf('2', '014')).toBe(false);
+    expect(isMunicipalityOf('22', '14')).toBe(false);
   });
 });
 

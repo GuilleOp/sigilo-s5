@@ -61,11 +61,15 @@ export async function startReport(
   }
 }
 
-/** Llena el paso de hechos con catálogos válidos y el texto indicado. */
+/**
+ * Llena el paso de hechos con catálogos válidos y el texto indicado. La oficina es la ficticia
+ * VE-OBRAS: la lista empieza con instituciones reales de la PDN y ningún caso de prueba debe
+ * acusar a una de ellas.
+ */
 export async function fillFacts(page: Page, facts: SyntheticFacts = NEUTRAL_FACTS): Promise<void> {
   await expectStep(page, 'facts');
   await page.getByTestId('state-select').selectOption('22');
-  await chooseOption(page, 'entity-select');
+  await chooseOption(page, 'entity-select', 'VE-OBRAS');
   await chooseOption(page, 'offense-select');
   await page.getByTestId('period-month').selectOption('01');
   await page.getByTestId('period-year').selectOption(String(new Date().getFullYear()));

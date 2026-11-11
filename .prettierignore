@@ -20,3 +20,7 @@ datos/cobertura/matriz.json
 datos/normalizacion/tasas.json
 datos/fuentes.json
 packages/contracts/src/s5/equivalencias-faltas.json
+
+# Catálogos generados (JSON y TS compactos por diseño)
+packages/contracts/src/catalogs/municipalities-data.ts
+packages/contracts/src/entes/entes-pdn.json

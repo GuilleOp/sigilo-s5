@@ -1,15 +1,18 @@
 // Oficina de gobierno y conducta: un solo campo por decisión, donde se escribe para filtrar y se
-// elige en la misma lista. Usa los catálogos de contracts (los mismos que valida el servidor); las
-// conductas se agrupan por situación cotidiana.
+// elige en la misma lista. Las oficinas son las reales del directorio de la PDN de la entidad
+// elegida (se descarga solo su fragmento y el federal) y las ficticias de la demostración; las
+// conductas se agrupan por situación cotidiana. El servidor valida todo contra los mismos catálogos.
 import {
+  findMunicipality,
   findOffense,
-  GOVERNMENT_LEVEL_LABELS,
+  findState,
   offenseActor,
   OFFENSE_SITUATIONS,
   OFFENSES,
-  PUBLIC_ENTITIES,
   UNCLASSIFIED_OFFENSE_CODE,
 } from '@sigilo/contracts';
+import { useStateEntities } from '../../../catalogs/entity-catalog.ts';
+import { entityOptionsFor } from '../../../catalogs/entity-options.ts';
 import { Alert } from '../../../components/Alert.tsx';
 import { foldForSearch } from '../../../lib/catalog-search.ts';
 import { ComboboxField } from '../../../components/ComboboxField.tsx';
@@ -22,11 +25,6 @@ interface CatalogFieldsProps {
   facts: FactsDraft;
   errors: FieldErrors;
 }
-
-const ENTITY_OPTIONS: readonly ComboboxOption[] = PUBLIC_ENTITIES.map((entity) => ({
-  value: entity.id,
-  label: `${entity.name} (${GOVERNMENT_LEVEL_LABELS[entity.level]})`,
-}));
 
 const OFFENSE_OPTIONS: readonly ComboboxOption[] = OFFENSES.map((offense) => ({
   value: offense.code,
@@ -58,8 +56,28 @@ function offenseSearchText(option: ComboboxOption): string {
   return offense ? `${offense.label} ${offense.legalTerm} ${offense.hint}` : option.label;
 }
 
+/** Pista del campo de oficina según la entidad y la descarga de su catálogo. */
+function entityHint(status: string, stateName: string | undefined): string {
+  if (stateName === undefined) {
+    return 'Elige primero el estado para ver sus instituciones. Escribe parte del nombre o abre la lista.';
+  }
+  if (status === 'loading') return `Cargando las instituciones de ${stateName}…`;
+  if (status === 'failed') {
+    return `No pudimos cargar las instituciones de ${stateName}. Si no encuentras la tuya, elige «Otro ente público» y descríbela en los hechos.`;
+  }
+  return 'Escribe parte del nombre o abre la lista. Primero salen las de tu municipio, luego las estatales y las federales.';
+}
+
 /** Campos de oficina y conducta. */
 export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
+  const stateName = findState(facts.stateCode)?.name;
+  const realEntities = useStateEntities(facts.stateCode);
+  const entityOptions = entityOptionsFor(realEntities.entities, {
+    stateCode: facts.stateCode,
+    stateName: stateName ?? '',
+    municipalityCode: facts.municipalityCode,
+    municipalityName: findMunicipality(facts.stateCode, facts.municipalityCode)?.name,
+  });
   const selectedOffense = findOffense(facts.offenseCode);
   // La conducta ya elegida sigue en la lista aunque no sea del grupo elegido.
   const offenseOptions =
@@ -77,9 +95,11 @@ export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
       <ComboboxField
         id="entityId"
         label="Oficina o institución de gobierno"
-        hint="Escribe parte del nombre o abre la lista."
+        hint={entityHint(realEntities.status, stateName)}
         required
-        options={ENTITY_OPTIONS}
+        options={entityOptions.options}
+        groups={entityOptions.groups}
+        searchText={entityOptions.searchText}
         value={facts.entityId}
         error={errors['entityId']}
         onChange={(value) => setFact('entityId', value)}

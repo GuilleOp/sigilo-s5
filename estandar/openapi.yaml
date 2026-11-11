@@ -6826,8 +6826,9 @@ components:
         entityId:
           type: string
           maxLength: 64
-          description: Identificador del ente público en el catálogo del despliegue.
+          description: 'Identificador del ente público: PDN-<clave INEGI de la entidad o 00>-<id del ente en el directorio de la PDN> para los entes reales, o VE-… para los ficticios de la demostración. Un ente estatal o municipal debe ser de la entidad de los hechos.'
           examples:
+            - PDN-22-7074
             - VE-OBRAS
           x-catalog: PUBLIC_ENTITIES
         offenseCode:

@@ -1,6 +1,9 @@
 // Composición de la aplicación Hono: middleware de seguridad, rutas de la API, web opcional en el
 // mismo origen y manejo uniforme de errores.
 import { Hono } from 'hono';
+// Catálogo completo de entes reales de la PDN: la validación de los hechos es estricta y
+// `findEntity` conoce el orden de gobierno de cualquier ente (equivalencias del S5, ficha PDN).
+import '@sigilo/contracts/entes';
 import { cors } from 'hono/cors';
 import { API_PREFIX, POW_HEADER } from '@sigilo/contracts';
 import { createContext } from './context.ts';

@@ -157,10 +157,29 @@ describe('POST complaints', () => {
       { ...request.facts, stateCode: 'Juan Perez es corrupto' },
       { ...request.facts, offenseCode: 'Juan Perez es corrupto' },
       { ...request.facts, entityId: 'Juan Perez es corrupto' },
-      { ...request.facts, stateCode: '09', municipalityCode: '014' },
+      { ...request.facts, stateCode: '01', municipalityCode: '014' },
     ]) {
       const response = await postJson(server.app, ROUTES.complaints, { ...request, facts });
       expect(response.status).toBe(400);
+    }
+  });
+
+  it('valida los entes reales de la PDN contra el catálogo completo y su entidad', async () => {
+    const server = createTestServer();
+    const build = () =>
+      buildComplaintRequest(server, { mode: 'anonymous', reporter: createReporter() });
+    for (const [stateCode, entityId, status] of [
+      // Aeropuerto Intercontinental de Querétaro (estatal) y el IMSS (federal, en cualquier entidad).
+      ['22', 'PDN-22-7074', 201],
+      ['31', 'PDN-00-196', 201],
+      // Formato válido pero fuera del directorio, y un ente estatal de otra entidad.
+      ['22', 'PDN-22-1', 400],
+      ['09', 'PDN-22-7074', 400],
+    ] as const) {
+      const request = await build();
+      const facts = { ...request.facts, stateCode, entityId };
+      const response = await postJson(server.app, ROUTES.complaints, { ...request, facts });
+      expect(response.status, `${stateCode} ${entityId}`).toBe(status);
     }
   });
 

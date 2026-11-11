@@ -46,7 +46,8 @@ const MAX_EXAMPLE_LENGTH = 48;
 const CATALOG_LABELS: Readonly<Record<string, string>> = {
   STATES: 'Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32)',
   MUNICIPALITIES: 'Catálogo MUNICIPALITIES: claves INEGI de municipio de la entidad',
-  PUBLIC_ENTITIES: 'Catálogo PUBLIC_ENTITIES del despliegue (entes públicos)',
+  PUBLIC_ENTITIES:
+    'Catálogo de entes públicos: los reales del directorio de la PDN (PDN-<entidad>-<id>) y los ficticios de la demostración (VE-…)',
   OFFENSES: 'Catálogo OFFENSES: conductas de la LGRA y del Código Penal Federal (LEY-artículo)',
 };
 
