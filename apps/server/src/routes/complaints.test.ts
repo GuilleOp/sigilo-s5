@@ -157,7 +157,7 @@ describe('POST complaints', () => {
       { ...request.facts, stateCode: 'Juan Perez es corrupto' },
       { ...request.facts, offenseCode: 'Juan Perez es corrupto' },
       { ...request.facts, entityId: 'Juan Perez es corrupto' },
-      { ...request.facts, stateCode: '09', municipalityCode: '014' },
+      { ...request.facts, stateCode: '01', municipalityCode: '014' },
     ]) {
       const response = await postJson(server.app, ROUTES.complaints, { ...request, facts });
       expect(response.status).toBe(400);

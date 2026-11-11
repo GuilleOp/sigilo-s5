@@ -21,6 +21,21 @@ export * from './escalation.ts';
 const STATE_BY_CODE: ReadonlyMap<string, StateOption> = new Map(
   STATES.map((state) => [state.code, state]),
 );
+const MUNICIPALITIES_BY_STATE_CODE: ReadonlyMap<string, readonly MunicipalityOption[]> = (() => {
+  const byState = new Map<string, MunicipalityOption[]>();
+  for (const municipality of MUNICIPALITIES) {
+    const list = byState.get(municipality.stateCode) ?? [];
+    list.push(municipality);
+    byState.set(municipality.stateCode, list);
+  }
+  return byState;
+})();
+const MUNICIPALITY_BY_KEY: ReadonlyMap<string, MunicipalityOption> = new Map(
+  MUNICIPALITIES.map((municipality) => [
+    `${municipality.stateCode}${municipality.code}`,
+    municipality,
+  ]),
+);
 const ENTITY_BY_ID: ReadonlyMap<string, PublicEntityOption> = new Map(
   PUBLIC_ENTITIES.map((entity) => [entity.id, entity]),
 );
@@ -40,14 +55,15 @@ export function isStateCode(code: string): boolean {
   return STATE_BY_CODE.has(code);
 }
 
-/** Municipios del catálogo para la entidad (vacío si solo se admite la entidad). */
+/** Municipios del catálogo para la entidad, en orden de clave (vacío si la clave no existe). */
 export function municipalitiesOf(stateCode: string): MunicipalityOption[] {
-  return MUNICIPALITIES.filter((municipality) => municipality.stateCode === stateCode);
+  return [...(MUNICIPALITIES_BY_STATE_CODE.get(stateCode) ?? [])];
 }
 
 /** Municipio por claves de entidad y municipio, o `undefined` si no existe. */
 export function findMunicipality(stateCode: string, code: string): MunicipalityOption | undefined {
-  return MUNICIPALITIES.find((item) => item.stateCode === stateCode && item.code === code);
+  if (!/^\d{2}$/u.test(stateCode) || !/^\d{3}$/u.test(code)) return undefined;
+  return MUNICIPALITY_BY_KEY.get(`${stateCode}${code}`);
 }
 
 /** Indica si el municipio existe en el catálogo y pertenece a la entidad. */

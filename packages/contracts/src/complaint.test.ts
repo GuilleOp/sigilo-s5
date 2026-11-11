@@ -60,7 +60,8 @@ describe('ComplaintFactsSchema', () => {
   });
 
   it('exige que el municipio pertenezca a la entidad', () => {
-    const result = ComplaintFactsSchema.safeParse({ ...FACTS, stateCode: '09' });
+    // Aguascalientes tiene 11 municipios: no hay 014.
+    const result = ComplaintFactsSchema.safeParse({ ...FACTS, stateCode: '01' });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(['municipalityCode']);
     expect(ComplaintFactsSchema.safeParse({ ...FACTS, municipalityCode: '099' }).success).toBe(
@@ -69,6 +70,19 @@ describe('ComplaintFactsSchema', () => {
     expect(ComplaintFactsSchema.safeParse({ ...FACTS, municipalityCode: '14' }).success).toBe(
       false,
     );
+    // Municipios reales de otras entidades: Benito Juárez (CDMX) y Oaxaca de Juárez.
+    expect(
+      ComplaintFactsSchema.safeParse({ ...FACTS, stateCode: '09', municipalityCode: '014' })
+        .success,
+    ).toBe(true);
+    expect(
+      ComplaintFactsSchema.safeParse({ ...FACTS, stateCode: '20', municipalityCode: '067' })
+        .success,
+    ).toBe(true);
+    expect(
+      ComplaintFactsSchema.safeParse({ ...FACTS, stateCode: '09', municipalityCode: '001' })
+        .success,
+    ).toBe(false);
   });
 });
 

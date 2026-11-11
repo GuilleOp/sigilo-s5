@@ -1,4 +1,5 @@
-// Estado y municipio opcional, con los catálogos de contracts (los mismos que valida el servidor).
+// Estado y municipio opcional, con los catálogos de contracts (los mismos que valida el servidor):
+// los municipios y alcaldías del INEGI de las 32 entidades, ordenados alfabéticamente.
 import { municipalitiesOf, STATES } from '@sigilo/contracts';
 import { SelectField } from '../../../components/Field.tsx';
 import { setFact } from '../../../state/report-draft.ts';
@@ -12,7 +13,9 @@ interface LocationFieldsProps {
 
 /** Selectores de ubicación. */
 export function LocationFields({ facts, errors }: LocationFieldsProps) {
-  const municipalities = municipalitiesOf(facts.stateCode);
+  const municipalities = municipalitiesOf(facts.stateCode).sort((a, b) =>
+    a.name.localeCompare(b.name, 'es'),
+  );
   return (
     <fieldset>
       <legend>¿Dónde pasó?</legend>
@@ -35,28 +38,23 @@ export function LocationFields({ facts, errors }: LocationFieldsProps) {
           </option>
         ))}
       </SelectField>
-      {facts.stateCode !== '' &&
-        (municipalities.length > 0 ? (
-          <SelectField
-            id="municipalityCode"
-            label="Municipio (opcional)"
-            hint="Si lo dejas en blanco, es más difícil saber que fuiste tú."
-            value={facts.municipalityCode}
-            onChange={(event) => setFact('municipalityCode', event.target.value)}
-            data-testid="municipality-select"
-          >
-            <option value="">No indicar municipio (solo el estado)</option>
-            {municipalities.map((municipality) => (
-              <option key={municipality.code} value={municipality.code}>
-                {municipality.name}
-              </option>
-            ))}
-          </SelectField>
-        ) : (
-          <p className="field__hint">
-            Para este estado la denuncia se registra solo con el estado, sin municipio.
-          </p>
-        ))}
+      {facts.stateCode !== '' && municipalities.length > 0 && (
+        <SelectField
+          id="municipalityCode"
+          label="Municipio o alcaldía (opcional)"
+          hint="Si lo dejas en blanco, es más difícil saber que fuiste tú."
+          value={facts.municipalityCode}
+          onChange={(event) => setFact('municipalityCode', event.target.value)}
+          data-testid="municipality-select"
+        >
+          <option value="">No indicar municipio (solo el estado)</option>
+          {municipalities.map((municipality) => (
+            <option key={municipality.code} value={municipality.code}>
+              {municipality.name}
+            </option>
+          ))}
+        </SelectField>
+      )}
     </fieldset>
   );
 }
