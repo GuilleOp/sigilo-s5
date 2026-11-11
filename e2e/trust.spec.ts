@@ -67,8 +67,16 @@ test('se escribe sin conexión, se ve lo que saldrá y se envía al reconectar',
     'no los pedimos, y no hay cuenta',
   );
   await expectNoAccessibilityViolations(page, 'paso 4: lo que sale de tu equipo');
-  // Solo las fotos locales (blob:) y los datos en línea; ninguna petición de red.
-  expect(requests.filter((url) => !/^(blob|data):/u.test(url))).toEqual([]);
+  // Solo las fotos locales (blob:) y los datos en línea. La única petición que se intenta es el
+  // fragmento del catálogo de instituciones de la entidad elegida, al mismo origen: sin conexión
+  // falla (el asistente lo reintenta al reconectar) y nunca lleva nada del relato.
+  expect(
+    requests.filter(
+      (url) =>
+        !/^(blob|data):/u.test(url) &&
+        !/^http:\/\/127\.0\.0\.1:\d+\/datos\/entes\/\d{2}\.json$/u.test(url),
+    ),
+  ).toEqual([]);
 
   await context.setOffline(false);
   await continueTo(page, 'submit');
