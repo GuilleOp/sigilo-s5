@@ -10,6 +10,7 @@ import {
   formatDayDate,
   formatHourDate,
   formatMonthPeriod,
+  formatShortDate,
 } from './format.ts';
 import { detectPersonalDataRequest } from './personal-data-request.ts';
 import {
@@ -174,6 +175,9 @@ describe('formatos', () => {
     expect(formatHourDate('2026-10-01')).toBe('2026-10-01');
     expect(formatMonthPeriod('2026-03')).toBe('marzo de 2026');
     expect(formatDayDate('otra')).toBe('otra');
+    expect(formatShortDate('2026-11-14')).toBe('14 nov 2026');
+    expect(formatShortDate('2033-03-01')).toBe('1 mar 2033');
+    expect(formatShortDate('otra')).toBe('otra');
   });
 });
 

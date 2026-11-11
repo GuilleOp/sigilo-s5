@@ -191,11 +191,14 @@ table {
   width: 100%;
 }
 
+/* El cuerpo parte palabras en cualquier punto («anywhere»), y en una tabla eso deja columnas de una
+   letra de ancho («E/st/a/d/o»). En las celdas solo se parte una palabra que no quepa entera. */
 th,
 td {
   text-align: left;
   padding: var(--space-2);
   border-bottom: 1px solid var(--color-border);
+  overflow-wrap: break-word;
 }
 
 .visually-hidden {

@@ -59,6 +59,79 @@
   white-space: nowrap;
 }
 
+/* Lista de denuncias del panel: la fecha corta y el folio nunca se parten; el estatus junta el
+   código del S5 (insignia) y su explicación en lenguaje claro. */
+.complaint-list__date,
+.complaint-list__folio {
+  white-space: nowrap;
+}
+
+.complaint-list__status .s5-code {
+  margin-block-end: var(--space-1);
+}
+
+.complaint-list__status-text {
+  display: block;
+  font-size: var(--text-sm);
+}
+
+/* En celular (menos de 720 px) cada denuncia es una tarjeta: folio, conducta, estatus y fecha; la
+   entidad y el modo quedan en letra chica. */
+@media (max-width: 44.99rem) {
+  .complaint-list.data-table--wide {
+    min-inline-size: 0;
+  }
+
+  .complaint-list thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .complaint-list,
+  .complaint-list tbody,
+  .complaint-list tr,
+  .complaint-list th,
+  .complaint-list td {
+    display: block;
+  }
+
+  .complaint-list tr {
+    margin-block-end: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+
+  .complaint-list th,
+  .complaint-list td {
+    padding: var(--space-1) 0;
+    border: 0;
+  }
+
+  .complaint-list td::before {
+    content: attr(data-label) ': ';
+    font-weight: 700;
+  }
+
+  .complaint-list .complaint-list__offense::before,
+  .complaint-list .complaint-list__status::before {
+    content: none;
+  }
+
+  .complaint-list .complaint-list__offense {
+    font-weight: 700;
+  }
+
+  .complaint-list td:nth-child(n + 5) {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+}
+
 /* Tablas anchas en celular: se desplazan dentro de su caja, nunca la página completa. */
 .table-scroll {
   overflow-x: auto;

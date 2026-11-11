@@ -85,6 +85,14 @@ export function Layout() {
     );
   }
 
+  // La salida rápida y el enlace al panel son para quien denuncia: no se muestran en el panel ni en
+  // la solicitud de alta de una institución.
+  const isAuthorityArea =
+    location.pathname === PATHS.authority || location.pathname === PATHS.registration;
+  const footerItems = isAuthorityArea
+    ? FOOTER_ITEMS.filter((item) => item.to !== PATHS.authority)
+    : FOOTER_ITEMS;
+
   const isWide =
     location.pathname === PATHS.home ||
     location.pathname === PATHS.authority ||
@@ -95,7 +103,7 @@ export function Layout() {
     <>
       <header className="site-header no-print">
         <div className="site-header__bar">
-          <QuickExitButton />
+          {!isAuthorityArea && <QuickExitButton />}
           <a className="skip-link" href="#contenido" onClick={skipToContent}>
             Saltar al contenido
           </a>
@@ -145,7 +153,7 @@ export function Layout() {
       <GuidedTour />
       <footer className="site-footer no-print">
         <nav aria-label="Otros enlaces">
-          <ul>{FOOTER_ITEMS.map(navLink)}</ul>
+          <ul>{footerItems.map(navLink)}</ul>
         </nav>
         <p>
           SIGILO no usa cookies. Lo único que recuerda tu navegador son los colores y el tamaño del

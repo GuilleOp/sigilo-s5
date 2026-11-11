@@ -805,13 +805,13 @@
 }
 
 /* H5/H11: el cuerpo parte palabras largas (folios, direcciones) donde haga falta, pero las tablas y
-   los botones del navegador de pasos cortan solo entre palabras; las tablas anchas tienen un ancho
-   mínimo y se desplazan dentro de su caja enfocable. */
+   los botones del navegador de pasos cortan solo entre palabras, sin guiones a media palabra; las
+   tablas anchas tienen un ancho mínimo y se desplazan dentro de su caja enfocable. */
 .data-table th,
 .data-table td,
 .stepper .button {
   overflow-wrap: normal;
-  hyphens: auto;
+  hyphens: manual;
 }
 
 .data-table--wide {

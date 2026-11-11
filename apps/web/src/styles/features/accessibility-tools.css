@@ -6,6 +6,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex: none;
   margin-inline-start: auto;
 }
 
@@ -24,6 +25,8 @@
   font: inherit;
   font-size: var(--text-sm);
   font-weight: 800;
+  /* «Accesibilidad» no se parte en dos renglones aunque el distintivo de perfil sea largo. */
+  white-space: nowrap;
   cursor: pointer;
 }
 
