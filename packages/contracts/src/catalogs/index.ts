@@ -85,11 +85,15 @@ export function primaryOffenseCode(code: string): string | undefined {
   return OFFENSE_BY_CODE.get(code)?.code;
 }
 
-/** Ley y artículo de una clave, por ejemplo `{ law: 'LGRA', article: '52' }`. */
+/**
+ * Ley y artículo de una clave, por ejemplo `{ law: 'LGRA', article: '52' }` o, para un artículo
+ * adicionado, `{ law: 'LGRA', article: '63 Bis' }` (clave `LGRA-63-BIS`).
+ */
 export function offenseReference(code: string): { law: OffenseLaw; article: string } | undefined {
-  const match = /^(LGRA|CPF)-(\d+)$/u.exec(code);
+  const match = /^(LGRA|CPF)-(\d+)(?:-(BIS|TER))?$/u.exec(code);
   if (match === null || !isOffenseCode(code)) return undefined;
-  return { law: match[1] as OffenseLaw, article: match[2] ?? '' };
+  const suffix = match[3] === undefined ? '' : ` ${match[3] === 'BIS' ? 'Bis' : 'Ter'}`;
+  return { law: match[1] as OffenseLaw, article: `${match[2] ?? ''}${suffix}` };
 }
 
 /**
@@ -102,7 +106,7 @@ export function offenseSeverity(code: string): OffenseSeverity | undefined {
   const reference = primary === undefined ? undefined : offenseReference(primary);
   if (reference === undefined) return undefined;
   if (reference.law === 'CPF') return 'crime';
-  const article = Number(reference.article);
+  const article = Number.parseInt(reference.article, 10);
   if (article <= 50) return 'non_serious';
   return article <= 64 ? 'serious' : 'private_party';
 }

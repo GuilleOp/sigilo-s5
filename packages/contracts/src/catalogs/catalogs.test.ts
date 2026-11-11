@@ -27,6 +27,16 @@ const LEGACY_OFFENSE_CODES = [
   ...[214, 215, 217, 218, 219, 220, 221, 222, 223, 224].map((n) => `CPF-${n}`),
 ];
 
+/** Claves agregadas para alinear la lista federal con el catálogo de faltas del S5. */
+const ADDED_OFFENSE_CODES = [
+  'LGRA-60-BIS',
+  'LGRA-63-BIS',
+  'CPF-216',
+  'CPF-217-BIS',
+  'CPF-217-TER',
+  'CPF-222-BIS',
+];
+
 describe('entidades y municipios', () => {
   it('incluye las 32 entidades y los 18 municipios de Querétaro con claves únicas', () => {
     expect(STATES).toHaveLength(32);
@@ -62,7 +72,7 @@ describe('conductas', () => {
     for (const code of LEGACY_OFFENSE_CODES) expect(isOffenseCode(code), code).toBe(true);
     const all = OFFENSES.flatMap((offense) => [offense.code, ...offense.equivalentCodes]);
     expect(new Set(all).size).toBe(all.length);
-    expect(all.sort()).toEqual([...LEGACY_OFFENSE_CODES].sort());
+    expect(all.sort()).toEqual([...LEGACY_OFFENSE_CODES, ...ADDED_OFFENSE_CODES].sort());
   });
 
   it('no repite etiquetas visibles y resuelve las equivalentes a su conducta', () => {
@@ -71,6 +81,9 @@ describe('conductas', () => {
     expect(findOffense('CPF-222')).toBe(findOffense('LGRA-52'));
     expect(findOffense('LGRA-52')?.label).toBe('Pedir o aceptar dinero o regalos (cohecho)');
     expect(findOffense('LGRA-99')).toBeUndefined();
+    expect(findOffense('CPF-217-BIS')).toBe(findOffense('CPF-217'));
+    expect(offenseReference('LGRA-63-BIS')).toEqual({ law: 'LGRA', article: '63 Bis' });
+    expect(offenseSeverity('LGRA-63-BIS')).toBe('serious');
   });
 
   it('escribe primero lo que pasó y el término legal entre paréntesis', () => {

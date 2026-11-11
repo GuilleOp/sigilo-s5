@@ -6840,12 +6840,16 @@ components:
           enum:
             - CPF-214
             - CPF-215
+            - CPF-216
             - CPF-217
+            - CPF-217-BIS
+            - CPF-217-TER
             - CPF-218
             - CPF-219
             - CPF-220
             - CPF-221
             - CPF-222
+            - CPF-222-BIS
             - CPF-223
             - CPF-224
             - LGRA-49
@@ -6858,9 +6862,11 @@ components:
             - LGRA-58
             - LGRA-59
             - LGRA-60
+            - LGRA-60-BIS
             - LGRA-61
             - LGRA-62
             - LGRA-63
+            - LGRA-63-BIS
             - LGRA-64
             - LGRA-66
             - LGRA-67
@@ -7840,12 +7846,16 @@ components:
           enum:
             - CPF-214
             - CPF-215
+            - CPF-216
             - CPF-217
+            - CPF-217-BIS
+            - CPF-217-TER
             - CPF-218
             - CPF-219
             - CPF-220
             - CPF-221
             - CPF-222
+            - CPF-222-BIS
             - CPF-223
             - CPF-224
             - LGRA-49
@@ -7858,9 +7868,11 @@ components:
             - LGRA-58
             - LGRA-59
             - LGRA-60
+            - LGRA-60-BIS
             - LGRA-61
             - LGRA-62
             - LGRA-63
+            - LGRA-63-BIS
             - LGRA-64
             - LGRA-66
             - LGRA-67
@@ -10832,12 +10844,16 @@ components:
           enum:
             - CPF-214
             - CPF-215
+            - CPF-216
             - CPF-217
+            - CPF-217-BIS
+            - CPF-217-TER
             - CPF-218
             - CPF-219
             - CPF-220
             - CPF-221
             - CPF-222
+            - CPF-222-BIS
             - CPF-223
             - CPF-224
             - LGRA-49
@@ -10850,9 +10866,11 @@ components:
             - LGRA-58
             - LGRA-59
             - LGRA-60
+            - LGRA-60-BIS
             - LGRA-61
             - LGRA-62
             - LGRA-63
+            - LGRA-63-BIS
             - LGRA-64
             - LGRA-66
             - LGRA-67

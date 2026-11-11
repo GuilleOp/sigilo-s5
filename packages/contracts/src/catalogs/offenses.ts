@@ -64,6 +64,15 @@ export const OFFENSES: readonly OffenseOption[] = [
     hint: 'Alguien ofrece o entrega dinero, regalos o favores para conseguir algo de una persona servidora pública.',
   },
   {
+    code: 'CPF-222-BIS',
+    equivalentCodes: [],
+    label:
+      'Ofrecer dinero o regalos a un servidor público de otro país en un negocio internacional (cohecho a servidores públicos extranjeros)',
+    legalTerm: 'cohecho a servidores públicos extranjeros',
+    situation: 'dinero-y-regalos',
+    hint: 'Ofrecer o dar dinero o favores a una persona servidora pública extranjera para obtener ventajas en transacciones comerciales internacionales.',
+  },
+  {
     code: 'CPF-218',
     equivalentCodes: [],
     label: 'Cobrar pagos que la ley no permite (concusión)',
@@ -86,6 +95,14 @@ export const OFFENSES: readonly OffenseOption[] = [
     legalTerm: 'desvío de recursos públicos',
     situation: 'recursos-publicos',
     hint: 'Destinar dinero o bienes públicos a un fin distinto del autorizado.',
+  },
+  {
+    code: 'CPF-217-TER',
+    equivalentCodes: [],
+    label: 'Pagar o cobrar sueldos, pensiones o bonos no autorizados (remuneración ilícita)',
+    legalTerm: 'remuneración ilícita',
+    situation: 'recursos-publicos',
+    hint: 'Aprobar pagos de sueldos, pensiones o préstamos que la ley no permite, o recibirlos sin reportarlos.',
   },
   {
     code: 'LGRA-71',
@@ -112,6 +129,15 @@ export const OFFENSES: readonly OffenseOption[] = [
     legalTerm: 'enriquecimiento oculto u ocultamiento de conflicto de interés',
     situation: 'recursos-publicos',
     hint: 'No declarar bienes, ingresos o intereses que se deben informar.',
+  },
+  {
+    code: 'LGRA-60-BIS',
+    equivalentCodes: [],
+    label:
+      'Usar otra persona o empresa como fachada para quedarse con recursos públicos (simulación de acto jurídico)',
+    legalTerm: 'simulación de acto jurídico',
+    situation: 'recursos-publicos',
+    hint: 'Usar una personalidad jurídica distinta para obtener recursos públicos para sí o para un familiar.',
   },
   {
     code: 'CPF-224',
@@ -165,7 +191,7 @@ export const OFFENSES: readonly OffenseOption[] = [
   },
   {
     code: 'CPF-217',
-    equivalentCodes: [],
+    equivalentCodes: ['CPF-217-BIS'],
     label:
       'Dar permisos, contratos o concesiones de forma ilegal (uso ilícito de atribuciones y facultades)',
     legalTerm: 'uso ilícito de atribuciones y facultades',
@@ -213,6 +239,23 @@ export const OFFENSES: readonly OffenseOption[] = [
     legalTerm: 'tráfico de influencias',
     situation: 'abuso-del-cargo',
     hint: 'Usar la posición para influir en otra persona servidora pública y obtener un beneficio.',
+  },
+  {
+    code: 'LGRA-63-BIS',
+    equivalentCodes: [],
+    label: 'Contratar o nombrar a familiares o a su pareja (nepotismo)',
+    legalTerm: 'nepotismo',
+    situation: 'abuso-del-cargo',
+    hint: 'Designar, nombrar o intervenir en la contratación de parientes, cónyuge o concubina o concubinario.',
+  },
+  {
+    code: 'CPF-216',
+    equivalentCodes: [],
+    label:
+      'Ponerse de acuerdo entre servidores públicos para frenar una ley o la administración (coalición de servidores públicos)',
+    legalTerm: 'coalición de servidores públicos',
+    situation: 'abuso-del-cargo',
+    hint: 'Varias personas servidoras públicas se coordinan para impedir que se aplique una ley o para paralizar un servicio.',
   },
   {
     code: 'LGRA-68',

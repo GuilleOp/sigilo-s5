@@ -138,7 +138,7 @@ const OffenseSuggestionOutputSchema = z
       .array(
         z
           .object({
-            code: z.string().regex(/^(?:LGRA|CPF)-\d{2,3}$/u),
+            code: z.string().regex(/^(?:LGRA|CPF)-\d{2,3}(?:-(?:BIS|TER))?$/u),
             fragment: z.string().min(3).max(MAX_FRAGMENT_CHARS),
           })
           .strict(),
