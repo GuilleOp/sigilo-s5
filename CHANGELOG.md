@@ -7,6 +7,37 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Agregado
 
+- Ayudas automáticas al escribir el relato: cuatro partes (qué pasó, cuándo, dónde, qué efecto
+  tuvo) que se marcan solas y conductas sugeridas por las palabras, todo en el navegador.
+- «Ninguna se parece» (`SIN-CLASIFICAR`): la denuncia llega al buzón general, que la clasifica; aviso
+  de vía propia si el relato menciona tortura o desaparición.
+- Catálogo de conductas cotejado con la LGRA (DOF 15-12-2025) y el CPF (DOF 13-03-2026): LGRA 64
+  Bis, 64 Ter, 64 Quáter y 73, y CPF 225; «¿Quién lo hizo?» acorta la lista.
+- El detalle de la denuncia trae `s5References`: artículos de la ley de responsabilidades y del
+  código penal de la entidad con su id del catálogo de faltas del S5 (95 % de 3,559 entradas).
+- Cada autoridad entra al panel con su propia llave, comprobada contra el directorio firmado, y
+  puede crear su par en el navegador («Crear mis llaves»).
+- Cuentas por función: recepción e investigación juntas, substanciación y resolución separada
+  (LGRA arts. 3 y 115) y operación del nodo; la demo pasa de 16 a 13 cuentas con nombres claros.
+- Buzón general como respaldo: sin autoridad competente en el directorio, la denuncia llega al
+  buzón del nodo de la entidad, que la turna (Bases de la PDN, arts. 56 y 58).
+- Corte nacional de datos abiertos: el enrutador suma el CSV agregado de cada nodo y el
+  observatorio lo muestra (Bases de la PDN, arts. 60 y 61).
+- Un solo campo para elegir oficina y conducta (escribir y elegir en la misma lista).
+- Personas ciudadanas (`docs/personas-ciudadanas.md`): aviso propio en la revisión para quien no
+  trabaja en la oficina, con información sobre el soborno (LGRA, arts. 66, 88 y 89) y las
+  represalias; el revisor de frases marca números de trámite, placas, direcciones y «mi negocio»;
+  caso de la ventanilla en la demostración, con dos personas corroboradas.
+- Confianza verificable (`docs/confianza-verificable.md`): en lugar de pedir confianza, la web da
+  formas de comprobar el anonimato.
+  - Paso 1: invitación a escribir en modo avión; los pasos 1 a 4 y la limpieza de fotos funcionan
+    sin conexión.
+  - Paso 4: «Lo que sale de tu equipo», con lo que viaja, lo que nunca sale y, en la red, una
+    muestra real del relato cerrado con la llave del nodo destino.
+  - Inicio: «¿Quién sabe qué de ti?», con lo que ve cada parte del camino y las dudas más comunes,
+    y «Lo que SIGILO no puede hacer por ti».
+  - `/verificar`: cuántas denuncias llegaron y cuántos nombres se abrieron o entregaron, contados
+    con la bitácora ya comprobada.
 - Catálogo de conductas alineado con el del S5: nepotismo (LGRA 63 Bis), simulación de acto
   jurídico (LGRA 60 Bis) y CPF 216, 217 Bis, 217 Ter y 222 Bis; equivalencias por entidad con el
   catálogo de faltas del S5 (`packages/contracts/src/s5/equivalencias-faltas.json` (publicado en la web como `/datos/s5/equivalencias-faltas.json`)), que el panel muestra como «En
@@ -61,23 +92,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   ciega (Marta, Luis y los casos ciudadanos): el digesto del envío incluía la corroboración y el
   detalle no. Ahora entra su digesto (`corroborationDigest`, migración 13), que también recibe la
   supervisora; la autoridad no ve la etiqueta.
-
-### Agregado
-
-- Personas ciudadanas (`docs/personas-ciudadanas.md`): aviso propio en la revisión para quien no
-  trabaja en la oficina, con información sobre el soborno (LGRA, arts. 66, 88 y 89) y las
-  represalias; el revisor de frases marca números de trámite, placas, direcciones y «mi negocio»;
-  caso de la ventanilla en la demostración, con dos personas corroboradas.
-- Confianza verificable (`docs/confianza-verificable.md`): en lugar de pedir confianza, la web da
-  formas de comprobar el anonimato.
-  - Paso 1: invitación a escribir en modo avión; los pasos 1 a 4 y la limpieza de fotos funcionan
-    sin conexión.
-  - Paso 4: «Lo que sale de tu equipo», con lo que viaja, lo que nunca sale y, en la red, una
-    muestra real del relato cerrado con la llave del nodo destino.
-  - Inicio: «¿Quién sabe qué de ti?», con lo que ve cada parte del camino y las dudas más comunes,
-    y «Lo que SIGILO no puede hacer por ti».
-  - `/verificar`: cuántas denuncias llegaron y cuántos nombres se abrieron o entregaron, contados
-    con la bitácora ya comprobada.
 
 ## [1.0.1] - 2026-11-05
 

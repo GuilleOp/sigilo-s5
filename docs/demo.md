@@ -55,7 +55,7 @@ Para el guion manual (sin Docker) necesitas además:
    avisa «Protegiendo tu envío contra envíos automáticos. Puede tardar unos segundos».
 
 4. Ventanas abiertas en `http://127.0.0.1:5173`:
-   - Persona denunciante: «Denunciar» y «Dar seguimiento».
+   - Persona denunciante: «Denunciar» y «Mi denuncia».
    - Panel de autoridad: enlace «Panel de autoridad» del pie (o `http://127.0.0.1:5173/autoridad`).
      Se entra con una cuenta de `apps/server/data/authority-demo-credentials.json` (por ejemplo,
      `buzon.federal` para turnar y `oic-equipamiento.persona1` y `oic-equipamiento.persona2`,
@@ -63,7 +63,7 @@ Para el guion manual (sin Docker) necesitas además:
      `docs/demo-escenario.md`, sección 2.2); la llave se importa desde
      `apps/server/data/authority-demo-key.json` (con un solo nodo, todas las cuentas usan esa
      llave; en la red, cada autoridad usa la suya, ver más abajo).
-   - Verificación: enlace «Verificar bitácora» del pie.
+   - Verificación: enlace «Registro público» del pie.
    - Una terminal libre.
 
 5. Archivos sintéticos (nunca datos reales):
@@ -299,7 +299,7 @@ puertas.
 
 ## Acto 3. Seguimiento (1 min 30 s)
 
-1. Entrar en «Dar seguimiento» con el folio y las 8 palabras.
+1. Entrar en «Mi denuncia» con el folio y las 8 palabras.
 2. Ver la línea de tiempo, el comprobante verificado, la pregunta descifrada en el navegador y el
    aviso de que su anotación está pendiente de publicar.
 3. Responder; el revisor avisa si la respuesta revela algo. La respuesta también resuelve una
@@ -319,7 +319,7 @@ puertas.
 
 ## Acto 5. Integridad: bitácora, ancla y trasplante (1 min 30 s)
 
-1. Avanzar el reloj de demostración un día y abrir «Verificar bitácora»: la cadena coincide con el
+1. Avanzar el reloj de demostración un día y abrir «Registro público»: la cadena coincide con el
    registro firmado.
 
    ```sh
@@ -331,7 +331,7 @@ puertas.
    apertura de identidad aparece conciliada con la bitácora.
 
 2. Anclar la cabeza pública en un directorio temporal y pegar el contenido del archivo en
-   «Verificar bitácora»: «La bitácora contiene el anclaje publicado».
+   «Registro público»: «La bitácora contiene el anclaje publicado».
 
    ```sh
    SIGILO_ANCHOR_URL=http://127.0.0.1:8787 SIGILO_ANCHORS_DIR=/tmp/sigilo-anclas npm run ledger:anchor
