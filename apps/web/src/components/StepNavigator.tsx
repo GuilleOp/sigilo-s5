@@ -12,11 +12,20 @@ interface StepNavigatorProps {
   onBack?: () => void;
   /** Botón «Continuar», si hay paso siguiente. */
   onNext?: () => void;
+  /** Acción principal en lugar de «Continuar» (en el último paso, «Enviar denuncia»). */
+  primary?: ReactNode;
   children?: ReactNode;
 }
 
 /** Navegador de pasos. */
-export function StepNavigator({ current, total, title, onBack, onNext }: StepNavigatorProps) {
+export function StepNavigator({
+  current,
+  total,
+  title,
+  onBack,
+  onNext,
+  primary,
+}: StepNavigatorProps) {
   const ref = useRef<HTMLElement>(null);
   // H7: la altura real de la píldora (cambia con la lectura fácil, el zoom o el texto) fija el
   // margen inferior de desplazamiento, para que el campo enfocado no quede detrás de ella.
@@ -66,7 +75,9 @@ export function StepNavigator({ current, total, title, onBack, onNext }: StepNav
           ))}
         </span>
       </p>
-      {onNext === undefined ? (
+      {primary !== undefined ? (
+        primary
+      ) : onNext === undefined ? (
         <span className="stepper__slot" />
       ) : (
         <button

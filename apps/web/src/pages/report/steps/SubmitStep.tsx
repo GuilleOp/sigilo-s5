@@ -1,11 +1,13 @@
 // Paso 5: envío, comprobante verificado, recibo de una sola vez y su confirmación. Al cambiar de
-// fase el foco va al encabezado del resultado; mientras envía, el botón no pierde el foco.
+// fase el foco va al encabezado del resultado; mientras envía, el botón no pierde el foco. «Enviar
+// denuncia» va en la barra de pasos, en el lugar de «Continuar»; con el recibo ya no hay barra.
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { PATHS } from '../../../app/paths.ts';
 import { Alert } from '../../../components/Alert.tsx';
 import { ReceiptCard } from '../../../components/ReceiptCard.tsx';
 import { ReceiptConfirmation } from '../../../components/ReceiptConfirmation.tsx';
+import { StepNavigator } from '../../../components/StepNavigator.tsx';
 import { KeyMismatchError } from '../../../crypto/key-pinning.ts';
 import { focusAfterRender } from '../../../lib/focus.ts';
 import { formatDayDate } from '../../../lib/format.ts';
@@ -32,7 +34,10 @@ import type { NetworkSubmission, SubmittedReport } from '../submit-report.ts';
 interface SubmitStepProps {
   draft: ReportDraft;
   destination: ResolvedDestination;
-  onSendingChange: (isSending: boolean) => void;
+  /** Datos de la barra de pasos, que este paso dibuja con «Enviar denuncia». */
+  navigator: { current: number; total: number; title: string; onBack: () => void };
+  /** La denuncia ya se envió: la página oculta los pasos. */
+  onFinished: () => void;
 }
 
 /**
@@ -84,10 +89,15 @@ function canSend(destination: ResolvedDestination): boolean {
 }
 
 /** Envío y entrega del recibo. */
-export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepProps) {
+export function SubmitStep({ draft, destination, navigator, onFinished }: SubmitStepProps) {
   const modes = useMemoryStore(usageModesStore);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const isSending = useRef(false);
+  const isFinished = phase.kind === 'receipt' || phase.kind === 'done';
+
+  useEffect(() => {
+    if (isFinished) onFinished();
+  }, [isFinished, onFinished]);
 
   useEffect(() => {
     if (phase.kind === 'receipt' || phase.kind === 'done') return focusAfterRender(RESULT_TITLE_ID);
@@ -101,7 +111,6 @@ export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepPr
   async function send(): Promise<void> {
     if (isSending.current || phase.kind === 'key-mismatch' || !canSend(destination)) return;
     isSending.current = true;
-    onSendingChange(true);
     try {
       const network = networkSubmissionFor(draft, destination);
       const result = await submitReport(
@@ -131,7 +140,6 @@ export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepPr
       }
     } finally {
       isSending.current = false;
-      onSendingChange(false);
     }
   }
 
@@ -205,19 +213,27 @@ export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepPr
     return (
       <>
         <h3 id={RESULT_TITLE_ID} tabIndex={-1}>
-          Tu denuncia fue recibida
+          Listo
         </h3>
         <Alert
           tone="success"
-          title="Listo. Ya borramos tu recibo de esta pantalla."
+          title="Tu denuncia fue recibida. Ya borramos tu recibo de esta pantalla."
           testId="submit-done"
         >
           <p>
             Folio: <strong className="mono folio">{phase.folio}</strong>. Para ver cómo va tu
-            denuncia o responder a la autoridad, entra a{' '}
-            <Link to={PATHS.tracking}>Mi denuncia</Link> con tu folio y tus 8 palabras.
+            denuncia o responder a la autoridad, entra a «Mi denuncia» con tu folio y tus 8
+            palabras.
           </p>
         </Alert>
+        <p className="submit-exits">
+          <Link to={PATHS.tracking} className="button" data-testid="submit-go-tracking">
+            Ver mi denuncia
+          </Link>
+          <Link to={PATHS.home} className="button button--secondary" data-testid="submit-go-home">
+            Ir al inicio
+          </Link>
+        </p>
       </>
     );
   }
@@ -264,16 +280,25 @@ export function SubmitStep({ draft, destination, onSendingChange }: SubmitStepPr
       <p role="status" aria-live="polite" data-testid="submit-progress">
         {phase.kind === 'sending' ? phase.message : ''}
       </p>
-      {/* aria-disabled en lugar de disabled: un botón deshabilitado pierde el foco. */}
-      <button
-        type="button"
-        className="button"
-        onClick={() => void send()}
-        aria-disabled={isBlocked ? true : undefined}
-        data-testid="submit-report"
-      >
-        {phase.kind === 'sending' ? 'Enviando...' : 'Enviar denuncia'}
-      </button>
+      <StepNavigator
+        current={navigator.current}
+        total={navigator.total}
+        title={navigator.title}
+        // Mientras envía no se puede regresar; el botón de envío conserva el foco.
+        {...(phase.kind === 'sending' ? {} : { onBack: navigator.onBack })}
+        primary={
+          // aria-disabled en lugar de disabled: un botón deshabilitado pierde el foco.
+          <button
+            type="button"
+            className="button button--sm"
+            onClick={() => void send()}
+            aria-disabled={isBlocked ? true : undefined}
+            data-testid="submit-report"
+          >
+            {phase.kind === 'sending' ? 'Enviando...' : 'Enviar denuncia'}
+          </button>
+        }
+      />
     </>
   );
 }

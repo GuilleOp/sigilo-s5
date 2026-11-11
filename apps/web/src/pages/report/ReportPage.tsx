@@ -60,7 +60,8 @@ export function ReportPage() {
   /** Tras moverse de paso, el encabezado nuevo recibe el foco (salvo que haya otro destino). */
   const [shouldFocusHeading, setFocusHeading] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [isSending, setSending] = useState(false);
+  /** Con la denuncia enviada ya no hay pasos: se ocultan las píldoras y la barra de pasos. */
+  const [isFinished, setFinished] = useState(false);
   const step = STEPS[index] ?? STEPS[0];
   useDocumentTitle(`Denunciar, paso ${index + 1} de ${STEPS.length}: ${step.title}`);
 
@@ -84,7 +85,7 @@ export function ReportPage() {
   return (
     <>
       <h1>Presentar una denuncia</h1>
-      <StepProgress steps={STEPS.map((item) => item.title)} current={index} />
+      {!isFinished && <StepProgress steps={STEPS.map((item) => item.title)} current={index} />}
       <section aria-labelledby="step-title" data-testid={`step-${step.id}`}>
         <div id="step-title">
           <StepHeading key={step.id} shouldFocus={shouldFocusHeading}>
@@ -92,7 +93,7 @@ export function ReportPage() {
             <span className="visually-hidden">
               Paso {index + 1} de {STEPS.length}:{' '}
             </span>
-            {step.heading}
+            {isFinished ? 'Denuncia enviada' : step.heading}
           </StepHeading>
         </div>
         {STEPS_WITH_FIELDS.includes(step.id) && (
@@ -116,18 +117,28 @@ export function ReportPage() {
             }
           />
         )}
+        {/* El paso de envío dibuja su propia barra: «Enviar denuncia» ocupa el lugar de «Continuar». */}
         {step.id === 'submit' && (
-          <SubmitStep draft={draft} destination={destination} onSendingChange={setSending} />
+          <SubmitStep
+            draft={draft}
+            destination={destination}
+            navigator={{
+              current: index,
+              total: STEPS.length,
+              title: step.title,
+              onBack: () => goTo(index - 1),
+            }}
+            onFinished={() => setFinished(true)}
+          />
         )}
       </section>
-      {!isSending && (
+      {step.id !== 'submit' && (
         <StepNavigator
           current={index}
           total={STEPS.length}
           title={step.title}
-          // Tras un envío exitoso el borrador se vacía (modo nulo) y ya no se puede regresar.
-          {...(index > 0 && draft.mode !== null ? { onBack: () => goTo(index - 1) } : {})}
-          {...(index < STEPS.length - 1 ? { onNext: next } : {})}
+          {...(index > 0 ? { onBack: () => goTo(index - 1) } : {})}
+          onNext={next}
         />
       )}
     </>
