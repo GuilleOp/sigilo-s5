@@ -134,7 +134,12 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
                     antes del {formatDayDate(next.deadline.dueOn)} (
                     {next.deadline.name.charAt(0).toLowerCase()}
                     {next.deadline.name.slice(1)}).{' '}
-                    {describeRemaining(next.deadline.remaining, next.deadline.remainingUnit)}.
+                    {describeRemaining(
+                      next.deadline.remaining,
+                      next.deadline.remainingUnit,
+                      next.deadline.dueOn,
+                    )}
+                    .
                   </>
                 )}
               </p>
@@ -146,7 +151,12 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
                 La autoridad calificó la conducta como falta no grave.{' '}
                 <strong>Lo que sigue:</strong> si no estás de acuerdo, puedes inconformarte desde
                 este seguimiento hasta el {formatDayDate(appeal.dueOn)} (
-                {describeRemaining(appeal.remaining, appeal.remainingUnit).toLowerCase()}).
+                {describeRemaining(
+                  appeal.remaining,
+                  appeal.remainingUnit,
+                  appeal.dueOn,
+                ).toLowerCase()}
+                ).
               </p>
             ) : (
               <p data-testid="tracking-headline">{headline.text}</p>

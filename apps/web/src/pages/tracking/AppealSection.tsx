@@ -96,7 +96,7 @@ export function AppealSection({ qualification, mode, window, onFile }: AppealSec
           <span className="status-icon" data-status={window.status} aria-hidden="true" />
           <strong>Plazo para inconformarte: {DEADLINE_STATUS_LABELS[window.status]}.</strong> Tienes
           5 días hábiles: hasta el {formatDayDate(window.dueOn)} (
-          {describeRemaining(window.remaining, window.remainingUnit).toLowerCase()}).
+          {describeRemaining(window.remaining, window.remainingUnit, window.dueOn).toLowerCase()}).
         </p>
       )}
       {isNonSerious && qualification.appeal === undefined && window === null && (
