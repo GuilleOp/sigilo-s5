@@ -4,6 +4,7 @@
 // propia ley.
 import { UNCLASSIFIED_OFFENSE_CODE } from '@sigilo/contracts';
 import type { ComplaintDetail } from '@sigilo/contracts';
+import { formatLawName } from '../../lib/law-name.ts';
 
 interface LocalLawReferencesProps {
   offenseCode: string;
@@ -39,7 +40,7 @@ export function LocalLawReferences({ offenseCode, references }: LocalLawReferenc
     <ul className="local-law" data-testid="local-law-references">
       {[...byLaw].map(([law, articles]) => (
         <li key={law}>
-          {law}: art. {articles.join('; art. ')}
+          {formatLawName(law)}: art. {articles.join('; art. ')}
         </li>
       ))}
     </ul>
