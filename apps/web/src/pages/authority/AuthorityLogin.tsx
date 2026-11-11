@@ -7,6 +7,7 @@ import { hasFunction } from '@sigilo/contracts';
 import { PATHS } from '../../app/paths.ts';
 import { Alert } from '../../components/Alert.tsx';
 import { TextField } from '../../components/Field.tsx';
+import { FilePicker } from '../../components/FilePicker.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import {
   assertAuthorityKeyFor,
@@ -148,10 +149,10 @@ export function AuthorityLogin({ onReady, onOperation }: AuthorityLoginProps) {
           <p id="authority-key-hint" className="field__hint">
             La cuenta de operación del nodo no la necesita.
           </p>
-          <input
+          <FilePicker
             aria-describedby="authority-key-hint"
             id="authority-key"
-            type="file"
+            status={file?.name}
             aria-required="true"
             accept="application/json,.json"
             data-testid="authority-key-file"

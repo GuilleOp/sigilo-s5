@@ -3,7 +3,7 @@
 // lo que falta de un plazo.
 import { describe, expect, it } from 'vitest';
 import type { ProcedureView, QualificationView } from '@sigilo/contracts';
-import { describeRemaining } from './deadline-text.ts';
+import { describeRemaining, isLongSpan } from './deadline-text.ts';
 import {
   appealWindow,
   NON_SERIOUS_HEADLINE,
@@ -117,6 +117,19 @@ describe('textos del trámite', () => {
     expect(describeRemaining(1, 'natural_days')).toBe('Falta 1 día natural');
     expect(describeRemaining(0, 'natural_days')).toBe('Vence hoy');
     expect(describeRemaining(-2, 'business_days')).toBe('Venció hace 2 días hábiles');
+  });
+
+  it('dice en meses y años los plazos de más de dos meses', () => {
+    // Del 16 de diciembre de 2026 al 1 de marzo de 2033 son 2267 días.
+    expect(describeRemaining(2267, 'natural_days', '2033-03-01')).toBe('Faltan 6 años y 2 meses');
+    expect(describeRemaining(365, 'natural_days', '2027-12-16')).toBe('Faltan 1 año');
+    expect(describeRemaining(80, 'natural_days', '2027-03-16')).toBe('Faltan 2 meses');
+    expect(describeRemaining(-400, 'natural_days', '2025-11-11')).toBe('Venció hace 1 año y 1 mes');
+    expect(describeRemaining(100, 'business_days', '2027-05-01')).toBe('Faltan cerca de 4 meses');
+    // Hasta 60 días se cuentan en días, aunque haya fecha.
+    expect(describeRemaining(45, 'natural_days', '2027-01-30')).toBe('Faltan 45 días naturales');
+    expect(isLongSpan(61, 'natural_days')).toBe(true);
+    expect(isLongSpan(60, 'natural_days')).toBe(false);
   });
 
   it('lo que sigue: quién tiene la denuncia y el plazo en curso más próximo', () => {

@@ -35,6 +35,7 @@ import {
   loadNetworkOutcomes,
   nodeNotes,
   statusTotals,
+  suppressedRow,
 } from './network-outcomes.ts';
 import type { NetworkOutcomes } from './network-outcomes.ts';
 
@@ -141,12 +142,13 @@ function counters(outcomes: NetworkOutcomes): { label: string; value: string }[]
   if (outcomes.kind === 'network') {
     const { cut } = outcomes;
     const included = cut.nodes.filter((node) => node.status === 'included').length;
+    const months = new Set(cut.cells.map((cell) => cell.month)).size;
     return [
       { label: 'denuncias en meses cerrados', value: String(cutTotal(cut)) },
       { label: 'nodos sumados en este corte', value: `${included} de ${cut.nodes.length}` },
       {
-        label: 'meses publicados',
-        value: String(new Set(cut.cells.map((cell) => cell.month)).size),
+        label: months === 1 ? 'mes publicado' : 'meses publicados',
+        value: String(months),
       },
       {
         label: 'autoridades observadas (ejemplo)',
@@ -187,6 +189,8 @@ export function ObservatoryPage() {
   const outcomeRows: readonly OutcomeCount[] = isNetwork
     ? statusTotals(outcomes.cut)
     : DEMO_OUTCOMES;
+  // Las suprimidas no son un estatus: van en una nota bajo la gráfica y en el CSV.
+  const suppressed = isNetwork ? suppressedRow(outcomes.cut) : null;
   const notes = outcomes.kind === 'loading' || outcomes.cut === null ? [] : nodeNotes(outcomes.cut);
   const indicators = DEMO_AUTHORITY_INDICATORS.filter((row) => row.received > 0);
   return (
@@ -246,7 +250,19 @@ export function ObservatoryPage() {
           data={outcomeRows.map((row) => ({ key: row.key, label: row.label, value: row.count }))}
           testId="chart-outcomes"
         />
-        <CsvDownload name="resultados.csv" csv={outcomesCsv(outcomeRows)} label="Descargar (CSV)" />
+        {suppressed !== null && isNetwork && (
+          <p className="muted" data-testid="outcomes-suppressed">
+            Además, {suppressed.count}{' '}
+            {suppressed.count === 1 ? 'denuncia no aparece' : 'denuncias no aparecen'} en la
+            gráfica: estaban en grupos de menos de {outcomes.cut.minCell} y se suprimen para que
+            nadie pueda ser reconocido.
+          </p>
+        )}
+        <CsvDownload
+          name="resultados.csv"
+          csv={outcomesCsv(suppressed === null ? outcomeRows : [...outcomeRows, suppressed])}
+          label="Descargar (CSV)"
+        />
       </section>
 
       <section aria-labelledby="authorities-title" className="observatory-section">

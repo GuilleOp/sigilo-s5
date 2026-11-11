@@ -1,8 +1,8 @@
 // Plazos legales con su situación: ícono con forma distinta y texto (nunca solo color), fecha de
 // vencimiento, lo que falta con su unidad y su fundamento.
 import type { DeadlineView } from '@sigilo/contracts';
-import { DEADLINE_STATUS_LABELS, describeRemaining } from '../lib/deadline-text.ts';
-import { formatDayDate } from '../lib/format.ts';
+import { DEADLINE_STATUS_LABELS, describeRemaining, isLongSpan } from '../lib/deadline-text.ts';
+import { formatDayDate, formatShortDate } from '../lib/format.ts';
 import { DeadlineRuler, rulerPosition } from './a/DeadlineRuler.tsx';
 
 interface DeadlineListProps {
@@ -53,12 +53,23 @@ export function DeadlineList({
             <strong>{deadline.name}</strong>{' '}
             <span className="deadline__status">{DEADLINE_STATUS_LABELS[deadline.status]}</span>
           </p>
-          <p className="deadline__when">
-            Vence el {formatDayDate(deadline.dueOn)}.{' '}
-            <span data-testid="deadline-remaining">
-              {describeRemaining(deadline.remaining, deadline.remainingUnit)}.
-            </span>
-          </p>
+          {/* Los plazos largos se dicen en años y meses, con la fecha al lado:
+              «Faltan 6 años y 1 mes (vence el 1 mar 2033)». */}
+          {isLongSpan(deadline.remaining, deadline.remainingUnit) ? (
+            <p className="deadline__when">
+              <span data-testid="deadline-remaining">
+                {describeRemaining(deadline.remaining, deadline.remainingUnit, deadline.dueOn)}
+              </span>{' '}
+              ({deadline.remaining > 0 ? 'vence' : 'venció'} el {formatShortDate(deadline.dueOn)}).
+            </p>
+          ) : (
+            <p className="deadline__when">
+              Vence el {formatDayDate(deadline.dueOn)}.{' '}
+              <span data-testid="deadline-remaining">
+                {describeRemaining(deadline.remaining, deadline.remainingUnit)}.
+              </span>
+            </p>
+          )}
           {hasRuler && <RulerFor deadline={deadline} />}
           {shouldExplain && <p className="deadline__explain">{deadline.explanation}</p>}
           {deadline.legalBasis.length > 0 && (

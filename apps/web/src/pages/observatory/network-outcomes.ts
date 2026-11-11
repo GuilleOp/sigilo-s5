@@ -45,7 +45,10 @@ export async function loadNetworkOutcomes(
   return isUsable ? { kind: 'network', cut } : { kind: 'example', reason: 'empty', cut };
 }
 
-/** Denuncias del corte por estatus, en el orden del catálogo, sin los estatus en cero. */
+/**
+ * Denuncias del corte por estatus, en el orden del catálogo, sin los estatus en cero. Las
+ * suprimidas no son un estatus: van aparte (`suppressedRow`).
+ */
 export function statusTotals(cut: NationalOpenData): OutcomeCount[] {
   const totals = new Map<string, number>();
   for (const cell of cut.cells)
@@ -57,10 +60,14 @@ export function statusTotals(cut: NationalOpenData): OutcomeCount[] {
     label: STATUS_LABELS[status.key],
     count: totals.get(status.key) ?? 0,
   }));
-  if (cut.suppressed > 0) {
-    rows.push({ key: 'suppressed', label: 'Suprimidas (celdas pequeñas)', count: cut.suppressed });
-  }
   return rows;
+}
+
+/** Fila de las denuncias suprimidas por celdas pequeñas (para el CSV), o `null` si no hay. */
+export function suppressedRow(cut: NationalOpenData): OutcomeCount | null {
+  return cut.suppressed > 0
+    ? { key: 'suppressed', label: 'Suprimidas (celdas pequeñas)', count: cut.suppressed }
+    : null;
 }
 
 /** Avisos por cada nodo que no se sumó: «sin datos de <nodo> en este corte». */

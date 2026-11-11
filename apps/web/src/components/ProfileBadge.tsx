@@ -36,9 +36,12 @@ export function ProfileBadge() {
         : 'public';
   const institution =
     kind !== 'guest' && pathname === PATHS.authority ? profile?.authorityName : null;
+  // Si la institución no cabe se corta con «…»; el nombre completo queda al pasar el puntero.
+  const fullText = institution ? `${LABELS[kind]} · ${institution}` : LABELS[kind];
   return (
     <p
       className={`profile-badge profile-badge--${kind}`}
+      title={fullText}
       data-testid="profile-badge"
       data-kind={kind}
     >

@@ -7,7 +7,13 @@ import { createNetworkFixture } from '../../../../../packages/red/src/test-fixtu
 import type { NetworkState } from '../../network/directory.ts';
 import type { ApiClient } from '../../services/api-client.ts';
 import { ApiRequestError } from '../../services/api-client.ts';
-import { cutTotal, loadNetworkOutcomes, nodeNotes, statusTotals } from './network-outcomes.ts';
+import {
+  cutTotal,
+  loadNetworkOutcomes,
+  nodeNotes,
+  statusTotals,
+  suppressedRow,
+} from './network-outcomes.ts';
 
 const CUT: NationalOpenData = {
   v: 1,
@@ -105,13 +111,14 @@ describe('loadNetworkOutcomes', () => {
 });
 
 describe('resumen del corte', () => {
-  it('suma por estatus en el orden del catálogo, con las suprimidas al final', () => {
+  it('suma por estatus en el orden del catálogo; las suprimidas van aparte', () => {
     expect(cutTotal(CUT)).toBe(30);
     expect(statusTotals(CUT).map((row) => [row.key, row.count])).toEqual([
       ['received', 5],
       ['archived', 20],
-      ['suppressed', 5],
     ]);
+    expect(suppressedRow(CUT)?.count).toBe(5);
+    expect(suppressedRow({ ...CUT, suppressed: 0 })).toBeNull();
   });
 
   it('dice qué nodo quedó sin datos en este corte', () => {

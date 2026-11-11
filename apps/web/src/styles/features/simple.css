@@ -2,12 +2,15 @@
    desplegables («¿Por qué?», «Ver…»), promesas del inicio, resumen de quién puede saber qué y
    avisos compactos. Solo usa tokens. */
 
-/* «Ver más» dentro de un bloque: un renglón con flecha que abre el detalle. */
+/* Desplegables: todos los `<details>` (salvo el «Menú» de la navegación) se ven igual: un renglón
+   del color de los enlaces con una flecha al inicio que gira al abrir. `:where` deja la
+   especificidad en cero para que cada bloque ajuste su espacio sin repetir la flecha. */
 .more {
   margin-block: var(--space-2) 0;
 }
 
-.more > summary {
+:where(details:not(.site-nav__menu)) > summary,
+.more-card__toggle {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -18,11 +21,12 @@
   list-style: none;
 }
 
-.more > summary::-webkit-details-marker {
+:where(details:not(.site-nav__menu)) > summary::-webkit-details-marker {
   display: none;
 }
 
-.more > summary::before {
+:where(details:not(.site-nav__menu)) > summary::before,
+.more-card__toggle::before {
   content: '';
   inline-size: 0.55rem;
   block-size: 0.55rem;
@@ -33,7 +37,8 @@
   transition: transform 0.15s ease;
 }
 
-.more[open] > summary::before {
+:where(details:not(.site-nav__menu))[open] > summary::before,
+.more-card__toggle[aria-expanded='true']::before {
   transform: rotate(45deg);
 }
 
@@ -42,51 +47,22 @@
   font-size: var(--text-sm);
 }
 
-/* Bloque que es solo un renglón desplegable (vista de la autoridad, lo que sale del equipo). */
+/* Bloque que es solo un renglón desplegable (vista de la autoridad, lo que sale del equipo): la
+   misma flecha, con el renglón a lo ancho y la letra un poco mayor. */
 .more-card {
   padding-block: var(--space-2);
 }
 
 .more-card > summary,
 .more-card__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
   inline-size: 100%;
-  min-block-size: var(--target-min);
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--color-primary);
   font: inherit;
   font-size: 1.05rem;
   font-weight: 800;
   text-align: start;
-  cursor: pointer;
-  list-style: none;
-}
-
-.more-card > summary::-webkit-details-marker {
-  display: none;
-}
-
-.more-card > summary::after,
-.more-card__toggle::after {
-  content: '';
-  inline-size: 0.6rem;
-  block-size: 0.6rem;
-  flex: none;
-  margin-inline-end: var(--space-2);
-  border-right: 2.5px solid currentColor;
-  border-bottom: 2.5px solid currentColor;
-  transform: rotate(45deg);
-  transition: transform 0.15s ease;
-}
-
-.more-card[open] > summary::after,
-.more-card__toggle[aria-expanded='true']::after {
-  transform: rotate(-135deg);
 }
 
 .more-card[open] > summary {
@@ -298,9 +274,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .more > summary::before,
-  .more-card > summary::after,
-  .more-card__toggle::after {
+  :where(details:not(.site-nav__menu)) > summary::before,
+  .more-card__toggle::before {
     transition: none;
   }
 }

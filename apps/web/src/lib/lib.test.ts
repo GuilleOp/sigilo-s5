@@ -10,7 +10,9 @@ import {
   formatDayDate,
   formatHourDate,
   formatMonthPeriod,
+  formatShortDate,
 } from './format.ts';
+import { formatLawName } from './law-name.ts';
 import { detectPersonalDataRequest } from './personal-data-request.ts';
 import {
   matchesReceiptWord,
@@ -174,6 +176,28 @@ describe('formatos', () => {
     expect(formatHourDate('2026-10-01')).toBe('2026-10-01');
     expect(formatMonthPeriod('2026-03')).toBe('marzo de 2026');
     expect(formatDayDate('otra')).toBe('otra');
+    expect(formatShortDate('2026-11-14')).toBe('14 nov 2026');
+    expect(formatShortDate('2033-03-01')).toBe('1 mar 2033');
+    expect(formatShortDate('otra')).toBe('otra');
+  });
+});
+
+describe('formatLawName', () => {
+  it('escribe los nombres de ley como se citan, con acentos y siglas', () => {
+    expect(formatLawName('LEY GENERAL DE RESPONSABILIDADES ADMINISTRATIVAS')).toBe(
+      'Ley General de Responsabilidades Administrativas',
+    );
+    expect(formatLawName('CODIGO PENAL PARA EL ESTADO LIBRE Y SOBERANO DE QUINTANA ROO')).toBe(
+      'Código Penal para el Estado Libre y Soberano de Quintana Roo',
+    );
+    expect(
+      formatLawName('CÓDIGO PENAL PARA EL ESTADO LIBRE Y SOBERANO DE GUERRERO, NÚMERO 499'),
+    ).toBe('Código Penal para el Estado Libre y Soberano de Guerrero, Número 499');
+    expect(formatLawName('LEY DE RESPONSABILIDADES ADMINISTRATIVAS DE LA CIUDAD DE MÉXICO')).toBe(
+      'Ley de Responsabilidades Administrativas de la Ciudad de México',
+    );
+    expect(formatLawName('LGRA')).toBe('LGRA');
+    expect(formatLawName('Ley ya escrita')).toBe('Ley ya escrita');
   });
 });
 

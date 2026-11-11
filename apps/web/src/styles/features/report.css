@@ -289,3 +289,10 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
+
+/* Salidas tras enviar la denuncia: ver su seguimiento o volver al inicio. */
+.submit-exits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

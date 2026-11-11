@@ -2,7 +2,7 @@
 import { findManagementState, findOffense, findState } from '@sigilo/contracts';
 import { TableScroll } from '../../components/TableScroll.tsx';
 import type { ComplaintSummary } from '@sigilo/contracts';
-import { formatDayDate, STATUS_LABELS } from '../../lib/format.ts';
+import { formatShortDate, STATUS_LABELS } from '../../lib/format.ts';
 
 interface ComplaintListProps {
   complaints: readonly ComplaintSummary[];
@@ -20,30 +20,32 @@ function s5Label(state: ComplaintSummary['managementState']): string {
   );
 }
 
-/** Tabla de denuncias recibidas. */
+/**
+ * Tabla de denuncias recibidas. En celular cada fila se ve como tarjeta (folio, conducta, estatus y
+ * fecha); `data-label` da el nombre de cada dato en esa vista.
+ */
 export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
   if (complaints.length === 0) return <p>No hay denuncias todavía.</p>;
   return (
     <TableScroll labelledBy={'complaint-list-caption'}>
-      <table className="data-table--wide" data-testid="complaint-list">
+      <table className="data-table--wide complaint-list" data-testid="complaint-list">
         <caption id={'complaint-list-caption'} className="visually-hidden">
           Denuncias recibidas
         </caption>
         <thead>
           <tr>
             <th scope="col">Folio</th>
-            <th scope="col">Recibida</th>
-            <th scope="col">Estado</th>
             <th scope="col">Conducta</th>
-            <th scope="col">Modo</th>
-            <th scope="col">Turnado</th>
             <th scope="col">Estatus</th>
+            <th scope="col">Recibida</th>
+            <th scope="col">Entidad</th>
+            <th scope="col">Modo</th>
           </tr>
         </thead>
         <tbody>
           {complaints.map((complaint) => (
             <tr key={complaint.folio}>
-              <th scope="row">
+              <th scope="row" className="complaint-list__folio">
                 <button
                   type="button"
                   className="button button--secondary mono folio"
@@ -53,19 +55,28 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
                   {complaint.folio}
                 </button>
               </th>
-              <td>{formatDayDate(complaint.receivedOn)}</td>
-              <td>{findState(complaint.stateCode)?.name ?? complaint.stateCode}</td>
-              <td>{findOffense(complaint.offenseCode)?.label ?? complaint.offenseCode}</td>
-              <td>
+              <td data-label="Conducta" className="complaint-list__offense">
+                {findOffense(complaint.offenseCode)?.label ?? complaint.offenseCode}
+              </td>
+              {/* Turnado (código del S5) y estatus en lenguaje claro, en una sola celda. */}
+              <td data-label="Estatus" className="complaint-list__status">
+                <span className="s5-code" data-testid="s5-code">
+                  {s5Label(complaint.managementState)}
+                </span>{' '}
+                <span className="complaint-list__status-text">
+                  {STATUS_LABELS[complaint.status]}
+                </span>
+              </td>
+              <td data-label="Recibida" className="complaint-list__date">
+                {formatShortDate(complaint.receivedOn)}
+              </td>
+              <td data-label="Entidad">
+                {findState(complaint.stateCode)?.name ?? complaint.stateCode}
+              </td>
+              <td data-label="Modo">
                 {complaint.mode === 'sealed' ? 'Identidad sellada' : 'Anónima'}
                 {complaint.protectionRequested ? ', pide protección' : ''}
               </td>
-              <td>
-                <span className="s5-code" data-testid="s5-code">
-                  {s5Label(complaint.managementState)}
-                </span>
-              </td>
-              <td>{STATUS_LABELS[complaint.status]}</td>
             </tr>
           ))}
         </tbody>

@@ -9,6 +9,7 @@ import { fromBase64Url, padlockFingerprint } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
 import { TextAreaField, TextField } from '../../components/Field.tsx';
 import { focusAfterRender } from '../../lib/focus.ts';
+import { formatDayDate } from '../../lib/format.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import type { OperationSession } from './authority-session.ts';
@@ -103,7 +104,8 @@ function RegistrationDetail({ session, view, onDecided, onBack }: DetailProps) {
         {request.institutionName}
       </h2>
       <p>
-        Folio <span className="mono">{view.requestId}</span> · recibida el {view.receivedOn} ·{' '}
+        Folio <span className="mono">{view.requestId}</span> · recibida el{' '}
+        {formatDayDate(view.receivedOn)} ·{' '}
         <strong data-testid="registration-status">{STATUS_LABELS[view.status]}</strong>
       </p>
       <dl className="definition-list card">
@@ -251,7 +253,7 @@ function RegistrationDetail({ session, view, onDecided, onBack }: DetailProps) {
         <>
           {view.decision && (
             <p>
-              {STATUS_LABELS[view.status]} el {view.decision.on} por la cuenta{' '}
+              {STATUS_LABELS[view.status]} el {formatDayDate(view.decision.on)} por la cuenta{' '}
               <span className="mono">{view.decision.accountId}</span>
               {view.decision.reason ? `. Motivo: ${view.decision.reason}` : '.'}
             </p>
@@ -369,7 +371,7 @@ export function OperationInbox({ session, onLogout }: OperationInboxProps) {
                   >
                     <strong>{view.request.institutionName}</strong>
                     <span>
-                      {STATUS_LABELS[view.status]} · {view.receivedOn} ·{' '}
+                      {STATUS_LABELS[view.status]} · {formatDayDate(view.receivedOn)} ·{' '}
                       <span className="mono">{view.requestId}</span>
                     </span>
                   </button>

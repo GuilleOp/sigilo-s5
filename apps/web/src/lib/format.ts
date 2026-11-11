@@ -15,6 +15,17 @@ export function formatDayDate(value: string): string {
   return `${Number(match[3])} de ${month} de ${match[1]}`;
 }
 
+/**
+ * «2026-11-14» → «14 nov 2026»: para tablas y listas donde la fecha larga se partiría en renglones.
+ * Devuelve el texto original si no tiene ese formato.
+ */
+export function formatShortDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
+  const month = match ? MONTH_NAMES[Number(match[2]) - 1] : undefined;
+  if (!match || month === undefined) return value;
+  return `${Number(match[3])} ${month.slice(0, 3)} ${match[1]}`;
+}
+
 const CENTRAL_MEXICO_TIME = new Intl.DateTimeFormat('es-MX', {
   timeZone: 'America/Mexico_City',
   year: 'numeric',
