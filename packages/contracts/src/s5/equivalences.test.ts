@@ -1,7 +1,7 @@
 // Lectura de las equivalencias con el catálogo de faltas del S5.
 import { describe, expect, it } from 'vitest';
-import { equivalenceStateKey, localReferences } from './s5-equivalences.ts';
-import type { S5Equivalences } from './s5-equivalences.ts';
+import { equivalenceStateKey, localReferences } from './equivalences.ts';
+import type { S5Equivalences } from './equivalences.ts';
 
 const DATA: S5Equivalences = {
   fuente: 'prueba',

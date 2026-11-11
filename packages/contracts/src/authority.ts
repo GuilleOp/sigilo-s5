@@ -119,6 +119,18 @@ export type IdentityOpeningRequestView = z.infer<typeof IdentityOpeningRequestVi
  * `complaint.received` publicado: así se comprueban las llaves del buzón también en modo anónimo.
  * `facts` son los hechos tal como se enviaron (la clave de conducta puede ser una equivalente).
  */
+/** Artículo equivalente en el catálogo de faltas del S5. */
+export const S5ReferenceSchema = z
+  .object({
+    s5Id: z.number().int().nonnegative().meta({
+      description: 'Identificador de la entrada en el catálogo de faltas del S5.',
+    }),
+    law: z.string().max(300).meta({ description: 'Ley o código.' }),
+    article: z.string().max(80).meta({ description: 'Artículo y fracción.' }),
+  })
+  .strict()
+  .meta({ description: 'Artículo de la ley local equivalente a la conducta, con su id del S5.' });
+
 export const ComplaintDetailSchema = z
   .object({
     summary: ComplaintSummarySchema,
@@ -177,6 +189,15 @@ export const ComplaintDetailSchema = z
       .int()
       .nonnegative()
       .meta({ description: 'Veces que se ha abierto la identidad sellada.' }),
+    /**
+     * Artículos del catálogo de faltas del S5 que equivalen a la conducta en la entidad de los
+     * hechos (o la federal si la oficina es federal). Los calcula el nodo; no los envía quien
+     * denuncia ni forman parte del comprobante.
+     */
+    s5References: z.array(S5ReferenceSchema).max(200).optional().meta({
+      description:
+        'Artículos equivalentes en el catálogo de faltas del S5 (ley de responsabilidades y código penal de la entidad), con su id del S5. Los calcula el nodo.',
+    }),
     procedure: ProcedureViewSchema.optional(),
     identityRequests: z
       .array(IdentityOpeningRequestViewSchema)

@@ -1,6 +1,7 @@
 // Vistas de lectura: seguimiento de la persona denunciante y detalle para la autoridad.
 import type { ComplaintDetail, ComplaintSummary, TrackingView } from '@sigilo/contracts';
 import { primaryOffenseCode } from '@sigilo/contracts';
+import { s5ReferencesFor } from '@sigilo/contracts/s5';
 import {
   escalationEnvelopeDigest,
   randomBytes,
@@ -146,6 +147,11 @@ export function buildComplaintDetail(
     storedEvidenceCount: ctx.evidence.listStoredIdsForFolio(complaint.folio).length,
     messages: ctx.messages.listByFolio(complaint.folio),
     identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
+    s5References: s5ReferencesFor(
+      complaint.facts.entityId,
+      complaint.facts.stateCode,
+      complaint.facts.offenseCode,
+    ),
     procedure: buildProcedureView(ctx, complaint),
     identityRequests: listIdentityRequests(ctx, complaint),
     ...optional('contextSheet', contextSheetView(ctx, complaint, mayCorroborate)),

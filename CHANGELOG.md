@@ -9,7 +9,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 - Catálogo de conductas alineado con el del S5: nepotismo (LGRA 63 Bis), simulación de acto
   jurídico (LGRA 60 Bis) y CPF 216, 217 Bis, 217 Ter y 222 Bis; equivalencias por entidad con el
-  catálogo de faltas del S5 (`datos/s5/equivalencias-faltas.json`), que el panel muestra como «En
+  catálogo de faltas del S5 (`packages/contracts/src/s5/equivalencias-faltas.json` (publicado en la web como `/datos/s5/equivalencias-faltas.json`)), que el panel muestra como «En
   la ley que aplica»; y la pregunta «¿Quién lo hizo?» que acorta la lista de conductas.
 - Alta de autoridades, pasos 1 a 3: página «Solicitar alta de mi institución» (`/solicitar-alta`)
   con las llaves creadas en el navegador (solo el candado viaja) y folio y huella al enviar;

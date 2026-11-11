@@ -181,6 +181,10 @@ ComplaintDetail,evidenceDeletionOn,evidenceDeletionOn,cadena,patrón ^\d{4}-\d{2
 ComplaintDetail,storedEvidenceCount,storedEvidenceCount,entero,de 0 a 10,no,Pruebas cuyo archivo sigue guardado.,,1
 ComplaintDetail,messages,messages,arreglo de MailboxMessage,,sí,"Mensajes del buzón, cifrados.",,
 ComplaintDetail,identityOpenedCount,identityOpenedCount,entero,mínimo 0,sí,Veces que se ha abierto la identidad sellada.,,1
+ComplaintDetail,s5References,s5References,arreglo de objeto,hasta 200 elementos,no,"Artículos equivalentes en el catálogo de faltas del S5 (ley de responsabilidades y código penal de la entidad), con su id del S5. Los calcula el nodo.",,
+ComplaintDetail,s5References[].s5Id,s5Id,entero,mínimo 0,sí,Identificador de la entrada en el catálogo de faltas del S5.,,
+ComplaintDetail,s5References[].law,law,cadena,hasta 300 caracteres,sí,Ley o código.,,
+ComplaintDetail,s5References[].article,article,cadena,hasta 80 caracteres,sí,Artículo y fracción.,,
 ComplaintDetail,procedure,procedure,objeto (ProcedureView),,no,"Trámite de la denuncia con su línea de tiempo, plazos y reglas.",,
 ComplaintDetail,identityRequests,identityRequests,arreglo de IdentityOpeningRequestView,,no,Solicitudes de apertura de la identidad y sus aprobaciones.,,
 ComplaintDetail,contextSheet,contextSheet,objeto,,no,"Ficha de contexto con prioridad explicable: cada factor dice por qué se aplicó y de qué fuente viene. Orienta, nunca decide.",,

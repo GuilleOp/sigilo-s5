@@ -7975,6 +7975,32 @@ components:
           minimum: 0
           maximum: 9007199254740991
           description: Veces que se ha abierto la identidad sellada.
+        s5References:
+          description: Artículos equivalentes en el catálogo de faltas del S5 (ley de responsabilidades y código penal de la entidad), con su id del S5. Los calcula el nodo.
+          maxItems: 200
+          type: array
+          items:
+            type: object
+            properties:
+              s5Id:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+                description: Identificador de la entrada en el catálogo de faltas del S5.
+              law:
+                type: string
+                maxLength: 300
+                description: Ley o código.
+              article:
+                type: string
+                maxLength: 80
+                description: Artículo y fracción.
+            required:
+              - s5Id
+              - law
+              - article
+            additionalProperties: false
+            description: Artículo de la ley local equivalente a la conducta, con su id del S5.
         procedure:
           $ref: '#/components/schemas/ProcedureView'
         identityRequests:

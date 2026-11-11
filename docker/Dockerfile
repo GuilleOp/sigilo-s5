@@ -47,11 +47,10 @@ COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps/web apps/web
 # Datos agregados que la web publica en su mismo origen bajo /datos/ (apps/web/static-data.ts):
-# la matriz de cobertura, los datos abiertos y las equivalencias con el catálogo de faltas del S5.
+# la matriz de cobertura y los datos abiertos (las equivalencias del S5 vienen en packages/contracts).
 # Nada de datos/proceso ni de datos/grupos-anonimato.
 COPY datos/cobertura datos/cobertura
 COPY datos/abiertos datos/abiertos
-COPY datos/s5 datos/s5
 COPY --from=node-keys pinned-keys.json apps/web/src/config/pinned-keys.json
 # Raíz de confianza de la red: con ella la web verifica el directorio y envía por el enrutador.
 COPY --from=node-keys network-trust.json apps/web/src/config/network-trust.json

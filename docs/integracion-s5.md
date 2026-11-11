@@ -74,7 +74,7 @@ SIGILO conserva su catálogo corto en lenguaje llano (38 conductas en 5 situacio
 de la LGRA o del CPF) y lo enlaza con el del S5:
 
 - `scripts/s5-equivalencias.ts` empareja cada entrada del S5 con una clave de SIGILO por su
-  clasificación, su nombre y quién la comete, y genera `datos/s5/equivalencias-faltas.json`:
+  clasificación, su nombre y quién la comete, y genera `packages/contracts/src/s5/equivalencias-faltas.json` (publicado en la web como `/datos/s5/equivalencias-faltas.json`):
   3,388 entradas con equivalente (95 %). Las 171 restantes quedan listadas en `sinEquivalente`
   y se dejan fuera a propósito: tortura y desaparición forzada (tienen leyes y fiscalías propias),
   desobediencia o resistencia de particulares, falsedad, quebrantamiento de sellos, lavado de

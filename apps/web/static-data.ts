@@ -48,7 +48,7 @@ export function collectStaticData(anonymitySource: string | undefined): StaticFi
   addDirectory(files, join(REPO_ROOT, 'datos/cobertura'), '/datos/cobertura/', /\.(json|csv)$/u);
   addDirectory(files, join(REPO_ROOT, 'datos/abiertos'), '/datos/abiertos/', /\.(csv|md)$/u);
   // Equivalencias con el catálogo de faltas del S5: artículo de la ley de cada estado.
-  addDirectory(files, join(REPO_ROOT, 'datos/s5'), '/datos/s5/', /\.json$/u);
+  addDirectory(files, join(REPO_ROOT, 'packages/contracts/src/s5'), '/datos/s5/', /\.json$/u);
   return files;
 }
 

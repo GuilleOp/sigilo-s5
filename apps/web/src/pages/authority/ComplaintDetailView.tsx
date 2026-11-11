@@ -127,11 +127,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <dd>{findOffense(facts.offenseCode)?.label ?? facts.offenseCode}</dd>
         <dt>En la ley que aplica</dt>
         <dd>
-          <LocalLawReferences
-            entityId={facts.entityId}
-            stateCode={facts.stateCode}
-            offenseCode={facts.offenseCode}
-          />
+          <LocalLawReferences offenseCode={facts.offenseCode} references={detail.s5References} />
         </dd>
         <dt>Periodo</dt>
         <dd>{formatMonthPeriod(facts.occurredPeriod)}</dd>

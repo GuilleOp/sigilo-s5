@@ -146,6 +146,19 @@ describe('listado y detalle', () => {
     }
   });
 
+  it('agrega los artículos de la ley local equivalentes del catálogo de faltas del S5', async () => {
+    const { server, folio } = await setup();
+    const detail = await fetchDetail(server, folio);
+    // Cohecho en una oficina municipal de Querétaro: Código Penal de Querétaro, art. 268.
+    expect(detail.s5References).toContainEqual(
+      expect.objectContaining({
+        law: 'CÓDIGO PENAL PARA EL ESTADO DE QUERÉTARO',
+        article: '268, fr. I',
+      }),
+    );
+    expect(detail.s5References?.every((reference) => reference.s5Id > 0)).toBe(true);
+  });
+
   it('devuelve el detalle con todo lo necesario para recalcular el contexto, sin identidad', async () => {
     const { server, folio, evidence, reporter, request } = await setup();
     const response = await getAsAuthority(server.app, ROUTES.authorityComplaint(folio));

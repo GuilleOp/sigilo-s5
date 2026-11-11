@@ -1,4 +1,4 @@
-// Genera datos/s5/equivalencias-faltas.json: para cada conducta del catálogo de SIGILO y cada
+// Genera packages/contracts/src/s5/equivalencias-faltas.json: para cada conducta del catálogo de SIGILO y cada
 // entidad, los artículos equivalentes del catálogo de faltas del S5 (la ley de responsabilidades
 // y el código penal de cada estado, y la LGRA y el CPF como entidad federal). Así quien denuncia
 // elige en lenguaje llano y la autoridad ve el artículo de la ley que le toca aplicar.
@@ -10,7 +10,7 @@ import { dirname, join, resolve } from 'node:path';
 import { OFFENSES } from '@sigilo/contracts';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const OUTPUT = join(ROOT, 'datos/s5/equivalencias-faltas.json');
+const OUTPUT = join(ROOT, 'packages/contracts/src/s5/equivalencias-faltas.json');
 const DEFAULT_SOURCE =
   'https://dev-denuncias-dataton.plataformadigitalnacional.org/next-api/public/catalogos?catalog=faltas';
 
