@@ -102,6 +102,7 @@ test('la supervisora ve en su panel la denuncia escalada por una justificación 
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   await applyProcedure(request, E2E_ACCOUNTS.iffeIntake, folio, {
     action: 'respond_conflict',

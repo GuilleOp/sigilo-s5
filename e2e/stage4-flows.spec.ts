@@ -65,6 +65,7 @@ test('el seguimiento explica «turnada», el plazo con su unidad y la calificaci
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
 
   await openTracking(page, folio, words);
@@ -117,6 +118,7 @@ test('el panel muestra la ficha de contexto y el conflicto de interés, y regist
   await applyProcedure(request, E2E_ACCOUNTS.inboxIntake, folio, {
     action: 'route',
     authorityId: E2E_AUTHORITY,
+    note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
   });
   await loginAsAuthority(page, E2E_ACCOUNTS.iffeIntake);
   await openComplaint(page, folio);

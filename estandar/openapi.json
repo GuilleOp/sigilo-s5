@@ -1685,7 +1685,7 @@
                         "status": "received",
                         "receivedOn": "2026-11-04",
                         "stateCode": "22",
-                        "offenseCode": "LGRA-51",
+                        "offenseCode": "LGRA-54",
                         "protectionRequested": false,
                         "managementState": "received_in_inbox",
                         "assignedAuthorityId": "authority.buzon-general",
@@ -9454,12 +9454,12 @@
               },
               "note": {
                 "type": "string",
-                "minLength": 1,
+                "minLength": 10,
                 "maxLength": 2000,
-                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+                "description": "Motivo del turno (al menos 10 caracteres sin contar espacios al inicio ni al final): por qué la denuncia va a esa autoridad. La persona denunciante lo lee tal cual."
               }
             },
-            "required": ["action", "authorityId"],
+            "required": ["action", "authorityId", "note"],
             "additionalProperties": false
           },
           {
@@ -9629,7 +9629,7 @@
             "additionalProperties": false
           }
         ],
-        "description": "Acción del trámite: route, accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
+        "description": "Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
       },
       "ProcedureState": {
         "type": "object",

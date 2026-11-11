@@ -58,6 +58,13 @@ general del S5. Es el canal único con protocolos de recepción y turno de las B
 (arts. 56 y 58). Al integrar, el buzón general del S5 se publica en el directorio con el papel
 `inbox` y la misma llave que su nodo usa como autoridad en `keys.json`.
 
+### Motivo del turno
+
+Como en la bandeja del S5, turnar exige el motivo: `route` lleva `note` obligatoria de al menos 10
+caracteres (sin contar espacios al inicio ni al final; `RoutingNoteSchema`). Sin él, el nodo
+responde `bad_request` (400). El panel lo pide con «Por qué la envías a esta autoridad; la persona
+lo leerá», y la persona lo lee tal cual en su seguimiento.
+
 ### Semáforo de turnado
 
 La bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2 días. SIGILO

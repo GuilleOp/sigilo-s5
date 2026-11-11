@@ -10,6 +10,7 @@ import {
   functionInChargeAt,
   hasAnyFunction,
   hasFunction,
+  MIN_ROUTING_NOTE_LENGTH,
 } from '@sigilo/contracts';
 import type {
   AuthorityProfile,
@@ -185,6 +186,10 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     if ((action === 'route' || action === 'reassign') && authorityId === '') {
       found['procedure-authority'] = 'Elige la autoridad.';
     }
+    if (action === 'route' && trimmedNote.length < MIN_ROUTING_NOTE_LENGTH) {
+      found['procedure-note'] =
+        `Escribe por qué la envías a esta autoridad (al menos ${MIN_ROUTING_NOTE_LENGTH} caracteres).`;
+    }
     if ((action === 'reassign' || action === 'return') && trimmedNote === '') {
       found['procedure-note'] = 'Escribe la nota pública: la persona la leerá.';
     }
@@ -213,7 +218,9 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     const withNote = trimmedNote === '' ? {} : { note: trimmedNote };
     switch (action) {
       case 'route':
-        return authorityId === '' ? null : { action, authorityId, ...withNote };
+        return authorityId === '' || trimmedNote.length < MIN_ROUTING_NOTE_LENGTH
+          ? null
+          : { action, authorityId, note: trimmedNote };
       case 'accept':
         return { action, ...withNote };
       case 'reassign':
@@ -543,11 +550,17 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                 id="procedure-note"
                 error={errors['procedure-note']}
                 label={
-                  action === 'reassign' || action === 'return'
-                    ? 'Nota pública (obligatoria)'
-                    : 'Nota pública (opcional)'
+                  action === 'route'
+                    ? 'Motivo del turno (obligatorio)'
+                    : action === 'reassign' || action === 'return'
+                      ? 'Nota pública (obligatoria)'
+                      : 'Nota pública (opcional)'
                 }
-                hint="La persona denunciante la leerá tal cual en su seguimiento."
+                hint={
+                  action === 'route'
+                    ? `Por qué la envías a esta autoridad; la persona lo leerá. Al menos ${MIN_ROUTING_NOTE_LENGTH} caracteres.`
+                    : 'La persona denunciante la leerá tal cual en su seguimiento.'
+                }
                 rows={2}
                 maxLength={2000}
                 value={note}

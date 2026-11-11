@@ -289,7 +289,10 @@ puertas.
 ## Acto 2. Trámite (1 min)
 
 1. En el panel, entrar como `buzon.federal`, abrir la denuncia (hechos, pruebas limpias e
-   identidad «sellada») y turnarla al OIC del Instituto Federal Ficticio de Equipamiento. Quien
+   identidad «sellada») y turnarla al OIC del Instituto Federal Ficticio de Equipamiento con su
+   motivo, que es obligatorio y la persona lee en su seguimiento (por ejemplo, «Los hechos
+   ocurrieron en el IFFE: le toca a su órgano interno de control»). En la bandeja, la columna
+   «Plazo de turnado» muestra el semáforo del S5 («A tiempo», «Por vencer», «Vencida»). Quien
    turna no ve el formulario para abrir la identidad.
 2. Entrar como `oic-equipamiento.persona1` (recibe e investiga en el OIC), aceptarla y avanzar a
    la etapa «Investigación». El panel muestra los plazos que corren. Después del informe de

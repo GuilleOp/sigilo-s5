@@ -58,6 +58,25 @@ export const PublicNoteSchema = z
   .max(2000)
   .meta({ description: 'Nota pública de la autoridad; la persona denunciante la lee tal cual.' });
 
+/** Mínimo de caracteres del motivo del turno, sin contar espacios al inicio ni al final. */
+export const MIN_ROUTING_NOTE_LENGTH = 10;
+
+/**
+ * Motivo del turno: por qué la denuncia va a esa autoridad. Obligatorio, como en la bandeja del
+ * S5; la persona denunciante lo lee tal cual en su seguimiento.
+ */
+export const RoutingNoteSchema = z
+  .string()
+  .min(MIN_ROUTING_NOTE_LENGTH)
+  .max(2000)
+  .refine((value) => value.trim().length >= MIN_ROUTING_NOTE_LENGTH, {
+    message: `El motivo del turno debe tener al menos ${MIN_ROUTING_NOTE_LENGTH} caracteres.`,
+  })
+  .meta({
+    description:
+      'Motivo del turno (al menos 10 caracteres sin contar espacios al inicio ni al final): por qué la denuncia va a esa autoridad. La persona denunciante lo lee tal cual.',
+  });
+
 /** Fundamento legal y motivo, visible para la persona denunciante. */
 export const LegalBasisTextSchema = z
   .string()
@@ -74,7 +93,7 @@ export const AgreementTextSchema = z.string().min(50).max(20_000).meta({
 const RouteActionSchema = z.strictObject({
   action: z.literal('route'),
   authorityId: AuthorityIdSchema,
-  note: PublicNoteSchema.optional(),
+  note: RoutingNoteSchema,
 });
 const AcceptActionSchema = z.strictObject({
   action: z.literal('accept'),
@@ -144,7 +163,7 @@ export const ProcedureActionRequestSchema = z
   ])
   .meta({
     description:
-      'Acción del trámite: route, accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
+      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
   });
 export type ProcedureActionRequest = z.infer<typeof ProcedureActionRequestSchema>;
 

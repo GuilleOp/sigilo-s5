@@ -712,6 +712,7 @@ async function main(): Promise<void> {
     await asAuthority('federal', 'buzon.federal', ROUTES.authorityProcedure(luis.folio), {
       action: 'route',
       authorityId: 'authority.oic-iffe',
+      note: 'Los hechos ocurrieron en el IFFE: le toca a su órgano interno de control.',
     });
     await asAuthority(
       'federal',

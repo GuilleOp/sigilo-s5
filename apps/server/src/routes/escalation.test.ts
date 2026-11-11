@@ -88,6 +88,7 @@ describe('motor de reglas', () => {
     await procedureAs(server, 'inboxIntake', folio, {
       action: 'route',
       authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
     });
     await procedureAs(server, 'oicIntake', folio, { action: 'accept' });
     server.setNow(new Date('2026-11-18T18:00:00Z'));

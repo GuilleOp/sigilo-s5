@@ -19,6 +19,7 @@ import {
   hasAnyFunction,
   hasFunction,
   isManagementTransition,
+  MIN_ROUTING_NOTE_LENGTH,
 } from '@sigilo/contracts';
 import { randomBytes, sha256Hex, toDayDate, toHex, toMexicoCentralDay } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
@@ -139,13 +140,18 @@ function plan(
       requireIntake();
       requireTransition('routed');
       requireTarget(request.authorityId);
+      // El motivo del turno es obligatorio (como en el S5): el esquema ya lo exige; esta comprobación
+      // cubre a quien llame a `applyProcedureAction` sin pasar por la ruta.
+      if (request.note.trim().length < MIN_ROUTING_NOTE_LENGTH) {
+        throw new ApiFailure('bad_request');
+      }
       return {
         ...base,
         action: 'routed',
         managementState: 'routed',
         status: 'routed',
         assignedAuthorityId: request.authorityId,
-        note: request.note ?? null,
+        note: request.note.trim(),
       };
     case 'accept': {
       // Aceptar también reabre una denuncia cerrada por nuevos indicios (LGRA, art. 100): lo hace

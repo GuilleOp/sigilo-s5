@@ -45,6 +45,10 @@ test.describe.serial('denuncia con identidad sellada', () => {
     // Quien turna no puede abrir identidades: no ve el formulario de apertura.
     await expect(inbox.getByTestId('procedure-action')).toHaveValue('route');
     await inbox.getByTestId('procedure-authority').selectOption(E2E_AUTHORITY);
+    // Turnar exige el motivo: la persona lo leerá en su seguimiento.
+    await inbox
+      .getByTestId('procedure-note')
+      .fill('Los hechos ocurrieron en el ente: le toca a su órgano interno de control.');
     await inbox.getByTestId('apply-procedure').click();
     await expect(inbox.getByTestId('procedure-message')).toHaveText(
       'Listo: Turnar a una autoridad. La denuncia ya no está en tu bandeja.',
