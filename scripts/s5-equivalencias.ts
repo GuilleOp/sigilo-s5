@@ -80,6 +80,8 @@ export const RULES: readonly Rule[] = [
   { code: 'LGRA-64', kinds: G, name: /^obstruccion de la justicia/u },
   { code: 'LGRA-67', kinds: G, name: /^participacion ilicita/u },
   { code: 'LGRA-70', kinds: G, name: /^colusion/u },
+  { code: 'LGRA-73', kinds: G, name: /situacion especial/u },
+  { code: 'LGRA-64-TER', kinds: ANY, name: /^omision de enterar/u },
   {
     code: 'LGRA-71',
     kinds: G,
@@ -88,7 +90,15 @@ export const RULES: readonly Rule[] = [
   // No graves (LGRA arts. 49 y 50): los daños a la Hacienda aparte; lo demás es incumplimiento.
   { code: 'LGRA-50', kinds: N, name: /^(danos y perjuicios|no reintegrar recursos)/u },
   { code: 'LGRA-49', kinds: N, name: /./u },
-  // Delitos por hechos de corrupción (CPF Título Décimo y homólogos estatales).
+  // Delitos por hechos de corrupción (CPF Título Décimo y homólogos estatales). Los delitos de
+  // servidores contra la procuración y administración de justicia (CPF art. 225, Título
+  // Undécimo) los clasifica el S5 como hechos de corrupción en las leyes estatales.
+  {
+    code: 'CPF-225',
+    kinds: H,
+    name: /justicia|prevaricacion|evasion de (presos?|personas)|ejecucion (de la )?pena|ejecucion penal|forenses/u,
+  },
+  { code: 'CPF-217', kinds: H, name: /^autorizaciones irregulares/u },
   { code: 'CPF-216', kinds: H, name: /^coalicion/u },
   { code: 'CPF-217-TER', kinds: ANY, name: /^remuneracion ilicita/u },
   {
@@ -108,8 +118,10 @@ export const RULES: readonly Rule[] = [
   {
     code: 'CPF-214',
     kinds: H,
-    name: /^(ejercicio|desempeno|incumplimiento|negacion|abandono|deslealtad).*(servicio|funcion|deber legal|empleo)/u,
+    name: /^(ejercicio|desempeno|incumplimiento|negacion|abandono|deslealtad|simulacion del ejercicio).*(servicio|funcion|deber legal|empleo)/u,
   },
+  // CPF art. 214, fr. IV: sustraer, destruir u ocultar documentación bajo su custodia.
+  { code: 'CPF-214', kinds: H, name: /custodia|violacion de secretos/u },
 ];
 
 /** Clave de SIGILO para una entrada del S5, o `null` si no tiene equivalente directo. */

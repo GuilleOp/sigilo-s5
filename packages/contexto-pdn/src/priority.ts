@@ -50,7 +50,7 @@ export const PRIORITY_CONFIG: PriorityConfig = {
       label: 'Falta grave o hecho de corrupción',
       weight: 30,
       description:
-        'La conducta es falta grave (LGRA, arts. 51 a 64 y 65 a 72) o delito por hechos de corrupción (CPF).',
+        'La conducta es falta grave (LGRA, arts. 51 a 64 Quáter y 65 a 73) o delito por hechos de corrupción (CPF).',
     },
     'contract-direct-award': {
       label: 'Adjudicación directa',
@@ -101,7 +101,7 @@ export type OffenseSeverity = 'grave' | 'no-grave' | 'crime' | 'unknown';
 
 /**
  * Clasifica la clave de conducta: LGRA arts. 49 y 50 son no graves; 51 a 64 (servidores) y 65 a
- * 72 (particulares) son graves; CPF son delitos por hechos de corrupción.
+ * 73 (particulares) son graves; CPF son delitos por hechos de corrupción.
  */
 export function classifyOffense(code: string): OffenseSeverity {
   const match = /^(LGRA|CPF)-(\d+)/u.exec(code);
@@ -109,7 +109,7 @@ export function classifyOffense(code: string): OffenseSeverity {
   if (match[1] === 'CPF') return 'crime';
   const article = Number(match[2]);
   if (article === 49 || article === 50) return 'no-grave';
-  if (article >= 51 && article <= 72) return 'grave';
+  if (article >= 51 && article <= 73) return 'grave';
   return 'unknown';
 }
 

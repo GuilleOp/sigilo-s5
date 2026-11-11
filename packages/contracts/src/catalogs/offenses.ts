@@ -182,6 +182,15 @@ export const OFFENSES: readonly OffenseOption[] = [
     hint: 'Contratar a quien fue persona servidora pública para aprovechar información privilegiada.',
   },
   {
+    code: 'LGRA-73',
+    equivalentCodes: [],
+    label:
+      'Pedir dinero o favores en campaña, en una transición o desde un sindicato a cambio de ventajas futuras (faltas de particulares en situación especial)',
+    legalTerm: 'faltas de particulares en situación especial',
+    situation: 'dinero-y-regalos',
+    hint: 'Candidaturas, equipos de campaña o de transición y liderazgos sindicales que piden beneficios a cambio de favores si llegan al cargo.',
+  },
+  {
     code: 'LGRA-69',
     equivalentCodes: [],
     label: 'Presentar documentos o datos falsos (utilización de información falsa)',
@@ -315,6 +324,41 @@ export const OFFENSES: readonly OffenseOption[] = [
     legalTerm: 'obstrucción de la justicia',
     situation: 'ocultar-y-obstruir',
     hint: 'Impedir investigaciones o revelar la identidad de una persona denunciante anónima.',
+  },
+  {
+    code: 'LGRA-64-BIS',
+    equivalentCodes: [],
+    label:
+      'Manejar un fideicomiso público contra las reglas (violación a las disposiciones sobre fideicomisos)',
+    legalTerm: 'violación a las disposiciones sobre fideicomisos',
+    situation: 'recursos-publicos',
+    hint: 'Crear, usar o mantener un fideicomiso público sin seguir las reglas de la Ley Federal de Austeridad Republicana.',
+  },
+  {
+    code: 'LGRA-64-TER',
+    equivalentCodes: [],
+    label:
+      'No entregar al ISSSTE las cuotas o descuentos de los trabajadores (omisión de enterar cuotas)',
+    legalTerm: 'omisión de enterar cuotas',
+    situation: 'recursos-publicos',
+    hint: 'Descontar cuotas o aportaciones a los trabajadores y no entregarlas al ISSSTE.',
+  },
+  {
+    code: 'LGRA-64-QUATER',
+    equivalentCodes: [],
+    label: 'Meterse en las decisiones de un sindicato desde el cargo (injerencia sindical)',
+    legalTerm: 'injerencia sindical',
+    situation: 'abuso-del-cargo',
+    hint: 'Intervenir, por sí o por otras personas, en la organización o las decisiones de un sindicato de trabajadores del Estado.',
+  },
+  {
+    code: 'CPF-225',
+    equivalentCodes: [],
+    label:
+      'Torcer, frenar o vender una investigación o un juicio (delitos contra la administración de justicia)',
+    legalTerm: 'delitos contra la administración de justicia',
+    situation: 'ocultar-y-obstruir',
+    hint: 'Personal de fiscalías, juzgados o prisiones que retrasa, desvía o manipula un caso, o deja escapar a una persona.',
   },
   {
     code: 'CPF-219',

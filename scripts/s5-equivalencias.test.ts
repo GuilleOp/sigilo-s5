@@ -43,5 +43,14 @@ describe('equivalencias con el catálogo del S5', () => {
       'CPF-214',
     );
     expect(codeFor(falta('hechoCorrupcion', 'Tortura'))).toBeNull();
+    expect(
+      codeFor(falta('hechoCorrupcion', 'Denegación o retardo de justicia y prevaricación')),
+    ).toBe('CPF-225');
+    expect(
+      codeFor(falta('faltaGrave', 'Faltas de particulares en situación especial', false, true)),
+    ).toBe('LGRA-73');
+    expect(
+      codeFor(falta('hechoCorrupcion', 'Delitos cometidos en la custodia de documentos')),
+    ).toBe('CPF-214');
   });
 });

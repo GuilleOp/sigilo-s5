@@ -9,7 +9,7 @@
     "offense-grave": {
       "label": "Falta grave o hecho de corrupción",
       "weight": 30,
-      "description": "La conducta es falta grave (LGRA, arts. 51 a 64 y 65 a 72) o delito por hechos de corrupción (CPF)."
+      "description": "La conducta es falta grave (LGRA, arts. 51 a 64 Quáter y 65 a 73) o delito por hechos de corrupción (CPF)."
     },
     "contract-direct-award": {
       "label": "Adjudicación directa",

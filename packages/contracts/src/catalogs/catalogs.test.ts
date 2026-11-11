@@ -36,6 +36,11 @@ const ADDED_OFFENSE_CODES = [
   'CPF-217-BIS',
   'CPF-217-TER',
   'CPF-222-BIS',
+  'LGRA-64-BIS',
+  'LGRA-64-TER',
+  'LGRA-64-QUATER',
+  'LGRA-73',
+  'CPF-225',
 ];
 
 describe('entidades y municipios', () => {
@@ -89,6 +94,9 @@ describe('conductas', () => {
     expect(offenseActor('CPF-222-BIS')).toBe('private-party');
     expect(offenseActor('CPF-222')).toBe('public-servant');
     expect(offenseActor('LGRA-99')).toBeUndefined();
+    expect(offenseActor('LGRA-73')).toBe('private-party');
+    expect(offenseReference('LGRA-64-QUATER')).toEqual({ law: 'LGRA', article: '64 Quáter' });
+    expect(offenseSeverity('LGRA-64-QUATER')).toBe('serious');
   });
 
   it('escribe primero lo que pasó y el término legal entre paréntesis', () => {

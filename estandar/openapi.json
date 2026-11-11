@@ -7975,6 +7975,7 @@
               "CPF-222-BIS",
               "CPF-223",
               "CPF-224",
+              "CPF-225",
               "LGRA-49",
               "LGRA-50",
               "LGRA-52",
@@ -7991,13 +7992,17 @@
               "LGRA-63",
               "LGRA-63-BIS",
               "LGRA-64",
+              "LGRA-64-BIS",
+              "LGRA-64-QUATER",
+              "LGRA-64-TER",
               "LGRA-66",
               "LGRA-67",
               "LGRA-68",
               "LGRA-69",
               "LGRA-70",
               "LGRA-71",
-              "LGRA-72"
+              "LGRA-72",
+              "LGRA-73"
             ]
           },
           "occurredPeriod": {
@@ -8962,6 +8967,7 @@
               "CPF-222-BIS",
               "CPF-223",
               "CPF-224",
+              "CPF-225",
               "LGRA-49",
               "LGRA-50",
               "LGRA-52",
@@ -8978,13 +8984,17 @@
               "LGRA-63",
               "LGRA-63-BIS",
               "LGRA-64",
+              "LGRA-64-BIS",
+              "LGRA-64-QUATER",
+              "LGRA-64-TER",
               "LGRA-66",
               "LGRA-67",
               "LGRA-68",
               "LGRA-69",
               "LGRA-70",
               "LGRA-71",
-              "LGRA-72"
+              "LGRA-72",
+              "LGRA-73"
             ]
           },
           "protectionRequested": {
@@ -11857,6 +11867,7 @@
               "CPF-222-BIS",
               "CPF-223",
               "CPF-224",
+              "CPF-225",
               "LGRA-49",
               "LGRA-50",
               "LGRA-52",
@@ -11873,13 +11884,17 @@
               "LGRA-63",
               "LGRA-63-BIS",
               "LGRA-64",
+              "LGRA-64-BIS",
+              "LGRA-64-QUATER",
+              "LGRA-64-TER",
               "LGRA-66",
               "LGRA-67",
               "LGRA-68",
               "LGRA-69",
               "LGRA-70",
               "LGRA-71",
-              "LGRA-72"
+              "LGRA-72",
+              "LGRA-73"
             ]
           },
           "month": {

@@ -6852,6 +6852,7 @@ components:
             - CPF-222-BIS
             - CPF-223
             - CPF-224
+            - CPF-225
             - LGRA-49
             - LGRA-50
             - LGRA-52
@@ -6868,6 +6869,9 @@ components:
             - LGRA-63
             - LGRA-63-BIS
             - LGRA-64
+            - LGRA-64-BIS
+            - LGRA-64-QUATER
+            - LGRA-64-TER
             - LGRA-66
             - LGRA-67
             - LGRA-68
@@ -6875,6 +6879,7 @@ components:
             - LGRA-70
             - LGRA-71
             - LGRA-72
+            - LGRA-73
         occurredPeriod:
           type: string
           pattern: ^\d{4}-(0[1-9]|1[0-2])$
@@ -7858,6 +7863,7 @@ components:
             - CPF-222-BIS
             - CPF-223
             - CPF-224
+            - CPF-225
             - LGRA-49
             - LGRA-50
             - LGRA-52
@@ -7874,6 +7880,9 @@ components:
             - LGRA-63
             - LGRA-63-BIS
             - LGRA-64
+            - LGRA-64-BIS
+            - LGRA-64-QUATER
+            - LGRA-64-TER
             - LGRA-66
             - LGRA-67
             - LGRA-68
@@ -7881,6 +7890,7 @@ components:
             - LGRA-70
             - LGRA-71
             - LGRA-72
+            - LGRA-73
         protectionRequested:
           type: boolean
           description: La persona pidió medidas de protección.
@@ -10856,6 +10866,7 @@ components:
             - CPF-222-BIS
             - CPF-223
             - CPF-224
+            - CPF-225
             - LGRA-49
             - LGRA-50
             - LGRA-52
@@ -10872,6 +10883,9 @@ components:
             - LGRA-63
             - LGRA-63-BIS
             - LGRA-64
+            - LGRA-64-BIS
+            - LGRA-64-QUATER
+            - LGRA-64-TER
             - LGRA-66
             - LGRA-67
             - LGRA-68
@@ -10879,6 +10893,7 @@ components:
             - LGRA-70
             - LGRA-71
             - LGRA-72
+            - LGRA-73
         month:
           type: string
           pattern: ^\d{4}-(0[1-9]|1[0-2])$

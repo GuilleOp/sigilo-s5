@@ -85,20 +85,27 @@ export function primaryOffenseCode(code: string): string | undefined {
   return OFFENSE_BY_CODE.get(code)?.code;
 }
 
+/** Sufijo de un artículo adicionado, como lo escribe la ley. */
+const ARTICLE_SUFFIXES: Readonly<Record<string, string>> = {
+  BIS: 'Bis',
+  TER: 'Ter',
+  QUATER: 'Quáter',
+};
+
 /**
  * Ley y artículo de una clave, por ejemplo `{ law: 'LGRA', article: '52' }` o, para un artículo
  * adicionado, `{ law: 'LGRA', article: '63 Bis' }` (clave `LGRA-63-BIS`).
  */
 export function offenseReference(code: string): { law: OffenseLaw; article: string } | undefined {
-  const match = /^(LGRA|CPF)-(\d+)(?:-(BIS|TER))?$/u.exec(code);
+  const match = /^(LGRA|CPF)-(\d+)(?:-(BIS|TER|QUATER))?$/u.exec(code);
   if (match === null || !isOffenseCode(code)) return undefined;
-  const suffix = match[3] === undefined ? '' : ` ${match[3] === 'BIS' ? 'Bis' : 'Ter'}`;
+  const suffix = match[3] === undefined ? '' : ` ${ARTICLE_SUFFIXES[match[3]] ?? ''}`;
   return { law: match[1] as OffenseLaw, article: `${match[2] ?? ''}${suffix}` };
 }
 
 /**
  * Gravedad legal de una conducta según el artículo de su clave principal: LGRA arts. 49 y 50 (no
- * graves), 51 a 64 (graves) y 65 a 72 (de particulares); el Código Penal Federal, delitos por
+ * graves), 51 a 64 Quáter (graves) y 65 a 73 (de particulares); el Código Penal Federal, delitos por
  * hechos de corrupción. `undefined` si la clave no existe.
  */
 export function offenseSeverity(code: string): OffenseSeverity | undefined {
