@@ -3,7 +3,7 @@
 // abiertos descargables. Cada gráfica tiene su tabla equivalente y nada depende del color.
 // En modo red, los resultados agregados salen del corte nacional del enrutador; sin red, de la
 // línea base sintética, rotulada «Datos de ejemplo».
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { PATHS } from '../../app/paths.ts';
 import { TableScroll } from '../../components/TableScroll.tsx';
@@ -27,7 +27,7 @@ import {
   summarizeCoverage,
 } from './observatory-data.ts';
 import type { CoverageEntityRow, OutcomeCount } from './observatory-data.ts';
-import { parseAnonymitySummary } from './map-layers.ts';
+import { complaintsByState, parseAnonymitySummary } from './map-layers.ts';
 import type { AnonymityByState } from './map-layers.ts';
 import {
   cutTotal,
@@ -175,15 +175,6 @@ export function ObservatoryPage() {
   const coverage = useCoverage();
   const anonymity = useAnonymitySummary();
   const [selectedState, setSelectedState] = useState<string | null>(null);
-  const tableRef = useRef<HTMLDetailsElement>(null);
-  /** Abre la tabla de cobertura y lleva el foco a la fila de la entidad. */
-  const showRow = (code: string) => {
-    setSelectedState(code);
-    if (tableRef.current) tableRef.current.open = true;
-    const row = document.getElementById(`coverage-row-${code}`);
-    row?.scrollIntoView({ block: 'center' });
-    row?.focus();
-  };
   const outcomes = useNetworkOutcomes();
   const isNetwork = outcomes.kind === 'network';
   const outcomeRows: readonly OutcomeCount[] = isNetwork
@@ -192,6 +183,13 @@ export function ObservatoryPage() {
   // Las suprimidas no son un estatus: van en una nota bajo la gráfica y en el CSV.
   const suppressed = isNetwork ? suppressedRow(outcomes.cut) : null;
   const notes = outcomes.kind === 'loading' || outcomes.cut === null ? [] : nodeNotes(outcomes.cut);
+  const mapData = useMemo(
+    () => ({
+      anonymity,
+      complaints: complaintsByState(isNetwork ? outcomes.cut.cells : []),
+    }),
+    [anonymity, isNetwork, outcomes],
+  );
   const indicators = DEMO_AUTHORITY_INDICATORS.filter((row) => row.received > 0);
   return (
     <>
@@ -331,12 +329,32 @@ export function ObservatoryPage() {
         />
       </section>
 
+      <section aria-labelledby="map-title" className="observatory-section">
+        <h2 id="map-title">El S5 en cada entidad</h2>
+        <p>
+          Cómo llega la denuncia a cada entidad, cuántas se publican y qué tan protegido estaría
+          quien denuncia. Solo cifras agregadas por entidad; nunca municipios ni personas.
+        </p>
+        <figure className="coverage-figure" data-testid="coverage-map">
+          <CoverageMap data={mapData} selected={selectedState} onSelect={setSelectedState} />
+          <figcaption className="source">
+            Mapa de las 32 entidades; no muestra ubicaciones de personas. Las denuncias por entidad
+            salen del corte nacional (meses cerrados, celdas de 5 o más).
+          </figcaption>
+        </figure>
+      </section>
+
       <section aria-labelledby="coverage-title" className="observatory-section">
         <h2 id="coverage-title">¿Qué se puede comprobar en cada entidad?</h2>
         <p>
           Para verificar sanciones, conflictos de interés o contratos, la entidad debe tener sus
           datos en la Plataforma Digital Nacional. «Sin cobertura» quiere decir que no podemos
-          comprobar nada ahí: nunca que no haya sanciones o conflictos.
+          comprobar nada ahí: nunca que no haya sanciones o conflictos. La cobertura completa de
+          todos los sistemas la publica la SESNA en{' '}
+          <a href="https://cobertura.plataformadigitalnacional.org/" rel="noreferrer">
+            la página de cobertura de la PDN
+          </a>
+          ; esta tabla resume solo lo que usa el S5.
         </p>
         {coverage.kind === 'loading' && <p>Cargando la matriz de cobertura.</p>}
         {coverage.kind === 'failed' && (
@@ -345,23 +363,7 @@ export function ObservatoryPage() {
           </Alert>
         )}
         {coverage.kind === 'ready' && (
-          <figure className="coverage-figure" data-testid="coverage-map">
-            <CoverageMap
-              rows={coverage.rows}
-              anonymity={anonymity}
-              selected={selectedState}
-              onSelect={setSelectedState}
-              onShowRow={showRow}
-            />
-            <figcaption className="source">
-              Mapa de las 32 entidades; no muestra ubicaciones de personas. Lo federal y el Estado
-              Ejemplo (ficticio) no tienen lugar en el mapa: están en la tabla de abajo, que dice lo
-              mismo con texto.
-            </figcaption>
-          </figure>
-        )}
-        {coverage.kind === 'ready' && (
-          <details className="more" ref={tableRef}>
+          <details className="more">
             <summary>Ver la tabla de las 32 entidades</summary>
             <TableScroll labelledBy={'coverage-caption'}>
               <table

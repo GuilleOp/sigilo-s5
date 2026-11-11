@@ -186,12 +186,11 @@ test('el quiosco no deja copiar el recibo y borra todo al terminar; la franja de
   await expect(page.locator('html')).toHaveAttribute('data-reading', 'easy');
 });
 
-test('el mapa de México cambia de capa, se recorre con el teclado y marca la fila en la tabla', async ({
-  page,
-}) => {
+test('el mapa del S5 cambia de capa y se recorre con el teclado', async ({ page }) => {
   await page.goto('/observatorio');
   const map = page.getByTestId('coverage-map');
-  await expect(map.getByTestId('map-summary')).toContainText('de 32 entidades tienen 4 o 5');
+  // Capa inicial: conexión al S5 (nodo propio o común).
+  await expect(map.getByTestId('map-summary')).toContainText('Querétaro opera su propio nodo');
   await expect(map.getByTestId('map-credit')).toContainText(
     'Fuente: INEGI, Marco Geoestadístico, diciembre de 2025.',
   );
@@ -200,19 +199,16 @@ test('el mapa de México cambia de capa, se recorre con el teclado y marca la fi
   await page.keyboard.press('ArrowRight');
   await expect(map.getByTestId('map-entity-02')).toBeFocused();
   await expect(map.getByTestId('map-card')).toContainText('Baja California');
-  // Elegir Querétaro marca su fila en la tabla de cobertura.
   await map.getByTestId('map-entity-22').focus();
   await page.keyboard.press('Enter');
   await expect(map.getByTestId('map-entity-22')).toHaveAttribute('aria-pressed', 'true');
-  await map.getByTestId('map-show-row').click();
-  await expect(page.locator('#coverage-row-22')).toHaveAttribute('data-selected', 'true');
-  await expect(page.locator('#coverage-row-22')).toBeFocused();
-  // Capas: anonimato (del resumen abierto) y modelo de nodo.
+  await expect(map.getByTestId('map-card')).toContainText('Nodo propio');
+  // Capas: denuncias publicadas (sin red, no hay cifras) y anonimato (del resumen abierto).
+  await map.getByTestId('map-layer-complaints').click();
+  await expect(map.getByTestId('map-layer-complaints')).toHaveAttribute('aria-pressed', 'true');
+  await expect(map.getByTestId('map-summary')).toContainText('no se publican');
   await map.getByTestId('map-layer-anonymity').click();
-  await expect(map.getByTestId('map-layer-anonymity')).toHaveAttribute('aria-pressed', 'true');
   await expect(map.getByTestId('map-summary')).toContainText('tienen datos del S1');
-  await map.getByTestId('map-layer-node').click();
-  await expect(map.getByTestId('map-summary')).toContainText('Querétaro opera su propio nodo');
   await expectNoAccessibilityViolations(page, 'mapa del observatorio');
 });
 

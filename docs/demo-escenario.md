@@ -754,12 +754,13 @@ del prototipo:
 El mapa del observatorio es un coroplético de las 32 entidades con el contorno del INEGI (Marco
 Geoestadístico, diciembre de 2025; proyectado y simplificado por `scripts/mapa-entidades.ts`, ver
 `datos/mapa-entidades/metodologia.md`), servido desde el mismo origen y sin servicios de terceros.
-Nunca baja a nivel municipal ni muestra coordenadas. Tiene tres capas: **cobertura de la PDN**
-(cuántos de S1, S2, S3S, S3P y S6 tienen datos, de `datos/cobertura/matriz.json`), **protección del
-anonimato** (porcentaje de personas cuya área tiene k ≥ 10, de
-`datos/abiertos/grupos-anonimato/resumen.csv`) y **modelo de nodo** (Querétaro con nodo propio; las
-demás, nodo común). Lo federal y el Estado Ejemplo no tienen lugar en el mapa: aparecen solo en la
-tabla de cobertura, que es el equivalente en texto.
+Nunca baja a nivel municipal ni muestra coordenadas. Es un mapa del S5, no de la PDN completa (la
+cobertura de todos los sistemas la publica la SESNA en su página de cobertura, enlazada desde la
+tabla): tres capas, **conexión al S5** (Querétaro con nodo propio; las demás, nodo común),
+**denuncias por 100 000 habitantes** (corte nacional: meses cerrados y celdas de 5 o más, con la
+población del mismo Marco Geoestadístico) y **protección del anonimato** (porcentaje de personas
+cuya área tiene k ≥ 10, de `datos/abiertos/grupos-anonimato/resumen.csv`). Lo federal y el Estado
+Ejemplo no tienen lugar en el mapa.
 
 ### 8.3 Casos resueltos agregados («¿Sirvió denunciar?»)
 

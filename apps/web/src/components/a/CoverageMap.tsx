@@ -1,8 +1,9 @@
-// Mapa coroplético de las 32 entidades (contorno del INEGI, scripts/mapa-entidades.ts) con tres
-// capas: cobertura de la PDN, protección del anonimato y modelo de nodo. Escala de un solo tono con
-// los tokens del tema; «sin datos» lleva trama además de color. Cada entidad se enfoca con el
-// teclado (flechas, Inicio y Fin) y con el cursor o el toque muestra su ficha; al elegirla se marca
-// su fila en la tabla de cobertura, que sigue siendo el equivalente en texto. Sin estilos en línea
+// Mapa del S5 por entidad (contorno del INEGI, scripts/mapa-entidades.ts) con tres capas: conexión
+// al S5 (nodo propio o común), denuncias publicadas por 100 000 habitantes y protección del
+// anonimato. La cobertura de todos los sistemas de la PDN la publica la SESNA en su propia página.
+// Escala de un solo tono con los tokens del tema; «sin datos» lleva trama además de color. Cada
+// entidad se enfoca con el teclado (flechas, Inicio y Fin) y con el cursor o el toque muestra su
+// ficha; el resumen en texto es su equivalente. Sin estilos en línea
 // (la CSP los prohíbe), sin dependencias ni peticiones a terceros. Nunca nivel municipal.
 import { useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
@@ -14,16 +15,13 @@ import {
 } from '../../pages/observatory/mapa-entidades.ts';
 import type { MapEntity } from '../../pages/observatory/mapa-entidades.ts';
 import {
-  coveredSystems,
   MAP_LAYER_LABELS,
   MAP_LAYERS,
   MAP_LEGENDS,
   mapSummary,
   mapValue,
 } from '../../pages/observatory/map-layers.ts';
-import type { AnonymityByState, MapLayer, MapStep } from '../../pages/observatory/map-layers.ts';
-import { COVERAGE_SYSTEM_LABELS } from '../../pages/observatory/observatory-data.ts';
-import type { CoverageEntityRow } from '../../pages/observatory/observatory-data.ts';
+import type { MapData, MapLayer, MapStep } from '../../pages/observatory/map-layers.ts';
 
 /** Entidades chicas que se rotulan en el recuadro ampliado. */
 const INSET_LABELS = new Set(['01', '09', '17', '29']);
@@ -38,14 +36,11 @@ function inInset(entity: MapEntity): boolean {
 const INSET_ENTITIES = MAP_ENTITIES.filter(inInset);
 
 interface CoverageMapProps {
-  rows: readonly CoverageEntityRow[];
-  /** Porcentaje de personas con k ≥ 10 por entidad; vacío si no se pudo cargar. */
-  anonymity: AnonymityByState;
-  /** Entidad elegida (su fila se marca en la tabla), o `null`. */
+  /** Datos de las capas: anonimato (k ≥ 10) y denuncias publicadas por entidad. */
+  data: MapData;
+  /** Entidad elegida, o `null`. */
   selected: string | null;
   onSelect: (code: string | null) => void;
-  /** Lleva a la fila de la entidad en la tabla de cobertura. */
-  onShowRow: (code: string) => void;
 }
 
 /** Trama de «sin datos»: rayas a 45° sobre la superficie. */
@@ -85,8 +80,8 @@ function Swatch({ step, hatchId }: { step: MapStep; hatchId: string }) {
 }
 
 /** Mapa de México con selector de capa, ficha, recuadro ampliado, leyenda y resumen. */
-export function CoverageMap({ rows, anonymity, selected, onSelect, onShowRow }: CoverageMapProps) {
-  const [layer, setLayer] = useState<MapLayer>('coverage');
+export function CoverageMap({ data, selected, onSelect }: CoverageMapProps) {
+  const [layer, setLayer] = useState<MapLayer>('node');
   const [active, setActive] = useState<string | null>(null);
   const [focusCode, setFocusCode] = useState<string>(MAP_ENTITIES[0]?.code ?? '01');
   const paths = useRef(new Map<string, SVGPathElement>());
@@ -94,18 +89,11 @@ export function CoverageMap({ rows, anonymity, selected, onSelect, onShowRow }: 
   const hatchId = `${baseId}-trama`;
   const insetHatchId = `${baseId}-trama-recuadro`;
   const summaryId = `${baseId}-resumen`;
-  const byCode = useMemo(() => new Map(rows.map((row) => [row.stateCode, row])), [rows]);
   const values = useMemo(
-    () =>
-      new Map(
-        MAP_ENTITIES.map((entity) => [
-          entity.code,
-          mapValue(layer, entity.code, byCode.get(entity.code), anonymity),
-        ]),
-      ),
-    [layer, byCode, anonymity],
+    () => new Map(MAP_ENTITIES.map((entity) => [entity.code, mapValue(layer, entity.code, data)])),
+    [layer, data],
   );
-  const summary = mapSummary(layer, rows, anonymity);
+  const summary = mapSummary(layer, data);
   const shown = active ?? selected;
   const shownEntity = MAP_ENTITIES.find((entity) => entity.code === shown);
   const highlight = [selected, active].filter(
@@ -188,15 +176,6 @@ export function CoverageMap({ rows, anonymity, selected, onSelect, onShowRow }: 
       );
     });
 
-  const shownRow = shownEntity === undefined ? undefined : byCode.get(shownEntity.code);
-  const systems = coveredSystems(shownRow);
-  const anonymityText =
-    shownEntity === undefined
-      ? ''
-      : mapValue('anonymity', shownEntity.code, shownRow, anonymity).text;
-  const nodeText =
-    shownEntity === undefined ? '' : mapValue('node', shownEntity.code, shownRow, anonymity).text;
-
   return (
     <div className="mexico-map" data-layer={layer}>
       <div className="mexico-map__layers" role="group" aria-label="Capa del mapa">
@@ -267,44 +246,19 @@ export function CoverageMap({ rows, anonymity, selected, onSelect, onShowRow }: 
           <div className="coverage-card" data-testid="map-card">
             {shownEntity === undefined ? (
               <p className="coverage-card__hint">
-                Pasa el cursor, toca o enfoca una entidad para ver su ficha. Al elegirla se marca su
-                fila en la tabla.
+                Pasa el cursor, toca o enfoca una entidad para ver su ficha.
               </p>
             ) : (
               <>
                 <h3 className="coverage-card__title">{shownEntity.name}</h3>
                 <dl className="coverage-card__facts">
-                  <div>
-                    <dt>Cobertura de la PDN</dt>
-                    <dd>{mapValue('coverage', shownEntity.code, shownRow, anonymity).text}</dd>
-                  </div>
-                  <div>
-                    <dt>Sistemas con datos</dt>
-                    <dd>
-                      {systems.length === 0
-                        ? 'Ninguno'
-                        : systems.map((system) => COVERAGE_SYSTEM_LABELS[system]).join(', ')}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Protección del anonimato</dt>
-                    <dd>{anonymityText}</dd>
-                  </div>
-                  <div>
-                    <dt>Modelo de nodo</dt>
-                    <dd>{nodeText}</dd>
-                  </div>
+                  {MAP_LAYERS.map((item) => (
+                    <div key={item}>
+                      <dt>{MAP_LAYER_LABELS[item]}</dt>
+                      <dd>{mapValue(item, shownEntity.code, data).text}</dd>
+                    </div>
+                  ))}
                 </dl>
-                {shownRow !== undefined && (
-                  <button
-                    type="button"
-                    className="button button--secondary"
-                    data-testid="map-show-row"
-                    onClick={() => onShowRow(shownEntity.code)}
-                  >
-                    Ver su fila en la tabla
-                  </button>
-                )}
               </>
             )}
           </div>
