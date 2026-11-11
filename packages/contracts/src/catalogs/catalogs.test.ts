@@ -16,6 +16,7 @@ import {
   isStateCode,
   municipalitiesOf,
   offenseActor,
+  UNCLASSIFIED_OFFENSE_CODE,
   offenseReference,
   offenseSeverity,
   primaryOffenseCode,
@@ -41,6 +42,7 @@ const ADDED_OFFENSE_CODES = [
   'LGRA-64-QUATER',
   'LGRA-73',
   'CPF-225',
+  'SIN-CLASIFICAR',
 ];
 
 describe('entidades y municipios', () => {
@@ -95,6 +97,8 @@ describe('conductas', () => {
     expect(offenseActor('CPF-222')).toBe('public-servant');
     expect(offenseActor('LGRA-99')).toBeUndefined();
     expect(offenseActor('LGRA-73')).toBe('private-party');
+    expect(offenseActor('SIN-CLASIFICAR')).toBeUndefined();
+    expect(offenseReference('SIN-CLASIFICAR')).toBeUndefined();
     expect(offenseReference('LGRA-64-QUATER')).toEqual({ law: 'LGRA', article: '64 Quáter' });
     expect(offenseSeverity('LGRA-64-QUATER')).toBe('serious');
   });
@@ -149,7 +153,12 @@ describe('gravedad de las conductas', () => {
     expect(offenseSeverity('LGRA-999')).toBeUndefined();
   });
 
-  it('toda conducta del catálogo tiene gravedad', () => {
-    for (const offense of OFFENSES) expect(offenseSeverity(offense.code)).toBeDefined();
+  it('toda conducta del catálogo tiene gravedad, salvo «sin clasificar»', () => {
+    for (const offense of OFFENSES) {
+      if (offense.code === UNCLASSIFIED_OFFENSE_CODE) continue;
+      expect(offenseSeverity(offense.code)).toBeDefined();
+    }
+    // Sin gravedad, el trámite usa los plazos de una falta grave (lo más protector).
+    expect(offenseSeverity(UNCLASSIFIED_OFFENSE_CODE)).toBeUndefined();
   });
 });

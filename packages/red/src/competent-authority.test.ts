@@ -173,6 +173,17 @@ describe('propuesta de autoridad competente', () => {
     expect(proposal.proposed?.node.isCommonNode).toBe(true);
   });
 
+  it('«Ninguna se parece» va al buzón general, que la clasifica y la turna', () => {
+    const proposal = proposeCompetentAuthority(
+      directory,
+      { stateCode: '22', entityId: 'VE-OBRAS', offenseCode: 'SIN-CLASIFICAR' },
+      FIXTURE_DAY,
+    );
+    expect(proposal.status).toBe('inbox');
+    expect(proposal.proposed?.authority.role).toBe('inbox');
+    expect(proposal.reasons.join(' ')).toContain('No elegiste una conducta');
+  });
+
   it('una conducta desconocida no propone nada', () => {
     const proposal = proposeCompetentAuthority(
       directory,

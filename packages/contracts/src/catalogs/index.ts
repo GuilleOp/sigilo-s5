@@ -131,7 +131,8 @@ const PRIVATE_PARTY_CRIMES: ReadonlySet<string> = new Set(['CPF-222-BIS']);
  */
 export function offenseActor(code: string): OffenseActor | undefined {
   const primary = primaryOffenseCode(code);
-  if (primary === undefined) return undefined;
+  // Sin clasificar no tiene ley ni artículo: no se sabe quién la comete.
+  if (primary === undefined || offenseReference(primary) === undefined) return undefined;
   if (PRIVATE_PARTY_CRIMES.has(primary)) return 'private-party';
   return offenseSeverity(primary) === 'private_party' ? 'private-party' : 'public-servant';
 }

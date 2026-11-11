@@ -11,7 +11,8 @@ export type OffenseSituation =
   | 'recursos-publicos'
   | 'contratos-y-tramites'
   | 'abuso-del-cargo'
-  | 'ocultar-y-obstruir';
+  | 'ocultar-y-obstruir'
+  | 'sin-clasificar';
 
 /**
  * Conducta del catálogo. `code` es la clave propia (ley y artículo) que viaja en la denuncia.
@@ -43,7 +44,14 @@ export const OFFENSE_SITUATIONS: readonly { situation: OffenseSituation; label: 
   { situation: 'contratos-y-tramites', label: 'Contratos, licitaciones y trámites' },
   { situation: 'abuso-del-cargo', label: 'Abuso del cargo o de influencias' },
   { situation: 'ocultar-y-obstruir', label: 'Ocultar, obstruir o amenazar' },
+  { situation: 'sin-clasificar', label: 'Ninguna de las anteriores' },
 ];
+
+/**
+ * Clave para «Ninguna se parece»: la denuncia se envía sin conducta del catálogo y la autoridad la
+ * clasifica. No tiene ley ni artículo; con la red, llega al buzón general, que la turna.
+ */
+export const UNCLASSIFIED_OFFENSE_CODE = 'SIN-CLASIFICAR';
 
 /** Catálogo completo; se carga entero y se filtra en el navegador. */
 export const OFFENSES: readonly OffenseOption[] = [
@@ -367,5 +375,13 @@ export const OFFENSES: readonly OffenseOption[] = [
     legalTerm: 'intimidación',
     situation: 'ocultar-y-obstruir',
     hint: 'Amenazar o presionar a una persona para que no denuncie, no declare o se retracte.',
+  },
+  {
+    code: UNCLASSIFIED_OFFENSE_CODE,
+    equivalentCodes: [],
+    label: 'Ninguna se parece: que la autoridad la clasifique (sin clasificar)',
+    legalTerm: 'sin clasificar',
+    situation: 'sin-clasificar',
+    hint: 'Tu relato es lo que importa. La autoridad decide qué falta o delito es y la envía a quien corresponde.',
   },
 ];

@@ -2,7 +2,13 @@
 // verificado y los datos de la denuncia (entidad, ente y conducta), con su razonamiento en claro.
 // Si ninguna es competente, la denuncia va al buzón general del nodo, que la turna: la ventanilla
 // es un canal único (Bases de la PDN, art. 56) con turno a la autoridad competente (art. 58).
-import { findEntity, findOffense, findState, offenseReference } from '@sigilo/contracts';
+import {
+  findEntity,
+  findOffense,
+  findState,
+  offenseReference,
+  UNCLASSIFIED_OFFENSE_CODE,
+} from '@sigilo/contracts';
 import type {
   AuthorityDirectory,
   DirectoryAuthority,
@@ -230,6 +236,21 @@ export function proposeCompetentAuthority(
 ): CompetentAuthorityProposal {
   const reasons: string[] = [];
   const offense = findOffense(input.offenseCode);
+  // «Ninguna se parece»: no hay ley que oriente; va al buzón general, que la clasifica y la turna.
+  if (offense?.code === UNCLASSIFIED_OFFENSE_CODE) {
+    const level = input.entityLevel ?? findEntity(input.entityId)?.level ?? null;
+    const inbox = inboxFor(directory, input, level, on);
+    if (inbox !== null) {
+      const reason = `No elegiste una conducta. La enviamos al ${lowerFirst(inbox.authority.name)}, donde una persona la clasifica y la turna a quien corresponda.`;
+      return {
+        status: 'inbox',
+        proposed: { ...inbox, reason },
+        alternatives: [],
+        isFallback: false,
+        reasons: [reason],
+      };
+    }
+  }
   const laws = lawsOfOffense(input.offenseCode);
   if (offense === undefined || laws === null) {
     return {

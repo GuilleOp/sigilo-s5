@@ -8,7 +8,10 @@ import {
   OFFENSE_SITUATIONS,
   OFFENSES,
   PUBLIC_ENTITIES,
+  UNCLASSIFIED_OFFENSE_CODE,
 } from '@sigilo/contracts';
+import { Alert } from '../../../components/Alert.tsx';
+import { foldForSearch } from '../../../lib/catalog-search.ts';
 import { ComboboxField } from '../../../components/ComboboxField.tsx';
 import type { ComboboxOption } from '../../../components/ComboboxField.tsx';
 import { setFact } from '../../../state/report-draft.ts';
@@ -30,6 +33,12 @@ const OFFENSE_OPTIONS: readonly ComboboxOption[] = OFFENSES.map((offense) => ({
   label: offense.label,
   group: offense.situation,
 }));
+
+/**
+ * Hechos que tienen su propia vía (fiscalías especializadas y comisiones de derechos humanos): se
+ * avisa, sin impedir el envío.
+ */
+const OWN_CHANNEL_WORDS = /tortur|desaparec|ejecucion extrajudicial/u;
 
 /** «¿Quién lo hizo?»: solo acorta la lista de conductas; nunca sale del navegador. */
 const ROLE_CHOICES: readonly { value: FactsDraft['accusedRole']; label: string }[] = [
@@ -58,7 +67,9 @@ export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
       ? OFFENSE_OPTIONS
       : OFFENSE_OPTIONS.filter(
           (option) =>
-            offenseActor(option.value) === facts.accusedRole || option.value === facts.offenseCode,
+            offenseActor(option.value) === facts.accusedRole ||
+            option.value === UNCLASSIFIED_OFFENSE_CODE ||
+            option.value === facts.offenseCode,
         );
   return (
     <fieldset>
@@ -114,6 +125,15 @@ export function CatalogFields({ facts, errors }: CatalogFieldsProps) {
         noun="conductas"
         testId="offense-select"
       />
+      {OWN_CHANNEL_WORDS.test(foldForSearch(facts.description)) && (
+        <Alert tone="info" title="Esto también tiene su propia vía" testId="own-channel-notice">
+          <p>
+            Si hubo tortura o la desaparición de una persona, denúncialo también ante la fiscalía
+            especializada de tu estado o la comisión de derechos humanos. Tu denuncia aquí se envía
+            igual.
+          </p>
+        </Alert>
+      )}
     </fieldset>
   );
 }
