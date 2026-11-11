@@ -159,6 +159,43 @@ function errorResponse(code: ApiErrorCode): JsonObject {
   return response;
 }
 
+/**
+ * Respuestas de error de una operación por estatus HTTP. Si dos códigos comparten estatus (por
+ * ejemplo, `conflict` y `reassignment_limit` en 409), la respuesta los describe a ambos y lleva un
+ * ejemplo por código.
+ */
+function errorResponses(codes: readonly ApiErrorCode[]): JsonObject {
+  const byStatus = new Map<string, ApiErrorCode[]>();
+  for (const code of codes) {
+    const status = String(API_ERROR_HTTP_STATUS[code]);
+    byStatus.set(status, [...(byStatus.get(status) ?? []), code]);
+  }
+  const responses: JsonObject = {};
+  for (const [status, sameStatus] of byStatus) {
+    const [first, ...rest] = sameStatus;
+    if (first === undefined) continue;
+    const response = errorResponse(first);
+    if (rest.length > 0) {
+      response.description = sameStatus
+        .map((code) => `\`${code}\`: ${API_ERROR_DESCRIPTIONS[code]}`)
+        .join('\n\n');
+      response.content = {
+        'application/json': {
+          schema: componentRef('ApiError'),
+          examples: Object.fromEntries(
+            sameStatus.map((code) => [
+              code,
+              { value: { error: { code, message: API_ERROR_MESSAGES[code] } } },
+            ]),
+          ),
+        },
+      };
+    }
+    responses[status] = response;
+  }
+  return responses;
+}
+
 const SECURITY: Record<PublishedOperation['security'], readonly JsonObject[]> = {
   none: [],
   proofOfWork: [{ proofOfWork: [] }],
@@ -177,9 +214,7 @@ function buildOperation(operation: PublishedOperation): JsonObject {
       ...(body === undefined ? {} : { content: bodyContent(body) }),
     },
   };
-  for (const code of [...operation.errors, 'internal' as const]) {
-    responses[String(API_ERROR_HTTP_STATUS[code])] = errorResponse(code);
-  }
+  Object.assign(responses, errorResponses([...operation.errors, 'internal']));
   const result: JsonObject = {
     operationId: operation.operationId,
     tags: [operation.tag],

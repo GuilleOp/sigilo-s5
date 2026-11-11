@@ -448,6 +448,7 @@
       }
     ]
   },
+  "maxReassignments": 3,
   "officialRestDays": {
     "coverage": { "from": "2025-01-01", "through": "2028-12-31" },
     "days": [

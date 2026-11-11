@@ -9,6 +9,8 @@ export const ApiErrorCodeSchema = z.enum([
   'forbidden',
   /** La acción no corresponde al estado actual del trámite. */
   'conflict',
+  /** La denuncia ya alcanzó el tope de reasignaciones (`MAX_REASSIGNMENTS`, como en el S5). */
+  'reassignment_limit',
   'payload_too_large',
   'unsupported_media_type',
   'rate_limited',
@@ -50,6 +52,7 @@ export const API_ERROR_HTTP_STATUS: Readonly<Record<ApiErrorCode, ApiErrorHttpSt
   forbidden: 403,
   not_found: 404,
   conflict: 409,
+  reassignment_limit: 409,
   payload_too_large: 413,
   unsupported_media_type: 415,
   rate_limited: 429,
@@ -69,6 +72,8 @@ export const API_ERROR_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   forbidden: 'Tu función no permite esta acción.',
   not_found: 'No encontrado.',
   conflict: 'La acción no corresponde al estado actual del trámite.',
+  reassignment_limit:
+    'La denuncia ya se reasignó 3 veces, el máximo. Devuélvela al buzón general para que se turne de nuevo.',
   payload_too_large: 'El contenido excede el tamaño permitido.',
   unsupported_media_type: 'Tipo de contenido no admitido.',
   rate_limited: 'Demasiados intentos. Intenta más tarde.',
@@ -88,6 +93,8 @@ export const API_ERROR_DESCRIPTIONS: Readonly<Record<ApiErrorCode, string>> = {
     'La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.',
   conflict:
     'La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).',
+  reassignment_limit:
+    'La denuncia ya se reasignó el máximo de veces (3, como en el S5): la autoridad puede devolverla al buzón general o la supervisión la revisa.',
   not_found:
     'No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).',
   payload_too_large: 'El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.',

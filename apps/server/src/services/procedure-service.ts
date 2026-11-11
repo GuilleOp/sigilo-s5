@@ -19,6 +19,7 @@ import {
   hasAnyFunction,
   hasFunction,
   isManagementTransition,
+  MAX_REASSIGNMENTS,
   MIN_ROUTING_NOTE_LENGTH,
 } from '@sigilo/contracts';
 import { randomBytes, sha256Hex, toDayDate, toHex, toMexicoCentralDay } from '@sigilo/core';
@@ -53,6 +54,11 @@ export function isCompetent(
   complaint: ComplaintRecord,
 ): boolean {
   return account.authorityId === assignedAuthorityOf(ctx, complaint);
+}
+
+/** Reasignaciones que ya tuvo la denuncia (pasos `reassigned` de su línea de tiempo). */
+export function reassignmentsOf(ctx: AppContext, folio: string): number {
+  return ctx.procedure.listSteps(folio).filter((step) => step.action === 'reassigned').length;
 }
 
 /** Estatus de la API v1 que corresponde a una etapa legal. */
@@ -173,6 +179,11 @@ function plan(
       requireTransition('reassigned');
       requireTarget(request.authorityId);
       if (request.authorityId === assigned) throw new ApiFailure('conflict');
+      // Tope de reasignaciones del S5: después de la tercera, la denuncia vuelve al buzón general
+      // (o la revisa supervisión) en lugar de pasar de mano en mano sin que nadie la acepte.
+      if (reassignmentsOf(ctx, complaint.folio) >= MAX_REASSIGNMENTS) {
+        throw new ApiFailure('reassignment_limit');
+      }
       return {
         ...base,
         action: 'reassigned',

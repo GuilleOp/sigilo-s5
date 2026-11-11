@@ -2023,7 +2023,7 @@
         "operationId": "applyProcedureAction",
         "tags": ["Autoridad"],
         "summary": "Acción del trámite",
-        "description": "Turnar (`route`, solo recepción y turnado del buzón general), aceptar, reasignar o devolver al buzón general (recepción y turnado de la autoridad que la tiene), avanzar de etapa legal (investigación) o cerrar con uno de los seis motivos, su fundamento y la versión pública del acuerdo. Cada acción registra `complaint.status_changed` con el seudónimo de la cuenta y, si lleva nota, la persona denunciante la lee en su seguimiento. Responde `403` si la función no puede, `404` si la denuncia es de otra autoridad y `409` si el flujo no admite la acción.",
+        "description": "Turnar (`route`, solo recepción y turnado del buzón general), aceptar, reasignar o devolver al buzón general (recepción y turnado de la autoridad que la tiene), avanzar de etapa legal (investigación) o cerrar con uno de los seis motivos, su fundamento y la versión pública del acuerdo. Cada acción registra `complaint.status_changed` con el seudónimo de la cuenta y, si lleva nota, la persona denunciante la lee en su seguimiento. Responde `403` si la función no puede, `404` si la denuncia es de otra autoridad y `409` si el flujo no admite la acción (`conflict`) o si la denuncia ya se reasignó 3 veces, el tope del S5 (`reassignment_limit`). Turnar exige el motivo (`note`, al menos 10 caracteres).",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2156,7 +2156,7 @@
             }
           },
           "409": {
-            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).",
+            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).\n\n`reassignment_limit`: La denuncia ya se reasignó el máximo de veces (3, como en el S5): la autoridad puede devolverla al buzón general o la supervisión la revisa.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -2166,10 +2166,22 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
-                "example": {
-                  "error": {
-                    "code": "conflict",
-                    "message": "La acción no corresponde al estado actual del trámite."
+                "examples": {
+                  "conflict": {
+                    "value": {
+                      "error": {
+                        "code": "conflict",
+                        "message": "La acción no corresponde al estado actual del trámite."
+                      }
+                    }
+                  },
+                  "reassignment_limit": {
+                    "value": {
+                      "error": {
+                        "code": "reassignment_limit",
+                        "message": "La denuncia ya se reasignó 3 veces, el máximo. Devuélvela al buzón general para que se turne de nuevo."
+                      }
+                    }
                   }
                 }
               }
@@ -3767,7 +3779,7 @@
             }
           },
           "413": {
-            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.\n\n`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -3777,10 +3789,14 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
-                "example": {
-                  "error": {
-                    "code": "payload_too_large",
-                    "message": "El contenido excede el tamaño permitido."
+                "examples": {
+                  "payload_too_large": {
+                    "value": {
+                      "error": {
+                        "code": "payload_too_large",
+                        "message": "El contenido excede el tamaño permitido."
+                      }
+                    }
                   }
                 }
               }
@@ -10361,6 +10377,7 @@
                   "unauthorized",
                   "forbidden",
                   "conflict",
+                  "reassignment_limit",
                   "payload_too_large",
                   "unsupported_media_type",
                   "rate_limited",

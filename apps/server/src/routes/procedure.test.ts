@@ -241,6 +241,87 @@ describe('flujo del buzón general', () => {
   });
 });
 
+describe('tope de reasignaciones', () => {
+  /**
+   * Turna la denuncia al OIC y le agrega `previous` reasignaciones sintéticas en su línea de tiempo
+   * (el nodo de prueba no tiene cuentas de recepción en las demás autoridades), dejándola
+   * reasignada al OIC.
+   */
+  async function withReassignments(previous: number) {
+    const fixture = await setup();
+    const { server, folio } = fixture;
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+    });
+    for (let index = 0; index < previous; index += 1) {
+      server.ctx.procedure.insertStep(folio, {
+        action: 'reassigned',
+        on: '2026-10-20',
+        legalOn: '2026-10-20',
+        managementState: 'reassigned',
+        legalStage: null,
+        closureReason: null,
+        authorityId: TEST_AUTHORITIES.oic,
+        actorId: TEST_ACCOUNTS.oicIntake.accountId,
+        note: 'Reasignación sintética anterior.',
+      });
+    }
+    server.ctx.complaints.updateProcedure(folio, {
+      status: 'routed',
+      assignedAuthorityId: TEST_AUTHORITIES.oic,
+      managementState: previous === 0 ? 'routed' : 'reassigned',
+      legalStage: null,
+      closureReason: null,
+    });
+    return fixture;
+  }
+
+  const REASSIGN: ProcedureActionRequest = {
+    action: 'reassign',
+    authorityId: TEST_AUTHORITIES.other,
+    note: 'Los hechos son de otra dependencia (nota sintética).',
+  };
+
+  it('admite la tercera reasignación', async () => {
+    const { server, folio } = await withReassignments(2);
+    expect((await act(server, 'oicIntake', folio, REASSIGN)).status).toBe(200);
+  });
+
+  it('rechaza la cuarta con reassignment_limit (409) y deja devolver al buzón', async () => {
+    const { server, folio, reporter } = await withReassignments(3);
+    const fourth = await act(server, 'oicIntake', folio, REASSIGN);
+    expect(fourth.status).toBe(409);
+    expect(fourth.body).toEqual({
+      error: {
+        code: 'reassignment_limit',
+        message:
+          'La denuncia ya se reasignó 3 veces, el máximo. Devuélvela al buzón general para que se turne de nuevo.',
+      },
+    });
+    // Nada cambió: sigue con el OIC.
+    expect((await tracking(server, folio, reporter)).procedure?.steps.at(-1)?.action).toBe(
+      'reassigned',
+    );
+    const returned = await act(server, 'oicIntake', folio, {
+      action: 'return',
+      note: 'Pasó por tres autoridades: vuelve al buzón general (nota sintética).',
+    });
+    expect(returned.status).toBe(200);
+    // El buzón general la puede turnar de nuevo (turnar no es reasignar).
+    expect(
+      (
+        await act(server, 'inboxIntake', folio, {
+          action: 'route',
+          authorityId: TEST_AUTHORITIES.other,
+          note: 'Se turna a la dependencia de los hechos (motivo sintético).',
+        })
+      ).status,
+    ).toBe(200);
+  });
+});
+
 describe('separación de funciones y competencia', () => {
   it('cada función hace solo lo suyo y lo ajeno responde 403 antes de buscar el folio', async () => {
     const { server, folio } = await setup();

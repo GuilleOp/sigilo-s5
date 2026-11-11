@@ -36,14 +36,14 @@ Revisado el 2026-11-07 con la cuenta compartida del buzón general de la versió
 usa los mismos nombres para que quien ya opera la bandeja de la SESNA reconozca el flujo; el
 catálogo los publica en `s5Code` (`packages/contracts/src/catalogs/procedure.ts`).
 
-| SIGILO (`managementState`) | Código en la bandeja del S5      | Lo que ve quien opera                                                          |
-| -------------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
-| `received_in_inbox`        | `SIN_TURNAR`                     | «Bandeja general de turnado» (buzón general)                                   |
-| `routed`                   | `TURNADA`                        | «Asignadas», en espera de que la institución acepte                            |
-| `accepted`                 | `ACEPTADA` (evento «Aceptación») | La institución la atiende                                                      |
-| `reassigned`               | `REASIGNADA`                     | «Reasignadas» (en el S5, máximo 3)                                             |
-| `returned_to_inbox`        | `DEVUELTA`                       | Vuelve a la bandeja general                                                    |
-| `closed`                   | `CERRADA`, con su motivo         | Atendida, canalizada, improcedente, información insuficiente, acumulada u otro |
+| SIGILO (`managementState`) | Código en la bandeja del S5      | Lo que ve quien opera                                                            |
+| -------------------------- | -------------------------------- | -------------------------------------------------------------------------------- |
+| `received_in_inbox`        | `SIN_TURNAR`                     | «Bandeja general de turnado» (buzón general)                                     |
+| `routed`                   | `TURNADA`                        | «Asignadas», en espera de que la institución acepte                              |
+| `accepted`                 | `ACEPTADA` (evento «Aceptación») | La institución la atiende                                                        |
+| `reassigned`               | `REASIGNADA`                     | «Reasignadas» (máximo 3, como en el S5; la cuarta responde `reassignment_limit`) |
+| `returned_to_inbox`        | `DEVUELTA`                       | Vuelve a la bandeja general                                                      |
+| `closed`                   | `CERRADA`, con su motivo         | Atendida, canalizada, improcedente, información insuficiente, acumulada u otro   |
 
 `SIN_TURNAR` y `TURNADA` se observaron en la API de la bandeja; los demás códigos siguen el mismo
 patrón y los nombres que la SESNA usó en el taller del 27 de octubre, y conviene confirmarlos con la
@@ -64,6 +64,15 @@ Como en la bandeja del S5, turnar exige el motivo: `route` lleva `note` obligato
 caracteres (sin contar espacios al inicio ni al final; `RoutingNoteSchema`). Sin él, el nodo
 responde `bad_request` (400). El panel lo pide con «Por qué la envías a esta autoridad; la persona
 lo leerá», y la persona lo lee tal cual en su seguimiento.
+
+### Tope de reasignaciones
+
+Como en el S5, una denuncia admite como máximo 3 reasignaciones (`MAX_REASSIGNMENTS`), contadas en
+su línea de tiempo. La cuarta responde `409` con el código `reassignment_limit` y un mensaje fijo
+(«La denuncia ya se reasignó 3 veces, el máximo…»), distinto de `conflict` para que el cliente lo
+explique. El panel deja de ofrecer «Reasignar», dice por qué y ofrece «Devolver al buzón general»;
+el buzón puede turnarla de nuevo (turnar no cuenta como reasignar). Si nadie la acepta, el semáforo
+de turnado la marca vencida y la supervisión recibe el aviso.
 
 ### Semáforo de turnado
 

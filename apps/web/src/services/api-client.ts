@@ -18,6 +18,8 @@ const MESSAGES: Readonly<Record<ClientErrorCode, string>> = {
   unauthorized: 'No tienes permiso para hacer esto. Revisa tus datos de acceso.',
   forbidden: 'Tu función no permite esta acción. Pídesela a quien le corresponde.',
   conflict: 'Esta acción no corresponde al estado actual del trámite. Recarga y revisa.',
+  reassignment_limit:
+    'Esta denuncia ya se reasignó 3 veces, el máximo. Devuélvela al buzón general para que la turnen de nuevo; si nadie la acepta, la supervisión recibe el aviso del plazo de turnado.',
   payload_too_large: 'El archivo o el mensaje es demasiado grande. Usa uno más pequeño.',
   unsupported_media_type: 'No podemos recibir este tipo de archivo.',
   rate_limited: 'Hubo demasiados intentos. Espera un rato y vuelve a intentarlo.',

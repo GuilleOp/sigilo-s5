@@ -607,7 +607,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Autoridad',
     summary: 'Acción del trámite',
     description:
-      'Turnar (`route`, solo recepción y turnado del buzón general), aceptar, reasignar o devolver al buzón general (recepción y turnado de la autoridad que la tiene), avanzar de etapa legal (investigación) o cerrar con uno de los seis motivos, su fundamento y la versión pública del acuerdo. Cada acción registra `complaint.status_changed` con el seudónimo de la cuenta y, si lleva nota, la persona denunciante la lee en su seguimiento. Responde `403` si la función no puede, `404` si la denuncia es de otra autoridad y `409` si el flujo no admite la acción.',
+      'Turnar (`route`, solo recepción y turnado del buzón general), aceptar, reasignar o devolver al buzón general (recepción y turnado de la autoridad que la tiene), avanzar de etapa legal (investigación) o cerrar con uno de los seis motivos, su fundamento y la versión pública del acuerdo. Cada acción registra `complaint.status_changed` con el seudónimo de la cuenta y, si lleva nota, la persona denunciante la lee en su seguimiento. Responde `403` si la función no puede, `404` si la denuncia es de otra autoridad y `409` si el flujo no admite la acción (`conflict`) o si la denuncia ya se reasignó 3 veces, el tope del S5 (`reassignment_limit`). Turnar exige el motivo (`note`, al menos 10 caracteres).',
     security: 'authorityBearer',
     parameters: [FOLIO_PARAMETER],
     requestBody: {
@@ -624,7 +624,14 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
         example: 'apply-procedure-action.response',
       },
     },
-    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden', 'not_found', 'conflict'],
+    errors: [
+      ...JSON_ERRORS,
+      'unauthorized',
+      'forbidden',
+      'not_found',
+      'conflict',
+      'reassignment_limit',
+    ],
   },
   {
     operationId: 'requestIdentityOpening',
