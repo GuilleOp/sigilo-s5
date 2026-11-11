@@ -1,7 +1,13 @@
 // Envío de denuncia. El servidor recibe hechos legibles (necesarios para el trámite)
 // y, solo en modo "sealed", la identidad cifrada hacia la autoridad competente.
 import { z } from 'zod';
-import { isEntityId, isMunicipalityOf, isOffenseCode, isStateCode } from './catalogs/index.ts';
+import {
+  isAcceptedEntityId,
+  isEntityOfState,
+  isMunicipalityOf,
+  isOffenseCode,
+  isStateCode,
+} from './catalogs/index.ts';
 import { HpkeEnvelopeSchema } from './envelope.ts';
 import {
   Base64UrlSchema,
@@ -83,14 +89,19 @@ export const MunicipalityCodeSchema = z
     'x-catalog': 'MUNICIPALITIES',
   });
 
-/** Identificador de un ente público del catálogo. */
+/**
+ * Identificador de un ente público del catálogo: real del directorio de la PDN
+ * (`PDN-<entidad>-<id>`) o de la demostración (`VE-…`). Su pertenencia a la entidad se valida en
+ * los hechos.
+ */
 export const EntityIdSchema = z
   .string()
   .max(64)
-  .refine(isEntityId, 'Ente público desconocido')
+  .refine(isAcceptedEntityId, 'Ente público desconocido')
   .meta({
-    description: 'Identificador del ente público en el catálogo del despliegue.',
-    examples: ['VE-OBRAS'],
+    description:
+      'Identificador del ente público: PDN-<clave INEGI de la entidad o 00>-<id del ente en el directorio de la PDN> para los entes reales, o VE-… para los ficticios de la demostración. Un ente estatal o municipal debe ser de la entidad de los hechos.',
+    examples: ['PDN-22-7074', 'VE-OBRAS'],
     'x-catalog': 'PUBLIC_ENTITIES',
   });
 
@@ -137,12 +148,19 @@ export const ComplaintFactsSchema = z
       .meta({ description: 'Relato de los hechos, en texto libre. Nunca se publica.' }),
   })
   .superRefine((facts, ctx) => {
-    const { stateCode, municipalityCode } = facts;
+    const { stateCode, municipalityCode, entityId } = facts;
     if (municipalityCode !== undefined && !isMunicipalityOf(stateCode, municipalityCode)) {
       ctx.addIssue({
         code: 'custom',
         path: ['municipalityCode'],
         message: 'El municipio no pertenece a la entidad.',
+      });
+    }
+    if (!isEntityOfState(entityId, stateCode)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['entityId'],
+        message: 'El ente público no pertenece a la entidad.',
       });
     }
   })

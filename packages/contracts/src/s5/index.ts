@@ -1,5 +1,8 @@
 // Equivalencias con el catálogo de faltas del S5 ya cargadas, para el servidor del nodo. La web no
 // importa este módulo (el archivo pesa ~90 KB): recibe las referencias en el detalle de la denuncia.
+// El catálogo completo de entes reales: `equivalenceStateKey` necesita el orden de gobierno de
+// cualquier ente (una oficina federal real aplica la ley federal).
+import '../entes/index.ts';
 import equivalences from './equivalencias-faltas.json' with { type: 'json' };
 import { equivalenceStateKey, localReferences } from './equivalences.ts';
 import type { S5Equivalences, S5Reference } from './equivalences.ts';

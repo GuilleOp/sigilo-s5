@@ -6,6 +6,11 @@ import { OFFENSES } from './offenses.ts';
 import type { OffenseLaw, OffenseOption } from './offenses.ts';
 import { PUBLIC_ENTITIES } from './public-entities.ts';
 import type { PublicEntityOption } from './public-entities.ts';
+import {
+  findRegisteredEntity,
+  isRealEntityCatalogComplete,
+  realEntityStateCode,
+} from './real-entities.ts';
 import { STATES } from './states.ts';
 import type { OffenseSeverity } from '../procedure.ts';
 import type { StateOption } from './states.ts';
@@ -13,6 +18,7 @@ import type { StateOption } from './states.ts';
 export * from './states.ts';
 export * from './municipalities.ts';
 export * from './public-entities.ts';
+export * from './real-entities.ts';
 export * from './offenses.ts';
 export * from './procedure.ts';
 export * from './rest-days.ts';
@@ -71,14 +77,44 @@ export function isMunicipalityOf(stateCode: string, code: string): boolean {
   return findMunicipality(stateCode, code) !== undefined;
 }
 
-/** Ente público por identificador, o `undefined` si no existe. */
+/**
+ * Ente público por identificador: uno de la demostración o uno real registrado (en el servidor,
+ * todo el catálogo; en la web, los de los fragmentos ya descargados). `undefined` si no está.
+ */
 export function findEntity(id: string): PublicEntityOption | undefined {
-  return ENTITY_BY_ID.get(id);
+  return ENTITY_BY_ID.get(id) ?? findRegisteredEntity(id);
 }
 
-/** Indica si el identificador es de un ente del catálogo. */
+/** Indica si el identificador es de un ente conocido (de la demostración o real registrado). */
 export function isEntityId(id: string): boolean {
-  return ENTITY_BY_ID.has(id);
+  return findEntity(id) !== undefined;
+}
+
+/**
+ * Indica si el identificador se acepta en los hechos de una denuncia. Con el catálogo completo
+ * (servidor) solo valen los ids registrados; sin él (web), un id real con formato válido y entidad
+ * existente, porque el navegador solo descarga el fragmento de la entidad elegida.
+ * Seguridad: el servidor siempre valida contra el catálogo completo antes de guardar o publicar.
+ */
+export function isAcceptedEntityId(id: string): boolean {
+  if (ENTITY_BY_ID.has(id)) return true;
+  if (isRealEntityCatalogComplete()) return findRegisteredEntity(id) !== undefined;
+  const stateCode = realEntityStateCode(id);
+  return stateCode !== undefined && (stateCode === '00' || STATE_BY_CODE.has(stateCode));
+}
+
+/**
+ * Entidad a la que pertenece un ente: la clave de su id si es real (`00` si es federal);
+ * `undefined` para los de la demostración, que sirven en cualquier entidad.
+ */
+export function entityStateCode(id: string): string | undefined {
+  return ENTITY_BY_ID.has(id) ? undefined : realEntityStateCode(id);
+}
+
+/** Indica si el ente puede elegirse con los hechos ocurridos en esa entidad. */
+export function isEntityOfState(id: string, stateCode: string): boolean {
+  const entityState = entityStateCode(id);
+  return entityState === undefined || entityState === '00' || entityState === stateCode;
 }
 
 /** Conducta por clave principal o equivalente, o `undefined` si no existe. */

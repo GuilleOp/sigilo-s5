@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./standard": "./src/standard/index.ts",
-    "./s5": "./src/s5/index.ts"
+    "./s5": "./src/s5/index.ts",
+    "./entes": "./src/entes/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
