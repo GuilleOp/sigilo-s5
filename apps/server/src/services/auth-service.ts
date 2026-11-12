@@ -32,15 +32,18 @@ function sleep(ctx: AppContext, ms: number): Promise<void> {
 
 /**
  * Comprueba usuario y contraseña y abre una sesión.
- * Lanza `rate_limited` si el usuario agotó sus intentos y la contraseña no es la correcta, y
+ * Lanza `rate_limited` si el usuario agotó sus intentos (aunque la contraseña sea la correcta) y
  * `unauthorized` si el usuario no existe o la contraseña no coincide (la misma respuesta, sin decir
  * cuál).
- * Seguridad: la contraseña se verifica siempre, también con el límite agotado, y la correcta abre
- * la sesión: así un tercero que falla a propósito no bloquea a la dueña de la cuenta. El costo es
- * el mismo en todos los casos (un scrypt) y el freno solo retrasa los fallos. Cada fallo queda en
- * el registro de seguridad con el seudónimo de la cuenta si el usuario existe (nunca el usuario
- * tecleado ni la IP); un usuario inexistente compara contra un digesto de igual costo. El límite es
- * por usuario, que no se publica en ningún lado.
+ * Seguridad (H05): con el usuario bloqueado se rechaza también la contraseña correcta hasta que
+ * vence la ventana: antes, el tope solo cambiaba el código de error y no frenaba la adivinanza. La
+ * contraseña se verifica de todos modos, así que el costo y el tiempo son los mismos en todos los
+ * casos (un scrypt) y la respuesta no revela si se acertó. El precio es que un tercero que conozca
+ * el usuario puede bloquear a la dueña durante la ventana; por eso el panel va detrás de VPN o de
+ * una lista de IP (ver docs/seguridad-produccion.md). Cada fallo queda en el registro de seguridad
+ * con el seudónimo de la cuenta si el usuario existe (nunca el usuario tecleado ni la IP); un
+ * usuario inexistente compara contra un digesto de igual costo. El límite es por usuario, que no
+ * se publica en ningún lado.
  */
 export async function login(ctx: AppContext, request: LoginRequest): Promise<AuthoritySession> {
   const key = limiterKey(request.username);
@@ -49,7 +52,7 @@ export async function login(ctx: AppContext, request: LoginRequest): Promise<Aut
     request.password,
     account?.passwordHash ?? dummyPasswordHash(),
   );
-  if ((account === null || !isValid) && ctx.limiters.loginFailures.isLimited(key)) {
+  if (ctx.limiters.loginFailures.isLimited(key)) {
     ctx.limiters.loginThrottle.record();
     logSecurityEvent(ctx, 'login_rate_limited', account?.accountId ?? null);
     await sleep(ctx, ctx.limiters.loginThrottle.delayMs());
