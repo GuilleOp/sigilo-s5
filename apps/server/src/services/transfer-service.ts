@@ -33,6 +33,15 @@ import { handOverEvidenceCustody } from './evidence-service.ts';
 import { isCompetent } from './procedure-service.ts';
 
 /**
+ * Folios con un turnado en curso (entre la comprobación y el registro, mientras se espera al
+ * enrutador), por contexto de la aplicación.
+ * Seguridad: sin esto, dos peticiones simultáneas pasarían ambas la comprobación de turnado
+ * pendiente antes de que cualquiera lo registre, y la denuncia saldría dos veces (incluso hacia dos
+ * nodos distintos), con dos copias vivas.
+ */
+const transfersInFlight = new WeakMap<AppContext, Set<string>>();
+
+/**
  * Transporta al enrutador el sobre que la autoridad ya re-cifró hacia el nodo destino y registra
  * `complaint.transferred` con los digestos. La denuncia deja de estar en este nodo: nadie aquí la
  * ve después. Devuelve la respuesta del enrutador, que solo abre el navegador que turnó.
@@ -55,14 +64,35 @@ export async function transferComplaint(
     throw new ApiFailure('not_found');
   }
   if (complaint.managementState === 'closed') throw new ApiFailure('conflict');
-  // Un turnado a la vez: mientras uno espera su comprobante, no se manda otro.
-  if (pendingTransferOf(ctx, folio) !== null) throw new ApiFailure('conflict');
+  // Un turnado a la vez: mientras uno espera su comprobante (o sale ahora), no se manda otro.
+  const inFlight = transfersInFlight.get(ctx) ?? new Set<string>();
+  transfersInFlight.set(ctx, inFlight);
+  if (inFlight.has(folio) || pendingTransferOf(ctx, folio) !== null) {
+    throw new ApiFailure('conflict');
+  }
   const target = directoryAuthority(network, request.toAuthorityId);
   const isElsewhere = target !== undefined && target.nodeId !== network.nodeId;
   // El sobre v2 solo nombra el nodo; la autoridad va cifrada adentro hacia ese nodo.
   if (!isElsewhere || request.relay.node !== target.nodeId) {
     throw new ApiFailure('bad_request');
   }
+  inFlight.add(folio);
+  try {
+    return await relayTransfer(ctx, account, folio, request, network, target);
+  } finally {
+    inFlight.delete(folio);
+  }
+}
+
+/** Manda el sobre al enrutador y registra el turnado (ver `transferComplaint`). */
+async function relayTransfer(
+  ctx: AppContext,
+  account: AuthorityAccount,
+  folio: string,
+  request: TransferComplaintRequest,
+  network: NonNullable<AppContext['deps']['network']>,
+  target: NonNullable<ReturnType<typeof directoryAuthority>>,
+): Promise<TransferComplaintResponse> {
   const response = await network.fetch(`${network.routerUrl}${NETWORK_ROUTES.relay}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
