@@ -13,8 +13,14 @@ export const ROUTES = {
   trackingMessages: `${API_PREFIX}/tracking/messages`,
   /** `POST`: inconformidad contra la calificación de no grave (LGRA, arts. 102 a 110). */
   trackingAppeal: `${API_PREFIX}/tracking/appeal`,
-  /** `POST`: inicio de sesión con la cuenta individual; responde el token de sesión. */
+  /** `POST`: inicio de sesión con la cuenta individual (primer paso: usuario y contraseña). */
   authLogin: `${API_PREFIX}/auth/login`,
+  /** `POST`: segundo paso del inicio de sesión con el código del segundo factor. */
+  authLoginCode: `${API_PREFIX}/auth/login/code`,
+  /** `POST`: secreto TOTP nuevo para inscribir el segundo factor (sesión sin segundo factor). */
+  authMfaEnroll: `${API_PREFIX}/auth/mfa/enroll`,
+  /** `POST`: confirma la inscripción con el primer código; responde los códigos de recuperación. */
+  authMfaConfirm: `${API_PREFIX}/auth/mfa/confirm`,
   /** `POST`: invalida la sesión en el servidor. */
   authLogout: `${API_PREFIX}/auth/logout`,
   /** `GET`: cuenta y vencimientos de la sesión vigente. */

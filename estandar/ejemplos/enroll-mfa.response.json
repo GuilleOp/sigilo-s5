@@ -1,0 +1,6 @@
+{
+  "secret": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+  "otpauthUri": "otpauth://totp/SIGILO%20node.federal:oic-equipamiento.persona1?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=SIGILO%20node.federal&algorithm=SHA1&digits=6&period=30",
+  "digits": 6,
+  "periodSeconds": 30
+}

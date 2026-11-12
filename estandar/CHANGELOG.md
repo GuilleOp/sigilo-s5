@@ -38,8 +38,18 @@ proveedores.
 - Estadística: cada fila trae `id` (`mes|autoridad|entidad|conducta`) y `fechaCaptura` (el cierre
   del mes); filtro `query.id`.
 - Las rutas de la PDN documentan su `500` con `resError`.
+- Segundo factor del panel (TOTP, RFC 6238; SEC-13 pasa a parcial): `POST /api/v1/auth/login/code`
+  (`loginCode`), `POST /api/v1/auth/mfa/enroll` (`enrollMfa`) y `POST /api/v1/auth/mfa/confirm`
+  (`confirmMfa`), con los esquemas `LoginResponse`, `LoginCodeRequest`, `LoginSession`,
+  `MfaEnrollment`, `MfaConfirmRequest` y `MfaConfirmResponse`.
 
 ### Cambiado
+
+- **Incompatible.** `POST /api/v1/auth/login` responde `LoginResponse`: `step: "session"` (la
+  sesión de antes, con los mismos campos), `step: "code"` (falta el código del segundo factor) o
+  `step: "enroll"` (sesión limitada para inscribirlo). Un usuario inexistente o una contraseña
+  equivocada ya no reciben `401` en este paso: reciben un reto señuelo `step: "code"`, y el fallo
+  se dice hasta `loginCode`, sin revelar si la contraseña era correcta.
 
 - **Incompatible.** `PdnError` (`resError`): `code` es el estatus HTTP como número (`400`, `401`,
   `403`, `413`, `415`, `500`), no una cadena como `unauthorized`. ValidAPI exige `code` de 400 a

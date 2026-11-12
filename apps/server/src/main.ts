@@ -24,6 +24,7 @@ import { syncCorroboration } from './services/corroboration-service.ts';
 import { recheckPendingSanctions } from './services/pdn-context.ts';
 import { openPdnSources } from './services/pdn-sources.ts';
 import { loadAuthorityRegistry } from './security/authority-registry.ts';
+import { loadOrCreateMfaKey } from './security/mfa-secrets.ts';
 import { acquireServerLock, refreshServerLock } from './server-lock.ts';
 import {
   intervalScheduler,
@@ -87,6 +88,8 @@ function start(): void {
   const calendar = loadNodeCalendar(config.restDaysFile);
   const webConfig = config.webDistDir === null ? null : loadWebConfig(config.webConfigFile);
   const releaseLock = acquireServerLock(config.dataDir);
+  // Llave de los secretos del segundo factor (0600): se crea la primera vez y viaja en el respaldo.
+  const mfaKey = loadOrCreateMfaKey(config.dataDir);
   const db = openDatabase(join(config.dataDir, 'sigilo.db'));
   const evidenceStore = createFileEvidenceStore(join(config.dataDir, 'evidence'));
   const now =
@@ -124,6 +127,11 @@ function start(): void {
     keys,
     evidenceStore,
     authorities,
+    mfa: {
+      policy: config.mfaPolicy,
+      key: mfaKey,
+      issuer: network === undefined ? 'SIGILO' : `SIGILO ${network.nodeId}`,
+    },
     now,
     allowedOrigin: config.allowedOrigin,
     ...(config.webDistDir === null ? {} : { webDistDir: config.webDistDir }),

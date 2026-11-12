@@ -93,12 +93,17 @@ describe('perfil nodo', () => {
     expect(
       (await call(app.fetch, 'GET', `${ROUTES.powChallenge}?purpose=registration`)).status,
     ).toBe(200);
-    // El panel: credenciales equivocadas, no ruta inexistente.
+    // El panel: credenciales equivocadas (reto señuelo del segundo paso), no ruta inexistente.
     const login = await call(app.fetch, 'POST', ROUTES.authLogin, {
       username: 'nadie.aqui',
       password: 'contraseña-equivocada',
     });
-    expect(login.status).toBe(401);
+    expect(login.status).toBe(200);
+    const code = await call(app.fetch, 'POST', ROUTES.authLoginCode, {
+      challenge: 'reto-inexistente',
+      code: '000000',
+    });
+    expect(code.status).toBe(401);
     expect((await call(app.fetch, 'GET', ROUTES.authorityComplaints)).status).toBe(401);
     // La SESNA: sin cliente OAuth el token es invalid_client, no 404.
     const token = await app.request(PDN_ROUTES.token, {
@@ -153,7 +158,7 @@ describe('puerto propio del panel', () => {
     const login = { username: 'nadie.aqui', password: 'contraseña-equivocada' };
     expect((await call(red, 'POST', ROUTES.authLogin, login)).status).toBe(404);
     expect((await call(red, 'GET', '/autoridad')).status).toBe(404);
-    expect((await call(panel, 'POST', ROUTES.authLogin, login)).status).toBe(401);
+    expect((await call(panel, 'POST', ROUTES.authLogin, login)).status).toBe(200);
     expect((await call(panel, 'POST', NETWORK_ROUTES.nodeInbox, {})).status).toBe(404);
     expect((await call(panel, 'POST', PDN_ROUTES.token, {})).status).toBe(404);
     expect((await call(red, 'POST', NETWORK_ROUTES.relay, {})).status).toBe(404);

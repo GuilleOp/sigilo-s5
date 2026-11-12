@@ -4,9 +4,17 @@ import { createHash } from 'node:crypto';
 import { SESSION_ABSOLUTE_TIMEOUT_SECONDS, SESSION_IDLE_TIMEOUT_SECONDS } from '@sigilo/contracts';
 import { randomBytes, toBase64Url } from '@sigilo/core';
 
+/**
+ * Cómo se autenticó la sesión: solo con contraseña (`password`) o con contraseña y segundo factor
+ * (`mfa`). Con `SIGILO_MFA=requerido`, una sesión `password` solo sirve para inscribir el segundo
+ * factor (ver `requireAuthoritySession`).
+ */
+export type SessionAssurance = 'password' | 'mfa';
+
 /** Sesión vigente de una cuenta. */
 export interface Session {
   accountId: string;
+  assurance: SessionAssurance;
   createdAt: number;
   lastSeenAt: number;
 }
@@ -19,8 +27,11 @@ export type SessionLookup =
 
 /** Almacén de sesiones. */
 export interface SessionStore {
-  /** Abre una sesión y devuelve su token; `token` solo lo fijan las pruebas. */
-  issue(accountId: string, token?: string): string;
+  /**
+   * Abre una sesión y devuelve su token; `token` solo lo fijan las pruebas. Por omisión la sesión
+   * es de solo contraseña.
+   */
+  issue(accountId: string, token?: string, assurance?: SessionAssurance): string;
   /** Busca la sesión del token y, si sigue vigente, renueva su inactividad. */
   resolve(token: string): SessionLookup;
   /** Cierra la sesión del token; devuelve la cuenta si existía. */
@@ -75,7 +86,7 @@ export function createSessionStore(
   }
 
   return {
-    issue: (accountId, token = toBase64Url(randomBytes(TOKEN_BYTES))) => {
+    issue: (accountId, token = toBase64Url(randomBytes(TOKEN_BYTES)), assurance = 'password') => {
       const time = now().getTime();
       if (sessions.size >= MAX_SESSIONS) sweep(time);
       // El Map conserva el orden de inserción: la primera es la más antigua.
@@ -84,7 +95,7 @@ export function createSessionStore(
         if (oldest.done === true) break;
         sessions.delete(oldest.value);
       }
-      sessions.set(digestOf(token), { accountId, createdAt: time, lastSeenAt: time });
+      sessions.set(digestOf(token), { accountId, assurance, createdAt: time, lastSeenAt: time });
       return token;
     },
     resolve: (token) => {

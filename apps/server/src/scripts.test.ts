@@ -18,7 +18,11 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { LedgerAnchorSchema, PublicKeySetSchema } from '@sigilo/contracts';
 import { fromBase64Url, toDayDate, verifyLedgerHead } from '@sigilo/core';
 import { parseAuthorityDemoKey, parseKeysFile, parseSupervisorDemoKey } from './keys-file.ts';
+import { openDatabase } from './db/database.ts';
+import { createMfaRepository } from './db/mfa-repository.ts';
 import { createAuthorityRegistry } from './security/authority-registry.ts';
+import type { DemoCredential } from './security/demo-accounts.ts';
+import { fromBase32, totpCode } from './security/totp.ts';
 import { verifyPassword } from './security/passwords.ts';
 import { MISSING_DATABASE_MESSAGE } from './ledger-anchor.ts';
 import { LOCK_FILE } from './server-lock.ts';
@@ -123,46 +127,130 @@ describe('scripts/generate-keys.ts', () => {
 });
 
 describe('scripts/generate-accounts.ts', () => {
-  it('genera cuentas individuales con digestos y credenciales de demostración privadas', async () => {
-    const directory = temporaryDir();
-    const { dataDir } = paths(directory);
-    const result = runScript('generate-accounts.ts', { SIGILO_DATA_DIR: dataDir });
-    expect(result.status, result.stderr).toBe(0);
-    const accountsPath = join(dataDir, 'authority-accounts.json');
-    const credentialsPath = join(dataDir, 'authority-demo-credentials.json');
-    const registry = createAuthorityRegistry(readJson(accountsPath));
-    for (const path of [accountsPath, credentialsPath]) {
-      expect(statSync(path).mode & 0o777, path).toBe(0o600);
-    }
-    const { credenciales } = readJson(credentialsPath) as {
-      credenciales: { username: string; password: string; functions: string[] }[];
-    };
-    const functions = new Set(credenciales.flatMap((item) => item.functions));
-    expect([...functions].sort()).toEqual([
-      'intake',
-      'investigation',
-      'operation',
-      'substantiation',
-      'supervision',
-    ]);
-    // El buzón general solo recibe y turna; la substanciación nunca investiga (LGRA art. 115).
-    const functionsOf = (username: string) =>
-      credenciales.find((item) => item.username === username)?.functions;
-    expect(functionsOf('buzon.federal')).toEqual(['intake']);
-    expect(functionsOf('operacion.federal')).toEqual(['operation']);
-    expect(functionsOf('oic-equipamiento.persona1')).toEqual(['intake', 'investigation']);
-    expect(functionsOf('oic-equipamiento.substanciacion')).toEqual(['substantiation']);
-    const [first] = credenciales;
-    if (first === undefined) throw new Error('Faltan credenciales.');
-    const account = registry.findByUsername(first.username);
-    if (account === null) throw new Error('Falta la cuenta.');
-    await expect(verifyPassword(first.password, account.passwordHash)).resolves.toBe(true);
-    // El archivo que lee el servidor nunca trae contraseñas en claro.
-    expect(readFileSync(accountsPath, 'utf8')).not.toContain(first.password);
-    const refused = runScript('generate-accounts.ts', { SIGILO_DATA_DIR: dataDir });
-    expect(refused.status).toBe(1);
-    expect(refused.stderr).toContain('--force');
-  });
+  it(
+    'genera cuentas individuales con digestos y credenciales de demostración privadas',
+    { timeout: 60_000 },
+    async () => {
+      const directory = temporaryDir();
+      const { dataDir } = paths(directory);
+      const result = runScript('generate-accounts.ts', { SIGILO_DATA_DIR: dataDir });
+      expect(result.status, result.stderr).toBe(0);
+      const accountsPath = join(dataDir, 'authority-accounts.json');
+      const credentialsPath = join(dataDir, 'authority-demo-credentials.json');
+      const registry = createAuthorityRegistry(readJson(accountsPath));
+      for (const path of [accountsPath, credentialsPath]) {
+        expect(statSync(path).mode & 0o777, path).toBe(0o600);
+      }
+      const { credenciales } = readJson(credentialsPath) as {
+        credenciales: { username: string; password: string; functions: string[] }[];
+      };
+      const functions = new Set(credenciales.flatMap((item) => item.functions));
+      expect([...functions].sort()).toEqual([
+        'intake',
+        'investigation',
+        'operation',
+        'substantiation',
+        'supervision',
+      ]);
+      // El buzón general solo recibe y turna; la substanciación nunca investiga (LGRA art. 115).
+      const functionsOf = (username: string) =>
+        credenciales.find((item) => item.username === username)?.functions;
+      expect(functionsOf('buzon.federal')).toEqual(['intake']);
+      expect(functionsOf('operacion.federal')).toEqual(['operation']);
+      expect(functionsOf('oic-equipamiento.persona1')).toEqual(['intake', 'investigation']);
+      expect(functionsOf('oic-equipamiento.substanciacion')).toEqual(['substantiation']);
+      const [first] = credenciales;
+      if (first === undefined) throw new Error('Faltan credenciales.');
+      const account = registry.findByUsername(first.username);
+      if (account === null) throw new Error('Falta la cuenta.');
+      await expect(verifyPassword(first.password, account.passwordHash)).resolves.toBe(true);
+      // El archivo que lee el servidor nunca trae contraseñas en claro.
+      expect(readFileSync(accountsPath, 'utf8')).not.toContain(first.password);
+      const refused = runScript('generate-accounts.ts', { SIGILO_DATA_DIR: dataDir });
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain('--force');
+    },
+  );
+
+  it(
+    'inscribe el segundo factor de las cuentas de la demostración que lo llevan',
+    { timeout: 60_000 },
+    () => {
+      const directory = temporaryDir();
+      const { dataDir } = paths(directory);
+      const result = runScript('generate-accounts.ts', { SIGILO_DATA_DIR: dataDir });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain('demo:codigo');
+      const registry = createAuthorityRegistry(readJson(join(dataDir, 'authority-accounts.json')));
+      const { credenciales } = readJson(join(dataDir, 'authority-demo-credentials.json')) as {
+        credenciales: DemoCredential[];
+      };
+      const enrolled = credenciales.filter((item) => item.mfaSecret !== undefined);
+      expect(enrolled.map((item) => item.username).sort()).toEqual([
+        'fiscalia',
+        'operacion.federal',
+        'supervision-oic',
+      ]);
+      for (const item of enrolled) expect(item.recoveryCodes).toHaveLength(10);
+      // La cuenta que muestra la inscripción en vivo no trae secreto: lo inscribe al entrar.
+      const live = credenciales.find((item) => item.username === 'oic-programas');
+      expect(live?.requireMfa).toBe(true);
+      expect(registry.findByUsername('oic-programas')?.requireMfa).toBe(true);
+      // La llave del segundo factor queda 0600 y la base guarda solo el secreto cifrado.
+      expect(statSync(join(dataDir, 'mfa-key')).mode & 0o777).toBe(0o600);
+      const db = openDatabase(join(dataDir, 'sigilo.db'));
+      try {
+        const mfa = createMfaRepository(db);
+        const supervisor = registry.findByUsername('supervision-oic');
+        const stored = mfa.find(supervisor?.accountId ?? '');
+        expect(stored).not.toBeNull();
+        const secret =
+          enrolled.find((item) => item.username === 'supervision-oic')?.mfaSecret ?? '';
+        expect(JSON.stringify(stored)).not.toContain(secret);
+        expect(mfa.countEnrolled()).toBe(3);
+      } finally {
+        db.close();
+      }
+
+      // El código para la presentación sale del mismo secreto.
+      const code = runScript(
+        'demo-codigo.ts',
+        {
+          SIGILO_DATA_DIR: dataDir,
+          SIGILO_RED_DEMO_DIR: join(directory, 'sin-red'),
+        },
+        ['supervision-oic'],
+      );
+      expect(code.status, code.stderr).toBe(0);
+      const printed = /: (\d{6})$/mu.exec(code.stdout)?.[1];
+      const secret = enrolled.find((item) => item.username === 'supervision-oic')?.mfaSecret ?? '';
+      const now = Date.now();
+      expect(
+        [now - 30_000, now, now + 30_000].map((time) => totpCode(fromBase32(secret), time)),
+      ).toContain(printed);
+      const plain = runScript(
+        'demo-codigo.ts',
+        {
+          SIGILO_DATA_DIR: dataDir,
+          SIGILO_RED_DEMO_DIR: join(directory, 'sin-red'),
+        },
+        ['buzon.federal'],
+      );
+      expect(plain.status).toBe(1);
+      expect(plain.stderr).toContain('sin segundo factor');
+
+      // Reiniciar la demostración conserva el segundo factor con el mismo secreto.
+      const reset = runScript('demo-reset.ts', { SIGILO_DATA_DIR: dataDir }, ['--yes']);
+      expect(reset.status, reset.stderr).toBe(0);
+      expect(reset.stdout).toContain('Segundo factor inscrito de nuevo');
+      const again = openDatabase(join(dataDir, 'sigilo.db'));
+      try {
+        expect(createMfaRepository(again).countEnrolled()).toBe(3);
+      } finally {
+        again.close();
+      }
+    },
+  );
 });
 
 describe('scripts/demo-reset.ts', () => {

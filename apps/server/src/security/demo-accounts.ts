@@ -4,6 +4,7 @@
 import type { AuthorityAccountsFile, AuthorityFunction } from '@sigilo/contracts';
 import { randomBytes, toBase64Url, toHex } from '@sigilo/core';
 import { DEFAULT_SCRYPT_LOG_N, hashPassword } from './passwords.ts';
+import { generateTotpSecret, toBase32 } from './totp.ts';
 
 /** Credencial de demostración en claro: solo para el archivo local que no se versiona. */
 export interface DemoCredential {
@@ -11,6 +12,51 @@ export interface DemoCredential {
   password: string;
   authorityId: string;
   functions: readonly AuthorityFunction[];
+  /**
+   * Secreto TOTP sintético en Base32 de una cuenta con el segundo factor ya inscrito (para
+   * `npm run demo:codigo` o para agregarlo a una app de autenticación).
+   */
+  mfaSecret?: string;
+  /** Códigos de recuperación sintéticos de esa cuenta (los agrega quien inscribe). */
+  recoveryCodes?: string[];
+  /** La cuenta inscribe el segundo factor en su primer inicio de sesión (`requireMfa`). */
+  requireMfa?: boolean;
+}
+
+/**
+ * Cuentas de la demostración con el segundo factor ya inscrito: la supervisora, la operación de
+ * cada nodo y la fiscalía. Las demás entran solo con contraseña (el nodo de la demostración usa
+ * `SIGILO_MFA=opcional`), así el recorrido principal no cambia.
+ */
+export const DEMO_MFA_USERS: ReadonlySet<string> = new Set([
+  'supervision-oic',
+  'operacion.federal',
+  'operacion.queretaro',
+  'operacion.oaxaca',
+  'fiscalia',
+]);
+
+/**
+ * Cuentas marcadas con `requireMfa`: inscriben el segundo factor en su primer inicio de sesión,
+ * para mostrar la inscripción en vivo.
+ */
+export const DEMO_MFA_ENROLLMENT_USERS: ReadonlySet<string> = new Set(['oic-programas']);
+
+/** Cuenta que debe quedar con el segundo factor inscrito antes de arrancar el nodo. */
+export interface DemoMfaProvision {
+  accountId: string;
+  username: string;
+  secret: Uint8Array;
+}
+
+/** Segundo factor de las cuentas de la demostración. */
+export interface DemoMfaOptions {
+  /** Usuarios con el factor ya inscrito (`DEMO_MFA_USERS`). */
+  enrolled?: ReadonlySet<string>;
+  /** Usuarios que lo inscriben al entrar (`DEMO_MFA_ENROLLMENT_USERS`). */
+  requireEnrollment?: ReadonlySet<string>;
+  /** Secreto de cada usuario inscrito; por omisión, aleatorio. Las pruebas E2E fijan uno. */
+  secretFor?: (username: string) => Uint8Array;
 }
 
 /** Buzón general del nodo de demostración. */
@@ -207,7 +253,8 @@ export function randomDemoPassword(): string {
 /**
  * Arma el archivo de cuentas de la demostración y sus credenciales en claro. `passwordFor` fija la
  * contraseña de cada usuario (las pruebas E2E usan una conocida); por omisión es aleatoria. Cada
- * cuenta recibe un seudónimo aleatorio nuevo.
+ * cuenta recibe un seudónimo aleatorio nuevo. Devuelve también las cuentas cuyo segundo factor hay
+ * que inscribir (`provisionMfaInDataDir`) antes de arrancar el nodo.
  * Seguridad: el archivo de cuentas solo guarda digestos; las credenciales en claro son para la
  * demostración y nunca se versionan.
  */
@@ -216,28 +263,65 @@ export function buildDemoAccounts(
     passwordFor?: (username: string) => string;
     logN?: number;
     node?: DemoAccountsNode;
+    mfa?: DemoMfaOptions;
   } = {},
-): { file: AuthorityAccountsFile; credentials: DemoCredential[] } {
+): { file: AuthorityAccountsFile; credentials: DemoCredential[]; mfa: DemoMfaProvision[] } {
   const passwordFor = options.passwordFor ?? (() => randomDemoPassword());
   const logN = options.logN ?? DEFAULT_SCRYPT_LOG_N;
   const node = NODE_ACCOUNTS[options.node ?? 'federal'];
-  const credentials = node.users.map((user) => ({
-    ...user,
-    password: passwordFor(user.username),
-  }));
+  const enrolled = options.mfa?.enrolled ?? DEMO_MFA_USERS;
+  const requireEnrollment = options.mfa?.requireEnrollment ?? DEMO_MFA_ENROLLMENT_USERS;
+  const secretFor = options.mfa?.secretFor ?? (() => generateTotpSecret());
+  const mfa: DemoMfaProvision[] = [];
+  const credentials: DemoCredential[] = [];
+  const accounts = node.users.map((user) => {
+    const accountId = `acct-${toHex(randomBytes(8))}`;
+    const password = passwordFor(user.username);
+    const isRequired = requireEnrollment.has(user.username);
+    const credential: DemoCredential = {
+      ...user,
+      password,
+      ...(isRequired ? { requireMfa: true } : {}),
+    };
+    if (enrolled.has(user.username)) {
+      const secret = secretFor(user.username);
+      mfa.push({ accountId, username: user.username, secret });
+      credential.mfaSecret = toBase32(secret);
+    }
+    credentials.push(credential);
+    return {
+      accountId,
+      username: user.username,
+      authorityId: user.authorityId,
+      functions: [...user.functions],
+      passwordHash: hashPassword(password, logN),
+      ...(isRequired ? { requireMfa: true } : {}),
+    };
+  });
   return {
     file: {
       version: 1,
       inboxAuthorityId: node.inboxAuthorityId,
       authorities: node.authorities,
-      accounts: credentials.map((credential) => ({
-        accountId: `acct-${toHex(randomBytes(8))}`,
-        username: credential.username,
-        authorityId: credential.authorityId,
-        functions: [...credential.functions],
-        passwordHash: hashPassword(credential.password, logN),
-      })),
+      accounts,
     },
     credentials,
+    mfa,
   };
+}
+
+/**
+ * Agrega a cada credencial con segundo factor sus códigos de recuperación recién inscritos
+ * (`provisionMfaInDataDir` los devuelve por cuenta).
+ */
+export function withRecoveryCodes(
+  credentials: readonly DemoCredential[],
+  provisions: readonly DemoMfaProvision[],
+  codes: ReadonlyMap<string, string[]>,
+): DemoCredential[] {
+  return credentials.map((credential) => {
+    const provision = provisions.find((item) => item.username === credential.username);
+    const recoveryCodes = provision === undefined ? undefined : codes.get(provision.accountId);
+    return recoveryCodes === undefined ? credential : { ...credential, recoveryCodes };
+  });
 }

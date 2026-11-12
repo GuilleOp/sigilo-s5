@@ -151,9 +151,24 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /RuleTriggerView,dueOn,Sí,Fecha en formato ISO 8601,Date,No,Vencimiento que dio lugar a la regla.,RuleTriggerView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-12-05
 /LoginRequest,username,Sí,Alfanumérico,String,No,"Nombre de usuario de la cuenta (minúsculas, dígitos, punto y guiones).",LoginRequest,patrón ^[a-z0-9._-]+$; de 3 a 64 caracteres,,oic-equipamiento.persona1
 /LoginRequest,password,Sí,Alfanumérico,String,No,"Contraseña de la cuenta, de 12 a 256 caracteres.",LoginRequest,de 12 a 256 caracteres,,contraseña-sintética-de-ejemplo
-/AuthoritySession,token,Sí,Alfanumérico,String,No,"Token de sesión opaco para Authorization: Bearer. Vence por inactividad y por duración, y se invalida al cerrar sesión.",AuthoritySession,patrón ^[A-Za-z0-9_-]+$,,Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq
-/AuthoritySession,idleTimeoutSeconds,Sí,Numérico,Number,No,Segundos de inactividad tras los que vence la sesión.,AuthoritySession,,,900
-/AuthoritySession,absoluteTimeoutSeconds,Sí,Numérico,Number,No,Segundos tras los que vence la sesión aunque haya actividad.,AuthoritySession,,,28800
+/LoginResponse,(valor),Sí,Objeto,Object,No,"Resultado del primer paso (usuario y contraseña). code se responde igual si la contraseña no coincide, para no revelarla antes del segundo factor.",LoginResponse,,,
+/LoginCodeRequest,challenge,Sí,Alfanumérico,String,No,Reto de POST authLogin.,LoginCodeRequest,patrón ^[A-Za-z0-9_-]+$; hasta 64 caracteres,,r4Vt8bQ1mZ0xK7pL2sN9wE5yH3cJ6dF0gA1uOiTkMnB
+/LoginCodeRequest,code,Sí,Alfanumérico,String,No,"Código de 6 dígitos de la app de autenticación (TOTP, RFC 6238) o código de recuperación de un solo uso (XXXXX-XXXXX).",LoginCodeRequest,patrón ^[A-Za-z0-9 -]+$; de 6 a 16 caracteres,,492039
+/LoginSession,token,Sí,Alfanumérico,String,No,"Token de sesión opaco para Authorization: Bearer. Vence por inactividad y por duración, y se invalida al cerrar sesión.",LoginSession,patrón ^[A-Za-z0-9_-]+$,,Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq
+/LoginSession,idleTimeoutSeconds,Sí,Numérico,Number,No,Segundos de inactividad tras los que vence la sesión.,LoginSession,,,900
+/LoginSession,absoluteTimeoutSeconds,Sí,Numérico,Number,No,Segundos tras los que vence la sesión aunque haya actividad.,LoginSession,,,28800
+/LoginSession,account,Sí,Objeto,Object (AuthorityAccountView),No,"Cuenta de la sesión: seudónimo, autoridad y funciones.",LoginSession,,,
+/LoginSession,step,Sí,Alfanumérico,String (enum),No,La sesión quedó abierta.,LoginSession,valor fijo session,,session
+/MfaEnrollment,secret,Sí,Alfanumérico,String,No,Secreto en Base32 (RFC 4648) para escribirlo a mano en la app. Se muestra una sola vez y no queda inscrito hasta confirmar un código.,MfaEnrollment,"patrón ^[A-Z2-7]{16,64}$",,JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+/MfaEnrollment,otpauthUri,Sí,Alfanumérico,String,No,"URI otpauth:// para el código QR (SHA-1, 6 dígitos, 30 s).",MfaEnrollment,patrón ^otpauth:\/\/totp\/.*; hasta 512 caracteres,,otpauth://totp/SIGILO%20node.federal:oic-equipa…
+/MfaEnrollment,digits,Sí,Numérico,Number,No,Dígitos del código.,MfaEnrollment,valor fijo 6,,6
+/MfaEnrollment,periodSeconds,Sí,Numérico,Number,No,Segundos de cada código.,MfaEnrollment,valor fijo 30,,30
+/MfaConfirmRequest,code,Sí,Alfanumérico,String,No,Código de 6 dígitos que muestra la app con el secreto nuevo.,MfaConfirmRequest,patrón ^\d{6}$,,781104
+/MfaConfirmResponse,recoveryCodes,Sí,Arreglo,Array of String,No,Diez códigos de recuperación de un solo uso. Se muestran solo esta vez; el nodo guarda sus digestos scrypt.,MfaConfirmResponse,hasta 10 elementos; cada elemento: patrón ^[A-Z2-7]{5}-[A-Z2-7]{5}$,,
+/MfaConfirmResponse,session,Sí,Objeto,Object (LoginSession),No,"Sesión abierta: la cuenta no tiene segundo factor y el nodo no lo exige (SIGILO_MFA=opcional), o ya se comprobó el código.",MfaConfirmResponse,,,
+/AuthoritySession,token,Sí,Alfanumérico,String,No,"Token de sesión opaco para Authorization: Bearer. Vence por inactividad y por duración, y se invalida al cerrar sesión.",AuthoritySession,patrón ^[A-Za-z0-9_-]+$,,
+/AuthoritySession,idleTimeoutSeconds,Sí,Numérico,Number,No,Segundos de inactividad tras los que vence la sesión.,AuthoritySession,,,
+/AuthoritySession,absoluteTimeoutSeconds,Sí,Numérico,Number,No,Segundos tras los que vence la sesión aunque haya actividad.,AuthoritySession,,,
 /AuthoritySession,account,Sí,Objeto,Object (AuthorityAccountView),No,"Cuenta de la sesión: seudónimo, autoridad y funciones.",AuthoritySession,,,
 /AuthoritySessionInfo,account,Sí,Objeto,Object (AuthorityAccountView),No,"Cuenta de la sesión: seudónimo, autoridad y funciones.",AuthoritySessionInfo,,,
 /AuthoritySessionInfo,authority,Sí,Objeto,Object (AuthorityProfile),No,Autoridad alojada en el nodo.,AuthoritySessionInfo,,,

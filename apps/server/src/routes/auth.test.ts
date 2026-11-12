@@ -1,7 +1,13 @@
 // Pruebas del acceso de la autoridad con cuentas individuales: inicio de sesión, respuesta uniforme,
 // límite de intentos por usuario, registro de fallos sin IP, cierre y vencimiento de la sesión.
 import { describe, expect, it } from 'vitest';
-import { AuthoritySessionInfoSchema, AuthoritySessionSchema, ROUTES } from '@sigilo/contracts';
+import {
+  AuthoritySessionInfoSchema,
+  AuthoritySessionSchema,
+  LoginCodeStepSchema,
+  LoginResponseSchema,
+  ROUTES,
+} from '@sigilo/contracts';
 import { createSessionStore } from '../security/sessions.ts';
 import {
   createTestServer,
@@ -46,9 +52,24 @@ describe('inicio de sesión', () => {
     const server = createTestServer();
     const wrong = await login(server, TEST_ACCOUNTS.inboxIntake.username, 'contraseña-equivocada');
     const unknown = await login(server, 'no.existe', 'contraseña-equivocada');
-    expect(wrong.status).toBe(401);
-    expect(unknown.status).toBe(401);
-    expect(await wrong.text()).toBe(await unknown.text());
+    // Reto señuelo del segundo paso: la misma forma que el de una contraseña correcta.
+    expect(wrong.status).toBe(200);
+    expect(unknown.status).toBe(200);
+    const wrongStep = LoginCodeStepSchema.parse(await wrong.json());
+    const unknownStep = LoginCodeStepSchema.parse(await unknown.json());
+    expect(Object.keys(wrongStep).sort()).toEqual(Object.keys(unknownStep).sort());
+    expect(wrongStep.challenge).toHaveLength(unknownStep.challenge.length);
+    // El fallo se nota hasta el segundo paso, con el mismo 401 para los dos.
+    const wrongCode = await postJson(server.app, ROUTES.authLoginCode, {
+      challenge: wrongStep.challenge,
+      code: '123456',
+    });
+    const unknownCode = await postJson(server.app, ROUTES.authLoginCode, {
+      challenge: unknownStep.challenge,
+      code: '123456',
+    });
+    expect(wrongCode.status).toBe(401);
+    expect(await wrongCode.text()).toBe(await unknownCode.text());
     const events = server.ctx.securityLog.listAll();
     expect(events.map((event) => [event.kind, event.accountId])).toEqual(
       expect.arrayContaining([
@@ -68,7 +89,8 @@ describe('inicio de sesión', () => {
     const server = createTestServer();
     const { username } = TEST_ACCOUNTS.inboxIntake;
     for (let attempt = 0; attempt < 10; attempt += 1) {
-      expect((await login(server, username, 'contraseña-equivocada')).status).toBe(401);
+      const failed = await login(server, username, 'contraseña-equivocada');
+      expect(LoginResponseSchema.parse(await failed.json()).step).toBe('code');
     }
     // Ya limitado, otro fallo responde 429 (con el mismo costo) y no se cuenta como acierto.
     const limited = await login(server, username, 'contraseña-equivocada');

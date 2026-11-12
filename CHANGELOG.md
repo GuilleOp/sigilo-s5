@@ -256,6 +256,35 @@ endurecimiento de seguridad y el Estándar S5 0.3.0 al estilo de las especificac
   la demostración); `sigilo diagnostico` la marca si aparece.
 - Un nodo con `NODE_ENV=production` y `SIGILO_E2E=1` no arranca; con `SIGILO_DEMO=1` avisa en cada
   arranque.
+- **Segundo factor del panel (TOTP, RFC 6238).** Antes era trabajo futuro (H05).
+  - Cómo funciona: HMAC-SHA-1, 6 dígitos, pasos de 30 s y ±1 paso, con `node:crypto`. El inicio
+    de sesión va en dos pasos (`POST /api/v1/auth/login` y `POST /api/v1/auth/login/code`). Un
+    usuario inexistente o una contraseña equivocada reciben un reto señuelo, así que el primer paso
+    no revela si la contraseña era correcta. Cada código sirve una sola vez: el nodo recuerda el
+    último paso aceptado. Los códigos equivocados suman en el mismo tope por usuario que la
+    contraseña.
+  - `SIGILO_MFA`: `requerido` (por omisión con `NODE_ENV=production` o en el perfil `nodo`, y en
+    el `config/nodo.env` que escribe `./sigilo instalar`) u `opcional` (desarrollo, E2E y la
+    demostración). Con `requerido`, toda función (también la supervisión y la operación del nodo)
+    necesita el código, y una cuenta sin segundo factor lo inscribe en su primer acceso antes de
+    ver nada. `requireMfa` en el archivo de cuentas lo exige a una cuenta aunque el nodo use
+    `opcional`.
+  - Inscripción accesible en el panel: QR dibujado en el navegador (`qrcode-generator` 2.0.4,
+    fijada), clave para escribir a mano, `autocomplete="one-time-code"` e `inputmode="numeric"`,
+    anuncios y foco. Al terminar se muestran 10 códigos de recuperación una sola vez, para
+    descargar o imprimir; se guardan con scrypt y cada uno sirve una vez.
+  - Secretos cifrados en reposo con AES-256-GCM bajo `datos/mfa-key` (`0600`, se crea al primer
+    arranque y viaja en el respaldo cifrado). Migración 17 (`authority_mfa`).
+  - `./sigilo cuenta reiniciar-mfa <usuario> --confirmo` borra el segundo factor de una cuenta y
+    deja `mfa_reset` en el registro de seguridad, sin secretos. `./sigilo diagnostico` marca
+    `SIGILO_MFA=opcional`.
+  - Demostración: `supervision-oic`, `operacion.<nodo>` y `fiscalia` ya lo tienen inscrito, con su
+    secreto sintético en `credenciales.json`; `npm run demo:codigo -- <usuario>` da el código
+    vigente. `oic-programas` lo inscribe al entrar. Las demás cuentas entran sin él.
+  - Estándar 0.3.0: operaciones `loginCode`, `enrollMfa` y `confirmMfa`; `login` responde
+    `LoginResponse` (**incompatible**).
+  - Siguiente paso: WebAuthn (llaves de seguridad o passkeys), resistente a phishing, también para
+    aprobar aperturas.
 
 ## [1.0.1] - 2026-11-05
 

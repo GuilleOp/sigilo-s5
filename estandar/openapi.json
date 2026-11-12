@@ -1281,8 +1281,8 @@
       "post": {
         "operationId": "login",
         "tags": ["Sesión de la autoridad"],
-        "summary": "Iniciar sesión",
-        "description": "Cada persona de la autoridad inicia sesión con su cuenta propia; no hay cuentas ni tokens compartidos. Un usuario inexistente y una contraseña equivocada responden el mismo `401`. Tras 10 fallos de un usuario en 15 minutos, ese usuario responde `429` hasta que vence la ventana. Cada intento queda en el registro de seguridad sin IP.",
+        "summary": "Iniciar sesión (primer paso)",
+        "description": "Cada persona de la autoridad inicia sesión con su cuenta propia; no hay cuentas ni tokens compartidos. Responde `step: \"session\"` (sesión abierta: la cuenta no tiene segundo factor y el nodo no lo exige), `step: \"code\"` (falta el código del segundo factor: `POST /api/v1/auth/login/code`) o `step: \"enroll\"` (sesión limitada para inscribir el segundo factor que exige el nodo, `SIGILO_MFA=requerido`). Un usuario inexistente y una contraseña equivocada responden `step: \"code\"` con un reto señuelo de la misma forma, así que la respuesta no revela si la contraseña era correcta antes del segundo factor. Tras 10 fallos de un usuario en 15 minutos (contraseñas y códigos suman en el mismo tope), ese usuario responde `429` hasta que vence la ventana, aunque la contraseña sea correcta. Cada intento queda en el registro de seguridad sin IP.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -1305,7 +1305,7 @@
         },
         "responses": {
           "200": {
-            "description": "Sesión abierta: token, vencimientos y cuenta.",
+            "description": "Sesión abierta, reto del segundo factor o sesión limitada para inscribirlo.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -1314,12 +1314,162 @@
             },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthoritySession" },
+                "schema": { "$ref": "#/components/schemas/LoginResponse" },
                 "examples": {
                   "sintetico": {
                     "summary": "Ejemplo sintético",
                     "description": "También en `ejemplos/login.response.json`.",
                     "value": {
+                      "step": "code",
+                      "challenge": "r4Vt8bQ1mZ0xK7pL2sN9wE5yH3cJ6dF0gA1uOiTkMnB",
+                      "expiresInSeconds": 300
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Demasiados intentos fallidos o mensajes en poco tiempo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Demasiados intentos. Intenta más tarde."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login/code": {
+      "post": {
+        "operationId": "loginCode",
+        "tags": ["Sesión de la autoridad"],
+        "summary": "Iniciar sesión (segundo factor)",
+        "description": "Segundo paso: el reto de `POST /api/v1/auth/login` y el código de 6 dígitos de la app de autenticación (TOTP, RFC 6238: HMAC-SHA-1, pasos de 30 s y ±1 paso de tolerancia) o un código de recuperación. Cada código TOTP sirve una sola vez (el nodo recuerda el último paso aceptado de la cuenta) y cada código de recuperación también. Un reto inexistente, vencido (5 minutos) o señuelo y un código equivocado o ya usado responden el mismo `401`; cada fallo suma en el tope por usuario de la contraseña y un reto admite 5 intentos.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginCodeRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/login-code.request.json`.",
+                  "value": {
+                    "challenge": "r4Vt8bQ1mZ0xK7pL2sN9wE5yH3cJ6dF0gA1uOiTkMnB",
+                    "code": "492039"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sesión abierta con segundo factor.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LoginSession" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/login-code.response.json`.",
+                    "value": {
+                      "step": "session",
                       "token": "Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq",
                       "idleTimeoutSeconds": 900,
                       "absoluteTimeoutSeconds": 28800,
@@ -1367,6 +1517,304 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
                 "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Demasiados intentos fallidos o mensajes en poco tiempo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Demasiados intentos. Intenta más tarde."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mfa/enroll": {
+      "post": {
+        "operationId": "enrollMfa",
+        "tags": ["Sesión de la autoridad"],
+        "summary": "Inscribir el segundo factor",
+        "description": "Con la sesión de solo contraseña de una cuenta sin segundo factor (la de `step: \"enroll\"`, o una sesión normal si el nodo lo deja opcional), entrega un secreto TOTP nuevo y su URI `otpauth://` para la app de autenticación. El secreto queda por confirmar 10 minutos y no se guarda hasta confirmarlo. Responde `409` si la cuenta ya tiene segundo factor.",
+        "security": [{ "authorityBearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Secreto por confirmar.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MfaEnrollment" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/enroll-mfa.response.json`.",
+                    "value": {
+                      "secret": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+                      "otpauthUri": "otpauth://totp/SIGILO%20node.federal:oic-equipamiento.persona1?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=SIGILO%20node.federal&algorithm=SHA1&digits=6&period=30",
+                      "digits": 6,
+                      "periodSeconds": 30
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "409": {
+            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "La acción no corresponde al estado actual del trámite."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mfa/confirm": {
+      "post": {
+        "operationId": "confirmMfa",
+        "tags": ["Sesión de la autoridad"],
+        "summary": "Confirmar el segundo factor",
+        "description": "Confirma la inscripción con el primer código de la app. El nodo guarda el secreto cifrado con su llave (`mfa-key`, AES-256-GCM), entrega una sola vez 10 códigos de recuperación (guarda solo sus digestos scrypt) y cambia la sesión de solo contraseña por una completa con token nuevo. Responde `400` si el código no coincide (suma en el tope por usuario), `409` si no hay secreto por confirmar o la cuenta ya lo tiene y `429` si el usuario agotó sus intentos.",
+        "security": [{ "authorityBearer": [] }],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MfaConfirmRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/confirm-mfa.request.json`.",
+                  "value": { "code": "781104" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Segundo factor inscrito: códigos de recuperación y sesión completa.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MfaConfirmResponse" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/confirm-mfa.response.json`.",
+                    "value": {
+                      "recoveryCodes": [
+                        "KQ7ZM-3TR5A",
+                        "B2XWE-7HJLN",
+                        "PD4QF-YV6GU",
+                        "MZ3RA-KC5TS",
+                        "WN7EB-2QXJH",
+                        "T5LGV-RD3MY",
+                        "HC6PU-ZW4KQ",
+                        "FJ2NX-S7BEA",
+                        "UY5DK-MP3RV",
+                        "EG4TW-QL6ZC"
+                      ],
+                      "session": {
+                        "step": "session",
+                        "token": "Qw8eR2tY6uI0oP4aS1dF5gH9jK3lZ7xC2vB6nM0q1Wz",
+                        "idleTimeoutSeconds": 900,
+                        "absoluteTimeoutSeconds": 28800,
+                        "account": {
+                          "accountId": "acct-5f0c2a9d1e7b3c44",
+                          "authorityId": "authority.oic-iffe",
+                          "functions": ["intake", "investigation"]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "409": {
+            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "La acción no corresponde al estado actual del trámite."
+                  }
+                }
               }
             }
           },
@@ -10006,6 +10454,182 @@
         "required": ["username", "password"],
         "additionalProperties": false,
         "description": "Inicio de sesión de una persona de la autoridad con su cuenta propia."
+      },
+      "LoginResponse": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/LoginSession" },
+          {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "string",
+                "const": "code",
+                "description": "Falta el código del segundo factor."
+              },
+              "challenge": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "Reto opaco de un solo uso para `POST authLoginCode`. Se entrega también cuando el usuario o la contraseña no coinciden (sin decir cuál), así que recibirlo no confirma la contraseña."
+              },
+              "expiresInSeconds": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Segundos de vigencia del reto."
+              }
+            },
+            "required": ["step", "challenge", "expiresInSeconds"],
+            "additionalProperties": false,
+            "description": "Falta el segundo factor: código de la app o código de recuperación."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "Token de sesión opaco para `Authorization: Bearer`. Vence por inactividad y por duración, y se invalida al cerrar sesión."
+              },
+              "idleTimeoutSeconds": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Segundos de inactividad tras los que vence la sesión."
+              },
+              "absoluteTimeoutSeconds": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Segundos tras los que vence la sesión aunque haya actividad."
+              },
+              "account": { "$ref": "#/components/schemas/AuthorityAccountView" },
+              "step": {
+                "type": "string",
+                "const": "enroll",
+                "description": "La cuenta debe inscribir el segundo factor."
+              }
+            },
+            "required": [
+              "token",
+              "idleTimeoutSeconds",
+              "absoluteTimeoutSeconds",
+              "account",
+              "step"
+            ],
+            "additionalProperties": false,
+            "description": "Sesión limitada de una cuenta que aún no tiene segundo factor y debe inscribirlo (`SIGILO_MFA=requerido`): solo sirve para inscribirlo y cerrar sesión; el panel responde `401` hasta terminar."
+          }
+        ],
+        "description": "Resultado del primer paso (usuario y contraseña). `code` se responde igual si la contraseña no coincide, para no revelarla antes del segundo factor."
+      },
+      "LoginCodeRequest": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Reto de `POST authLogin`."
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 16,
+            "pattern": "^[A-Za-z0-9 -]+$",
+            "description": "Código de 6 dígitos de la app de autenticación (TOTP, RFC 6238) o código de recuperación de un solo uso (`XXXXX-XXXXX`).",
+            "examples": ["492039", "KQ7ZM-3TR5A"]
+          }
+        },
+        "required": ["challenge", "code"],
+        "additionalProperties": false,
+        "description": "Código del segundo factor para terminar de iniciar sesión."
+      },
+      "LoginSession": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Token de sesión opaco para `Authorization: Bearer`. Vence por inactividad y por duración, y se invalida al cerrar sesión."
+          },
+          "idleTimeoutSeconds": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Segundos de inactividad tras los que vence la sesión."
+          },
+          "absoluteTimeoutSeconds": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Segundos tras los que vence la sesión aunque haya actividad."
+          },
+          "account": { "$ref": "#/components/schemas/AuthorityAccountView" },
+          "step": {
+            "type": "string",
+            "const": "session",
+            "description": "La sesión quedó abierta."
+          }
+        },
+        "required": ["token", "idleTimeoutSeconds", "absoluteTimeoutSeconds", "account", "step"],
+        "additionalProperties": false,
+        "description": "Sesión abierta: la cuenta no tiene segundo factor y el nodo no lo exige (`SIGILO_MFA=opcional`), o ya se comprobó el código."
+      },
+      "MfaEnrollment": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string",
+            "pattern": "^[A-Z2-7]{16,64}$",
+            "description": "Secreto en Base32 (RFC 4648) para escribirlo a mano en la app. Se muestra una sola vez y no queda inscrito hasta confirmar un código."
+          },
+          "otpauthUri": {
+            "type": "string",
+            "maxLength": 512,
+            "format": "starts_with",
+            "pattern": "^otpauth:\\/\\/totp\\/.*",
+            "description": "URI `otpauth://` para el código QR (SHA-1, 6 dígitos, 30 s)."
+          },
+          "digits": { "type": "number", "const": 6, "description": "Dígitos del código." },
+          "periodSeconds": {
+            "type": "number",
+            "const": 30,
+            "description": "Segundos de cada código."
+          }
+        },
+        "required": ["secret", "otpauthUri", "digits", "periodSeconds"],
+        "additionalProperties": false,
+        "description": "Secreto del segundo factor por confirmar."
+      },
+      "MfaConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "Código de 6 dígitos que muestra la app con el secreto nuevo."
+          }
+        },
+        "required": ["code"],
+        "additionalProperties": false,
+        "description": "Primer código de la app, para confirmar la inscripción."
+      },
+      "MfaConfirmResponse": {
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "minItems": 10,
+            "maxItems": 10,
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Z2-7]{5}-[A-Z2-7]{5}$" },
+            "description": "Diez códigos de recuperación de un solo uso. Se muestran solo esta vez; el nodo guarda sus digestos scrypt."
+          },
+          "session": { "$ref": "#/components/schemas/LoginSession" }
+        },
+        "required": ["recoveryCodes", "session"],
+        "additionalProperties": false,
+        "description": "Segundo factor inscrito y sesión completa (con token nuevo)."
       },
       "AuthoritySession": {
         "type": "object",

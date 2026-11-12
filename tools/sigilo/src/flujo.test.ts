@@ -37,6 +37,8 @@ import type { FetchLike } from '@sigilo/red';
 import { createApp } from '../../../apps/server/src/app.ts';
 import { loadConfig, loadServerKeys } from '../../../apps/server/src/config.ts';
 import { openDatabase } from '../../../apps/server/src/db/database.ts';
+import { createMfaRepository } from '../../../apps/server/src/db/mfa-repository.ts';
+import { createSecurityLogRepository } from '../../../apps/server/src/db/security-log-repository.ts';
 import { loadWebConfig } from '../../../apps/server/src/http/web-assets.ts';
 import { loadNodeNetwork } from '../../../apps/server/src/network/network-context.ts';
 import {
@@ -44,7 +46,9 @@ import {
   loadOAuthClients,
 } from '../../../apps/server/src/network/oauth-server.ts';
 import { loadAuthorityRegistry } from '../../../apps/server/src/security/authority-registry.ts';
+import { generateTotpSecret } from '../../../apps/server/src/security/totp.ts';
 import { loadNodeCalendar } from '../../../apps/server/src/services/calendar.ts';
+import { provisionMfaInDataDir } from '../../../apps/server/src/services/mfa-provisioning.ts';
 import { createMemoryEvidenceStore } from '../../../apps/server/src/storage/evidence-store.ts';
 import { loadRelaySecrets, loadRouterFiles } from '../../../apps/enrutador/src/config.ts';
 import { openRouterDatabase } from '../../../apps/enrutador/src/database.ts';
@@ -478,11 +482,40 @@ describe('instalación de punta a punta (sin Docker)', () => {
       'intake,investigation',
     ]);
     expect(account.code, account.text).toBe(0);
-    expect(
-      loadAuthorityRegistry(join(dirs.nodo, 'datos', 'authority-accounts.json')).findByUsername(
-        'persona.ficticia',
-      ),
-    ).not.toBeNull();
+    expect(account.text).toContain('verificación en dos pasos');
+    const created = loadAuthorityRegistry(
+      join(dirs.nodo, 'datos', 'authority-accounts.json'),
+    ).findByUsername('persona.ficticia');
+    expect(created).not.toBeNull();
+
+    // Reinicio del segundo factor: pide confirmación, borra la inscripción y lo registra.
+    const accountId = created?.accountId ?? '';
+    provisionMfaInDataDir(join(dirs.nodo, 'datos'), [{ accountId, secret: generateTotpSecret() }], {
+      recoveryLogN: 10,
+    });
+    const unconfirmed = await run(dirs.nodo, ['cuenta', 'reiniciar-mfa', 'persona.ficticia']);
+    expect(unconfirmed.code).not.toBe(0);
+    expect(unconfirmed.text).toContain('--confirmo');
+    const unknown = await run(dirs.nodo, ['cuenta', 'reiniciar-mfa', 'nadie.aqui', '--confirmo']);
+    expect(unknown.code).not.toBe(0);
+    const reset = await run(dirs.nodo, [
+      'cuenta',
+      'reiniciar-mfa',
+      'persona.ficticia',
+      '--confirmo',
+    ]);
+    expect(reset.code, reset.text).toBe(0);
+    expect(reset.text).toContain('reiniciado');
+    const db = openDatabase(join(dirs.nodo, 'datos', 'sigilo.db'));
+    try {
+      expect(createMfaRepository(db).isEnrolled(accountId)).toBe(false);
+      const kinds = createSecurityLogRepository(db)
+        .listByAccount(accountId)
+        .map((event) => event.kind);
+      expect(kinds.sort()).toEqual(['mfa_enrolled', 'mfa_reset']);
+    } finally {
+      db.close();
+    }
 
     const csvPath = join(dirs.nodo, 'config', 'tabla-de-funciones.csv');
     writeFileSync(

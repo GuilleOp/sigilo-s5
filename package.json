@@ -54,6 +54,7 @@
     "demo:seed": "node scripts/demo-seed.ts",
     "demo:todo": "node scripts/demo-todo.ts",
     "demo:apagar": "node scripts/demo-apagar.ts",
+    "demo:codigo": "node scripts/demo-codigo.ts",
     "auditor:eval": "node packages/auditor/src/eval/cli.ts",
     "dev:evaluador": "npm run dev:evaluador -w @sigilo/corroboracion-servicio",
     "dev:indice": "npm run dev:indice -w @sigilo/corroboracion-servicio"

@@ -16,7 +16,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
   AuthorityDemoKeySchema,
-  AuthoritySessionSchema,
+  LoginResponseSchema,
+  LoginSessionStepSchema,
   EvidenceDescriptorSchema,
   CORROBORATION_ROUTES,
   CorroborationEvaluationResponseSchema,
@@ -66,6 +67,7 @@ import {
   buildBareJpeg,
   buildSyntheticExifJpeg,
 } from '../packages/huella/test-fixtures/synthetic-exif-jpeg.ts';
+import { fromBase32, hotp, totpStep } from '../apps/server/src/security/totp.ts';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(process.env.SIGILO_RED_DEMO_DIR || join(ROOT, '.red-demo'));
@@ -146,10 +148,32 @@ function authorityKey(directory: AuthorityDirectory, id: string) {
   return { keyId: authority.keyId, publicKey: fromBase64Url(authority.boxPublicKey) };
 }
 
-/** Inicia sesión con la cuenta sintética `username` del nodo. */
+/** Último paso TOTP usado por cada cuenta en esta corrida (cada código sirve una sola vez). */
+const usedSteps = new Map<string, number>();
+
+/**
+ * Código TOTP de la cuenta con el reloj simulado de los nodos: el del paso vigente o, si ya se usó,
+ * el siguiente (el nodo acepta ±1 paso); espera si hace falta uno más adelante.
+ */
+async function totpFor(key: string, secret: string): Promise<string> {
+  const offset = (): number => Number(readFileSync(CLOCK_FILE, 'utf8').trim() || '0');
+  let current = totpStep(Date.now() + offset());
+  const step = Math.max(current, (usedSteps.get(key) ?? -1) + 1);
+  while (step > current + 1) {
+    await wait(1000);
+    current = totpStep(Date.now() + offset());
+  }
+  usedSteps.set(key, step);
+  return hotp(fromBase32(secret), step);
+}
+
+/**
+ * Inicia sesión con la cuenta sintética `username` del nodo; si tiene segundo factor, con el código
+ * TOTP de su secreto sintético (`credenciales.json`).
+ */
 async function login(node: NodeName, username: string): Promise<string> {
   const file = readJson(join(OUT, 'nodos', node, 'credenciales.json')) as {
-    credenciales: { username: string; password: string }[];
+    credenciales: { username: string; password: string; mfaSecret?: string }[];
   };
   const credential = file.credenciales.find((item) => item.username === username);
   if (credential === undefined) throw new Error(`No hay credencial para ${username}.`);
@@ -160,7 +184,19 @@ async function login(node: NodeName, username: string): Promise<string> {
     }),
     `Inicio de sesión de ${username}`,
   );
-  return AuthoritySessionSchema.parse(raw).token;
+  const first = LoginResponseSchema.parse(raw);
+  if (first.step === 'session') return first.token;
+  if (first.step === 'enroll' || credential.mfaSecret === undefined) {
+    throw new Error(`${username} no puede entrar sin inscribir el segundo factor.`);
+  }
+  const second = await json(
+    await postJson(`${NODES[node]}${ROUTES.authLoginCode}`, {
+      challenge: first.challenge,
+      code: await totpFor(`${node}/${username}`, credential.mfaSecret),
+    }),
+    `Segundo factor de ${username}`,
+  );
+  return LoginSessionStepSchema.parse(second).token;
 }
 
 /**

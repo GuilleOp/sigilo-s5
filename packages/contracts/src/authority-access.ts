@@ -198,6 +198,133 @@ export const AuthoritySessionSchema = z
   .meta({ description: 'Sesión iniciada: token, vencimientos y cuenta.' });
 export type AuthoritySession = z.infer<typeof AuthoritySessionSchema>;
 
+/** Dígitos del código del segundo factor (TOTP, RFC 6238). */
+export const MFA_CODE_DIGITS = 6;
+
+/** Duración de cada código del segundo factor, en segundos. */
+export const MFA_PERIOD_SECONDS = 30;
+
+/** Vigencia del reto del segundo paso del inicio de sesión, en segundos. */
+export const LOGIN_CHALLENGE_TIMEOUT_SECONDS = 5 * 60;
+
+/** Códigos de recuperación que recibe cada cuenta al inscribir el segundo factor. */
+export const MFA_RECOVERY_CODE_COUNT = 10;
+
+/** Primer paso cumplido sin segundo factor: la sesión ya está abierta. */
+export const LoginSessionStepSchema = AuthoritySessionSchema.extend({
+  step: z.literal('session').meta({ description: 'La sesión quedó abierta.' }),
+}).meta({
+  description:
+    'Sesión abierta: la cuenta no tiene segundo factor y el nodo no lo exige (`SIGILO_MFA=opcional`), o ya se comprobó el código.',
+});
+export type LoginSessionStep = z.infer<typeof LoginSessionStepSchema>;
+
+/** Primer paso cumplido: falta el código del segundo factor. */
+export const LoginCodeStepSchema = z
+  .object({
+    step: z.literal('code').meta({ description: 'Falta el código del segundo factor.' }),
+    challenge: Base64UrlSchema.max(64).meta({
+      description:
+        'Reto opaco de un solo uso para `POST authLoginCode`. Se entrega también cuando el usuario o la contraseña no coinciden (sin decir cuál), así que recibirlo no confirma la contraseña.',
+    }),
+    expiresInSeconds: z
+      .number()
+      .int()
+      .positive()
+      .meta({ description: 'Segundos de vigencia del reto.' }),
+  })
+  .meta({ description: 'Falta el segundo factor: código de la app o código de recuperación.' });
+export type LoginCodeStep = z.infer<typeof LoginCodeStepSchema>;
+
+/**
+ * Primer paso cumplido por una cuenta que debe inscribir el segundo factor: la sesión solo sirve
+ * para `POST authMfaEnroll` y `POST authMfaConfirm`.
+ */
+export const LoginEnrollStepSchema = AuthoritySessionSchema.extend({
+  step: z.literal('enroll').meta({ description: 'La cuenta debe inscribir el segundo factor.' }),
+}).meta({
+  description:
+    'Sesión limitada de una cuenta que aún no tiene segundo factor y debe inscribirlo (`SIGILO_MFA=requerido`): solo sirve para inscribirlo y cerrar sesión; el panel responde `401` hasta terminar.',
+});
+export type LoginEnrollStep = z.infer<typeof LoginEnrollStepSchema>;
+
+/** Respuesta de `POST authLogin`: sesión abierta, falta el código o falta inscribir el factor. */
+export const LoginResponseSchema = z
+  .discriminatedUnion('step', [LoginSessionStepSchema, LoginCodeStepSchema, LoginEnrollStepSchema])
+  .meta({
+    description:
+      'Resultado del primer paso (usuario y contraseña). `code` se responde igual si la contraseña no coincide, para no revelarla antes del segundo factor.',
+  });
+export type LoginResponse = z.infer<typeof LoginResponseSchema>;
+
+/** Código de la app (6 dígitos) o de recuperación (`XXXXX-XXXXX`). */
+export const MfaCodeSchema = z
+  .string()
+  .min(6)
+  .max(16)
+  .regex(/^[A-Za-z0-9 -]+$/u, 'Código inválido')
+  .meta({
+    description:
+      'Código de 6 dígitos de la app de autenticación (TOTP, RFC 6238) o código de recuperación de un solo uso (`XXXXX-XXXXX`).',
+    examples: ['492039', 'KQ7ZM-3TR5A'],
+  });
+
+/** Segundo paso del inicio de sesión. */
+export const LoginCodeRequestSchema = z
+  .strictObject({
+    challenge: Base64UrlSchema.max(64).meta({ description: 'Reto de `POST authLogin`.' }),
+    code: MfaCodeSchema,
+  })
+  .meta({ description: 'Código del segundo factor para terminar de iniciar sesión.' });
+export type LoginCodeRequest = z.infer<typeof LoginCodeRequestSchema>;
+
+/** Secreto TOTP nuevo para inscribirlo en la app de autenticación. */
+export const MfaEnrollmentSchema = z
+  .object({
+    secret: z
+      .string()
+      .regex(/^[A-Z2-7]{16,64}$/u)
+      .meta({
+        description:
+          'Secreto en Base32 (RFC 4648) para escribirlo a mano en la app. Se muestra una sola vez y no queda inscrito hasta confirmar un código.',
+      }),
+    otpauthUri: z
+      .string()
+      .startsWith('otpauth://totp/')
+      .max(512)
+      .meta({ description: 'URI `otpauth://` para el código QR (SHA-1, 6 dígitos, 30 s).' }),
+    digits: z.literal(MFA_CODE_DIGITS).meta({ description: 'Dígitos del código.' }),
+    periodSeconds: z.literal(MFA_PERIOD_SECONDS).meta({ description: 'Segundos de cada código.' }),
+  })
+  .meta({ description: 'Secreto del segundo factor por confirmar.' });
+export type MfaEnrollment = z.infer<typeof MfaEnrollmentSchema>;
+
+/** Confirmación de la inscripción con el primer código de la app. */
+export const MfaConfirmRequestSchema = z
+  .strictObject({
+    code: z
+      .string()
+      .regex(/^\d{6}$/u, 'Código inválido')
+      .meta({ description: 'Código de 6 dígitos que muestra la app con el secreto nuevo.' }),
+  })
+  .meta({ description: 'Primer código de la app, para confirmar la inscripción.' });
+export type MfaConfirmRequest = z.infer<typeof MfaConfirmRequestSchema>;
+
+/** Inscripción terminada: códigos de recuperación (una sola vez) y la sesión completa. */
+export const MfaConfirmResponseSchema = z
+  .object({
+    recoveryCodes: z
+      .array(z.string().regex(/^[A-Z2-7]{5}-[A-Z2-7]{5}$/u))
+      .length(MFA_RECOVERY_CODE_COUNT)
+      .meta({
+        description:
+          'Diez códigos de recuperación de un solo uso. Se muestran solo esta vez; el nodo guarda sus digestos scrypt.',
+      }),
+    session: LoginSessionStepSchema,
+  })
+  .meta({ description: 'Segundo factor inscrito y sesión completa (con token nuevo).' });
+export type MfaConfirmResponse = z.infer<typeof MfaConfirmResponseSchema>;
+
 /** Sesión vigente sin el token (`GET authSession`). */
 export const AuthoritySessionInfoSchema = z
   .object({
@@ -242,6 +369,11 @@ export const AuthorityAccountRecordSchema = z.preprocess(
     authorityId: AuthorityIdSchema,
     functions: AuthorityFunctionsSchema,
     passwordHash: PasswordHashSchema,
+    /**
+     * Exige el segundo factor a esta cuenta aunque el nodo use `SIGILO_MFA=opcional` (por ejemplo,
+     * para mostrar la inscripción en la demostración).
+     */
+    requireMfa: z.boolean().optional(),
   }),
 );
 export type AuthorityAccountRecord = z.infer<typeof AuthorityAccountRecordSchema>;

@@ -3,6 +3,7 @@
 // del directorio. La operación no ve denuncias.
 import { expect, test } from '@playwright/test';
 import { expectNoAccessibilityViolations } from './support/accessibility.ts';
+import { completeTotpStep } from './support/authority.ts';
 import { E2E_ACCOUNTS, e2ePassword } from './support/environment.ts';
 
 const INSTITUTION = 'Contraloría Ficticia de Prueba E2E';
@@ -42,6 +43,8 @@ test('una institución pide su alta y la operación del nodo la aprueba con la h
   await form.getByTestId('authority-username').fill(E2E_ACCOUNTS.operation);
   await form.getByTestId('authority-password').fill(e2ePassword(E2E_ACCOUNTS.operation));
   await form.getByTestId('authority-login-submit').click();
+  // La operación del nodo tiene segundo factor: también la cubre la política.
+  await completeTotpStep(page, E2E_ACCOUNTS.operation);
   await expect(page.getByTestId('profile-badge')).toHaveAttribute('data-kind', 'operation');
   await page.getByTestId('registration-item').filter({ hasText: INSTITUTION }).click();
   await expectNoAccessibilityViolations(page, 'detalle de la solicitud de alta');

@@ -53,6 +53,7 @@ minuto; la primera vez descarga la imagen de Node y los paquetes de npm.
 | Ventanilla única (SESNA)   | <http://127.0.0.1:8790/>                                                                          |
 | Paneles de los nodos       | <http://127.0.0.1:8781/autoridad>, `:8782/autoridad` y `:8783/autoridad`                          |
 | Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json`                                                        |
+| Código del segundo factor  | `npm run demo:codigo -- supervision-oic` (también `operacion.<nodo>` y `fiscalia`)                |
 | Llaves de las autoridades  | `.red-demo/autoridades/<id>.json`; la del buzón general, en `.red-demo/nodos/<nodo>/llaves-demo/` |
 | Folios y recibos sembrados | `.red-demo/semilla.json`                                                                          |
 
@@ -121,8 +122,13 @@ versión 0.3.0, con su propio [registro de cambios](estandar/CHANGELOG.md)):
   lleva un token OAuth y la etiqueta HMAC v2 (marca de tiempo y nonce de un solo uso).
 - **Llaves fuera del servidor.** La llave de cada autoridad vive en su equipo; la del buzón general
   queda fuera del volumen del nodo al instalar, para sacarla del servidor.
-- **Lo que no resuelve.** Los hechos quedan en claro en el nodo de destino, el panel aún no tiene
-  segundo factor y persiste la correlación por tiempo entre la ventanilla y un nodo. Riesgos y
+- **Panel con segundo factor.** Cada persona entra con su cuenta, su contraseña y un código TOTP
+  (RFC 6238) de su app de autenticación, obligatorio en producción para toda función. Cada código
+  sirve una sola vez, hay 10 códigos de recuperación y el secreto se guarda cifrado
+  ([seguridad-produccion.md](docs/seguridad-produccion.md#segundo-factor-del-panel)).
+- **Lo que no resuelve.** Los hechos quedan en claro en el nodo de destino, el segundo factor TOTP
+  no resiste un phishing en tiempo real (WebAuthn es el siguiente paso) y persiste la correlación
+  por tiempo entre la ventanilla y un nodo. Riesgos y
   residuales en el [modelo de amenazas](docs/modelo-de-amenazas.md) y en
   [seguridad-produccion.md](docs/seguridad-produccion.md#4-riesgos-que-quedan). Ninguna pantalla
   promete un anonimato absoluto: cuando hay un límite, se dice.
@@ -185,6 +191,9 @@ Panel de la autoridad (enlace «Panel de autoridad» del pie, o `http://127.0.0.
   turnado, investigación, las dos juntas, substanciación y resolución, supervisión u operación del
   nodo, que solo ve las solicitudes de alta). Las
   denuncias nuevas llegan al buzón general (`buzon.federal`), que las turna. Abrir una identidad exige dos personas de la autoridad.
+- Segundo factor: en desarrollo es opcional (`SIGILO_MFA=opcional`). `supervision-oic`,
+  `operacion.federal` y `fiscalia` ya lo tienen inscrito: `npm run demo:codigo -- <usuario>` da el
+  código vigente. `oic-programas` lo inscribe al entrar (escanea el QR con tu app).
 - Llave: importa el archivo `apps/server/data/authority-demo-key.json`.
 
 Otros comandos:

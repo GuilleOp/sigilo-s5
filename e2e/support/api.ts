@@ -3,7 +3,8 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import {
   AuthorityDemoKeySchema,
-  AuthoritySessionSchema,
+  LoginResponseSchema,
+  LoginSessionStepSchema,
   ComplaintDetailSchema,
   IdentityOpeningRequestViewSchema,
   NODE_KEY_AUTHORITY_ID,
@@ -40,6 +41,7 @@ import {
 } from '../../apps/web/src/crypto/submission.ts';
 import type { FreshReceipt } from '../../apps/web/src/crypto/submission.ts';
 import { API_ORIGIN, E2E_ACCOUNTS, E2E_AUTHORITY, e2ePassword } from './environment.ts';
+import { nextTotpCode } from './mfa.ts';
 import type { Receipt } from './report-wizard.ts';
 
 /** Hechos sintéticos válidos para sembrar denuncias sin pasar por la interfaz. */
@@ -179,7 +181,15 @@ export async function sessionHeaders(
     data: { username, password: e2ePassword(username) },
   });
   if (!response.ok()) throw new Error(`No se pudo iniciar sesión: ${response.status()}`);
-  const { token } = AuthoritySessionSchema.parse(await response.json());
+  const first = LoginResponseSchema.parse(await response.json());
+  if (first.step === 'session') return { Authorization: `Bearer ${first.token}` };
+  if (first.step === 'enroll') throw new Error(`${username} debe inscribir el segundo factor.`);
+  // Cuenta con segundo factor: el código TOTP de su secreto sintético.
+  const second = await request.post(`${API_ORIGIN}${ROUTES.authLoginCode}`, {
+    data: { challenge: first.challenge, code: await nextTotpCode(username) },
+  });
+  if (!second.ok()) throw new Error(`No se pudo verificar el código: ${second.status()}`);
+  const { token } = LoginSessionStepSchema.parse(await second.json());
   return { Authorization: `Bearer ${token}` };
 }
 

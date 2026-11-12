@@ -23,6 +23,7 @@ import type { RegistrationsRepository } from './db/registrations-repository.ts';
 import { createSecurityLogRepository } from './db/security-log-repository.ts';
 import type { SecurityLogRepository } from './db/security-log-repository.ts';
 import { createIntegrationRepository } from './db/integration-repository.ts';
+import { createMfaRepository } from './db/mfa-repository.ts';
 import type { IntegrationRepository } from './db/integration-repository.ts';
 import { createQualificationRepository } from './db/qualification-repository.ts';
 import type { QualificationRepository } from './db/qualification-repository.ts';
@@ -34,8 +35,16 @@ import type { PdnSourcesProvider } from './services/pdn-context.ts';
 import { emptyAuthorityRegistry } from './security/authority-registry.ts';
 import type { AuthorityRegistry } from './security/authority-registry.ts';
 import { createSessionStore, DEFAULT_SESSION_TIMEOUTS } from './security/sessions.ts';
+import {
+  createLoginChallengeStore,
+  createPendingEnrollments,
+} from './security/login-challenges.ts';
+import type { MfaConfig, MfaState } from './security/mfa-policy.ts';
+import { RECOVERY_SCRYPT_LOG_N } from './security/mfa-secrets.ts';
+
 import type { SessionStore, SessionTimeouts } from './security/sessions.ts';
 import type { PowPurpose, WebRuntimeConfig } from '@sigilo/contracts';
+import { randomBytes } from '@sigilo/core';
 import type { NodeCalendar } from './services/calendar.ts';
 import type { NodeFront } from './http/exposure.ts';
 import type { RequestLog } from './http/request-log.ts';
@@ -105,6 +114,11 @@ export interface AppDeps {
   sessions?: SessionStore;
   /** Vencimientos de las sesiones (`DEFAULT_SESSION_TIMEOUTS`). */
   sessionTimeouts?: SessionTimeouts;
+  /**
+   * Segundo factor del panel (`SIGILO_MFA` y la llave `mfa-key`). Ausente: política `opcional` y
+   * una llave aleatoria por proceso (solo pruebas).
+   */
+  mfa?: MfaConfig;
   /** Nodo dentro de la red federada (directorio verificado y llave de red); ausente, nodo único. */
   network?: NodeNetwork;
   /** Fuentes de la PDN para la ficha de contexto, el conflicto y las sanciones; ausente, sin ficha. */
@@ -195,6 +209,8 @@ export interface AppContext {
   registrations: RegistrationsRepository;
   authorities: AuthorityRegistry;
   sessions: SessionStore;
+  /** Segundo factor: política, inscripciones, retos del segundo paso y secretos por confirmar. */
+  mfa: MfaState;
   statusHistory: StatusRepository;
   openData: OpenDataRepository;
   ledger: LedgerService;
@@ -259,6 +275,15 @@ export function createContext(deps: AppDeps): AppContext {
     sessions:
       deps.sessions ??
       createSessionStore(deps.now, deps.sessionTimeouts ?? DEFAULT_SESSION_TIMEOUTS),
+    mfa: {
+      policy: deps.mfa?.policy ?? 'opcional',
+      key: deps.mfa?.key ?? randomBytes(32),
+      issuer: deps.mfa?.issuer ?? 'SIGILO',
+      recoveryLogN: deps.mfa?.recoveryLogN ?? RECOVERY_SCRYPT_LOG_N,
+      enrollments: createMfaRepository(deps.db),
+      challenges: createLoginChallengeStore(deps.now),
+      pending: createPendingEnrollments(deps.now),
+    },
     statusHistory: createStatusRepository(deps.db),
     openData: createOpenDataRepository(deps.db),
     ledger: createLedgerService({
