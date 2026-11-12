@@ -117,7 +117,7 @@ solicitud de alta va al nodo de la entidad de la institución, por los pasos de 
 Ficticio de la Secretaría de Salud Ficticia de Oaxaca» y rechazada en el nodo Federal la del
 «Órgano Interno de Control Ficticio en la Oficina Federal de Aduanas». La huella de la pendiente sale
 en la salida de `demo:seed` y en `.red-demo/semilla.json` (`solicitudes`), y su llave privada en
-`.red-demo/solicitudes/`. Una institución de una entidad sin nodo (por ejemplo, Oaxaca) no puede
+`.red-demo/solicitudes/`. Una institución de una entidad sin nodo (en la demo, cualquiera salvo Querétaro y Oaxaca) no puede
 pedir el alta: primero su estado monta su nodo.
 
 ### 2.3 Observadores y testigos
@@ -188,6 +188,11 @@ cifrados); las demás funciones pueden ser una institución sin llaves.
 | `VE-INSTITUTO`     | Instituto Federal Ficticio de Equipamiento (IFFE) | federal | **Nuevo**: lo agrega la tarea de semillas a `public-entities.ts` |
 | `VE-PROGRAMAS`     | Delegación Federal Ficticia de Programas Sociales | federal | Ya existe                                                        |
 | `VE-FINANZAS`      | Secretaría de Finanzas Estatal Ficticia           | estatal | Ya existe                                                        |
+
+Quien denuncia elige además entre los 7,213 entes reales del directorio de la PDN y los 2,478
+municipios del INEGI (`packages/contracts/src/entes/README.md`). Los entes ficticios (`VE-…`) se
+muestran con «(ficticia)», y ninguna denuncia sembrada acusa a una institución real: todos los
+casos usan entes `VE-…`.
 
 ### 3.2 Personas (todas ficticias)
 
@@ -851,7 +856,7 @@ contradichas y las sin cobertura. Al día 96, `case.marta` pasa por «calificada
 | Ventanilla única (Marta y Luis, que elige el buzón federal)   | 3 funcionalidad                   | Bases de la PDN, art. 57: ventanilla única                                                  |
 | Frases `phrase.unique` y `phrase.moment`, grupo de 5 personas | 1 confidencialidad, 5 UX          | «El anonimato no se reduce a una casilla» (el relato identifica)                            |
 | Foto con EXIF de `Marta Ejemplo` y su limpieza                | 1 confidencialidad                | «El anonimato no se reduce a una casilla» (las pruebas identifican)                         |
-| Ubicación sin municipio ni coordenadas                        | 1 confidencialidad, 5 UX          | «Mapbox impreciso»; «corregir ubicación sugerida»                                           |
+| Ubicación sin municipio ni coordenadas                        | 1 confidencialidad, 5 UX          | Ubicación por mapa imprecisa; «corregir ubicación sugerida»                                 |
 | Alerta de conflicto (S1 ficticio)                             | 2 valor público, 4 datos PDN      | «Explotar datos de la PDN»; LGRA, art. 58                                                   |
 | Ficha de contexto y prioridad (S6, 69-B, corroboración)       | 2 valor público (priorización), 4 | «Análisis, detección, priorización»                                                         |
 | Corroboración ciega de Luis                                   | 1, 2, 6                           | Una persona = una corroboración, sin revelar quién corrobora                                |

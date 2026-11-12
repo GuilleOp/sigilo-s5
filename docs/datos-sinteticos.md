@@ -8,16 +8,16 @@ documentación.
 
 ## Convenciones
 
-| Tipo                   | Convención                                                                   | Ejemplo                                        |
-| ---------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------- |
-| Entes públicos         | Nombres ficticios con el municipio "Villa Ejemplo"                           | Secretaría de Obras de Villa Ejemplo           |
-| Personas               | Nombres evidentemente ficticios                                              | Persona Denunciante Uno, Servidor Ficticio Dos |
-| CURP y RFC             | Solo en pruebas del revisor, con formato válido y prefijo `XEXX` o `XAXX`    | `XEXX010101HNEXXXA4`                           |
-| Correos                | Dominio reservado `example.org`                                              | `nadie@example.org`                            |
-| Teléfonos              | Serie `55 0000 0000`                                                         | `55 0000 0001`                                 |
-| Imágenes de prueba     | Generadas por código con metadatos sintéticos                                | GPS 20.5, -100.25; marca «Marca Ficticia»      |
-| Entidades y municipios | Claves INEGI reales (son públicas); los casos sembrados usan entes ficticios | `22` Querétaro                                 |
-| Conductas              | Catálogo de la LGRA y del Código Penal Federal (público)                     | Pedir o aceptar dinero o regalos (cohecho)     |
+| Tipo                   | Convención                                                                                                                                   | Ejemplo                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Entes públicos         | En casos, semillas y pruebas, nombres ficticios rotulados «(ficticia)»; el catálogo para elegir trae además los 7,213 entes reales de la PDN | Secretaría de Obras de Villa Ejemplo           |
+| Personas               | Nombres evidentemente ficticios                                                                                                              | Persona Denunciante Uno, Servidor Ficticio Dos |
+| CURP y RFC             | Solo en pruebas del revisor, con formato válido y prefijo `XEXX` o `XAXX`                                                                    | `XEXX010101HNEXXXA4`                           |
+| Correos                | Dominio reservado `example.org`                                                                                                              | `nadie@example.org`                            |
+| Teléfonos              | Serie `55 0000 0000`                                                                                                                         | `55 0000 0001`                                 |
+| Imágenes de prueba     | Generadas por código con metadatos sintéticos                                                                                                | GPS 20.5, -100.25; marca «Marca Ficticia»      |
+| Entidades y municipios | Claves INEGI reales (son públicas); los casos sembrados usan entes ficticios                                                                 | `22` Querétaro                                 |
+| Conductas              | Catálogo de la LGRA y del Código Penal Federal (público)                                                                                     | Pedir o aceptar dinero o regalos (cohecho)     |
 
 ## Generación
 
@@ -28,8 +28,9 @@ documentación.
   `packages/huella/test-fixtures/synthetic-exif-jpeg.ts`; no se descarga ninguna foto.
 - Para la demostración en vivo, `docs/demo.md` indica cómo agregar metadatos ficticios con `exiftool`
   a una imagen sin personas ni lugares identificables.
-- Los catálogos públicos (entidades, municipios, entes sintéticos y conductas) viven como archivos
-  estáticos en `packages/contracts/src/catalogs/`. Quien denuncia también puede elegir municipios
+- Los catálogos públicos (entidades, municipios del INEGI, entes sintéticos y conductas) viven como
+  archivos estáticos en `packages/contracts/src/catalogs/`; los entes reales de la PDN, en
+  `packages/contracts/src/entes/`. Quien denuncia también puede elegir municipios
   del INEGI y entes reales del directorio de la PDN (`packages/contracts/src/entes/README.md`), pero
   la siembra, la red de demostración y las pruebas solo usan entes ficticios (`VE-…`, que la
   interfaz marca «(ficticia)»): ningún caso de ejemplo acusa a una institución real.

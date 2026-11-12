@@ -99,6 +99,9 @@ estado real está en la tabla de conformidad de abajo.
   «sin datos» con trama además de color; leyenda con texto. Un recuadro ampliado vuelve tocables a
   Aguascalientes, la Ciudad de México, Morelos y Tlaxcala. La tabla de las 32 entidades sigue como
   equivalente y la entidad elegida se marca en ella.
+- Semáforo de turnado del panel: cada situación es una píldora con ícono (palomita, advertencia o
+  alto) y su nombre en texto («A tiempo», «Por vencer», «Vencida»), nunca solo color
+  (`apps/web/src/lib/turn-semaphore-text.ts`).
 - «Saltar al contenido» se oculta con recorte, no con una posición negativa, para que no asome bajo
   la barra fija en celular.
 - Objetivos táctiles de al menos 44 px, incluido el botón del campo de archivo.
