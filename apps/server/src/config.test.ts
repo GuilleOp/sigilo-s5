@@ -1,5 +1,6 @@
 // Pruebas de la configuración: token compartido retirado, archivo de cuentas, CORS desactivado por
 // omisión, web y HSTS con valor mínimo.
+import { ALL_FRONTS } from './http/exposure.ts';
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -38,6 +39,10 @@ describe('loadConfig', () => {
       pdn: { kind: 'off' },
       corroborationIndexUrl: null,
       isAuditEnabled: true,
+      profile: 'completo',
+      fronts: ALL_FRONTS,
+      panelPort: null,
+      allowLegacyRelayAuth: true,
     });
   });
 

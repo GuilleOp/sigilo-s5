@@ -9,6 +9,7 @@ import { API_PREFIX, POW_HEADER } from '@sigilo/contracts';
 import { createContext } from './context.ts';
 import type { AppContext, AppDeps } from './context.ts';
 import { ApiFailure, errorResponse } from './http/errors.ts';
+import { ALL_FRONTS, exposureGuard } from './http/exposure.ts';
 import { loadWebAssets } from './http/web-assets.ts';
 import { registerAuthRoutes } from './routes/auth.ts';
 import { registerAuthorityRoutes } from './routes/authority.ts';
@@ -16,7 +17,7 @@ import { registerComplaintRoutes } from './routes/complaints.ts';
 import { registerEvidenceRoutes } from './routes/evidence.ts';
 import { registerKeysRoutes } from './routes/keys.ts';
 import { registerLedgerRoutes } from './routes/ledger.ts';
-import { registerNetworkRoutes } from './routes/network.ts';
+import { registerNetworkRoutes, routedTargetOf } from './routes/network.ts';
 import { registerOpenDataRoutes } from './routes/open-data.ts';
 import { registerPdnRoutes } from './routes/pdn.ts';
 import { registerPowRoutes } from './routes/pow.ts';
@@ -61,6 +62,15 @@ export function createAppFromContext(ctx: AppContext): Hono {
 
   if (deps.requestLog) app.use('*', deps.requestLog.middleware);
   app.use('*', securityHeaders({ servesWeb, hstsMaxAgeSeconds: deps.hstsMaxAgeSeconds }));
+  // Seguridad (H03): antes de las rutas, cada escucha solo atiende sus frentes; el resto
+  // responde como ruta inexistente. Lo que despacha el buzón de red por dentro siempre pasa.
+  app.use(
+    '*',
+    exposureGuard(
+      deps.exposedFronts ?? ALL_FRONTS,
+      (request) => routedTargetOf(request) !== undefined,
+    ),
+  );
   if (deps.allowedOrigin) {
     // Solo para desarrollo con otro origen: por omisión la web y la API comparten origen.
     app.use(
