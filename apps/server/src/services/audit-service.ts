@@ -16,6 +16,7 @@ import {
   toMexicoCentralDay,
 } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
+import { nodeCalendar } from './calendar.ts';
 import { withTransaction } from '../db/database.ts';
 import type { StoredStep } from '../db/procedure-repository.ts';
 import { pdnVerifications } from './pdn-context.ts';
@@ -165,7 +166,12 @@ function folioOfSubject(signal: AuditSignal): string | null {
 export function runNodeAudit(ctx: AppContext): number {
   const { acts, cases } = auditInput(ctx);
   if (acts.length === 0) return 0;
-  const report = runAudit({ acts, cases, today: toMexicoCentralDay(ctx.deps.now()) });
+  const report = runAudit({
+    acts,
+    cases,
+    today: toMexicoCentralDay(ctx.deps.now()),
+    calendar: nodeCalendar(ctx),
+  });
   let recorded = 0;
   for (const { signal, record } of report.findings) {
     const folio = folioOfSubject(signal);

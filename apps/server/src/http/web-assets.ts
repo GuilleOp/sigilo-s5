@@ -1,7 +1,9 @@
 // Archivos de la web construida (`apps/web/dist`) servidos desde el mismo origen que la API, con
-// respaldo de SPA a `index.html`.
-import { readdirSync, readFileSync } from 'node:fs';
+// respaldo de SPA a `index.html`, y la configuración de la web en tiempo de ejecución.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { extname, join, relative, sep } from 'node:path';
+import { WebRuntimeConfigSchema } from '@sigilo/contracts';
+import type { WebRuntimeConfig } from '@sigilo/contracts';
 
 /** Archivo de la web en memoria. */
 export interface WebAsset {
@@ -64,4 +66,26 @@ export function loadWebAssets(distDir: string): WebAssets {
       return lastSegment.includes('.') ? null : index;
     },
   };
+}
+
+/**
+ * Lee la configuración de la web en tiempo de ejecución (`SIGILO_WEB_CONFIG_FILE`, por omisión
+ * `web-config.json` en el directorio de datos; ADR 0011), que se sirve en `/config/sigilo.json`.
+ * Sin archivo devuelve `null` y la web usa lo que trae su bundle. Lanza error si el archivo no es
+ * válido: el nodo no arranca sirviendo llaves que la web no aceptaría.
+ * Seguridad: se lee una sola vez al arrancar; ninguna petición toca el sistema de archivos.
+ */
+export function loadWebConfig(path: string): WebRuntimeConfig | null {
+  if (!existsSync(path)) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    throw new Error('No se pudo leer la configuración de la web (web-config.json).');
+  }
+  const parsed = WebRuntimeConfigSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error('La configuración de la web (web-config.json) no tiene el formato esperado.');
+  }
+  return parsed.data;
 }

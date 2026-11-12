@@ -4,6 +4,7 @@ import { turnWaitFor } from '@sigilo/contracts';
 import type { ComplaintSummary, ProcedureAction, TurnSemaphore } from '@sigilo/contracts';
 import { evaluateTurnSemaphore, toMexicoCentralDay } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
+import { nodeCalendar } from './calendar.ts';
 import type { ComplaintRecord, ListedComplaint } from '../db/complaints-repository.ts';
 import type { StoredStep } from '../db/procedure-repository.ts';
 
@@ -32,7 +33,12 @@ export function turnPendingSince(
 function evaluate(ctx: AppContext, summary: ComplaintSummary, sinceOn: string) {
   const state = summary.managementState ?? 'received_in_inbox';
   try {
-    return evaluateTurnSemaphore(state, sinceOn, toMexicoCentralDay(ctx.deps.now()));
+    return evaluateTurnSemaphore(
+      state,
+      sinceOn,
+      toMexicoCentralDay(ctx.deps.now()),
+      nodeCalendar(ctx),
+    );
   } catch {
     // Fuera del calendario de días inhábiles no se puede contar en días hábiles: sin semáforo.
     return null;

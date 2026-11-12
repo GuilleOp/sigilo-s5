@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 // `findEntity` conoce el orden de gobierno de cualquier ente (equivalencias del S5, ficha PDN).
 import '@sigilo/contracts/entes';
 import { cors } from 'hono/cors';
-import { API_PREFIX, POW_HEADER } from '@sigilo/contracts';
+import { API_PREFIX, POW_HEADER, REST_DAYS_PATH, WEB_CONFIG_PATH } from '@sigilo/contracts';
 import { createContext } from './context.ts';
 import type { AppContext, AppDeps } from './context.ts';
 import { ApiFailure, errorResponse } from './http/errors.ts';
@@ -41,6 +41,24 @@ function registerWebRoutes(app: Hono, distDir: string): void {
     c.header('Content-Type', asset.contentType);
     return c.body(new Uint8Array(asset.body));
   });
+}
+
+/**
+ * Archivos de datos del nodo en el mismo origen, fuera de la API: la configuración de la web en
+ * tiempo de ejecución (ADR 0011; solo si hay, y solo donde se sirve la web) y el calendario de días
+ * inhábiles (público, para recalcular los plazos). Las cabeceras de seguridad les ponen la CSP de
+ * la API y `no-store`.
+ */
+function registerRuntimeFiles(app: Hono, ctx: AppContext): void {
+  const { deps } = ctx;
+  if (deps.webDistDir !== undefined && deps.webConfig !== undefined) {
+    const config = deps.webConfig;
+    app.get(WEB_CONFIG_PATH, (c) => c.json(config));
+  }
+  if (deps.calendar !== undefined) {
+    const published = deps.calendar.published;
+    app.get(REST_DAYS_PATH, (c) => c.json(published));
+  }
 }
 
 /**
@@ -96,6 +114,7 @@ export function createAppFromContext(ctx: AppContext): Hono {
   registerOpenDataRoutes(app, ctx);
   registerNetworkRoutes(app, ctx);
   registerPdnRoutes(app, ctx);
+  registerRuntimeFiles(app, ctx);
   if (deps.webDistDir !== undefined) registerWebRoutes(app, deps.webDistDir);
 
   app.notFound((c) => errorResponse(c, 'not_found'));

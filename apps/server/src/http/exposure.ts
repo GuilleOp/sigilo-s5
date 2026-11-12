@@ -4,7 +4,8 @@
 //
 //   red        lo que pide la SESNA: buzón, /oauth/token, estadística PDN (/v1/*) y salud.
 //   publico    lecturas públicas que usan el enrutador, los testigos y la ventanilla: llaves,
-//              bitácora, datos abiertos, directorio y la solicitud de alta de una institución.
+//              bitácora, datos abiertos, directorio, calendario de días inhábiles
+//              (`/datos/dias-inhabiles.json`) y la solicitud de alta de una institución.
 //   panel      el panel de la autoridad: /autoridad (la web), /api/v1/{auth,authority,operation} y
 //              el paso del relevo, que el turnado a otro nodo usa desde el navegador (el sobre va
 //              cifrado hacia el nodo destino). Por eso el panel va detrás de VPN o lista de IP.
@@ -19,6 +20,7 @@ import {
   CORROBORATION_ROUTES,
   NETWORK_ROUTES,
   PDN_ROUTES,
+  REST_DAYS_PATH,
   ROUTES,
 } from '@sigilo/contracts';
 import { errorResponse } from './errors.ts';
@@ -85,6 +87,8 @@ export function frontOf(
   purpose: string | undefined,
 ): NodeFront | null {
   const isRead = method === 'GET' || method === 'HEAD';
+  // El calendario de días inhábiles es público: con él cualquiera recalcula los plazos del nodo.
+  if (isRead && path === REST_DAYS_PATH) return 'publico';
   if (!isApi(path)) return isRead ? 'panel' : null;
   if (method === 'POST' && path === NETWORK_ROUTES.nodeInbox) return 'red';
   if (method === 'POST' && path === PDN_ROUTES.token) return 'red';

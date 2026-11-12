@@ -1,4 +1,6 @@
-// Llaves públicas fijadas en el bundle. El archivo JSON lo genera `npm run keys:generate`.
+// Llaves públicas fijadas. Las trae `/config/sigilo.json` del mismo origen (ADR 0011, ver
+// `runtime-config.ts`); si no está, las del bundle (`pinned-keys.json`, que genera
+// `npm run keys:generate` o `red:demo`). La imagen genérica trae `null` en el bundle.
 import { PublicKeySetSchema } from '@sigilo/contracts';
 import type { PublicKeySet } from '@sigilo/contracts';
 import { fromBase64Url, keyIdFor } from '@sigilo/core';
@@ -47,5 +49,26 @@ export function parsePinnedKeys(raw: unknown): PinnedKeys {
   };
 }
 
-/** Llaves públicas del despliegue, fijadas al compilar. */
-export const PINNED_KEYS: PinnedKeys = parsePinnedKeys(rawPinnedKeys);
+/**
+ * Marcador de una web sin llaves (imagen genérica sin `/config/sigilo.json`): cualquier lectura
+ * lanza error. Seguridad: así la web nunca cifra hacia una llave inventada; `main.tsx` muestra el
+ * aviso de configuración en lugar de montar la aplicación.
+ */
+const UNCONFIGURED_KEYS = new Proxy({} as PinnedKeys, {
+  get() {
+    throw new Error('Esta web no tiene llaves configuradas.');
+  },
+});
+
+/** Llaves públicas del despliegue (enlace vivo: `setPinnedKeys` lo cambia antes de montar). */
+export let PINNED_KEYS: PinnedKeys =
+  rawPinnedKeys === null ? UNCONFIGURED_KEYS : parsePinnedKeys(rawPinnedKeys);
+
+/** Indica si hay llaves fijadas (del bundle o de la configuración en tiempo de ejecución). */
+export let hasPinnedKeys: boolean = rawPinnedKeys !== null;
+
+/** Fija las llaves de la configuración en tiempo de ejecución. Lanza error si no son válidas. */
+export function setPinnedKeys(raw: unknown): void {
+  PINNED_KEYS = parsePinnedKeys(raw);
+  hasPinnedKeys = true;
+}

@@ -1,7 +1,7 @@
 // Lectura de la configuración desde el entorno y carga de las llaves del despliegue.
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { MAX_POW_BITS } from '@sigilo/contracts';
+import { MAX_POW_BITS, WEB_CONFIG_FILE_NAME } from '@sigilo/contracts';
 import { ALL_FRONTS, NODE_PROFILE_FRONTS, NODE_PROFILES } from './http/exposure.ts';
 import type { NodeFront, NodeProfile } from './http/exposure.ts';
 import type { RequestLogMode } from './http/request-log.ts';
@@ -79,6 +79,18 @@ export interface ServerConfig {
    * por omisión durante la transición; `0` exige la v2, H13).
    */
   allowLegacyRelayAuth: boolean;
+  /**
+   * Configuración de la web en tiempo de ejecución (`SIGILO_WEB_CONFIG_FILE`, por omisión
+   * `web-config.json` en el directorio de datos; ADR 0011).
+   */
+  webConfigFile: string;
+  /**
+   * Días inhábiles locales del nodo (`SIGILO_REST_DAYS_FILE`, por omisión `dias-inhabiles.json` en
+   * el directorio de datos).
+   */
+  restDaysFile: string;
+  /** Avisos de arranque (por ejemplo, variables de demostración en producción). */
+  warnings: string[];
 }
 
 /** Archivos con que el nodo entra a la red; los genera `npm run red:demo`. */
@@ -231,6 +243,27 @@ function parseHsts(env: NodeJS.ProcessEnv): number | null {
     );
   }
   return explicit ?? (isHttps ? MIN_HSTS_MAX_AGE_SECONDS : null);
+}
+
+/**
+ * Separa la demostración de producción. Con `NODE_ENV=production`, `SIGILO_E2E=1` impide arrancar
+ * (las pruebas nunca corren en producción) y `SIGILO_DEMO=1` deja un aviso fuerte en cada arranque:
+ * solo sirve para publicar una demostración con datos sintéticos, nunca para un nodo real.
+ * Devuelve los avisos. Lanza error con `SIGILO_E2E=1` en producción.
+ */
+export function demoProductionWarnings(env: NodeJS.ProcessEnv): string[] {
+  if (env.NODE_ENV !== 'production') return [];
+  if (env.SIGILO_E2E === '1') {
+    throw new Error(
+      'SIGILO_E2E=1 no puede usarse con NODE_ENV=production: es solo para pruebas. Quítala del entorno (config/nodo.env).',
+    );
+  }
+  if (env.SIGILO_DEMO !== '1') return [];
+  return [
+    '*** ATENCIÓN: SIGILO_DEMO=1 con NODE_ENV=production. ***',
+    '*** Este nodo se comporta como DEMOSTRACIÓN (datos sintéticos). Un nodo real NUNCA lleva SIGILO_DEMO. ***',
+    '*** Quítala de config/nodo.env y reinicia; ./sigilo diagnostico lo marca como problema. ***',
+  ];
 }
 
 function isTestEnvironment(env: NodeJS.ProcessEnv): boolean {
@@ -395,6 +428,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
       'SIGILO_TEST_CLOCK_FILE solo puede usarse en pruebas (SIGILO_E2E=1 o NODE_ENV=test).',
     );
   }
+  const warnings = demoProductionWarnings(env);
   const testClockFile = testClock === '' ? null : resolve(testClock);
   if (testClockFile !== null) assertTestClockFileSafe(testClockFile);
   const powBits = parsePowBits(env.SIGILO_POW_BITS);
@@ -431,6 +465,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
     ...parseProfile(env),
     panelPort: parsePanelPort(env, port),
     allowLegacyRelayAuth: legacy !== '0',
+    webConfigFile: resolve(env.SIGILO_WEB_CONFIG_FILE || join(dataDir, WEB_CONFIG_FILE_NAME)),
+    restDaysFile: resolve(env.SIGILO_REST_DAYS_FILE || join(dataDir, 'dias-inhabiles.json')),
+    warnings,
   };
 }
 

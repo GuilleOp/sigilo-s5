@@ -20,6 +20,7 @@ import {
   toMexicoCentralDay,
 } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
+import { nodeCalendar } from './calendar.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import { withTransaction } from '../db/database.ts';
 import type { StoredIdentityRequest } from '../db/identity-requests-repository.ts';
@@ -266,7 +267,7 @@ function isAppealWindowOpen(ctx: AppContext, complaint: ComplaintRecord): boolea
   const rule = findDeadlineRule('appeal_resolution');
   if (appeal === null || rule === undefined) return false;
   try {
-    const dueOn = computeDueDate(appeal.legalOn, termForRule(rule));
+    const dueOn = computeDueDate(appeal.legalOn, termForRule(rule), nodeCalendar(ctx));
     return toMexicoCentralDay(ctx.deps.now()) <= dueOn;
   } catch {
     return false;

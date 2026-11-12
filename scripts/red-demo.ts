@@ -247,6 +247,10 @@ function main(): void {
   for (const nodeId of DEMO_NODE_IDS) {
     const nodeDir = join(OUT, 'nodos', NODE_DIRS[nodeId]);
     const dataDir = join(nodeDir, 'data');
+    // Seguridad: las llaves privadas del buzón y de la supervisora NO van en `data/` (el volumen
+    // del nodo): el servidor no las lee y quien entrara al servidor leería los hechos de todo lo
+    // que llega al buzón. Solo para la demostración quedan en `llaves-demo/`, que no se monta.
+    const demoKeysDir = join(nodeDir, 'llaves-demo');
     // El buzón general está en el directorio: su llave en `keys.json` es la publicada.
     const inbox = keys.authorities[DEMO_INBOX_AUTHORITY_IDS[nodeId]];
     const keysFile = nodeKeysFile(keys, nodeId, inbox);
@@ -255,7 +259,7 @@ function main(): void {
     parseKeysFile(keysFile);
     parseAuthorityDemoKey(inboxKey, keysFile.publicKeys);
     writeJson(join(dataDir, 'keys.json'), keysFile);
-    writeJson(join(dataDir, 'authority-demo-key.json'), inboxKey);
+    writeJson(join(demoKeysDir, 'authority-demo-key.json'), inboxKey);
     const supervisor = NODE_SUPERVISOR[nodeId];
     if (supervisor !== null) {
       const box = keys.authorities[supervisor].box;
@@ -266,7 +270,7 @@ function main(): void {
         boxPrivateKey: toBase64Url(box.privateKey),
       };
       parseSupervisorDemoKey(supervisorKey, keysFile.publicKeys);
-      writeJson(join(dataDir, 'supervisor-demo-key.json'), supervisorKey);
+      writeJson(join(demoKeysDir, 'supervisor-demo-key.json'), supervisorKey);
     }
     // Llave X25519 del nodo para abrir los sobres del enrutador, directorio y raíz de confianza.
     writeJson(join(dataDir, 'red-node-key.json'), {

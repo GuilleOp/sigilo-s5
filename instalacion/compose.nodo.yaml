@@ -1,0 +1,116 @@
+# Nodo estatal de SIGILO en producción. No se edita: todo llega por .env y config/, que genera
+# ./sigilo instalar. Ver docs/instalacion-nodo.md y docs/seguridad-produccion.md.
+#   nodo          servidor de referencia en perfil «nodo» (sin denuncia directa): frente «red» en
+#                 el 8080 del contenedor y frente «panel» en el 8081, los dos en 127.0.0.1 del equipo
+#   tls           (perfil «tls») Caddy con HTTPS: 443 → red y lecturas públicas; 8443 → panel, solo
+#                 desde la VPN o la red de la institución (SIGILO_PANEL_IPS). Sin registro de accesos.
+#   herramientas  (perfil «herramientas») el CLI sigilo; lo usa el envoltorio ./sigilo y no se queda
+#                 corriendo
+# Con un proxy propio (modo 3) no hay perfil «tls»: tu proxy apunta a 127.0.0.1:8080 (red) y a
+# 127.0.0.1:8081 (panel) con las reglas de docs/seguridad-produccion.md.
+
+name: sigilo-nodo
+
+# Mismo endurecimiento que compose.yaml (H10): usuario sin privilegios, sistema de archivos de solo
+# lectura, sin capacidades, límites de recursos y seccomp por omisión de Docker.
+x-hardening: &hardening
+  user: '${SIGILO_UID:-1000}:${SIGILO_GID:-1000}'
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=64m
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  init: true
+  mem_limit: 512m
+  pids_limit: 128
+  cpus: 1.0
+  ulimits:
+    nofile:
+      soft: 4096
+      hard: 4096
+  restart: unless-stopped
+
+services:
+  nodo:
+    <<: *hardening
+    # Imagen genérica publicada (ghcr.io/guilleop/sigilo-nodo), por etiqueta o por digesto.
+    image: ${SIGILO_IMAGEN_NODO:-ghcr.io/guilleop/sigilo-nodo:${SIGILO_VERSION:-1.1.0}}
+    mem_limit: 1g
+    # Lo genera ./sigilo instalar (Compose ≥ 2.24 admite que aún no exista).
+    env_file:
+      - path: ./config/nodo.env
+        required: false
+    volumes:
+      - ./datos:/data
+    ports:
+      - '${SIGILO_PUERTO_RED:-127.0.0.1:8080}:8080'
+      - '${SIGILO_PUERTO_PANEL:-127.0.0.1:8081}:8081'
+    networks:
+      - interna
+      - salida
+
+  tls:
+    <<: *hardening
+    profiles:
+      - tls
+    image: ${SIGILO_IMAGEN_CADDY:-caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d}
+    mem_limit: 256m
+    cpus: 0.5
+    command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile']
+    environment:
+      SIGILO_DOMINIO: ${SIGILO_DOMINIO:-}
+      SIGILO_CORREO_TLS: ${SIGILO_CORREO_TLS:-}
+      # Quién llega al panel (8443): por omisión, solo las redes privadas (VPN o red interna).
+      SIGILO_PANEL_IPS: ${SIGILO_PANEL_IPS:-private_ranges}
+      # Quién llega al frente «red» (443): por omisión, todos; mejor solo la SESNA y los testigos.
+      SIGILO_RED_IPS: ${SIGILO_RED_IPS:-0.0.0.0/0 ::/0}
+      XDG_DATA_HOME: /data
+      XDG_CONFIG_HOME: /config
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./tls:/data
+      # Modo 2 (certificado de la institución): tls/propio/certificado.crt y tls/propio/llave.key.
+      - ./tls/propio:/tls/propio:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+      - /config:rw,noexec,nosuid,nodev,size=8m
+    # Caddy escucha en puertos sin privilegios dentro del contenedor: corre sin root y sin
+    # capacidades.
+    ports:
+      - '80:8080'
+      - '443:8443'
+      - '${SIGILO_PUERTO_PANEL_TLS:-8443}:9443'
+    depends_on:
+      nodo:
+        condition: service_healthy
+    networks:
+      - interna
+      - salida
+
+  herramientas:
+    <<: *hardening
+    profiles:
+      - herramientas
+    restart: 'no'
+    image: ${SIGILO_IMAGEN_NODO:-ghcr.io/guilleop/sigilo-nodo:${SIGILO_VERSION:-1.1.0}}
+    entrypoint: ['node', '/app/tools/sigilo/src/cli.ts']
+    # Los archivos que se nombran en los comandos se buscan en la carpeta de la instalación.
+    working_dir: /sigilo
+    environment:
+      SIGILO_INSTALL_DIR: /sigilo
+      # Sin el aviso de SQLite experimental en la salida del CLI.
+      NODE_NO_WARNINGS: '1'
+      SIGILO_IMAGEN_NODO: ${SIGILO_IMAGEN_NODO:-}
+    volumes:
+      - .:/sigilo
+    networks:
+      - interna
+      - salida
+
+networks:
+  # Entre Caddy, el nodo y las herramientas.
+  interna: {}
+  # Salida a internet: la ventanilla de la SESNA, el índice y Let's Encrypt.
+  salida: {}

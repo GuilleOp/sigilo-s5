@@ -1,0 +1,112 @@
+#!/bin/sh
+# Envoltorio de la ventanilla única y del enrutador de la SESNA. Solo necesita Docker con Compose
+# ≥ 2.17: el CLI corre dentro de la imagen publicada del enrutador con tu usuario.
+# Uso: ./sigilo-sesna instalar | aceptar <archivo> | publicar <propuesta> | empaquetar | ayuda
+# Guía: docs/instalacion-sesna.md
+set -eu
+
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$DIR"
+COMPOSE_FILE_SESNA="$DIR/compose.sesna.yaml"
+VERSION_POR_OMISION=1.1.0
+
+fallar() {
+  printf '✗ %s\n' "$1" >&2
+  exit "${2:-1}"
+}
+
+valor_env() {
+  [ -f .env ] || return 0
+  sed -n "s/^$1=//p" .env | tail -n 1
+}
+
+SIGILO_UID=$(valor_env SIGILO_UID)
+SIGILO_GID=$(valor_env SIGILO_GID)
+SIGILO_UID=${SIGILO_UID:-$(id -u)}
+SIGILO_GID=${SIGILO_GID:-$(id -g)}
+SIGILO_VERSION=$(valor_env SIGILO_VERSION)
+SIGILO_VERSION=${SIGILO_VERSION:-$VERSION_POR_OMISION}
+export SIGILO_UID SIGILO_GID SIGILO_VERSION
+
+compose() {
+  docker compose -f "$COMPOSE_FILE_SESNA" --project-directory "$DIR" "$@"
+}
+
+cli() {
+  if [ -t 0 ] && [ -t 1 ]; then tty=""; else tty="-T"; fi
+  # shellcheck disable=SC2086
+  compose --profile herramientas run --rm $tty herramientas sesna "$@"
+}
+
+requisitos() {
+  command -v docker >/dev/null 2>&1 || fallar 'Docker no está instalado. Instala Docker Engine ≥ 24.'
+  docker info >/dev/null 2>&1 || fallar 'Docker no responde: sudo systemctl start docker y agrega tu usuario al grupo docker.'
+  docker compose version >/dev/null 2>&1 || fallar 'Falta Docker Compose ≥ 2.24 (paquete docker-compose-plugin).'
+  if [ "$(id -u)" = 0 ] && [ "${SIGILO_PERMITIR_ROOT:-0}" != 1 ]; then
+    fallar 'Eres root. Usa un usuario de servicio sin privilegios.'
+  fi
+}
+
+carpetas() {
+  umask 077
+  mkdir -p datos llaves tls/propio corroboracion/evaluador corroboracion/indice
+  umask 022
+  mkdir -p config testigos propuestas cofirmas altas salida
+}
+
+orden=${1:-ayuda}
+[ "$#" -gt 0 ] && shift
+
+case "$orden" in
+  instalar)
+    requisitos
+    carpetas
+    cli instalar "$@"
+    ;;
+  aceptar)
+    cli aceptar "$@"
+    # Una rotación del enlace cambia los secretos sin cambiar el directorio: se reinicia si corre.
+    if compose ps --status running --services 2>/dev/null | grep -qx enrutador; then
+      compose restart enrutador
+    fi
+    ;;
+  publicar)
+    cli publicar "$@"
+    compose up -d --wait
+    compose restart enrutador
+    printf '✓ Enrutador en marcha con el directorio nuevo.\n'
+    ;;
+  iniciar)
+    compose up -d --wait
+    ;;
+  empaquetar)
+    sin_conexion=0
+    for argumento in "$@"; do [ "$argumento" = --sin-conexion ] && sin_conexion=1; done
+    cli empaquetar
+    paquete="sigilo-nodo-$SIGILO_VERSION"
+    tar -czf "salida/$paquete.tar.gz" -C salida "$paquete"
+    printf '✓ salida/%s.tar.gz\n' "$paquete"
+    if [ "$sin_conexion" = 1 ]; then
+      imagen=$(valor_env SIGILO_IMAGEN_ENRUTADOR | sed 's/sigilo-enrutador/sigilo-nodo/')
+      imagen=${imagen:-ghcr.io/guilleop/sigilo-nodo:$SIGILO_VERSION}
+      caddy=$(valor_env SIGILO_IMAGEN_CADDY)
+      docker pull "$imagen"
+      [ -n "$caddy" ] && docker pull "$caddy"
+      # shellcheck disable=SC2086
+      docker save -o "salida/sigilo-imagenes-$SIGILO_VERSION.tar" "$imagen" $caddy
+      printf '✓ salida/sigilo-imagenes-%s.tar (en el estado: ./sigilo cargar <archivo>)\n' "$SIGILO_VERSION"
+    fi
+    ;;
+  detener)
+    compose down
+    ;;
+  estado)
+    compose ps
+    ;;
+  registros)
+    compose logs --tail 200 enrutador
+    ;;
+  *)
+    cli "$orden" "$@"
+    ;;
+esac

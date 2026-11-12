@@ -6,6 +6,8 @@ import {
   CROSS_ORIGIN_ISOLATION_HEADERS,
   PDN_ROUTES,
   PERMISSIONS_POLICY,
+  REST_DAYS_PATH,
+  WEB_CONFIG_PATH,
 } from '@sigilo/contracts';
 
 /** Funciones del navegador que ninguna página del sistema necesita (la lista común, H11). */
@@ -58,6 +60,9 @@ export function isApiPath(path: string): boolean {
   );
 }
 
+/** Archivos de datos fuera de la API (configuración de la web y calendario): llevan la CSP de la API. */
+const DATA_FILE_PATHS: ReadonlySet<string> = new Set([WEB_CONFIG_PATH, REST_DAYS_PATH]);
+
 /** Opciones de las cabeceras. */
 export interface SecurityHeaderOptions {
   /** Si la web se sirve desde este servidor (las rutas fuera de la API son de la web). */
@@ -74,7 +79,7 @@ export function securityHeaders(options: SecurityHeaderOptions): MiddlewareHandl
       : `max-age=${options.hstsMaxAgeSeconds}; includeSubDomains`;
   return async (c, next) => {
     await next();
-    const isWeb = options.servesWeb && !isApiPath(c.req.path);
+    const isWeb = options.servesWeb && !isApiPath(c.req.path) && !DATA_FILE_PATHS.has(c.req.path);
     for (const [name, value] of Object.entries(COMMON_HEADERS)) c.res.headers.set(name, value);
     c.res.headers.set('Content-Security-Policy', isWeb ? WEB_CSP : API_CSP);
     if (hsts !== null) c.res.headers.set('Strict-Transport-Security', hsts);

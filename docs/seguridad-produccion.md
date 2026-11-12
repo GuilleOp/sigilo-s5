@@ -6,6 +6,11 @@ Esta guía dice cómo desplegar la red de SIGILO fuera de la demostración. La d
 topología, cada ajuste de endurecimiento con su variable, una lista de comprobación para los estados
 y los riesgos que quedan.
 
+La instalación con `./sigilo instalar` ([instalacion-nodo.md](instalacion-nodo.md)) y
+`./sigilo-sesna instalar` ([instalacion-sesna.md](instalacion-sesna.md)) ya aplica esta guía:
+perfil `nodo`, panel en su puerto, HMAC v2, HSTS, Caddy sin registro de accesos, llaves fuera del
+volumen y secretos derivados. `./sigilo diagnostico` revisa la lista de abajo.
+
 ## 1. Topología
 
 ```
@@ -194,10 +199,11 @@ Antes de conectar el nodo a la red:
 - [ ] El directorio de datos es del usuario del servicio, con `0700`. Las llaves privadas están en
       `0600` y **fuera** del volumen del nodo: la llave de la autoridad nunca va en el servidor.
 - [ ] `oauth-clients.json` solo trae `client_credentials` (y `password` únicamente si la PDN lo
-      exige). Su secreto se rota según la guía.
-- [ ] El secreto HMAC del buzón (`relay-secret.json`) mide al menos 32 bytes y es distinto por nodo.
+      exige). Su secreto se deriva y se rota con `./sigilo rotar-llaves --enlace`.
+- [ ] El secreto HMAC del buzón (`relay-secret.json`) mide al menos 32 bytes y es distinto por nodo
+      (derivado por nodo y época; nunca viaja).
 - [ ] Cuando el enrutador ya envía la etiqueta v2: `SIGILO_RELAY_AUTH_LEGACY=0`.
-- [ ] Contraseñas del panel generadas (`npm run accounts:generate`) y no elegidas a mano.
+- [ ] Contraseñas del panel generadas (`./sigilo cuenta nueva`) y no elegidas a mano.
 - [ ] Respaldos cifrados del directorio de datos, con pruebas de restauración.
 - [ ] Contenedores con los límites de `compose.yaml` y la imagen fijada por digest.
 - [ ] Prueba final, desde fuera de la red de la SESNA:
@@ -237,8 +243,10 @@ Y la SESNA, en el enrutador:
 - **Trusted Types (H11).** Sin activar: `new Worker(url)` es un sumidero de `TrustedScriptURL` y
   rompería los workers de la prueba de trabajo y de pdf.js sin una política con nombre. Hay que
   probarlo en el navegador antes de activarlo.
-- **Rotación de secretos (H24).** No está documentada la rotación del HMAC del buzón ni de la llave
-  de caja del nodo. La llave HMAC de los JWT y la de los retos cambian en cada reinicio.
+- **Rotación de secretos (H24).** El HMAC del buzón y el secreto OAuth se rotan juntos con
+  `./sigilo rotar-llaves --enlace` (nueva época de los secretos derivados). La llave de caja del
+  nodo y su llave de firma todavía no tienen rotación con herramienta (tocan el directorio y la
+  continuidad de la bitácora). La llave HMAC de los JWT y la de los retos cambian en cada reinicio.
 - **Refresh token sin detección de reuso (H21).** Reusar uno ya gastado no revoca su familia.
 - **Estado en memoria.** Los topes (relevo, nonces, retos) son por proceso. Si se escala a varias
   réplicas del enrutador, cada una tiene su propio presupuesto, y los nonces de la etiqueta v2 no

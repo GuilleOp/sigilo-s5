@@ -11,11 +11,14 @@ import {
   POW_HEADER,
   ROUTES,
   VENTANILLA_ROUTES,
+  WEB_CONFIG_PATH,
 } from '@sigilo/contracts';
+import type { WebRuntimeConfig } from '@sigilo/contracts';
+import { buildPublicKeySet, generateBoxKeyPair, generateSigningKeyPair } from '@sigilo/core';
 import type { FetchLike } from '@sigilo/red';
 import { createRouterApp } from './app.ts';
 import { TEST_DAY, createTestRouter } from './test-support.ts';
-import { VENTANILLA_WEB_CSP, loadVentanillaConfig } from './web.ts';
+import { VENTANILLA_WEB_CSP, loadVentanillaConfig, loadVentanillaWebConfig } from './web.ts';
 
 function webDist(): string {
   const dir = mkdtempSync(join(tmpdir(), 'sigilo-ventanilla-'));
@@ -45,7 +48,7 @@ const REGISTRATION = {
   },
 };
 
-function setup() {
+function setup(webConfig?: WebRuntimeConfig) {
   const router = createTestRouter();
   const calls: { url: string; headers: Record<string, string>; body: string }[] = [];
   const fetch: FetchLike = async (input, init) => {
@@ -68,9 +71,10 @@ function setup() {
       directory: router.directory.directory,
       nodeUrl: (node) => node.baseUrl,
       fetch,
+      ...(webConfig === undefined ? {} : { webConfig }),
     },
   });
-  return { app, calls };
+  return { app, calls, router };
 }
 
 describe('ventanilla única en el enrutador', () => {
@@ -162,5 +166,32 @@ describe('ventanilla única en el enrutador', () => {
     expect(() =>
       loadVentanillaConfig({ SIGILO_ROUTER_WEB_DIST: distDir, SIGILO_ROUTER_EVALUATOR_URL: 'x' }),
     ).toThrow('SIGILO_ROUTER_EVALUATOR_URL');
+  });
+
+  it('sirve la configuración en tiempo de ejecución con la CSP del enrutador y sin caché', async () => {
+    expect((await setup().app.request(WEB_CONFIG_PATH)).status).toBe(404);
+    const signing = generateSigningKeyPair();
+    const config: WebRuntimeConfig = {
+      v: 1,
+      pinnedKeys: buildPublicKeySet({
+        serverSigningPublicKey: signing.publicKey,
+        authorityBoxPublicKey: generateBoxKeyPair().publicKey,
+        authoritySigningPublicKey: signing.publicKey,
+      }),
+      networkTrust: createTestRouter().trust,
+      ventanillaUrl: null,
+    };
+    const { app } = setup(config);
+    const response = await app.request(WEB_CONFIG_PATH);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(response.headers.get('Content-Security-Policy')).not.toBe(VENTANILLA_WEB_CSP);
+    expect(await response.json()).toEqual(config);
+    const dir = mkdtempSync(join(tmpdir(), 'sigilo-ventanilla-config-'));
+    const file = join(dir, 'web-config.json');
+    writeFileSync(file, JSON.stringify(config));
+    expect(loadVentanillaWebConfig(file)).toEqual(config);
+    writeFileSync(file, '{}');
+    expect(() => loadVentanillaWebConfig(file)).toThrow(/formato/u);
   });
 });

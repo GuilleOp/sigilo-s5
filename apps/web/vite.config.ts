@@ -9,6 +9,8 @@ const API_TARGET = 'http://127.0.0.1:8787';
 
 const API_PROXY = {
   '/api': { target: API_TARGET, changeOrigin: false, secure: true },
+  // Configuración en tiempo de ejecución (ADR 0011): la sirve el servidor, como en producción.
+  '/config': { target: API_TARGET, changeOrigin: false, secure: true },
 };
 
 /**

@@ -13,3 +13,4 @@ export * from './node-client.ts';
 export * from './relay-auth.ts';
 export * from './http-defaults.ts';
 export * from './demo-network.ts';
+export * from './node-join.ts';
