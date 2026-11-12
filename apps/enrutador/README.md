@@ -14,6 +14,9 @@ cuatro cosas:
    propia CSP, y pasos mínimos a rutas públicas (`VENTANILLA_ROUTES`): el evaluador OPRF, la
    bitácora pública de cada nodo y la solicitud de alta, que va al nodo de la entidad. Los nodos no
    tienen ventanilla propia.
+5. **Sirve la vista del Estándar S5** (`src/standard-docs.ts`) en `/estandar/swagger/`: Swagger UI
+   de `swagger-ui-dist` (versión fija, sin CDN) con el desplegable de documentos (perfil PDN, nodo,
+   red y corroboración) y los archivos de `estandar/`, con una CSP de solo el mismo origen.
 
 Además, como el S1 de la PDN (cada entidad publica y la SESNA consulta por API), arma el **corte
 nacional de datos abiertos** (Bases de la PDN, arts. 60 y 61): **la SESNA consulta números y
@@ -46,6 +49,7 @@ O toda la red con `npm run demo:todo` (o `docker compose build && docker compose
 | `SIGILO_ROUTER_MIN_NODE_VERSION`         | sin mínima            | `mayor.menor.parche`: a un nodo con versión menor no se le entrega                            |
 | `SIGILO_ROUTER_WEB_DIST`                 | vacío (sin web)       | Carpeta de la web en perfil `ventanilla`; en la imagen, `/app/ventanilla`                     |
 | `SIGILO_ROUTER_EVALUATOR_URL`            | la del directorio     | Dirección interna del evaluador OPRF para el paso de la ventanilla                            |
+| `SIGILO_ROUTER_STANDARD_DIR`             | `estandar/` del repo  | Carpeta del estándar para `/estandar/swagger/`; sin ella (como en la imagen), no se sirve     |
 | `SIGILO_ROUTER_QUEUE_POW_BITS`           | `18`                  | Dificultad del reto propio de la cola de entrega (0 a 24)                                     |
 | `SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS`   | `15`                  | Cada cuánto revisa la cola (cada sobre lleva su siguiente intento)                            |
 | `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir                                 |
