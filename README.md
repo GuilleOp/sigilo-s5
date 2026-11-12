@@ -99,10 +99,9 @@ versión 0.3.0, con su propio [registro de cambios](estandar/CHANGELOG.md)):
 - **Validador** ([tools/validador](tools/validador/README.md)): `npm run validate -- <url>` revisa
   la privacidad de cualquier sitio de denuncias y `npm run validate:pdn` reproduce los casos
   públicos de ValidAPI contra un nodo.
-- **Swagger UI sin CDN:** `npm run standard:build` y después
-  `python3 -m http.server 8080 -d estandar`, en <http://127.0.0.1:8080/swagger/>. El enrutador
-  también lo sirve en `/estandar/swagger/` cuando tiene la carpeta (`npm run dev:enrutador`; la
-  imagen de Docker no la incluye).
+- **Swagger UI sin CDN:** la ventanilla lo sirve en `/estandar/swagger/`; con la demostración,
+  <http://127.0.0.1:8790/estandar/swagger/>. Sin Docker: `npm run standard:build` y después
+  `python3 -m http.server 8080 -d estandar`, en <http://127.0.0.1:8080/swagger/>.
 
 ## Seguridad en breve
 

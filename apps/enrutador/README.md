@@ -50,7 +50,7 @@ instala el enrutador con `./sigilo-sesna instalar`
 | `SIGILO_ROUTER_MIN_NODE_VERSION`         | sin mínima            | `mayor.menor.parche`: a un nodo con versión menor no se le entrega                            |
 | `SIGILO_ROUTER_WEB_DIST`                 | vacío (sin web)       | Carpeta de la web en perfil `ventanilla`; en la imagen, `/app/ventanilla`                     |
 | `SIGILO_ROUTER_EVALUATOR_URL`            | la del directorio     | Dirección interna del evaluador OPRF para el paso de la ventanilla                            |
-| `SIGILO_ROUTER_STANDARD_DIR`             | `estandar/` del repo  | Carpeta del estándar para `/estandar/swagger/`; sin ella (como en la imagen), no se sirve     |
+| `SIGILO_ROUTER_STANDARD_DIR`             | `estandar/` del repo  | Carpeta del estándar para `/estandar/swagger/` (la imagen trae `/app/estandar`)               |
 | `SIGILO_ROUTER_QUEUE_POW_BITS`           | `18`                  | Dificultad del reto propio de la cola de entrega (0 a 24)                                     |
 | `SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS`   | `15`                  | Cada cuánto revisa la cola (cada sobre lleva su siguiente intento)                            |
 | `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir                                 |
