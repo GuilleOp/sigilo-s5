@@ -37,6 +37,7 @@ describe('conformidad con el estándar', () => {
     const sameOriginPassThroughs = [
       `GET ${NETWORK_ROUTES.directory}`,
       `POST ${NETWORK_ROUTES.relay}`,
+      `GET ${NETWORK_ROUTES.queueChallenge}`,
       `GET ${NETWORK_ROUTES.nationalOpenData}`,
       `GET ${CORROBORATION_ROUTES.evaluatorChallenge}`,
       `POST ${CORROBORATION_ROUTES.evaluations}`,

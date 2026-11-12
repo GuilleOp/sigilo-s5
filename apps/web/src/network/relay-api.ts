@@ -19,9 +19,11 @@ import type {
   MailboxMessage,
   PowChallenge,
   PowPurpose,
+  RelayQueueReceipt,
   RelayResponse,
   ReporterMessageRequest,
   RoutedBody,
+  RoutedReply,
   RoutedRequest,
   SubmitComplaintRequest,
   SubmitComplaintResponse,
@@ -29,7 +31,7 @@ import type {
   TrackingView,
 } from '@sigilo/contracts';
 import { toBase64Url } from '@sigilo/core';
-import { openRoutedReply, sealRoutedRequest } from '@sigilo/red';
+import { openRoutedReply, sealRoutedRequest, verifyRelayQueueReceipt } from '@sigilo/red';
 import type { RelayRequest } from '@sigilo/contracts';
 import { apiErrorFrom, ApiRequestError, createApiClient } from '../services/api-client.ts';
 import type { ApiClient, ResponseSchema } from '../services/api-client.ts';
@@ -46,6 +48,52 @@ export interface ReporterApi {
   track(credentials: TrackingCredentials): Promise<TrackingView>;
   sendReporterMessage(request: ReporterMessageRequest, proof: string): Promise<MailboxMessage>;
   fileAppeal(request: AppealRequest, proof: string): Promise<AppealResponse>;
+}
+
+/** Operaciones de quien denuncia por la red: además, la denuncia con folio propio y la cola. */
+export interface RelayReporterApi extends ReporterApi {
+  /** Si esta ventanilla puede dejar denuncias en la cola de entrega del enrutador. */
+  readonly hasQueue: boolean;
+  /** Reto de la cola del enrutador; lanza `not_found` sin cola. */
+  getQueueChallenge(): Promise<PowChallenge>;
+  /**
+   * Envía la denuncia con un folio elegido en el navegador (`generateFolio`): así la persona lo
+   * conoce aunque la respuesta se pierda o la denuncia quede en la cola de entrega.
+   */
+  submitRoutedComplaint(
+    request: SubmitComplaintRequest,
+    proof: string,
+    folio: string,
+  ): Promise<SubmitComplaintResponse>;
+  /**
+   * Envía la denuncia pidiendo al enrutador que la guarde cerrada en su cola si el nodo no
+   * responde. `queueProof` es la solución del reto de la cola. Lanza `ApiRequestError` con
+   * `invalid_response` si el acuse no lo firmó la operación de la raíz fijada o no es de este
+   * sobre, y `not_found` si la ventanilla no tiene cola.
+   */
+  submitDeferredComplaint(
+    request: SubmitComplaintRequest,
+    folio: string,
+    queueProof: string,
+  ): Promise<DeferredSubmission>;
+}
+
+/** Resultado de una denuncia con cola: entregada al momento o guardada en la cola. */
+export type DeferredSubmission =
+  | { kind: 'delivered'; response: SubmitComplaintResponse }
+  | { kind: 'queued'; receipt: RelayQueueReceipt };
+
+/** Lo que necesita la cola de entrega: su reto y la llave de la operación que firma el acuse. */
+export interface RelayQueueAccess {
+  getChallenge(): Promise<PowChallenge>;
+  operator: { keyId: string; signingPublicKey: string };
+}
+
+/** Reto de la cola por el paso del mismo origen (`GET /api/v1/red/queue/challenge`). */
+export function sameOriginQueueChallenge(
+  client: ApiClient = createApiClient(),
+): () => Promise<PowChallenge> {
+  return () => client.json(NETWORK_ROUTES.queueChallenge, PowChallengeSchema);
 }
 
 /** Envío de un sobre al enrutador; se inyecta para probar sin red. */
@@ -74,14 +122,25 @@ async function blobToBase64Url(blob: Blob): Promise<string> {
  * Seguridad: el enrutador solo ve el nodo destino y el tramo de tamaño; la autoridad, la
  * operación, el cuerpo y la prueba de trabajo van dentro del sobre. Si la respuesta no abre (el enrutador no
  * pudo entregar y respondió relleno), se trata como un fallo de conexión.
+ * Con `queue`, `submitDeferredComplaint` puede dejar la denuncia en la cola del enrutador.
  */
-export function createRelayApi(target: RelayTarget, send: RelaySender): ReporterApi {
-  async function call<T>(
+export function createRelayApi(
+  target: RelayTarget,
+  send: RelaySender,
+  queue?: RelayQueueAccess,
+): RelayReporterApi {
+  interface CallOptions {
+    proof?: string;
+    query?: Record<string, string>;
+    folio?: string;
+    deferral?: { proof: string };
+  }
+
+  async function exchange(
     operationId: RoutedRequest['operationId'],
-    schema: ResponseSchema<T>,
     body: RoutedBody,
-    options: { proof?: string; query?: Record<string, string> } = {},
-  ): Promise<T> {
+    options: CallOptions,
+  ): Promise<{ reply: RoutedReply } | { queued: RelayQueueReceipt }> {
     const sealed = await sealRoutedRequest(
       {
         to: target.authorityId,
@@ -89,22 +148,39 @@ export function createRelayApi(target: RelayTarget, send: RelaySender): Reporter
         query: options.query ?? {},
         proofOfWork: options.proof ?? null,
         body,
+        ...(options.folio === undefined ? {} : { folio: options.folio }),
       },
       target.node,
     );
-    let reply;
+    const relay =
+      options.deferral === undefined
+        ? sealed.relay
+        : { ...sealed.relay, deferral: options.deferral };
     try {
-      reply = await openRoutedReply(
-        await send(sealed.relay),
-        sealed.replyPrivateKey,
-        target.authorityId,
-      );
+      const response = await send(relay);
+      if (options.deferral !== undefined && response.queued !== null) {
+        // Seguridad: el acuse vale solo si lo firmó la operación fijada y es de este mismo sobre.
+        const isValid =
+          queue !== undefined &&
+          verifyRelayQueueReceipt(response.queued, queue.operator, {
+            node: target.node.id,
+            sealed: relay.sealed,
+          });
+        if (!isValid) throw new ApiRequestError('invalid_response', 200);
+        return { queued: response.queued };
+      }
+      return {
+        reply: await openRoutedReply(response, sealed.replyPrivateKey, target.authorityId),
+      };
     } catch (error) {
       if (error instanceof ApiRequestError) throw error;
       throw new ApiRequestError('network', 0);
     } finally {
       sealed.replyPrivateKey.fill(0);
     }
+  }
+
+  function parseReply<T>(reply: RoutedReply, schema: ResponseSchema<T>): T {
     const value = reply.body.kind === 'json' ? reply.body.value : undefined;
     if (reply.status < 200 || reply.status >= 300) throw apiErrorFrom(reply.status, value);
     const parsed = schema.safeParse(value);
@@ -112,7 +188,43 @@ export function createRelayApi(target: RelayTarget, send: RelaySender): Reporter
     return parsed.data;
   }
 
+  async function call<T>(
+    operationId: RoutedRequest['operationId'],
+    schema: ResponseSchema<T>,
+    body: RoutedBody,
+    options: CallOptions = {},
+  ): Promise<T> {
+    const result = await exchange(operationId, body, options);
+    if (!('reply' in result)) throw new ApiRequestError('invalid_response', 200);
+    return parseReply(result.reply, schema);
+  }
+
   return {
+    hasQueue: queue !== undefined,
+    getQueueChallenge: () =>
+      queue === undefined
+        ? Promise.reject(new ApiRequestError('not_found', 404))
+        : queue.getChallenge(),
+    submitRoutedComplaint: (request, proof, folio) =>
+      call(
+        'submitComplaint',
+        SubmitComplaintResponseSchema,
+        { kind: 'json', value: request },
+        { proof, folio },
+      ),
+    submitDeferredComplaint: async (request, folio, queueProof) => {
+      if (queue === undefined) throw new ApiRequestError('not_found', 404);
+      const result = await exchange(
+        'submitComplaint',
+        { kind: 'json', value: request },
+        { folio, deferral: { proof: queueProof } },
+      );
+      if ('queued' in result) return { kind: 'queued', receipt: result.queued };
+      return {
+        kind: 'delivered',
+        response: parseReply(result.reply, SubmitComplaintResponseSchema),
+      };
+    },
     getPowChallenge: (purpose) =>
       call('getPowChallenge', PowChallengeSchema, { kind: 'none' }, { query: { purpose } }),
     uploadEvidence: async (image, mediaType, proof) =>

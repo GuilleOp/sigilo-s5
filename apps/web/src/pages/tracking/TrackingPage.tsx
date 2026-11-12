@@ -94,7 +94,8 @@ interface LoginFailure {
 function loginFailure(error: unknown): LoginFailure {
   if (error instanceof ApiRequestError && error.code === 'not_found') {
     return {
-      message: 'El folio o el recibo no coinciden. Revisa cada palabra e inténtalo de nuevo.',
+      message:
+        'El folio o el recibo no coinciden. Revisa cada palabra e inténtalo de nuevo. Si tu denuncia quedó en la cola de entrega, aparecerá cuando el sistema de destino la reciba.',
       wordPosition: null,
     };
   }

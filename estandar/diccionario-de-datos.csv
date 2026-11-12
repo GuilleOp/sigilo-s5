@@ -462,8 +462,19 @@ NetworkTrustAnchor,maxDirectoryAgeDays,maxDirectoryAgeDays,entero,mínimo 1,no,D
 RelayRequest,v,v,número,valor fijo 2,sí,Versión del formato (2).,,2
 RelayRequest,node,node,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Nodo destino: lo único que lee el enrutador. La autoridad destino va dentro del sobre cifrado.,,node.federal
 RelayRequest,sealed,sealed,objeto (HpkeEnvelope),,sí,"Sobre HPKE hacia la llave de ese nodo, con texto en claro rellenado a un tramo fijo.",,
+RelayRequest,deferral,deferral,objeto (RelayDeferral),,no,Pide guardar el sobre cerrado en la cola de entrega si el nodo no responde. Solo para una denuncia sin pruebas adjuntas (submitComplaint con folio).,,
+RelayDeferral,proof,proof,cadena,de 1 a 512 caracteres,sí,"Solución del reto queueChallenge del enrutador, con la forma de la cabecera de prueba de trabajo.",,cmV0by1maWN0aWNpby1kZS1sYS1jb2xh.firma:12345
 RelayResponse,v,v,número,valor fijo 2,sí,Versión del formato (2).,,2
-RelayResponse,sealed,sealed,objeto (HpkeEnvelope),,sí,"Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar, relleno indistinguible del mismo tamaño.",,
+RelayResponse,sealed,sealed,objeto (HpkeEnvelope),,sí,"Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar (o quedó en la cola), relleno indistinguible del mismo tamaño.",,
+RelayResponse,queued,queued,valor,,sí,Acuse de la cola si el nodo no respondió y el sobre pidió deferral; null en cualquier otro caso.,,null
+RelayQueueReceipt,v,v,número,valor fijo 1,sí,Versión del formato.,,1
+RelayQueueReceipt,queueId,queueId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador aleatorio del sobre en la cola (16 bytes en hexadecimal).,,7c1e0b9d8a6f4e3c2b1a0f9e8d7c6b5a
+RelayQueueReceipt,node,node,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Nodo al que se entregará.,,node.queretaro
+RelayQueueReceipt,acceptedOn,acceptedOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,Día (UTC) en que el enrutador lo aceptó.,,2026-11-09
+RelayQueueReceipt,expiresOn,expiresOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,Último día (UTC) en que se intenta entregar; después se borra sin abrir.,,2026-11-16
+RelayQueueReceipt,envelopeDigest,envelopeDigest,cadena,patrón ^[0-9a-f]{64}$,sí,SHA-256 de la forma canónica del sobre cerrado (sealed) que quedó en la cola.,,3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9…
+RelayQueueReceipt,operatorKeyId,operatorKeyId,cadena,patrón ^[0-9a-f]{16}$,sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,,5d1c2a9e8b7f3c40
+RelayQueueReceipt,signature,signature,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Firma Ed25519 de la operación sobre ""sigilo/red/relay-queue/v1:"" + forma canónica del acuse sin este campo.",,7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg…
 RoutedRequest,v,v,número,valor fijo 2,sí,Versión del formato (2).,,2
 RoutedRequest,to,to,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,"Autoridad destino dentro del nodo; solo la lee el nodo, que comprueba que la aloja y la entrega internamente.",,authority.comptroller-queretaro
 RoutedRequest,operationId,operationId,cadena,,sí,Operación del Estándar S5 que se pide al nodo.,getPowChallenge; uploadEvidence; submitComplaint; getTracking; sendReporterMessage; fileAppeal,getPowChallenge
@@ -471,6 +482,7 @@ RoutedRequest,query,query,objeto,,sí,Parámetros de consulta de la operación.,
 RoutedRequest,proofOfWork,proofOfWork,valor,,sí,"Valor de la cabecera de prueba de trabajo, o null.",,null
 RoutedRequest,body,body,valor,,sí,"Cuerpo: none (sin cuerpo), json (valor JSON) o binary (tipo de medio y bytes en Base64URL).",,
 RoutedRequest,replyPublicKey,replyPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,Llave pública X25519 efímera hacia la que el nodo cifra la respuesta.,,TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f
+RoutedRequest,folio,folio,cadena,patrón ^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$,no,"Solo en submitComplaint por la red: folio que eligió el navegador al azar, para que la persona lo tenga aunque la denuncia espere en la cola. El nodo lo rechaza si ya existe.",,K7Q2-M9XP-4RTD
 RoutedReply,v,v,número,valor fijo 1,sí,Versión del formato.,,1
 RoutedReply,status,status,entero,de 100 a 599,sí,Estatus HTTP que dio el nodo a la operación.,,200
 RoutedReply,body,body,valor,,sí,"Cuerpo: none (sin cuerpo), json (valor JSON) o binary (tipo de medio y bytes en Base64URL).",,

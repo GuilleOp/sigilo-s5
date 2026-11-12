@@ -25,6 +25,7 @@ import {
 import type { AppContext } from '../context.ts';
 import { errorResponse } from '../http/errors.ts';
 import { hostedAuthorities } from '../network/network-context.ts';
+import { createSlidingCounter } from '../security/proof-of-work.ts';
 
 /** Mayor sobre de red (tramo de 16 MiB en Base64 con su JSON), como el enrutador. */
 export const MAX_INBOX_BODY_BYTES = 23 * 1024 * 1024;
@@ -43,6 +44,30 @@ const ROUTED_TARGETS = new WeakMap<Request, string>();
 export function routedTargetOf(request: Request): string | undefined {
   return ROUTED_TARGETS.get(request);
 }
+
+/** Folio que eligió el navegador y si la entrega es diferida (desde la cola del enrutador). */
+export interface RoutedSubmission {
+  folio: string;
+  deferred: boolean;
+}
+
+/** Igual que `ROUTED_TARGETS`: solo este módulo lo escribe, sobre peticiones que él crea. */
+const ROUTED_SUBMISSIONS = new WeakMap<Request, RoutedSubmission>();
+
+/**
+ * Folio elegido por el navegador y tipo de entrega de una denuncia que llegó por el buzón de red,
+ * o `undefined` si llegó directo o sin folio.
+ */
+export function routedSubmissionOf(request: Request): RoutedSubmission | undefined {
+  return ROUTED_SUBMISSIONS.get(request);
+}
+
+/**
+ * Entregas diferidas que el nodo admite por hora. Seguridad: el enrutador cobra la prueba de
+ * trabajo de la cola con su propio reto; este tope acota lo que un enrutador comprometido podría
+ * meter sin trabajo. Lo que exceda responde `503` y se queda en la cola del enrutador.
+ */
+export const MAX_DEFERRED_PER_HOUR = 300;
 
 async function readJsonBody(c: Context): Promise<unknown> {
   try {
@@ -76,6 +101,7 @@ async function relayResponse(c: Context, response: Response): Promise<Response> 
  */
 export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
   const network = ctx.deps.network;
+  const deferredLoad = createSlidingCounter(60 * 60 * 1000, ctx.deps.now);
   const inbox =
     network === undefined
       ? null
@@ -92,9 +118,17 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
                 authority.id === authorityId &&
                 isAuthorityValidOn(authority, toDayDate(ctx.deps.now())),
             ),
-          handle: async (routed) => {
+          admitDeferred: () => {
+            if (deferredLoad.count() >= MAX_DEFERRED_PER_HOUR) return false;
+            deferredLoad.record();
+            return true;
+          },
+          handle: async (routed, delivery) => {
             const request = routedRequestToFetch(routed);
             ROUTED_TARGETS.set(request, routed.to);
+            if (routed.folio !== undefined) {
+              ROUTED_SUBMISSIONS.set(request, { folio: routed.folio, deferred: delivery.deferred });
+            }
             return responseToRoutedReply(await app.request(request));
           },
         });
@@ -143,6 +177,19 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
       }
     },
   );
+
+  // Paso del reto de la cola de entrega del enrutador (si el nodo destino no responde).
+  app.get(NETWORK_ROUTES.queueChallenge, async (c) => {
+    if (network === undefined || network.routerUrl === null) return errorResponse(c, 'not_found');
+    try {
+      const response = await network.fetch(`${network.routerUrl}${NETWORK_ROUTES.queueChallenge}`, {
+        method: 'GET',
+      });
+      return await relayResponse(c, response);
+    } catch {
+      return errorResponse(c, 'internal');
+    }
+  });
 
   // Paso del corte nacional de datos abiertos (solo números agregados) para el observatorio.
   app.get(NETWORK_ROUTES.nationalOpenData, async (c) => {

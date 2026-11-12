@@ -3198,6 +3198,7 @@ paths:
                         keyId: e07d9c3b5a1f2846
                         enc: fD2h8rS0q9Jw3kZb7nT1uYc6vX4mL5aEoP8gH2iR0sQ
                         ct: Ue7Q0yZb5lTnV2cXk9Wm3jR8hD1fA6oS4gP0qL7tE2iN5uB8wC3vY9xK6zM1rJ4h
+                      queued: null
                     transferId: 5b1e0c9d8a7f6e5d4c3b2a1908f7e6d5
         '400':
           description: '`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.'
@@ -4574,7 +4575,7 @@ paths:
       tags:
         - Red
       summary: Enviar un sobre por el enrutador ciego
-      description: 'Sobre v2: el enrutador lee solo el nodo destino (la autoridad va cifrada dentro del sobre), comprueba que el sobre vaya a la llave de ese nodo y que mida uno de los tramos fijos, y lo reenvía al buzón de red del nodo sin cabeceras de quien envía. No guarda el sobre, la dirección IP ni las cabeceras. Responde `200` con la misma forma y tamaño para cualquier destino; si no pudo entregar, el sobre de vuelta es relleno que el navegador no podrá abrir. Un sobre v1 (con `to` en el encabezado) se rechaza con `400` y un mensaje que pide actualizar la ventanilla.'
+      description: 'Sobre v2: el enrutador lee solo el nodo destino (la autoridad va cifrada dentro del sobre), comprueba que el sobre vaya a la llave de ese nodo y que mida uno de los tramos fijos, y lo reenvía al buzón de red del nodo sin cabeceras de quien envía. No guarda el sobre, la dirección IP ni las cabeceras. Responde `200` con la misma forma y tamaño para cualquier destino; si no pudo entregar, el sobre de vuelta es relleno que el navegador no podrá abrir. Un sobre v1 (con `to` en el encabezado) se rechaza con `400` y un mensaje que pide actualizar la ventanilla. Cola de entrega: si el sobre lleva `deferral` (una denuncia sin pruebas, con la solución del reto `getQueueChallenge`) y el nodo no responde, el enrutador guarda el sobre cerrado (no puede abrirlo), responde con relleno y un acuse firmado en `queued`, y reintenta con espera exponencial hasta entregarlo o hasta que venza a los 7 días; al entregarlo lo borra. Responde `428` si la solución falta o no vale, y `429` si la cola de ese nodo está llena.'
       security: []
       requestBody:
         required: true
@@ -4621,6 +4622,7 @@ paths:
                       keyId: e07d9c3b5a1f2846
                       enc: mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0
                       ct: StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw
+                    queued: null
         '400':
           description: '`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.'
           headers:
@@ -4669,6 +4671,22 @@ paths:
                 error:
                   code: unsupported_media_type
                   message: Tipo de contenido no admitido.
+        '428':
+          description: '`proof_required`: Falta la prueba de trabajo, no es válida, venció o ya se usó.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: proof_required
+                  message: Falta una prueba de trabajo válida y vigente.
         '429':
           description: '`rate_limited`: Demasiados intentos fallidos o mensajes en poco tiempo.'
           headers:
@@ -4685,6 +4703,55 @@ paths:
                 error:
                   code: rate_limited
                   message: Demasiados intentos. Intenta más tarde.
+        '500':
+          description: '`internal`: Error interno, sin detalles.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: internal
+                  message: Error interno del servidor.
+  /api/v1/red/queue/challenge:
+    servers:
+      - url: http://127.0.0.1:8790
+        description: Enrutador en local (`npm run dev:enrutador` o `docker compose up`).
+      - url: https://red.example.org
+        description: Ejemplo de un enrutador publicado (dominio reservado para ejemplos).
+    get:
+      operationId: getQueueChallenge
+      tags:
+        - Red
+      summary: Reto para dejar una denuncia en la cola de entrega
+      description: 'Reto de prueba de trabajo del enrutador (firmado con su propia llave HMAC, con vencimiento y de un solo uso). Lo pide la ventanilla cuando el nodo destino no responde: la solución va en `deferral.proof` del sobre. El enrutador no puede pedirle al nodo caído su reto, así que la cola se protege con el suyo.'
+      security: []
+      responses:
+        '200':
+          description: Reto vigente.
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PowChallenge'
+              examples:
+                sintetico:
+                  summary: Ejemplo sintético
+                  description: También en `ejemplos/get-queue-challenge.response.json`.
+                  value:
+                    token: cmV0by1maWN0aWNpby1kZS1sYS1jb2xh.firma
+                    bits: 18
         '500':
           description: '`internal`: Error interno, sin detalles.'
           headers:
@@ -5758,6 +5825,7 @@ paths:
                       keyId: e07d9c3b5a1f2846
                       enc: mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0
                       ct: StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw
+                    queued: null
         '400':
           description: '`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.'
           headers:
@@ -10318,12 +10386,26 @@ components:
         sealed:
           description: Sobre HPKE hacia la llave de ese nodo, con texto en claro rellenado a un tramo fijo.
           $ref: '#/components/schemas/HpkeEnvelope'
+        deferral:
+          $ref: '#/components/schemas/RelayDeferral'
       required:
         - v
         - node
         - sealed
       additionalProperties: false
       description: 'Sobre de red v2: el enrutador solo ve el nodo destino y el tramo de tamaño; nunca la autoridad.'
+    RelayDeferral:
+      type: object
+      properties:
+        proof:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Solución del reto `queueChallenge` del enrutador, con la forma de la cabecera de prueba de trabajo.
+      required:
+        - proof
+      additionalProperties: false
+      description: Pide guardar el sobre cerrado en la cola de entrega si el nodo no responde. Solo para una denuncia sin pruebas adjuntas (`submitComplaint` con `folio`).
     RelayResponse:
       type: object
       properties:
@@ -10332,13 +10414,73 @@ components:
           const: 2
           description: Versión del formato (2).
         sealed:
-          description: Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar, relleno indistinguible del mismo tamaño.
+          description: Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar (o quedó en la cola), relleno indistinguible del mismo tamaño.
           $ref: '#/components/schemas/HpkeEnvelope'
+        queued:
+          anyOf:
+            - $ref: '#/components/schemas/RelayQueueReceipt'
+            - type: 'null'
+          description: Acuse de la cola si el nodo no respondió y el sobre pidió `deferral`; null en cualquier otro caso.
       required:
         - v
         - sealed
+        - queued
       additionalProperties: false
       description: 'Respuesta del enrutador: igual en estatus, cabeceras y tamaño sin importar el destino ni el resultado.'
+    RelayQueueReceipt:
+      type: object
+      properties:
+        v:
+          type: number
+          const: 1
+          description: Versión del formato.
+        queueId:
+          type: string
+          pattern: ^[0-9a-f]{32}$
+          description: Identificador aleatorio del sobre en la cola (16 bytes en hexadecimal).
+        node:
+          type: string
+          pattern: ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$
+          description: Nodo al que se entregará.
+          examples:
+            - node.queretaro
+        acceptedOn:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Día (UTC) en que el enrutador lo aceptó.
+          examples:
+            - '2026-11-05'
+        expiresOn:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Último día (UTC) en que se intenta entregar; después se borra sin abrir.
+          examples:
+            - '2026-11-05'
+        envelopeDigest:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+          description: SHA-256 de la forma canónica del sobre cerrado (`sealed`) que quedó en la cola.
+        operatorKeyId:
+          type: string
+          pattern: ^[0-9a-f]{16}$
+          description: 'Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.'
+          examples:
+            - 3f9a1c0b7d2e4a68
+        signature:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          description: Firma Ed25519 de la operación sobre "sigilo/red/relay-queue/v1:" + forma canónica del acuse sin este campo.
+      required:
+        - v
+        - queueId
+        - node
+        - acceptedOn
+        - expiresOn
+        - envelopeDigest
+        - operatorKeyId
+        - signature
+      additionalProperties: false
+      description: 'Acuse firmado de que el sobre cerrado quedó en la cola de entrega del enrutador. No es el comprobante del nodo: el folio y el recibo se consultan después en «Mi denuncia».'
     RoutedRequest:
       type: object
       properties:
@@ -10419,6 +10561,12 @@ components:
           type: string
           pattern: ^[A-Za-z0-9_-]+$
           description: Llave pública X25519 efímera hacia la que el nodo cifra la respuesta.
+        folio:
+          description: 'Solo en `submitComplaint` por la red: folio que eligió el navegador al azar, para que la persona lo tenga aunque la denuncia espere en la cola. El nodo lo rechaza si ya existe.'
+          type: string
+          pattern: ^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$
+          examples:
+            - K7Q2-M9XP-4RTD
       required:
         - v
         - to

@@ -26,10 +26,23 @@ export interface RouterConfig {
   /** Cada cuánto se recogen las cabezas de los nodos y se emite la cabeza nacional, en segundos. */
   collectIntervalSeconds: number;
   hstsMaxAgeSeconds: number | null;
+  /** Cola de entrega: reto propio, cada cuánto se reintenta y sus límites por nodo. */
+  queue: {
+    powBits: number;
+    intervalSeconds: number;
+    ttlDays: number;
+    maxPerNode: number;
+    maxBytesPerNode: number;
+  };
 }
 
 const DEFAULT_PORT = 8790;
 const DEFAULT_COLLECT_INTERVAL_SECONDS = 600;
+const DEFAULT_QUEUE_INTERVAL_SECONDS = 15;
+const DEFAULT_QUEUE_POW_BITS = 18;
+const DEFAULT_QUEUE_TTL_DAYS = 7;
+const DEFAULT_QUEUE_MAX_PER_NODE = 500;
+const DEFAULT_QUEUE_MAX_MB_PER_NODE = 64;
 const INTEGER_PATTERN = /^\d{1,9}$/u;
 const URL_PATTERN = /^https?:\/\/[^\s/?#]+$/u;
 
@@ -84,6 +97,42 @@ export function loadRouterConfig(env: NodeJS.ProcessEnv): RouterConfig {
     throw new Error('SIGILO_ROUTER_HOST debe ser 127.0.0.1, ::1 o 0.0.0.0.');
   }
   const hsts = env.SIGILO_ROUTER_HSTS_MAX_AGE ?? '';
+  const queue = {
+    powBits: parseInteger(
+      'SIGILO_ROUTER_QUEUE_POW_BITS',
+      env.SIGILO_ROUTER_QUEUE_POW_BITS,
+      DEFAULT_QUEUE_POW_BITS,
+    ),
+    intervalSeconds: parseInteger(
+      'SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS',
+      env.SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS,
+      DEFAULT_QUEUE_INTERVAL_SECONDS,
+    ),
+    ttlDays: parseInteger(
+      'SIGILO_ROUTER_QUEUE_TTL_DAYS',
+      env.SIGILO_ROUTER_QUEUE_TTL_DAYS,
+      DEFAULT_QUEUE_TTL_DAYS,
+    ),
+    maxPerNode: parseInteger(
+      'SIGILO_ROUTER_QUEUE_MAX_PER_NODE',
+      env.SIGILO_ROUTER_QUEUE_MAX_PER_NODE,
+      DEFAULT_QUEUE_MAX_PER_NODE,
+    ),
+    maxBytesPerNode:
+      parseInteger(
+        'SIGILO_ROUTER_QUEUE_MAX_MB_PER_NODE',
+        env.SIGILO_ROUTER_QUEUE_MAX_MB_PER_NODE,
+        DEFAULT_QUEUE_MAX_MB_PER_NODE,
+      ) *
+      1024 *
+      1024,
+  };
+  if (queue.intervalSeconds < 1 || queue.ttlDays < 1 || queue.ttlDays > 30) {
+    throw new Error(
+      'La cola necesita SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS ≥ 1 y SIGILO_ROUTER_QUEUE_TTL_DAYS entre 1 y 30.',
+    );
+  }
+  if (queue.powBits > 24) throw new Error('SIGILO_ROUTER_QUEUE_POW_BITS debe ser a lo más 24.');
   return {
     host,
     port,
@@ -91,6 +140,7 @@ export function loadRouterConfig(env: NodeJS.ProcessEnv): RouterConfig {
     nodeUrls: parseNodeUrls(env.SIGILO_ROUTER_NODE_URLS),
     collectIntervalSeconds: interval,
     hstsMaxAgeSeconds: hsts === '' ? null : parseInteger('SIGILO_ROUTER_HSTS_MAX_AGE', hsts, 0),
+    queue,
   };
 }
 

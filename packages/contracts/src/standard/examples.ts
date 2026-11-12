@@ -358,7 +358,7 @@ const transferRequest: TransferComplaintRequest = {
 };
 
 const transferResponse: TransferComplaintResponse = {
-  relay: { v: 2, sealed: { ...sealedForNode, keyId: 'e07d9c3b5a1f2846' } },
+  relay: { v: 2, sealed: { ...sealedForNode, keyId: 'e07d9c3b5a1f2846' }, queued: null },
   transferId: '5b1e0c9d8a7f6e5d4c3b2a1908f7e6d5',
 };
 

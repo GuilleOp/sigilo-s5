@@ -604,6 +604,18 @@ red:demo` genera la llave del evaluador y la publica en el directorio, y `compos
 - **Custodio.** Servicio que tenga la llave del custodio y abra solo custodias liberadas; aún no
   existe (nivel B: formato y estados con pruebas).
 
+### Cola de entrega del enrutador
+
+Cuando el nodo destino no responde, el enrutador puede guardar una denuncia sin pruebas en su cola
+sin abrirla: el sobre sigue cifrado con HPKE hacia la llave X25519 del nodo. El acuse
+(`RelayQueueReceipt`) lo firma la llave Ed25519 de la operación sobre
+`sigilo/red/relay-queue/v1:` + forma canónica del acuse sin firma, e incluye el SHA-256 canónico
+del sobre (`relayEnvelopeDigest`): la web lo verifica con la llave de la operación del directorio
+verificado y solo para ese mismo sobre y nodo. El folio lo genera el navegador
+(`generateFolio`, 60 bits de `crypto.getRandomValues`, el mismo generador del nodo) y viaja
+dentro del sobre (`RoutedRequest.folio`); el nodo lo rechaza si ya existe. El reto de la cola es
+HMAC-SHA256 con una llave propia del enrutador, con vencimiento de 10 minutos y de un solo uso.
+
 ### Turnado entre nodos (SEC-19)
 
 El navegador de recepción y turnado arma de nuevo la denuncia con los hechos y las pruebas del

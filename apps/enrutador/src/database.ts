@@ -1,5 +1,8 @@
-// Base SQLite del enrutador: versiones del directorio, registros de nodos y bitácora nacional.
-// Seguridad: no hay ninguna tabla para sobres, direcciones IP ni cabeceras; el enrutador no las guarda.
+// Base SQLite del enrutador: versiones del directorio, registros de nodos, bitácora nacional y cola
+// de entrega.
+// Seguridad: no hay ninguna tabla para direcciones IP ni cabeceras. Los sobres solo se guardan en
+// `relay_queue`, cerrados (cifrados hacia la llave del nodo, que el enrutador no tiene), mientras el
+// nodo no responde; se borran al entregarlos o al vencer. Un reenvío normal no escribe nada.
 import { DatabaseSync } from 'node:sqlite';
 import type { SQLOutputValue } from 'node:sqlite';
 
@@ -44,6 +47,18 @@ CREATE TABLE IF NOT EXISTS node_head_rejections (
   day TEXT NOT NULL,
   reason TEXT NOT NULL
 ) STRICT;
+CREATE TABLE IF NOT EXISTS relay_queue (
+  queue_id TEXT PRIMARY KEY,
+  node_id TEXT NOT NULL,
+  envelope TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  accepted_on TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  attempts INTEGER NOT NULL,
+  next_attempt_at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS relay_queue_due ON relay_queue (next_attempt_at);
+CREATE INDEX IF NOT EXISTS relay_queue_node ON relay_queue (node_id);
 CREATE TRIGGER IF NOT EXISTS national_entries_no_update BEFORE UPDATE ON national_entries
   BEGIN SELECT RAISE(ABORT, 'La bitácora nacional es de solo agregar.'); END;
 CREATE TRIGGER IF NOT EXISTS national_entries_no_delete BEFORE DELETE ON national_entries

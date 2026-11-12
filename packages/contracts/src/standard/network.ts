@@ -24,6 +24,8 @@ import {
   NodeHeadAcceptanceSchema,
   NodeRegistrationReceiptSchema,
   NodeRegistrationSchema,
+  RelayDeferralSchema,
+  RelayQueueReceiptSchema,
   RelayRequestSchema,
   RelayResponseSchema,
   RoutedReplySchema,
@@ -44,6 +46,7 @@ import type {
   NodeHeadAcceptance,
   NodeRegistration,
   NodeRegistrationReceipt,
+  RelayQueueReceipt,
   RelayRequest,
   RelayResponse,
   RoutedReply,
@@ -65,7 +68,9 @@ export const NETWORK_COMPONENTS = {
   WitnessSignature: WitnessSignatureSchema,
   NetworkTrustAnchor: NetworkTrustAnchorSchema,
   RelayRequest: RelayRequestSchema,
+  RelayDeferral: RelayDeferralSchema,
   RelayResponse: RelayResponseSchema,
+  RelayQueueReceipt: RelayQueueReceiptSchema,
   RoutedRequest: RoutedRequestSchema,
   RoutedReply: RoutedReplySchema,
   NodeRegistration: NodeRegistrationSchema,
@@ -179,6 +184,20 @@ const relayRequest: RelayRequest = {
 const relayResponse: RelayResponse = {
   v: 2,
   sealed: { v: 1, suite: HPKE_SUITE_V1, keyId: 'e07d9c3b5a1f2846', enc: ENC, ct: CT },
+  queued: null,
+};
+
+const deferral = { proof: 'cmV0by1maWN0aWNpby1kZS1sYS1jb2xh.firma:12345' };
+
+const queueReceipt: RelayQueueReceipt = {
+  v: 1,
+  queueId: '7c1e0b9d8a6f4e3c2b1a0f9e8d7c6b5a',
+  node: 'node.queretaro',
+  acceptedOn: DAY,
+  expiresOn: '2026-11-16',
+  envelopeDigest: DIGEST,
+  operatorKeyId: KEY_ID,
+  signature: SIGNATURE,
 };
 
 const nodeHead: SignedLedgerHead = {
@@ -338,6 +357,9 @@ export const NETWORK_EXAMPLES = {
   'get-network-directory.response': signedDirectory,
   'relay-envelope.request': relayRequest,
   'relay-envelope.response': relayResponse,
+  'get-queue-challenge.response': { token: 'cmV0by1maWN0aWNpby1kZS1sYS1jb2xh.firma', bits: 18 },
+  'relay-queue-receipt.content': queueReceipt,
+  'relay-deferral.content': deferral,
   'register-node.request': registration,
   'register-node.response': registrationReceipt,
   'publish-node-head.request': nodeHead,
@@ -360,6 +382,8 @@ export type NetworkExampleName = keyof typeof NETWORK_EXAMPLES;
 
 /** Ejemplos de componentes que no son cuerpo de ninguna operación. */
 export const NETWORK_EXTRA_EXAMPLES: Partial<Record<NetworkComponentName, NetworkExampleName>> = {
+  RelayQueueReceipt: 'relay-queue-receipt.content',
+  RelayDeferral: 'relay-deferral.content',
   RoutedRequest: 'routed-request.content',
   RoutedReply: 'routed-reply.content',
   NetworkTrustAnchor: 'network-trust-anchor.content',
@@ -436,7 +460,7 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
     servedBy: 'router',
     summary: 'Enviar un sobre por el enrutador ciego',
     description:
-      'Sobre v2: el enrutador lee solo el nodo destino (la autoridad va cifrada dentro del sobre), comprueba que el sobre vaya a la llave de ese nodo y que mida uno de los tramos fijos, y lo reenvía al buzón de red del nodo sin cabeceras de quien envía. No guarda el sobre, la dirección IP ni las cabeceras. Responde `200` con la misma forma y tamaño para cualquier destino; si no pudo entregar, el sobre de vuelta es relleno que el navegador no podrá abrir. Un sobre v1 (con `to` en el encabezado) se rechaza con `400` y un mensaje que pide actualizar la ventanilla.',
+      'Sobre v2: el enrutador lee solo el nodo destino (la autoridad va cifrada dentro del sobre), comprueba que el sobre vaya a la llave de ese nodo y que mida uno de los tramos fijos, y lo reenvía al buzón de red del nodo sin cabeceras de quien envía. No guarda el sobre, la dirección IP ni las cabeceras. Responde `200` con la misma forma y tamaño para cualquier destino; si no pudo entregar, el sobre de vuelta es relleno que el navegador no podrá abrir. Un sobre v1 (con `to` en el encabezado) se rechaza con `400` y un mensaje que pide actualizar la ventanilla. Cola de entrega: si el sobre lleva `deferral` (una denuncia sin pruebas, con la solución del reto `getQueueChallenge`) y el nodo no responde, el enrutador guarda el sobre cerrado (no puede abrirlo), responde con relleno y un acuse firmado en `queued`, y reintenta con espera exponencial hasta entregarlo o hasta que venza a los 7 días; al entregarlo lo borra. Responde `428` si la solución falta o no vale, y `429` si la cola de ese nodo está llena.',
     security: 'none',
     parameters: [],
     requestBody: { kind: 'json', component: 'RelayRequest', example: 'relay-envelope.request' },
@@ -445,7 +469,25 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
       description: 'Sobre de vuelta cifrado hacia la llave efímera del navegador.',
       body: { kind: 'json', component: 'RelayResponse', example: 'relay-envelope.response' },
     },
-    errors: [...JSON_ERRORS, 'rate_limited'],
+    errors: [...JSON_ERRORS, 'rate_limited', 'proof_required'],
+  },
+  {
+    operationId: 'getQueueChallenge',
+    method: 'get',
+    path: NETWORK_ROUTES.queueChallenge,
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Reto para dejar una denuncia en la cola de entrega',
+    description:
+      'Reto de prueba de trabajo del enrutador (firmado con su propia llave HMAC, con vencimiento y de un solo uso). Lo pide la ventanilla cuando el nodo destino no responde: la solución va en `deferral.proof` del sobre. El enrutador no puede pedirle al nodo caído su reto, así que la cola se protege con el suyo.',
+    security: 'none',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Reto vigente.',
+      body: { kind: 'json', component: 'PowChallenge', example: 'get-queue-challenge.response' },
+    },
+    errors: [],
   },
   {
     operationId: 'registerNode',

@@ -7,7 +7,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { Hono } from 'hono';
 import { LEDGER_GENESIS_HASH, ROUTES } from '@sigilo/contracts';
 import type { LedgerEvent, NetworkTrustAnchor, SignedAuthorityDirectory } from '@sigilo/contracts';
-import { keyIdFor, signLedgerHead } from '@sigilo/core';
+import { keyIdFor, randomBytes, signLedgerHead } from '@sigilo/core';
 import {
   DEMO_WITNESS_IDS,
   buildDemoDirectory,
@@ -26,6 +26,9 @@ import { loadDirectoryStore } from './directory-store.ts';
 import type { DirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
 import type { NationalLedgerService } from './national-ledger-service.ts';
+import { createQueuePow } from './queue-pow.ts';
+import { createRelayQueue } from './relay-queue.ts';
+import type { RelayQueue, RelayQueueLimits } from './relay-queue.ts';
 import { createRelayService } from './relay-service.ts';
 import type { RelayService } from './relay-service.ts';
 
@@ -68,6 +71,12 @@ export interface TestRouter {
   directory: DirectoryStore;
   national: NationalLedgerService;
   relay: RelayService;
+  /** Cola de entrega (reto de dificultad 0). */
+  queue: RelayQueue;
+  /** Reloj del enrutador (se puede mover). */
+  setNow(date: Date): void;
+  /** Apaga o prende un nodo falso: apagado, la conexión falla. */
+  setNodeDown(nodeId: DemoNodeId, isDown: boolean): void;
   /** Peticiones que llegaron a los nodos falsos. */
   captured: CapturedRequest[];
   /** `fetch` que entra a la aplicación del enrutador (para el cliente del nodo y los testigos). */
@@ -89,6 +98,10 @@ export function createTestRouter(
     network?: ReturnType<typeof createTestNetwork>;
     /** Simula un enrutador que no verifica la historia de los nodos (para probar a los testigos). */
     skipNodeHistory?: boolean;
+    /** Secreto HMAC del buzón de cada nodo falso (necesario para las entregas diferidas). */
+    withRelaySecrets?: boolean;
+    /** Límites de la cola de entrega. */
+    queueLimits?: Partial<RelayQueueLimits>;
   } = {},
 ): TestRouter {
   const network = options.network ?? createTestNetwork();
@@ -136,11 +149,17 @@ export function createTestRouter(
   });
   const directory = loadDirectoryStore(db, network.signed, network.trust, national, TEST_DAY);
   const captured: CapturedRequest[] = [];
+  const secrets: Record<DemoNodeId, Uint8Array> = {
+    'node.queretaro': randomBytes(32),
+    'node.federal': randomBytes(32),
+  };
   const inboxes = new Map(
     (Object.keys(NODE_URLS) as DemoNodeId[]).map((id) => [
       NODE_URLS[id],
       createNodeInboxHandler({
         nodeBoxPrivateKey: network.keys.nodes[id].box.privateKey,
+        nodeId: id,
+        ...(options.withRelaySecrets === true ? { relaySecret: secrets[id] } : {}),
         handle: async () => ({
           v: 1,
           status: 201,
@@ -149,20 +168,41 @@ export function createTestRouter(
       }),
     ]),
   );
+  const down = new Set<string>();
   const nodeFetch: FetchLike = async (input, init) => {
     const request = new Request(input, init);
     const body = await request.clone().text();
     captured.push({ url: request.url, headers: Object.fromEntries(request.headers), body });
+    if (down.has(new URL(request.url).origin)) throw new TypeError('fetch failed');
     const handler = inboxes.get(new URL(request.url).origin);
     if (handler === undefined) return new Response('', { status: 502 });
     return handler(request);
   };
-  const relay = createRelayService({ db, nodeUrl: (node) => node.baseUrl, fetch: nodeFetch });
+  const relay = createRelayService({
+    db,
+    nodeUrl: (node) => node.baseUrl,
+    fetch: nodeFetch,
+    ...(options.withRelaySecrets === true
+      ? { relaySecret: (node) => secrets[node.id as DemoNodeId] ?? null }
+      : {}),
+  });
+  let current = new Date(`${TEST_DAY}T12:00:00Z`);
+  const now = (): Date => new Date(current.getTime());
+  const queue = createRelayQueue({
+    db,
+    deliver: relay.deliver,
+    directory: directory.directory,
+    now,
+    operatorPrivateKey: network.keys.operator.privateKey,
+    operatorKeyId: keyIdFor(network.keys.operator.publicKey),
+    ...(options.queueLimits === undefined ? {} : { limits: options.queueLimits }),
+  });
   const app = createRouterApp({
     directory,
     national,
     relay,
-    now: () => new Date(`${TEST_DAY}T12:00:00Z`),
+    queue: { store: queue, pow: createQueuePow({ bits: 0, now }) },
+    now,
   });
   return {
     app,
@@ -172,6 +212,14 @@ export function createTestRouter(
     directory,
     national,
     relay,
+    queue,
+    setNow(date) {
+      current = date;
+    },
+    setNodeDown(nodeId, isDown) {
+      if (isDown) down.add(NODE_URLS[nodeId]);
+      else down.delete(NODE_URLS[nodeId]);
+    },
     captured,
     routerFetch: async (input, init) => app.request(input, init),
     nodeLedgers,

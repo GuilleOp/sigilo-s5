@@ -153,7 +153,7 @@ export async function sealRoutedReply(
     { keyId: keyIdFor(publicKey), publicKey },
     replyAad(request.to),
   );
-  return { v: RELAY_ENVELOPE_VERSION, sealed };
+  return { v: RELAY_ENVELOPE_VERSION, sealed, queued: null };
 }
 
 /**
@@ -190,5 +190,6 @@ export function relayDecoyResponse(keyId: string): RelayResponse {
       enc: toBase64Url(randomBytes(ENCAPSULATED_KEY_LENGTH)),
       ct: toBase64Url(randomBytes(bucket + AEAD_TAG_LENGTH)),
     },
+    queued: null,
   };
 }

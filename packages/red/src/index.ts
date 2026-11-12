@@ -4,6 +4,7 @@ export * from './signatures.ts';
 export * from './directory.ts';
 export * from './competent-authority.ts';
 export * from './relay-envelope.ts';
+export * from './relay-queue.ts';
 export * from './national-ledger.ts';
 export * from './node-history.ts';
 export * from './registration.ts';

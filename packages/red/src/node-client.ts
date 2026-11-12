@@ -6,6 +6,7 @@ import {
   NodeHeadAcceptanceSchema,
   NodeRegistrationReceiptSchema,
   POW_HEADER,
+  RelayRequestSchema,
   ROUTES,
   SignedLedgerHeadSchema,
 } from '@sigilo/contracts';
@@ -145,8 +146,20 @@ export async function responseToRoutedReply(response: Response): Promise<RoutedR
   return { v: 1, status: response.status, body };
 }
 
+/** Cómo llegó una petición de red al nodo. */
+export interface RoutedDelivery {
+  /**
+   * `true` si el enrutador la entrega desde su cola (o con permiso de encolarla): la prueba de
+   * trabajo la cobró el enrutador con su propio reto, no el nodo.
+   */
+  deferred: boolean;
+}
+
 /** Maneja una petición de red ya abierta y devuelve la respuesta del nodo. */
-export type RoutedOperationHandler = (request: RoutedRequest) => Promise<RoutedReply>;
+export type RoutedOperationHandler = (
+  request: RoutedRequest,
+  delivery: RoutedDelivery,
+) => Promise<RoutedReply>;
 
 /** Opciones del buzón de red del nodo. */
 export interface NodeInboxOptions {
@@ -165,6 +178,12 @@ export interface NodeInboxOptions {
    * este nodo. Si se da y devuelve `false`, el sobre se rechaza como uno que no abre.
    */
   hostsAuthority?: (authorityId: string) => boolean;
+  /**
+   * Admite o no una entrega diferida más (por ejemplo, un tope por hora). Si devuelve `false`, el
+   * buzón responde `503` sin abrir la operación y el enrutador la deja en su cola para después.
+   * Sin esta opción se admiten todas.
+   */
+  admitDeferred?: () => boolean;
 }
 
 const JSON_HEADERS = {
@@ -179,11 +198,32 @@ function inboxError(): Response {
   );
 }
 
+/** El nodo no puede atender la entrega diferida ahora: el enrutador la reintentará. */
+function inboxBusy(): Response {
+  return new Response(
+    JSON.stringify({ error: { code: 'rate_limited', message: API_ERROR_MESSAGES.rate_limited } }),
+    { status: 503, headers: JSON_HEADERS },
+  );
+}
+
+/**
+ * Indica si la combinación de entrega y operación es válida: una entrega diferida solo puede ser
+ * una denuncia con folio elegido por el navegador, y un folio elegido solo viaja en una denuncia.
+ */
+function isAllowedRouting(routed: RoutedRequest, deferred: boolean): boolean {
+  if (routed.folio !== undefined && routed.operationId !== 'submitComplaint') return false;
+  return !deferred || (routed.operationId === 'submitComplaint' && routed.folio !== undefined);
+}
+
 /**
  * Crea el manejador del buzón de red (`POST NETWORK_ROUTES.nodeInbox`) con la API Fetch estándar:
  * abre el sobre, comprueba que la autoridad interna esté alojada en el nodo, entrega la operación
  * a `handle` y cifra la respuesta hacia la llave efímera del navegador. Un sobre que no abre, de
  * otro nodo o hacia una autoridad que el nodo no aloja responde `400 bad_request` sin decir por qué.
+ * Entrega diferida (`deferral` en el sobre): solo se acepta si el buzón exige la etiqueta HMAC del
+ * enrutador, porque el nodo confía en que el enrutador cobró la prueba de trabajo; y si la operación
+ * falla del lado del nodo (estatus 5xx) responde `503` para que el enrutador la reintente en lugar
+ * de darla por entregada.
  * Seguridad: el nodo no recibe ninguna cabecera de la persona; si `handle` falla, la respuesta
  * cifrada es un `500 internal` sin detalles.
  */
@@ -194,6 +234,7 @@ export function createNodeInboxHandler(
     const mediaType = (request.headers.get('Content-Type') ?? '').split(';')[0]?.trim();
     if (request.method !== 'POST' || mediaType !== 'application/json') return inboxError();
     let routed: RoutedRequest;
+    let deferred: boolean;
     try {
       const text = await request.text();
       const secret = options.relaySecret;
@@ -203,8 +244,12 @@ export function createNodeInboxHandler(
       ) {
         return inboxError();
       }
+      const raw: unknown = JSON.parse(text);
+      deferred = RelayRequestSchema.safeParse(raw).data?.deferral !== undefined;
+      // Seguridad: sin la etiqueta del enrutador nadie puede saltarse la prueba de trabajo del nodo.
+      if (deferred && secret === undefined) return inboxError();
       routed = await openRoutedRequest(
-        JSON.parse(text),
+        raw,
         options.nodeBoxPrivateKey,
         options.nodeId === undefined ? {} : { nodeId: options.nodeId },
       );
@@ -212,12 +257,16 @@ export function createNodeInboxHandler(
       if (options.hostsAuthority !== undefined && !options.hostsAuthority(routed.to)) {
         return inboxError();
       }
+      if (!isAllowedRouting(routed, deferred)) return inboxError();
     } catch {
       return inboxError();
     }
+    if (deferred && options.admitDeferred !== undefined && !options.admitDeferred()) {
+      return inboxBusy();
+    }
     let reply: RoutedReply;
     try {
-      reply = await options.handle(routed);
+      reply = await options.handle(routed, { deferred });
     } catch {
       reply = {
         v: 1,
@@ -228,6 +277,8 @@ export function createNodeInboxHandler(
         },
       };
     }
+    // Una entrega diferida que falló del lado del nodo se queda en la cola del enrutador.
+    if (deferred && reply.status >= 500) return inboxBusy();
     const sealed = await sealRoutedReply(reply, routed);
     return new Response(JSON.stringify(sealed), { status: 200, headers: JSON_HEADERS });
   };

@@ -22,7 +22,11 @@ import { evaluatorKeyFromDirectory } from '@sigilo/corroboracion';
 import { identifierFromDraft } from '../../../corroboration/blind-corroboration.ts';
 import { workerCorroborationRunner } from '../../../corroboration/corroboration-runner.ts';
 import { destinationFor, keysForDestination } from '../../../network/network-keys.ts';
-import { createRelayApi, sameOriginRelaySender } from '../../../network/relay-api.ts';
+import {
+  createRelayApi,
+  sameOriginQueueChallenge,
+  sameOriginRelaySender,
+} from '../../../network/relay-api.ts';
 import type { ResolvedDestination } from '../destination.ts';
 import {
   ReceiptVerificationError,
@@ -57,6 +61,14 @@ function networkSubmissionFor(
     api: createRelayApi(
       { authorityId: target.authority.id, node: target.node },
       sameOriginRelaySender(),
+      // Cola de entrega: el acuse lo firma la operación del directorio ya verificado.
+      {
+        getChallenge: sameOriginQueueChallenge(),
+        operator: {
+          keyId: destination.directory.operator.signingKeyId,
+          signingPublicKey: destination.directory.operator.signingPublicKey,
+        },
+      },
     ),
     keys: keysForDestination(target),
     authorityName: target.authority.name,
@@ -148,11 +160,22 @@ export function SubmitStep({ draft, destination, navigator, onFinished }: Submit
     return (
       <>
         <h3 id={RESULT_TITLE_ID} tabIndex={-1}>
-          {phase.isVerified
-            ? 'Tu denuncia fue recibida'
-            : 'Tu denuncia fue enviada, pero no pudimos comprobarla'}
+          {result.queued !== undefined
+            ? 'Tu denuncia quedó en la cola de entrega'
+            : phase.isVerified
+              ? 'Tu denuncia fue recibida'
+              : 'Tu denuncia fue enviada, pero no pudimos comprobarla'}
         </h3>
-        {phase.isVerified ? (
+        {result.queued !== undefined ? (
+          <Alert tone="info" title="Está guardada y cerrada con llave" testId="submit-queued">
+            <p>
+              El sistema de destino no respondió. La red guardó tu denuncia cerrada (nadie en medio
+              puede leerla) y la entregará en cuanto vuelva, a más tardar el{' '}
+              {formatDayDate(result.queued.expiresOn)}. Tu folio y tus 8 palabras ya sirven: entra a
+              «Mi denuncia» en unas horas para ver tu comprobante.
+            </p>
+          </Alert>
+        ) : phase.isVerified ? (
           <Alert tone="success" title="Llegó completa" testId="submit-success">
             <p>
               Comprobamos que tu denuncia llegó completa. Fecha: {formatDayDate(result.receivedOn)}.
@@ -167,7 +190,7 @@ export function SubmitStep({ draft, destination, navigator, onFinished }: Submit
             <p>Guarda tu recibo. Más tarde entra a «Mi denuncia» para revisar.</p>
           </Alert>
         )}
-        {result.destination !== undefined && (
+        {result.destination !== undefined && result.queued === undefined && (
           <p data-testid="submit-destination">
             Llegó a <strong>{result.destination.authorityName}</strong> (
             {result.destination.nodeName}). Viajó cerrada con llave: nadie en medio pudo leerla.

@@ -67,6 +67,7 @@ export const UNCOUNTED_ROUTES: ReadonlySet<string> = new Set([
   // Red y corroboración: también son pasos de quien denuncia (su sobre, su directorio, su OPRF).
   NETWORK_ROUTES.nodeInbox,
   NETWORK_ROUTES.relay,
+  NETWORK_ROUTES.queueChallenge,
   NETWORK_ROUTES.directory,
   NETWORK_ROUTES.nationalHead,
   NETWORK_ROUTES.nationalPending,

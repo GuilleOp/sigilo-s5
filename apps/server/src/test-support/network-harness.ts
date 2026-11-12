@@ -14,7 +14,7 @@ import type {
   SignedAuthorityDirectory,
   SubmitComplaintRequest,
 } from '@sigilo/contracts';
-import { buildPublicKeySet, randomBytes, toDayDate } from '@sigilo/core';
+import { buildPublicKeySet, keyIdFor, randomBytes, toDayDate } from '@sigilo/core';
 import type { KeyPair } from '@sigilo/core';
 import {
   DEMO_INBOX_AUTHORITY_IDS,
@@ -35,6 +35,10 @@ import { loadDirectoryStore } from '../../../enrutador/src/directory-store.ts';
 import { createNationalLedgerService } from '../../../enrutador/src/national-ledger-service.ts';
 import { createOpenDataAggregator } from '../../../enrutador/src/open-data-aggregator.ts';
 import type { OpenDataAggregator } from '../../../enrutador/src/open-data-aggregator.ts';
+import { createQueuePow } from '../../../enrutador/src/queue-pow.ts';
+import type { QueuePow } from '../../../enrutador/src/queue-pow.ts';
+import { createRelayQueue } from '../../../enrutador/src/relay-queue.ts';
+import type { RelayQueue } from '../../../enrutador/src/relay-queue.ts';
 import { createRelayService } from '../../../enrutador/src/relay-service.ts';
 import type { RelayService } from '../../../enrutador/src/relay-service.ts';
 import type { AppContext } from '../context.ts';
@@ -194,6 +198,11 @@ export interface TestNetwork {
   trust: NetworkTrustAnchor;
   routerApp: Hono;
   relay: RelayService;
+  /** Cola de entrega del enrutador y su reto (dificultad 0 en pruebas). */
+  queue: RelayQueue;
+  queuePow: QueuePow;
+  /** Apaga o prende un nodo: apagado, el enrutador no recibe respuesta de su buzón. */
+  setNodeDown(nodeId: DemoNodeId, isDown: boolean): void;
   /** Agregador nacional de datos abiertos del enrutador. */
   openData: OpenDataAggregator;
   /** Cuerpos que el enrutador reenvió a los nodos (para comprobar que no ve el contenido). */
@@ -305,9 +314,12 @@ export function createTestNetwork(): TestNetwork {
     if (app === undefined) return new Response('', { status: 502 });
     return app.request(request);
   };
+  const downOrigins = new Set<string>();
   const nodeFetch: FetchLike = async (input, init) => {
     const request = new Request(input, init);
     forwarded.push(await request.clone().text());
+    // Un nodo caído: la conexión falla, como si no respondiera.
+    if (downOrigins.has(new URL(request.url).origin)) throw new TypeError('fetch failed');
     return networkFetch(request);
   };
   // Secreto del buzón de cada nodo compartido con el enrutador (H11).
@@ -328,7 +340,23 @@ export function createTestNetwork(): TestNetwork {
     fetch: networkFetch,
     now,
   });
-  const routerApp = createRouterApp({ directory, national, relay, openData, now });
+  const queue = createRelayQueue({
+    db: routerDb,
+    deliver: relay.deliver,
+    directory: directory.directory,
+    now,
+    operatorPrivateKey: services.network.operator.privateKey,
+    operatorKeyId: keyIdFor(services.network.operator.publicKey),
+  });
+  const queuePow = createQueuePow({ bits: 0, now });
+  const routerApp = createRouterApp({
+    directory,
+    national,
+    relay,
+    queue: { store: queue, pow: queuePow },
+    openData,
+    now,
+  });
   const federal = createNode(
     'node.federal',
     services,
@@ -365,6 +393,14 @@ export function createTestNetwork(): TestNetwork {
     trust,
     routerApp,
     relay,
+    queue,
+    queuePow,
+    setNodeDown(nodeId, isDown) {
+      const origin = services.directory.nodes.find((node) => node.id === nodeId)?.baseUrl;
+      if (origin === undefined) throw new Error(`Nodo desconocido: ${nodeId}.`);
+      if (isDown) downOrigins.add(origin);
+      else downOrigins.delete(origin);
+    },
     openData,
     forwarded,
     federal,

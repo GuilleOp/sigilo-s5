@@ -157,7 +157,10 @@ describe('enrutador ciego', () => {
       'national_heads',
       'node_head_rejections',
       'node_registrations',
+      'relay_queue',
     ]);
+    // La cola existe solo para nodos caídos con entrega diferida: un reenvío normal no la toca.
+    expect(router.db.prepare('SELECT COUNT(*) AS n FROM relay_queue').get()).toEqual({ n: 0 });
   });
 
   it('cuenta los resultados de forma agregada, sin destino', async () => {

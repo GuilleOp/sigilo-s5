@@ -8,16 +8,18 @@ import {
   NationalCosignatureRequestSchema,
   NodeIdSchema,
   NodeRegistrationSchema,
+  RELAY_QUEUE_MAX_BUCKET,
   RELAY_V1_REJECTION_MESSAGE,
   RelayRequestSchema,
   Sha256HexSchema,
   SignedLedgerHeadSchema,
 } from '@sigilo/contracts';
-import { toDayDate } from '@sigilo/core';
+import { envelopePlaintextLength, randomBytes, toDayDate, toHex } from '@sigilo/core';
 import {
   findNode,
   hasRelayBucketSize,
   isLegacyRelayRequest,
+  relayDecoyResponse,
   verifyNodeRegistration,
 } from '@sigilo/red';
 import type { DirectoryStore } from './directory-store.ts';
@@ -26,6 +28,8 @@ import { NationalLedgerRejection } from './national-ledger-service.ts';
 import type { NationalLedgerService } from './national-ledger-service.ts';
 import { nationalOpenDataCsv } from './open-data-aggregator.ts';
 import type { OpenDataAggregator } from './open-data-aggregator.ts';
+import type { QueuePow } from './queue-pow.ts';
+import type { RelayQueue } from './relay-queue.ts';
 import type { RelayService } from './relay-service.ts';
 
 /** Dependencias de la aplicación. */
@@ -33,6 +37,11 @@ export interface RouterAppDeps {
   directory: DirectoryStore;
   national: NationalLedgerService;
   relay: RelayService;
+  /**
+   * Cola de entrega y su prueba de trabajo. Sin ellas, un sobre con `deferral` se rechaza (`400`)
+   * y `queueChallenge` responde `404`.
+   */
+  queue?: { store: RelayQueue; pow: QueuePow };
   /** Corte nacional de datos abiertos; sin él, sus rutas responden `404`. */
   openData?: Pick<OpenDataAggregator, 'latest'>;
   now: () => Date;
@@ -91,13 +100,38 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
     ) {
       throw new ApiFailure('bad_request');
     }
+    const queue = deps.queue;
+    if (relay.deferral !== undefined) {
+      if (queue === undefined) throw new ApiFailure('bad_request');
+      // La cola solo guarda denuncias sin pruebas adjuntas: tramos de hasta 1 MiB.
+      if ((envelopePlaintextLength(relay.sealed) ?? Infinity) > RELAY_QUEUE_MAX_BUCKET) {
+        throw new ApiFailure('payload_too_large');
+      }
+      // Seguridad: el nodo caído no puede cobrar su reto; el enrutador cobra el suyo antes de
+      // aceptar guardar nada.
+      if (!queue.pow.spend(relay.deferral.proof)) throw new ApiFailure('proof_required');
+    }
     if (inFlight >= maxRelays) throw new ApiFailure('rate_limited');
     inFlight += 1;
     try {
-      return c.json(await deps.relay.forward(node, relay));
+      const onUnavailable =
+        relay.deferral === undefined || queue === undefined
+          ? undefined
+          : () => {
+              const receipt = queue.store.enqueue(node, relay);
+              if (receipt === null) throw new ApiFailure('rate_limited');
+              // Mismo relleno que un sobre no entregado, con el acuse firmado de la cola.
+              return { ...relayDecoyResponse(toHex(randomBytes(8))), queued: receipt };
+            };
+      return c.json(await deps.relay.forward(node, relay, onUnavailable));
     } finally {
       inFlight -= 1;
     }
+  });
+
+  app.get(NETWORK_ROUTES.queueChallenge, (c) => {
+    if (deps.queue === undefined) throw new ApiFailure('not_found');
+    return c.json(deps.queue.pow.issue());
   });
 
   const nodeFor = (nodeId: string) => {

@@ -36,6 +36,11 @@ O toda la red con `npm run demo:todo` (o `docker compose build && docker compose
 | `SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS` | `600`                 | Cada cuánto recoge cabezas, emite la cabeza nacional y hace el corte |
 | `SIGILO_ROUTER_CLOCK_FILE`               | vacío                 | Solo demostración (`SIGILO_DEMO=1`): reloj simulado del corte        |
 | `SIGILO_ROUTER_HSTS_MAX_AGE`             | sin HSTS              | `max-age` cuando se publica detrás de HTTPS                          |
+| `SIGILO_ROUTER_QUEUE_POW_BITS`           | `18`                  | Dificultad del reto propio de la cola de entrega (0 a 24)            |
+| `SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS`   | `15`                  | Cada cuánto revisa la cola (cada sobre lleva su siguiente intento)   |
+| `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir        |
+| `SIGILO_ROUTER_QUEUE_MAX_PER_NODE`       | `500`                 | Sobres en cola por nodo; al llenarse responde `429`                  |
+| `SIGILO_ROUTER_QUEUE_MAX_MB_PER_NODE`    | `64`                  | Megabytes en cola por nodo                                           |
 
 Al arrancar verifica `directory.json`: la primera vez contra la raíz fijada `trust.json`; después
 exige la misma versión o exactamente la siguiente, cofirmada por los testigos de la anterior. Si no
@@ -49,6 +54,7 @@ Todas bajo `/api/v1/red`; el detalle está en `estandar/openapi.yaml`.
 | -------------------------------------------- | ------------------------------------------------------------ |
 | `GET /directory`                             | Directorio firmado y cofirmado                               |
 | `POST /relay`                                | Sobre opaco (v2) hacia un nodo; responde el sobre de vuelta  |
+| `GET /queue/challenge`                       | Reto propio para dejar una denuncia en la cola de entrega    |
 | `POST /nodes/{nodeId}/registration`          | Registro firmado del nodo (secuencia creciente)              |
 | `POST /nodes/{nodeId}/heads`                 | El nodo publica su cabeza firmada                            |
 | `GET /national/head`                         | Última cabeza nacional con m cofirmas (`404` si aún no hay)  |
@@ -63,6 +69,41 @@ Todas bajo `/api/v1/red`; el detalle está en `estandar/openapi.yaml`.
 Además, el enrutador **recoge** periódicamente la cabeza de cada nodo en `GET /api/v1/ledger/head`,
 la ruta pública que el servidor de referencia ya sirve. Por eso la bitácora nacional funciona hoy
 sin cambiar `apps/server`.
+
+## Cola de entrega («store and forward»)
+
+`src/relay-queue.ts` y `src/queue-pow.ts`. Si un nodo se cae, los demás siguen y la denuncia no
+se pierde:
+
+1. **La ventanilla lo pide.** Cuando el nodo destino no responde (la respuesta no abre), la web
+   pide `GET /queue/challenge`, resuelve ese reto (el nodo caído no puede emitir el suyo) y
+   reenvía la denuncia con `deferral: { proof }`. Solo para denuncias **sin pruebas adjuntas**
+   (tramo de hasta 1 MiB): una prueba se sube antes y necesita al nodo.
+2. **El folio lo elige el navegador.** Toda denuncia por la red lleva `RoutedRequest.folio`,
+   generado en el navegador al azar con `generateFolio` (el mismo generador que usa el nodo); el
+   nodo lo rechaza si ya existe. Así la persona tiene su folio y sus 8 palabras desde el primer
+   momento, aunque la denuncia espere o la respuesta se pierda.
+3. **El enrutador intenta y, si no puede, guarda.** Si la entrega falla (nodo sin registrar,
+   caído, sin responder a tiempo o con `503`), guarda en `relay_queue` el sobre **cerrado** tal
+   como llegó (no puede abrirlo) y responde relleno con un **acuse firmado** por la operación en
+   `queued` (`RelayQueueReceipt`: identificador de la cola, nodo, día de aceptación, vencimiento y
+   SHA-256 del sobre). La web lo verifica con la llave de la operación del directorio verificado.
+4. **Reintenta con espera exponencial**: 30 s, 1 min, 2 min… hasta 1 h entre intentos. Al
+   entregar (o si el nodo lo rechaza con `400`) lo borra; a los 7 días vence y lo borra sin
+   abrir. Después de borrar vacía el WAL (`wal_checkpoint(TRUNCATE)`; la base usa
+   `secure_delete`).
+5. **La persona consulta después.** La respuesta del nodo a una entrega desde la cola va cifrada
+   hacia la llave efímera del navegador, que ya no espera: se descarta. La persona ve su
+   comprobante firmado por el nodo en «Mi denuncia» con su folio y sus palabras.
+
+Del lado del nodo, la entrega diferida (el cuerpo lleva `deferral`) solo se acepta con la
+etiqueta HMAC del enrutador, solo para `submitComplaint` con folio y con un tope por hora
+(`MAX_DEFERRED_PER_HOUR`); se salta la prueba de trabajo del nodo porque el enrutador cobró la
+suya. Si el nodo falla (estatus 5xx) o llegó al tope, responde `503` y el sobre sigue en la cola.
+
+Límites: 500 sobres y 64 MiB por nodo (configurable); al llenarse, `429`. Nada del contenido
+queda en registros: la línea agregada por vuelta solo suma `queue: { queued, delivered,
+rejected, expired, retried }`.
 
 ## Corte nacional de datos abiertos
 
@@ -105,6 +146,7 @@ qué pide; el nodo conoce qué se pide pero no quién se conecta.
 | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | El nodo destino (`node`): a lo más, el estado; nunca la autoridad ni el OIC            | No                                                                                      |
 | El tramo de tamaño del sobre: 4 KiB, 64 KiB, 1 MiB o 16 MiB                            | No                                                                                      |
+| Si la persona pidió la cola (`deferral`) cuando el nodo no respondió                   | Solo si el nodo no responde: el sobre cerrado, su nodo, el día y el siguiente intento   |
 | El `keyId` del sobre (es la llave pública del nodo, que ya es pública)                 | No                                                                                      |
 | La hora de llegada y cuánto tarda el nodo en responder                                 | No                                                                                      |
 | La dirección IP y las cabeceras HTTP de la conexión (el sistema operativo las entrega) | No: el código no las lee y no las reenvía                                               |
@@ -134,7 +176,10 @@ Garantías comprobadas en `src/relay.test.ts`:
   forma; el navegador lo detecta porque no abre.
 - Después de reenviar, ninguna tabla cambia y ni el archivo de la base, ni su WAL ni su memoria
   compartida contienen fragmentos del sobre ni la IP enviada en `X-Forwarded-For`. La base no tiene
-  ninguna tabla para sobres, IP ni cabeceras.
+  ninguna tabla para IP ni cabeceras; la única con sobres es `relay_queue`, y queda vacía en un
+  reenvío normal. En `src/queue.test.ts`: con el nodo caído el sobre queda cerrado (sin el
+  contenido en claro ni la autoridad), se entrega al volver y después ni la tabla, ni el archivo
+  ni el WAL contienen fragmentos suyos.
 
 Riesgos que quedan (ADR 0005, «Riesgos»): con colusión entre enrutador y nodo se pueden
 correlacionar hora, tramo e IP con una denuncia (no su contenido). Mitigaciones de nivel C: operar

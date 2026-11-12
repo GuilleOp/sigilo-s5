@@ -2,7 +2,8 @@
 // y buzón de red que traduce los sobres a las rutas v1 del nodo.
 import { describe, expect, it } from 'vitest';
 import { NETWORK_ROUTES, POW_HEADER, ROUTES } from '@sigilo/contracts';
-import { keyIdFor, signLedgerHead } from '@sigilo/core';
+import type { RoutedRequest } from '@sigilo/contracts';
+import { keyIdFor, randomBytes, signLedgerHead } from '@sigilo/core';
 import { findNode } from './directory.ts';
 import {
   createNodeInboxHandler,
@@ -11,6 +12,7 @@ import {
   routedRequestToFetch,
 } from './node-client.ts';
 import type { FetchLike } from './node-client.ts';
+import { RELAY_AUTH_HEADER, relayAuthTag } from './relay-auth.ts';
 import { openRoutedReply, sealRoutedRequest } from './relay-envelope.ts';
 import { signNodeRegistration, signingKeyIdOf, verifyNodeRegistration } from './registration.ts';
 import { FIXTURE_DAY, createNetworkFixture } from './test-fixtures.ts';
@@ -230,6 +232,90 @@ describe('buzón de red del nodo', () => {
       }),
     );
     expect(wrongNode.status).toBe(400);
+  });
+
+  it('entrega diferida: solo con la etiqueta del enrutador, solo denuncias con folio y con tope', async () => {
+    const secret = randomBytes(32);
+    const seen: boolean[] = [];
+    let isOpen = true;
+    let status = 201;
+    const inbox = createNodeInboxHandler({
+      nodeBoxPrivateKey: keys.nodes['node.queretaro'].box.privateKey,
+      relaySecret: secret,
+      admitDeferred: () => isOpen,
+      handle: async (_routed, delivery) => {
+        seen.push(delivery.deferred);
+        return { v: 1, status, body: { kind: 'none' } };
+      },
+    });
+    const deliver = async (
+      input: Partial<Omit<RoutedRequest, 'v' | 'replyPublicKey'>>,
+      deferred: boolean,
+      useSecret = secret,
+    ) => {
+      const { relay } = await sealRoutedRequest(
+        {
+          to: 'authority.comptroller-queretaro',
+          operationId: 'submitComplaint',
+          query: {},
+          proofOfWork: null,
+          body: { kind: 'json', value: {} },
+          ...input,
+        },
+        queretaro,
+      );
+      const body = JSON.stringify(deferred ? { ...relay, deferral: { proof: 'x:1' } } : relay);
+      return inbox(
+        new Request('http://nodo.invalid/x', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            [RELAY_AUTH_HEADER]: relayAuthTag(useSecret, body),
+          },
+          body,
+        }),
+      );
+    };
+    const folio = 'K7Q2-M9XP-4RTD';
+    expect((await deliver({ folio }, true)).status).toBe(200);
+    expect(seen).toEqual([true]);
+    // Diferida sin folio, o de otra operación: no.
+    expect((await deliver({}, true)).status).toBe(400);
+    expect((await deliver({ operationId: 'getTracking', folio }, true)).status).toBe(400);
+    // Un folio elegido solo viaja en una denuncia.
+    expect((await deliver({ operationId: 'getTracking', folio }, false)).status).toBe(400);
+    // Con la etiqueta de otro secreto, nadie se salta la prueba de trabajo del nodo.
+    expect((await deliver({ folio }, true, randomBytes(32))).status).toBe(400);
+    // Tope alcanzado o falla del nodo: 503 para que el enrutador la deje en su cola.
+    isOpen = false;
+    expect((await deliver({ folio }, true)).status).toBe(503);
+    isOpen = true;
+    status = 500;
+    expect((await deliver({ folio }, true)).status).toBe(503);
+    // Sin secreto configurado, el buzón no acepta entregas diferidas.
+    const open = createNodeInboxHandler({
+      nodeBoxPrivateKey: keys.nodes['node.queretaro'].box.privateKey,
+      handle: async () => ({ v: 1, status: 201, body: { kind: 'none' } }),
+    });
+    const { relay } = await sealRoutedRequest(
+      {
+        to: 'authority.comptroller-queretaro',
+        operationId: 'submitComplaint',
+        query: {},
+        proofOfWork: null,
+        body: { kind: 'json', value: {} },
+        folio,
+      },
+      queretaro,
+    );
+    const unauthenticated = await open(
+      new Request('http://nodo.invalid/x', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...relay, deferral: { proof: 'x:1' } }),
+      }),
+    );
+    expect(unauthenticated.status).toBe(400);
   });
 
   it('traduce cuerpos binarios y consultas', async () => {

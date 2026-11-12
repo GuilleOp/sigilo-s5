@@ -283,6 +283,16 @@ flowchart LR
   vista) se rechaza con `400` y un mensaje fijo que pide actualizar la ventanilla. El enrutador no
   guarda el sobre, no lee la IP ni reenvía cabeceras, y responde con la misma forma para cualquier
   destino (relleno si no pudo entregar). Qué ve y qué no: `apps/enrutador/README.md`.
+- **Cola de entrega («store and forward»).** Si el nodo destino no responde, una denuncia sin
+  pruebas adjuntas no se pierde: la web paga el reto propio del enrutador
+  (`GET /api/v1/red/queue/challenge`) y reenvía el sobre con `deferral`; el enrutador guarda el
+  sobre **cerrado** en `relay_queue` (sqlite), responde con un acuse firmado por la operación
+  (`RelayQueueReceipt`) y reintenta con espera exponencial (30 s, duplicando hasta 1 h) hasta
+  entregarlo o hasta que vence a los 7 días; al entregarlo lo borra. El folio lo elige el
+  navegador al azar (`RoutedRequest.folio`; el nodo rechaza uno repetido), así la persona tiene
+  folio y 8 palabras desde el inicio y ve su comprobante después en «Mi denuncia». El nodo acepta
+  la entrega diferida solo con la etiqueta HMAC del enrutador, solo para denuncias con folio y con
+  tope por hora, sin pedir su prueba de trabajo. Límites por nodo: 500 sobres y 64 MiB.
 - **Bitácora nacional.** Entradas encadenadas por hash con cada cabeza firmada de nodo y cada
   versión del directorio. El enrutador recoge las cabezas en `GET /api/v1/ledger/head` de cada
   nodo (o el nodo las publica) y rechaza las que retroceden o se bifurcan. La cabeza nacional la

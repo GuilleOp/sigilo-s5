@@ -1,12 +1,17 @@
 // Envío de la denuncia: llaves fijadas, prueba de trabajo, subida de pruebas limpias comprobadas,
 // recibo, sellado y comprobante.
-import { IDENTITY_PADDED_SIZE } from '@sigilo/core';
+import { IDENTITY_PADDED_SIZE, generateFolio } from '@sigilo/core';
 import type { EvidenceDescriptor, EvidenceMediaType } from '@sigilo/contracts';
 import { digestBlob } from '@sigilo/huella';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import type { PinnedKeys } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch } from '../../crypto/key-pinning.ts';
-import { createProofProvider, sendWithProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
+import {
+  createProofProvider,
+  obtainProof,
+  sendWithProof,
+  workerPowSolver,
+} from '../../crypto/proof-of-work.ts';
 import type { PowSolver } from '../../crypto/proof-of-work.ts';
 import {
   buildIdentityBlock,
@@ -19,7 +24,7 @@ import {
   verifySubmission,
 } from '../../crypto/submission.ts';
 import type { CorroborationPayload } from '../../corroboration/blind-corroboration.ts';
-import type { ReporterApi } from '../../network/relay-api.ts';
+import type { RelayReporterApi, ReporterApi } from '../../network/relay-api.ts';
 import type { SigiloApi } from '../../services/api.ts';
 import { ApiRequestError } from '../../services/api-client.ts';
 import type { ReportDraft } from '../../state/report-draft.ts';
@@ -34,6 +39,12 @@ export interface SubmittedReport {
   destination?: { authorityName: string; nodeName: string };
   /** Resultado de la corroboración ciega: `sent`, `failed` (se envió sin ella) o sin pedirla. */
   corroboration?: 'sent' | 'failed';
+  /**
+   * El nodo destino no respondió y la denuncia quedó cerrada en la cola de entrega del enrutador
+   * hasta `expiresOn`. El folio lo eligió el navegador; el comprobante se ve después en «Mi
+   * denuncia».
+   */
+  queued?: { expiresOn: string };
 }
 
 /**
@@ -41,7 +52,7 @@ export interface SubmittedReport {
  * tomadas del directorio verificado.
  */
 export interface NetworkSubmission {
-  api: ReporterApi;
+  api: RelayReporterApi;
   keys: PinnedKeys;
   authorityName: string;
   nodeName: string;
@@ -239,18 +250,57 @@ export async function submitReport(
     escalationEnvelope,
     corroboration ?? undefined,
   );
+  // Por la red, el folio se elige aquí al azar: la persona lo conoce aunque la respuesta se pierda
+  // o la denuncia quede en la cola de entrega (el nodo lo rechaza si ya existe).
+  const folio = network === undefined ? undefined : generateFolio();
+  const destinationInfo =
+    network === undefined
+      ? {}
+      : { destination: { authorityName: network.authorityName, nodeName: network.nodeName } };
+  const corroborationInfo =
+    corroborationResult === undefined ? {} : { corroboration: corroborationResult };
 
   let response;
   try {
     response = await sendWithProof(proofs, (proof) => {
       onProgress('Enviando tu denuncia.');
-      return transport.submitComplaint(request, proof);
+      return network === undefined || folio === undefined
+        ? transport.submitComplaint(request, proof)
+        : network.api.submitRoutedComplaint(request, proof, folio);
     });
   } catch (error) {
     // Una prueba ya asociada, purgada o inexistente hace fallar el envío: en el reintento se
     // vuelven a subir todas en lugar de repetir los mismos descriptores.
     if (invalidatesUploads(error)) for (const image of images) uploads.delete(image.blob);
-    throw error;
+    // El nodo no respondió: una denuncia sin pruebas puede esperar cerrada en la cola.
+    const canQueue =
+      network?.api.hasQueue === true &&
+      folio !== undefined &&
+      images.length === 0 &&
+      error instanceof ApiRequestError &&
+      error.code === 'network';
+    if (!canQueue) throw error;
+    onProgress(
+      'El sistema de destino no responde. Dejaremos tu denuncia cerrada en la cola de entrega de la red.',
+    );
+    const queueProof = await obtainProof(
+      { getPowChallenge: () => network.api.getQueueChallenge() },
+      'complaint',
+      solver,
+      onProgress,
+    );
+    const deferred = await network.api.submitDeferredComplaint(request, folio, queueProof);
+    if (deferred.kind === 'queued') {
+      return {
+        folio,
+        words: receipt.words,
+        receivedOn: '',
+        ...destinationInfo,
+        ...corroborationInfo,
+        queued: { expiresOn: deferred.receipt.expiresOn },
+      };
+    }
+    response = deferred.response;
   }
 
   onProgress('Comprobando que tu denuncia llegó completa.');
@@ -261,9 +311,7 @@ export async function submitReport(
     folio: response.folio,
     words: receipt.words,
     receivedOn: response.receipt.receivedOn,
-    ...(network === undefined
-      ? {}
-      : { destination: { authorityName: network.authorityName, nodeName: network.nodeName } }),
-    ...(corroborationResult === undefined ? {} : { corroboration: corroborationResult }),
+    ...destinationInfo,
+    ...corroborationInfo,
   };
 }

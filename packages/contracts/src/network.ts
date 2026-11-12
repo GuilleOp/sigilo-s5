@@ -8,6 +8,7 @@ import { SignedLedgerHeadSchema } from './ledger.ts';
 import {
   Base64UrlSchema,
   DayDateSchema,
+  FolioSchema,
   HourDateSchema,
   KeyIdSchema,
   MonthPeriodSchema,
@@ -43,6 +44,8 @@ export const NETWORK_ROUTES = {
   nationalOpenDataCsv: `${NETWORK_API_PREFIX}/national/open-data.csv`,
   /** `POST` en el nodo: recibe del enrutador un sobre de red y responde con un sobre de vuelta. */
   nodeInbox: `${NETWORK_API_PREFIX}/inbox`,
+  /** `GET`: reto de prueba de trabajo del enrutador para dejar una denuncia en la cola de entrega. */
+  queueChallenge: `${NETWORK_API_PREFIX}/queue/challenge`,
 } as const;
 
 /**
@@ -359,6 +362,26 @@ export const RELAY_ENVELOPE_VERSION = 2;
 export const RELAY_V1_REJECTION_MESSAGE =
   'El sobre v1 ya no se admite: el sobre v2 nombra solo el nodo destino y lleva la autoridad cifrada. Actualiza la ventanilla.';
 
+/** Días que una denuncia puede esperar en la cola de entrega del enrutador antes de vencer. */
+export const RELAY_QUEUE_TTL_DAYS = 7;
+
+/** Tramo mayor que admite la cola de entrega: denuncias sin pruebas adjuntas. */
+export const RELAY_QUEUE_MAX_BUCKET = 1048576;
+
+export const RelayDeferralSchema = z
+  .object({
+    proof: z.string().min(1).max(512).meta({
+      description:
+        'Solución del reto `queueChallenge` del enrutador, con la forma de la cabecera de prueba de trabajo.',
+    }),
+  })
+  .strict()
+  .meta({
+    description:
+      'Pide guardar el sobre cerrado en la cola de entrega si el nodo no responde. Solo para una denuncia sin pruebas adjuntas (`submitComplaint` con `folio`).',
+  });
+export type RelayDeferral = z.infer<typeof RelayDeferralSchema>;
+
 export const RelayRequestSchema = z
   .object({
     v: z.literal(RELAY_ENVELOPE_VERSION).meta({ description: 'Versión del formato (2).' }),
@@ -370,6 +393,7 @@ export const RelayRequestSchema = z
       description:
         'Sobre HPKE hacia la llave de ese nodo, con texto en claro rellenado a un tramo fijo.',
     }),
+    deferral: RelayDeferralSchema.optional(),
   })
   .strict()
   .meta({
@@ -378,12 +402,47 @@ export const RelayRequestSchema = z
   });
 export type RelayRequest = z.infer<typeof RelayRequestSchema>;
 
+export const RelayQueueReceiptSchema = z
+  .object({
+    v: z.literal(1).meta({ description: 'Versión del formato.' }),
+    queueId: z
+      .string()
+      .regex(/^[0-9a-f]{32}$/u)
+      .meta({
+        description: 'Identificador aleatorio del sobre en la cola (16 bytes en hexadecimal).',
+      }),
+    node: NodeIdSchema.meta({ description: 'Nodo al que se entregará.' }),
+    acceptedOn: DayDateSchema.meta({ description: 'Día (UTC) en que el enrutador lo aceptó.' }),
+    expiresOn: DayDateSchema.meta({
+      description: 'Último día (UTC) en que se intenta entregar; después se borra sin abrir.',
+    }),
+    envelopeDigest: Sha256HexSchema.meta({
+      description:
+        'SHA-256 de la forma canónica del sobre cerrado (`sealed`) que quedó en la cola.',
+    }),
+    operatorKeyId: KeyIdSchema,
+    signature: Base64UrlSchema.meta({
+      description:
+        'Firma Ed25519 de la operación sobre "sigilo/red/relay-queue/v1:" + forma canónica del acuse sin este campo.',
+    }),
+  })
+  .strict()
+  .meta({
+    description:
+      'Acuse firmado de que el sobre cerrado quedó en la cola de entrega del enrutador. No es el comprobante del nodo: el folio y el recibo se consultan después en «Mi denuncia».',
+  });
+export type RelayQueueReceipt = z.infer<typeof RelayQueueReceiptSchema>;
+
 export const RelayResponseSchema = z
   .object({
     v: z.literal(RELAY_ENVELOPE_VERSION).meta({ description: 'Versión del formato (2).' }),
     sealed: HpkeEnvelopeSchema.meta({
       description:
-        'Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar, relleno indistinguible del mismo tamaño.',
+        'Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar (o quedó en la cola), relleno indistinguible del mismo tamaño.',
+    }),
+    queued: RelayQueueReceiptSchema.nullable().meta({
+      description:
+        'Acuse de la cola si el nodo no respondió y el sobre pidió `deferral`; null en cualquier otro caso.',
     }),
   })
   .strict()
@@ -446,6 +505,10 @@ export const RoutedRequestSchema = z
     body: RoutedBodySchema,
     replyPublicKey: Base64UrlSchema.meta({
       description: 'Llave pública X25519 efímera hacia la que el nodo cifra la respuesta.',
+    }),
+    folio: FolioSchema.optional().meta({
+      description:
+        'Solo en `submitComplaint` por la red: folio que eligió el navegador al azar, para que la persona lo tenga aunque la denuncia espere en la cola. El nodo lo rechaza si ya existe.',
     }),
   })
   .strict()

@@ -3,7 +3,8 @@
 // fijada, propuesta de la autoridad, envío cifrado por el enrutador con corroboración ciega y
 // seguimiento con las mismas 8 palabras, buscando el folio en todos los nodos; y el turnado entre
 // nodos que vuelve a cifrar en el navegador de recepción (SEC-19). Sin autoridad competente, la
-// denuncia llega al buzón general del nodo, que la turna (Bases de la PDN, arts. 56 y 58).
+// denuncia llega al buzón general del nodo, que la turna (Bases de la PDN, arts. 56 y 58). Con el
+// nodo destino caído, la denuncia queda cerrada en la cola del enrutador y llega al volver.
 import { describe, expect, it } from 'vitest';
 import { evaluatorKeyFromDirectory } from '@sigilo/corroboracion';
 import { DEMO_OCID, demoCase } from '@sigilo/corroboracion/demo';
@@ -28,7 +29,7 @@ import { emptyDraft } from '../state/report-draft.ts';
 import { loadNetworkState } from './directory.ts';
 import { destinationFor, keysForDestination } from './network-keys.ts';
 import { trackAcrossNetwork } from './network-tracking.ts';
-import { createRelayApi, sameOriginRelaySender } from './relay-api.ts';
+import { createRelayApi, sameOriginQueueChallenge, sameOriginRelaySender } from './relay-api.ts';
 import { routingChoiceFor } from './routing.ts';
 
 /** La API directa no debe usarse en el envío por la red. */
@@ -244,5 +245,66 @@ describe('ventanilla única por la red', () => {
     );
     const notes = origin?.view.procedure?.steps.map((step) => step.note ?? '').join(' ') ?? '';
     expect(notes).toContain(result.folio);
+  });
+
+  it('nodo caído: la denuncia queda en la cola, se entrega al volver y se sigue con folio y palabras', async () => {
+    const { network, client, directory } = await setup();
+    network.setNodeDown('node.federal', true);
+    const draft = emptyDraft();
+    draft.mode = 'anonymous';
+    draft.facts = {
+      stateCode: '22',
+      municipalityCode: '',
+      entityId: 'VE-INSTITUTO',
+      offenseCode: 'LGRA-59',
+      periodMonth: '05',
+      periodYear: '2026',
+      accused: 'Servidor Ficticio Cuatro',
+      description: 'Hechos sintéticos enviados mientras el nodo de destino no respondía.',
+    };
+    const destination = destinationFor(directory, 'authority.oic-iffe');
+    const relayApi = createRelayApi(
+      { authorityId: destination.authority.id, node: destination.node },
+      sameOriginRelaySender(client),
+      {
+        getChallenge: sameOriginQueueChallenge(client),
+        operator: {
+          keyId: directory.operator.signingKeyId,
+          signingPublicKey: directory.operator.signingPublicKey,
+        },
+      },
+    );
+    const messages: string[] = [];
+    const result = await submitReport(draft, UNUSED_API, (message) => messages.push(message), {
+      solver: inlinePowSolver,
+      network: {
+        api: relayApi,
+        keys: keysForDestination(destination),
+        authorityName: destination.authority.name,
+        nodeName: destination.node.name,
+      },
+    });
+    expect(result.queued?.expiresOn).toBe('2026-11-16');
+    expect(messages.join(' ')).toContain('cola de entrega');
+    expect(network.federal.ctx.complaints.find(result.folio)).toBeNull();
+    // Lo que guardó el enrutador va cerrado: ni los hechos ni la autoridad.
+    expect(network.forwarded.some((body) => body.includes('Servidor Ficticio Cuatro'))).toBe(false);
+
+    // El nodo vuelve; en la siguiente vuelta de la cola se entrega con el folio que eligió la web.
+    network.setNodeDown('node.federal', false);
+    network.setNow(new Date(network.federal.ctx.deps.now().getTime() + 60_000));
+    expect(await network.queue.deliverDue()).toMatchObject({ delivered: 1 });
+    const stored = network.federal.ctx.complaints.find(result.folio);
+    expect(stored?.assignedAuthorityId).toBe('authority.oic-iffe');
+
+    const session = startTrackingSession(result.folio, result.words);
+    const found = await trackAcrossNetwork(
+      directory,
+      session.credentials,
+      sameOriginRelaySender(client),
+    );
+    expect(found?.node.id).toBe('node.federal');
+    if (found === null) return;
+    expect(verifyTrackingReceipt(found.view, found.keys).isReceiptValid).toBe(true);
   });
 });

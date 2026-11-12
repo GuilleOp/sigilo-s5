@@ -23,6 +23,11 @@ import { reviewConflictOnAssignment } from './pdn-context.ts';
 export interface SubmissionOrigin {
   /** Autoridad destino del sobre de red, si llegó por el enrutador. */
   routedTo?: string;
+  /**
+   * Folio que eligió el navegador (solo por el buzón de red): así la persona lo conoce aunque la
+   * denuncia espere en la cola del enrutador. Se rechaza si ya existe.
+   */
+  folio?: string;
 }
 
 const MAX_FOLIO_ATTEMPTS = 8;
@@ -77,6 +82,17 @@ function associateEvidence(ctx: AppContext, request: SubmitComplaintRequest, fol
       throw new ApiFailure('bad_request');
     }
   });
+}
+
+/**
+ * Folio de la denuncia: el que eligió el navegador por la red o uno nuevo al azar.
+ * Seguridad: el navegador lo genera con el mismo generador aleatorio que el nodo; uno repetido se
+ * rechaza (`bad_request`) en lugar de sobrescribir o fusionar denuncias.
+ */
+function folioFor(ctx: AppContext, origin: SubmissionOrigin): string {
+  if (origin.folio === undefined) return newFolio(ctx);
+  if (ctx.complaints.exists(origin.folio)) throw new ApiFailure('bad_request');
+  return origin.folio;
 }
 
 function newFolio(ctx: AppContext): string {
@@ -143,7 +159,7 @@ export function submitComplaint(
     // Seguridad: cada recibo pertenece a una sola denuncia. Reutilizar el verificador de otra es
     // el primer paso para trasplantar su sobre de identidad (el índice único también lo impide).
     if (ctx.complaints.hasAuthVerifier(request.authVerifier)) throw new ApiFailure('bad_request');
-    const folio = newFolio(ctx);
+    const folio = folioFor(ctx, origin);
     // Seguridad: los datos de cada evento incluyen el folio (60 bits secretos), así su digesto
     // público no se puede adivinar probando valores, pero la persona denunciante sí lo verifica.
     // El evento queda pendiente hasta que cierre el día; el comprobante firma su `payloadDigest`.
