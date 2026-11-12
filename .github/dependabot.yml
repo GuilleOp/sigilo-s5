@@ -1,0 +1,25 @@
+# Actualizaciones de dependencias (H15): npm, las acciones de CI (fijadas por SHA) y la imagen base
+# de Docker (fijada por digest). Una vez por semana y agrupadas, para revisarlas juntas.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      desarrollo:
+        dependency-type: development
+      produccion:
+        dependency-type: production
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      acciones:
+        patterns: ['*']
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
