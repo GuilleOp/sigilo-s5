@@ -27,6 +27,8 @@ import type { IntegrationRepository } from './db/integration-repository.ts';
 import { createQualificationRepository } from './db/qualification-repository.ts';
 import type { QualificationRepository } from './db/qualification-repository.ts';
 import type { NodeNetwork } from './network/network-context.ts';
+import { createNodeOAuthServer } from './network/oauth-server.ts';
+import type { NodeOAuthServer } from './network/oauth-server.ts';
 import type { CorroborationConfig } from './services/corroboration-service.ts';
 import type { PdnSourcesProvider } from './services/pdn-context.ts';
 import { emptyAuthorityRegistry } from './security/authority-registry.ts';
@@ -136,6 +138,11 @@ export interface AppDeps {
   maxPendingEventsPerDay?: number;
   /** Solo pruebas: ruido determinista de los datos abiertos (por omisión, `hmacNoiseUnit`). */
   openDataNoise?: NoiseUnit;
+  /**
+   * Servidor de autorización OAuth 2.0 del nodo para la SESNA (`oauth-clients.json`). Ausente, no
+   * hay clientes: no emite tokens y sus recursos protegidos responden `401`.
+   */
+  oauth?: NodeOAuthServer;
 }
 
 /** Limitadores compartidos por las rutas. */
@@ -170,6 +177,8 @@ export interface AppContext {
   pow: PowGuard;
   /** Pruebas subidas por cada reto, en memoria, para purgarlas si el reto vence sin denuncia. */
   challengeUploads: ChallengeUploads;
+  /** Servidor de autorización OAuth 2.0 del nodo (tokens para la SESNA). */
+  oauth: NodeOAuthServer;
 }
 
 const MINUTE_MS = 60 * 1000;
@@ -246,5 +255,8 @@ export function createContext(deps: AppDeps): AppContext {
       ...(deps.powSecret === undefined ? {} : { secret: deps.powSecret }),
     }),
     challengeUploads: createChallengeUploads(),
+    oauth:
+      deps.oauth ??
+      createNodeOAuthServer({ issuer: deps.network?.nodeId ?? 'node.local', clients: [] }),
   };
 }

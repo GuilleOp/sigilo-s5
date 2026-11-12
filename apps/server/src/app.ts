@@ -18,6 +18,7 @@ import { registerKeysRoutes } from './routes/keys.ts';
 import { registerLedgerRoutes } from './routes/ledger.ts';
 import { registerNetworkRoutes } from './routes/network.ts';
 import { registerOpenDataRoutes } from './routes/open-data.ts';
+import { registerPdnRoutes } from './routes/pdn.ts';
 import { registerPowRoutes } from './routes/pow.ts';
 import { registerRegistrationRoutes } from './routes/registration.ts';
 import { registerTrackingRoutes } from './routes/tracking.ts';
@@ -84,6 +85,7 @@ export function createAppFromContext(ctx: AppContext): Hono {
   registerLedgerRoutes(app, ctx);
   registerOpenDataRoutes(app, ctx);
   registerNetworkRoutes(app, ctx);
+  registerPdnRoutes(app, ctx);
   if (deps.webDistDir !== undefined) registerWebRoutes(app, deps.webDistDir);
 
   app.notFound((c) => errorResponse(c, 'not_found'));

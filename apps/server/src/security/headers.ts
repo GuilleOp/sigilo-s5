@@ -1,7 +1,7 @@
 // Cabeceras de seguridad de toda respuesta: unas para la API (incluidos los errores) y otras para
 // la web cuando el servidor la sirve en el mismo origen.
 import type { MiddlewareHandler } from 'hono';
-import { API_PREFIX } from '@sigilo/contracts';
+import { API_PREFIX, PDN_ROUTES } from '@sigilo/contracts';
 
 /** Funciones del navegador que ninguna página del sistema necesita. */
 export const PERMISSIONS_POLICY = [
@@ -44,9 +44,17 @@ export const WEB_CSP = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-/** Indica si la ruta pertenece a la API (y no a la web). */
+/**
+ * Indica si la ruta pertenece a la API (y no a la web): `/api/v1` y las rutas de la PDN
+ * (`/oauth/token` y `/v1/...`), que llevan la política de la API y nunca caen en la web.
+ */
 export function isApiPath(path: string): boolean {
-  return path === API_PREFIX || path.startsWith(`${API_PREFIX}/`);
+  return (
+    path === API_PREFIX ||
+    path.startsWith(`${API_PREFIX}/`) ||
+    path === PDN_ROUTES.token ||
+    path.startsWith('/v1/')
+  );
 }
 
 /** Opciones de las cabeceras. */

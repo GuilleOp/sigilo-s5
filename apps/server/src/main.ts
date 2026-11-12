@@ -14,6 +14,7 @@ import { openDatabase } from './db/database.ts';
 import { createRequestLog } from './http/request-log.ts';
 import { loadNodeNetwork } from './network/network-context.ts';
 import { createNetworkTasks } from './network/network-tasks.ts';
+import { createNodeOAuthServer, loadOAuthClients } from './network/oauth-server.ts';
 import { runNodeAudit } from './services/audit-service.ts';
 import { syncCorroboration } from './services/corroboration-service.ts';
 import { recheckPendingSanctions } from './services/pdn-context.ts';
@@ -95,6 +96,11 @@ function start(): void {
           nodeSecret: corroborationSecret(config.dataDir),
           fetch: platformFetch,
         };
+  // Servidor de autorización del nodo para la SESNA (entregas y estadística de la PDN).
+  const oauth = createNodeOAuthServer({
+    issuer: network?.nodeId ?? 'node.local',
+    clients: loadOAuthClients(config.oauthClientsFile),
+  });
   // Un solo contexto para las rutas y las tareas: la misma bitácora, los mismos repositorios.
   const ctx = createContext({
     db,
@@ -114,6 +120,7 @@ function start(): void {
     ...(pdn.provider === null ? {} : { pdnSources: pdn.provider }),
     ...(corroboration === undefined ? {} : { corroboration }),
     isAuditEnabled: config.isAuditEnabled,
+    oauth,
   });
   const networkTasks =
     network === undefined

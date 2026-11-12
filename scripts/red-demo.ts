@@ -27,6 +27,12 @@ import { ACCOUNTS_FILE_NAME } from '../apps/server/src/config.ts';
 import { createAuthorityRegistry } from '../apps/server/src/security/authority-registry.ts';
 import { buildDemoAccounts } from '../apps/server/src/security/demo-accounts.ts';
 import {
+  OAUTH_CLIENTS_FILE_NAME,
+  clientSecretDigest,
+} from '../apps/server/src/network/oauth-server.ts';
+import { hashPassword } from '../apps/server/src/security/passwords.ts';
+import { NODE_CREDENTIALS_FILE_NAME } from '../apps/enrutador/src/oauth/node-credentials.ts';
+import {
   parseAuthorityDemoKey,
   parseKeysFile,
   parseSupervisorDemoKey,
@@ -127,6 +133,40 @@ function nodeEnv(nodeId: DemoNodeId, dayZero: string): string {
     'SIGILO_TEST_CLOCK_FILE=/reloj/desfase',
     '',
   ].join('\n');
+}
+
+/**
+ * Credenciales OAuth 2.0 que cada nodo (proveedor, como en las APIs de la PDN) entrega a la SESNA
+ * (cliente): el nodo guarda solo digestos en `oauth-clients.json` y la SESNA los secretos en claro
+ * en `enrutador/node-credentials.json`. Todo con permisos 0600.
+ */
+function writeOAuthCredentials(routerDir: string, nodeDataDirs: Record<DemoNodeId, string>): void {
+  const credentials: Record<string, unknown> = {};
+  for (const nodeId of DEMO_NODE_IDS) {
+    const clientSecret = toBase64Url(randomBytes(32));
+    const password = toBase64Url(randomBytes(24));
+    const username = 'sesna.pdn';
+    writeJson(join(nodeDataDirs[nodeId], OAUTH_CLIENTS_FILE_NAME), {
+      version: 1,
+      clients: [
+        {
+          clientId: 'sesna',
+          clientSecretDigest: clientSecretDigest(clientSecret),
+          scopes: ['sesna:entregas', 'sesna:estadisticas', 'sesna:salud'],
+          grantTypes: ['client_credentials', 'password', 'refresh_token'],
+          user: { username, passwordHash: hashPassword(password) },
+        },
+      ],
+    });
+    credentials[nodeId] = {
+      clientId: 'sesna',
+      clientSecret,
+      grantType: 'client_credentials',
+      username,
+      password,
+    };
+  }
+  writeJson(join(routerDir, NODE_CREDENTIALS_FILE_NAME), { version: 1, nodes: credentials });
 }
 
 function main(): void {
@@ -249,6 +289,13 @@ function main(): void {
     );
     writeFile(join(nodeDir, 'node.env'), nodeEnv(nodeId, dayZero), 0o600);
   }
+
+  writeOAuthCredentials(
+    routerDir,
+    Object.fromEntries(
+      DEMO_NODE_IDS.map((nodeId) => [nodeId, join(OUT, 'nodos', NODE_DIRS[nodeId], 'data')]),
+    ) as Record<DemoNodeId, string>,
+  );
 
   for (const id of DEMO_AUTHORITY_IDS) {
     const { box, signing } = keys.authorities[id];
