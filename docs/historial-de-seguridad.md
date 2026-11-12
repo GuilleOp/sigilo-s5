@@ -80,7 +80,7 @@ la sexta ronda (H1 a H11). El detalle está en el [registro de cambios](../CHANG
 | Secretos compartidos por correo u oficio | Derivados con X25519 y HKDF en los dos lados; alta con huellas de 128 bits leídas por teléfono                                        | G30, G31  |
 | Contenedores y cadena de suministro      | Límites de recursos, solo lectura, sin capacidades, imagen por digesto, acciones fijadas por SHA, SBOM y firma de imágenes (H10, H15) | —         |
 
-Lo que sigue abierto (segundo factor del panel, paso del relevo sin sesión, análisis de tráfico,
+Lo que sigue abierto (segundo factor resistente a phishing del panel, paso del relevo sin sesión, análisis de tráfico,
 detección de reuso del token de renovación) está en la sección 4 de la guía de producción y en
 G27 a G29 del modelo de amenazas.
 

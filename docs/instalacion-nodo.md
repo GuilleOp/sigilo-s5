@@ -171,13 +171,39 @@ código de salida 2. Sin salida a internet, pide a la SESNA el `directory.json` 
 
 Después: `./sigilo programar` agrega a tu crontab la revisión diaria del directorio (03:15).
 
+### Primer acceso al panel: verificación en dos pasos
+
+El panel exige un segundo factor (`SIGILO_MFA=requerido` en `config/nodo.env`). Las dos cuentas que
+crea `./sigilo instalar` (operación y buzón general) y las que crees con `./sigilo cuenta nueva`
+lo inscriben en su primer acceso, antes de ver nada:
+
+1. Cada persona entra con su usuario y la contraseña temporal que le entregaste en persona.
+2. El panel muestra «Activa la verificación en dos pasos», con un código QR y la clave para
+   escribirla a mano. La persona lo agrega a una app de autenticación de su teléfono (cualquiera
+   con códigos de 6 dígitos) y escribe el primer código.
+3. El panel muestra 10 códigos de recuperación **una sola vez**, para descargar o imprimir. Cada
+   uno sirve para entrar una vez si pierde el teléfono. Para seguir, marca «Ya guardé mis códigos».
+
+Desde entonces entra con usuario, contraseña y el código de la app. Que nadie más inscriba la
+cuenta: si la contraseña temporal pudo verse, crea otra cuenta antes de que la persona entre.
+
+Si alguien pierde su teléfono y sus códigos de recuperación, confírmalo en persona y corre:
+
+```sh
+./sigilo cuenta reiniciar-mfa <usuario> --confirmo
+```
+
+Borra su segundo factor, lo deja en el registro de seguridad sin secretos y cierra el panel a sus
+sesiones abiertas. Al volver a entrar, la persona inscribe uno nuevo. Los secretos se guardan
+cifrados con `datos/mfa-key`, que entra en el respaldo: no la borres ni la cambies.
+
 ## Paso 5. Comprueba
 
 ```sh
 ./sigilo diagnostico
 ```
 
-Revisa permisos, variables de demostración, el directorio, la raíz y las llaves que sirve tu web
+Revisa permisos, variables de demostración, que el panel exija el segundo factor, el directorio, la raíz y las llaves que sirve tu web
 (`/config/sigilo.json`), HTTPS y HSTS, la vista de la SESNA (arriba, registrado, recibe denuncias,
 versión mínima) y la edad del último respaldo. Cada línea es ✓ (bien), ! (aviso) o ✗ (problema),
 con «Qué hacer». Sale con **0**, **1** (avisos) o **2** (problemas), para usarlo desde un monitor, y
@@ -190,6 +216,7 @@ deja `salida/diagnostico-<fecha>.txt` sin secretos ni datos de denuncias.
 | Dar de alta autoridades          | Bandeja «Solicitudes de alta» del panel ([guía](guia-conecta-tu-estado.md))                  |
 | Completar la tabla de funciones  | Edita `config/tabla-de-funciones.csv`; `./sigilo tabla revisar` y `./sigilo tabla firmar`    |
 | Crear cuentas del panel          | `./sigilo cuenta nueva` (contraseña temporal; reinicia el nodo)                              |
+| Reiniciar el segundo factor      | `./sigilo cuenta reiniciar-mfa <usuario> --confirmo` (teléfono y códigos perdidos)           |
 | Días inhábiles locales           | Edita `config/dias-inhabiles.csv` (`fecha,nombre,fundamento`); `./sigilo calendario revisar` |
 | Respaldo                         | `./sigilo respaldar` (frase de 8 palabras en papel; `--frase-de-archivo` para cron)          |
 | Revisar un respaldo              | `./sigilo respaldar --verificar salida/respaldos/<archivo>`                                  |
@@ -205,29 +232,32 @@ escalamiento, el auditor y el semáforo de turnado, y el nodo los publica en
 
 ## Problemas comunes
 
-| Mensaje o síntoma                                             | Causa                                          | Qué hacer                                                                        |
-| ------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| «Docker no responde»                                          | Servicio detenido o usuario sin permiso        | `sudo systemctl start docker`; agrega el usuario al grupo `docker`               |
-| «Eres root»                                                   | Corriste con `sudo`                            | Usa el usuario de servicio: `sudo chown -R sigilo: /opt/sigilo`                  |
-| «La huella de la red no coincide»                             | Descarga equivocada o manipulada               | No sigas; pide a la SESNA la descarga oficial                                    |
-| «… todavía no resuelve en el DNS»                             | Falta el registro A o no ha propagado          | `dig +short <dominio>`; espera el TTL                                            |
-| Puerto 80 o 443 ocupado al iniciar                            | Apache o nginx ya escuchan                     | Detenlos o reinstala con el modo 3 (proxy existente)                             |
-| `tls` se reinicia; Let's Encrypt falla                        | Puerto 80 cerrado en el firewall perimetral    | Ábrelo o usa el modo 2                                                           |
-| «Tu nodo todavía no está en el directorio»                    | La SESNA no ha publicado                       | Espera la confirmación; `./sigilo iniciar` otra vez                              |
-| «… aparece en el directorio con OTRAS llaves»                 | Reinstalaste después del alta                  | No arranques; llama a la SESNA para un alta nueva                                |
-| `EACCES` o «El dueño de datos/ no es…»                        | Carpetas de otro usuario                       | `sudo chown -R <usuario> datos llaves salida tls`                                |
-| «La SESNA no te entrega denuncias: versión menor a la mínima» | Nodo desactualizado                            | `./sigilo actualizar <versión>`                                                  |
-| «not-registered» en la vista de la SESNA                      | El nodo no pudo registrarse ante el enrutador  | Salida a 443 hacia la SESNA; hora del equipo (`timedatectl`)                     |
-| «El directorio de la red no verifica (expired/stale)»         | Directorio vencido y la tarea diaria no corrió | `./sigilo directorio actualizar`; `./sigilo programar`                           |
-| «https://… no responde desde este equipo»                     | NAT de regreso (hairpin)                       | Es un aviso: confírmalo en la vista de la SESNA o desde fuera                    |
-| La web dice «Este sitio no está disponible por ahora»         | Falta o no es válido `datos/web-config.json`   | `./sigilo iniciar`                                                               |
-| El panel rechaza la llave                                     | Se importó la llave de otra autoridad          | Ver [guia-conecta-tu-estado.md](guia-conecta-tu-estado.md#3-llaves-y-huellas)    |
-| «Hay variables de demostración en config/nodo.env»            | Se copió una plantilla de la demostración      | Bórralas: un nodo real nunca lleva `SIGILO_DEMO`, `SIGILO_E2E` ni reloj simulado |
+| Mensaje o síntoma                                             | Causa                                          | Qué hacer                                                                         |
+| ------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| «Docker no responde»                                          | Servicio detenido o usuario sin permiso        | `sudo systemctl start docker`; agrega el usuario al grupo `docker`                |
+| «Eres root»                                                   | Corriste con `sudo`                            | Usa el usuario de servicio: `sudo chown -R sigilo: /opt/sigilo`                   |
+| «La huella de la red no coincide»                             | Descarga equivocada o manipulada               | No sigas; pide a la SESNA la descarga oficial                                     |
+| «… todavía no resuelve en el DNS»                             | Falta el registro A o no ha propagado          | `dig +short <dominio>`; espera el TTL                                             |
+| Puerto 80 o 443 ocupado al iniciar                            | Apache o nginx ya escuchan                     | Detenlos o reinstala con el modo 3 (proxy existente)                              |
+| `tls` se reinicia; Let's Encrypt falla                        | Puerto 80 cerrado en el firewall perimetral    | Ábrelo o usa el modo 2                                                            |
+| «Tu nodo todavía no está en el directorio»                    | La SESNA no ha publicado                       | Espera la confirmación; `./sigilo iniciar` otra vez                               |
+| «… aparece en el directorio con OTRAS llaves»                 | Reinstalaste después del alta                  | No arranques; llama a la SESNA para un alta nueva                                 |
+| `EACCES` o «El dueño de datos/ no es…»                        | Carpetas de otro usuario                       | `sudo chown -R <usuario> datos llaves salida tls`                                 |
+| «La SESNA no te entrega denuncias: versión menor a la mínima» | Nodo desactualizado                            | `./sigilo actualizar <versión>`                                                   |
+| «not-registered» en la vista de la SESNA                      | El nodo no pudo registrarse ante el enrutador  | Salida a 443 hacia la SESNA; hora del equipo (`timedatectl`)                      |
+| «El directorio de la red no verifica (expired/stale)»         | Directorio vencido y la tarea diaria no corrió | `./sigilo directorio actualizar`; `./sigilo programar`                            |
+| «https://… no responde desde este equipo»                     | NAT de regreso (hairpin)                       | Es un aviso: confírmalo en la vista de la SESNA o desde fuera                     |
+| La web dice «Este sitio no está disponible por ahora»         | Falta o no es válido `datos/web-config.json`   | `./sigilo iniciar`                                                                |
+| El panel rechaza la llave                                     | Se importó la llave de otra autoridad          | Ver [guia-conecta-tu-estado.md](guia-conecta-tu-estado.md#3-llaves-y-huellas)     |
+| «Hay variables de demostración en config/nodo.env»            | Se copió una plantilla de la demostración      | Bórralas: un nodo real nunca lleva `SIGILO_DEMO`, `SIGILO_E2E` ni reloj simulado  |
+| «El panel no exige el segundo factor»                         | `SIGILO_MFA=opcional` en `config/nodo.env`     | `SIGILO_MFA=requerido` (o quítala) y `./sigilo iniciar`                           |
+| «El código no es válido o ya se usó»                          | Hora del teléfono desfasada, o código repetido | Hora automática en el teléfono; espera al código siguiente                        |
+| Perdió el teléfono y los códigos de recuperación              |                                                | `./sigilo cuenta reiniciar-mfa <usuario> --confirmo`, tras confirmarlo en persona |
 
 ## Seguridad operativa (resumen)
 
 - Ningún proxy delante del nodo registra IP; con Caddy ya es así.
 - Las llaves de las autoridades y la del buzón nunca entran al servidor.
-- El frente «red» solo para la SESNA y los testigos; el panel solo por VPN.
+- El frente «red» solo para la SESNA y los testigos; el panel solo por VPN y con segundo factor.
 - Respaldo cifrado fuera del equipo; la frase en papel y en otro lugar.
 - Detalle: [seguridad-produccion.md](seguridad-produccion.md).

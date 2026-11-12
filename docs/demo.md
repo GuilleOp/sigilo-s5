@@ -62,7 +62,9 @@ Para el guion manual (sin Docker) necesitas además:
      que reciben e investigan en el OIC, para abrir una identidad 2 de 3; la lista completa está en
      `docs/demo-escenario.md`, sección 2.2); la llave se importa desde
      `apps/server/data/authority-demo-key.json` (con un solo nodo, todas las cuentas usan esa
-     llave; en la red, cada autoridad usa la suya, ver más abajo).
+     llave; en la red, cada autoridad usa la suya, ver más abajo). Esas cuentas entran sin segundo
+     factor; las que lo tienen piden además un código (ver
+     [Segundo factor en la presentación](#segundo-factor-en-la-presentación)).
    - Verificación: enlace «Registro público» del pie.
    - Una terminal libre.
 
@@ -155,19 +157,20 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 
 ### Qué deja listo
 
-| Qué                        | Dónde                                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Ventanilla única           | <http://127.0.0.1:8790/> (denunciar, Mi denuncia, registro público, observatorio, «¿Quién atiende?»)          |
-| Paneles de los nodos       | Querétaro <http://127.0.0.1:8781/autoridad>, Federal 8782 y Oaxaca 8783 (misma ruta)                          |
-| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                                  |
-| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                             |
-| Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)          |
-| Llave del buzón general    | `.red-demo/nodos/<nodo>/llaves-demo/authority-demo-key.json` (solo las cuentas `buzon.*`; fuera del volumen)  |
-| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso; `solicitudes`: alta pendiente y su huella)          |
-| Solicitud de alta          | <http://127.0.0.1:8790/solicitar-alta> (va al nodo de la entidad); bandeja con `operacion.<nodo>` en su panel |
-| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                  |
-| Salud de los nodos         | <http://127.0.0.1:8790/api/v1/red/health/nodes.html> (para la operación: versiones, último contacto y cola)   |
-| Estadística para la PDN    | <http://127.0.0.1:8790/api/v1/red/national/statistics> (corte que la SESNA arma con OAuth 2.0)                |
+| Qué                        | Dónde                                                                                                            |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Ventanilla única           | <http://127.0.0.1:8790/> (denunciar, Mi denuncia, registro público, observatorio, «¿Quién atiende?»)             |
+| Paneles de los nodos       | Querétaro <http://127.0.0.1:8781/autoridad>, Federal 8782 y Oaxaca 8783 (misma ruta)                             |
+| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                                     |
+| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña; secreto TOTP de las que tienen segundo factor) |
+| Código del segundo factor  | `npm run demo:codigo -- <usuario>` (ver [Segundo factor en la presentación](#segundo-factor-en-la-presentación)) |
+| Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)             |
+| Llave del buzón general    | `.red-demo/nodos/<nodo>/llaves-demo/authority-demo-key.json` (solo las cuentas `buzon.*`; fuera del volumen)     |
+| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso; `solicitudes`: alta pendiente y su huella)             |
+| Solicitud de alta          | <http://127.0.0.1:8790/solicitar-alta> (va al nodo de la entidad); bandeja con `operacion.<nodo>` en su panel    |
+| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                     |
+| Salud de los nodos         | <http://127.0.0.1:8790/api/v1/red/health/nodes.html> (para la operación: versiones, último contacto y cola)      |
+| Estadística para la PDN    | <http://127.0.0.1:8790/api/v1/red/national/statistics> (corte que la SESNA arma con OAuth 2.0)                   |
 
 Cada autoridad abre el panel con **su propia llave**, la que corresponde a su entrada en el
 directorio firmado: es la llave con la que el navegador de quien denuncia sella la identidad y los
@@ -211,6 +214,62 @@ Lo que se ve, comprobado con la red en Docker:
   (`POST /api/v1/authority/escalations/{folio}/envelope`), lo abre en el navegador y lo compara
   con el registro público: muestra los hechos y las pruebas, nunca la identidad. El detalle completo
   sigue siendo de la autoridad que tiene la denuncia.
+
+### Segundo factor en la presentación
+
+Los nodos de la demostración usan `SIGILO_MFA=opcional` (en `.red-demo/nodos/<nodo>/node.env`): el
+recorrido principal no cambia y solo algunas cuentas piden el código. Un nodo real usa
+`requerido` y ahí todas lo piden.
+
+| Cuentas                                                                                       | Segundo factor                                                          |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `buzon.*`, `oic-equipamiento.*`, `contraloria.*`                                              | No: entran solo con contraseña (el camino sin fricción del guion)       |
+| `supervision-oic`, `operacion.federal`, `operacion.queretaro`, `operacion.oaxaca`, `fiscalia` | Ya inscrito, con secreto sintético en `credenciales.json` (`mfaSecret`) |
+| `oic-programas`                                                                               | Lo inscribe al entrar (`requireMfa`): sirve para mostrar el QR          |
+
+`npm run accounts:generate` (un solo nodo) deja igual a `supervision-oic`, `operacion.federal`,
+`fiscalia` y `oic-programas`; `npm run demo:reset` vuelve a inscribir el mismo secreto.
+
+Entrar con el código, sin teléfono:
+
+1. Abre el panel del nodo Federal (<http://127.0.0.1:8782/autoridad>) y escribe `supervision-oic`,
+   su contraseña de `.red-demo/nodos/federal/credenciales.json` y su llave,
+   `.red-demo/autoridades/authority.oversight-federal.json`. Pulsa «Entrar al panel».
+2. El panel pide «Código de 6 dígitos». Todavía no dice si la contraseña era correcta: con una
+   equivocada pediría el código igual y fallaría hasta este paso.
+3. En una terminal:
+
+   ```sh
+   npm run demo:codigo -- supervision-oic
+   ```
+
+   Escribe los 6 dígitos y pulsa «Verificar y entrar». El script usa el reloj simulado de los nodos
+   (`.red-demo/reloj/desfase`), así que sirve también después de `demo:seed`.
+
+4. Para mostrar que el código no se repite: cierra sesión, vuelve a entrar y escribe el mismo
+   código. El panel responde «El código no es válido o ya se usó…». Usa
+   `npm run demo:codigo -- supervision-oic --siguiente`, o espera al siguiente.
+5. Para mostrar la recuperación: en el paso del código, «No tengo mi teléfono: usar un código de
+   recuperación» y uno de los `recoveryCodes` de la cuenta en `credenciales.json`. Cada uno sirve
+   una sola vez.
+
+Inscripción en vivo: entra con `oic-programas` (llave `.red-demo/autoridades/authority.oic-dfps.json`).
+Antes de ver el panel aparece «Activa la verificación en dos pasos» con el QR y la clave. Escanéalo
+con una app de autenticación o, sin teléfono, calcula el código con la clave que muestra la
+pantalla:
+
+```sh
+npm run demo:codigo -- --clave "ABCD EFGH …" --nodo federal
+```
+
+Confirma con ese código: el panel muestra los 10 códigos de recuperación una sola vez, con
+«Descargar códigos (.txt)» e «Imprimir códigos», y entra al marcar «Ya guardé mis códigos». La
+inscripción queda hecha: para repetirla, vuelve a correr `npm run demo:todo`.
+
+Con un solo nodo (sin Docker), lo mismo con las credenciales de
+`apps/server/data/authority-demo-credentials.json`. Si levantaste el servidor con el reloj de
+pruebas, pasa el mismo archivo:
+`SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run demo:codigo -- supervision-oic`.
 
 ### Paso a paso, sin el comando único
 

@@ -197,9 +197,16 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **Referencia.** ASVS V4.3.1, V2.2.4 (L3).
 - **Por qué.** El panel de autoridad es el objetivo de quien quiere saber quién denunció.
 - **Verificación.** Manual.
-- **SIGILO.** **Brecha.** Sin segundo factor: usuario y contraseña con sesión corta. WebAuthn
-  para el panel y para aprobar aperturas es un siguiente paso; mientras tanto, el panel solo se
-  publica por VPN o lista de IP (`docs/seguridad-produccion.md`).
+- **SIGILO.** **Parcial.** Desde la 1.1.0 el panel exige un segundo factor TOTP (RFC 6238) con
+  `SIGILO_MFA=requerido`, el valor por omisión en producción y en el perfil «nodo», para toda
+  función, también la supervisión y la operación del nodo. La cuenta que no lo tiene lo inscribe en
+  su primer acceso antes de ver nada. Cada código sirve una sola vez, hay 10 códigos de
+  recuperación guardados con scrypt y el secreto se cifra en reposo con la llave del nodo
+  (`apps/server/src/security/totp.ts`, `apps/server/src/routes/mfa.test.ts`, `e2e/mfa.spec.ts`).
+  El primer paso no revela si la contraseña era correcta. Falta la parte resistente a phishing:
+  TOTP se puede robar en tiempo real. WebAuthn (llaves de seguridad o passkeys), para el panel y
+  para aprobar aperturas, es el siguiente paso. Mientras tanto, el panel solo se publica por VPN o
+  lista de IP (`docs/seguridad-produccion.md`).
 
 ### SEC-14 Sesiones con vencimiento
 
@@ -231,7 +238,8 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
   límite por usuario permite a quien conozca un usuario bloquearlo 15 minutos, y una persona de la
   misma autoridad sí conoce los usuarios: puede bloquear a una persona custodia justo cuando debe
   aprobar una apertura. Desde la 1.1.0 (H05) el usuario bloqueado se rechaza también con la
-  contraseña correcta; se acepta solo con el panel detrás de VPN (G08, G28).
+  contraseña correcta, y los códigos equivocados del segundo factor suman en el mismo límite
+  (`apps/server/src/routes/mfa.test.ts`); se acepta solo con el panel detrás de VPN (G08, G28).
 
 ### SEC-16 Credenciales de seguimiento de alta entropía y respuesta uniforme
 
@@ -324,7 +332,8 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **SIGILO.** **Cumple.** Cada evento de la autoridad (trámite, aprobaciones, mensajes,
   descartes) lleva en sus datos el seudónimo de la cuenta; los datos son privados del nodo y su
   digesto es público, así que el actor queda comprometido sin publicarse. Inicios de sesión,
-  fallos, cierres, sesiones vencidas, negativas por función y entregas de sobres quedan en un
+  fallos, cierres, sesiones vencidas, negativas por función, entregas de sobres y el segundo factor
+  (inscripción, códigos fallidos, uso de un código de recuperación y reinicio) quedan en un
   registro de solo agregar, al minuto, sin IP, agente de usuario ni el usuario tecleado
   (`apps/server/src/db/security-log-repository.ts`, `apps/server/src/routes/auth.test.ts`).
 
@@ -558,7 +567,6 @@ residuales en el modelo de amenazas.
 | SEC-36           | Sin verificación de la integridad del código servido                                            | Alto   |
 | SEC-05           | Apertura 2 de 3 de política, no criptográfica; sin custodio externo                             | Medio  |
 | SEC-11           | Hechos en claro en la base del nodo (las pruebas ya van cifradas hacia la autoridad)            | Medio  |
-| SEC-13           | Sin segundo factor en el panel ni para aprobar aperturas                                        | Medio  |
 | SEC-15, G08, G28 | Quien conozca un usuario del panel puede bloquearlo 15 minutos, también a una persona custodia  | Medio  |
 | SEC-18, G03      | La corroboración conserva el oráculo inherente para quien adivina un identificador              | Medio  |
 | SEC-19, G27      | Correlación por hora y tramo entre la entrada a la ventanilla y la entrega a un nodo            | Medio  |
@@ -566,6 +574,7 @@ residuales en el modelo de amenazas.
 | SEC-29, PRV-20   | El servidor no puede recodificar ni rechazar metadatos: no ve la imagen (lo hace el navegador)  | Medio  |
 | SEC-01, SEC-04   | Sin rotación de las llaves de autoridad ni de la de firma del nodo, que está en claro en disco  | Medio  |
 | SEC-24           | Topes globales agotables: 200 000 eventos diarios en la bitácora (503) y cuota de pruebas (507) | Medio  |
+| SEC-13           | Segundo factor TOTP, no resistente a phishing; sin WebAuthn para aprobar aperturas              | Bajo   |
 | SEC-20, G06      | El aviso del archivo se compara por secuencia del buzón, sin marcarlo como aviso en el AAD      | Bajo   |
 | G29              | El paso del relevo del frente «panel» no exige la sesión de la autoridad                        | Bajo   |
 | SEC-35           | Sin detección de secretos en la integración continua                                            | Bajo   |

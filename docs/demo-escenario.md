@@ -110,6 +110,11 @@ abre identidades.
 | `contraloria.oaxaca`              | `node.oaxaca`    | `authority.comptroller-oaxaca`        | Recepción e investigación   |
 | `operacion.oaxaca`                | `node.oaxaca`    | Operación del nodo Oaxaca             | Operación del nodo          |
 
+Segundo factor (TOTP): `supervision-oic`, `fiscalia` y las tres cuentas `operacion.*` lo tienen
+inscrito con un secreto sintético (`npm run demo:codigo -- <usuario>` da el código); `oic-programas`
+lo inscribe en su primer acceso; las demás entran solo con contraseña (`SIGILO_MFA=opcional` en la
+demostración). Ver [demo.md](demo.md#segundo-factor-en-la-presentación).
+
 Las dos personas del OIC IFFE permiten la apertura de identidad de 2 de N. Las cuentas de operación
 solo revisan las solicitudes de alta de autoridades (entran sin llave y no ven denuncias). Cada
 solicitud de alta va al nodo de la entidad de la institución, por los pasos de la ventanilla

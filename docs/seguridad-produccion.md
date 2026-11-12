@@ -107,17 +107,18 @@ server {
 
 ### Nodo (`apps/server`)
 
-| Variable                                                                              | Valor recomendado                   | Qué hace                                                                                                                                                                                                                                                                               |
-| ------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                                            | `production`                        | Activa los valores seguros por omisión, entre ellos el perfil `nodo`.                                                                                                                                                                                                                  |
-| `SIGILO_NODE_PROFILE`                                                                 | `nodo`                              | `nodo` publica solo los frentes **red**, **público** y **panel**. `completo` publica todo y es lo que usan el desarrollo, las pruebas E2E y un nodo único. Por omisión: `nodo` con `NODE_ENV=production` y `completo` en los demás casos.                                              |
-| `SIGILO_NODE_INTAKE`                                                                  | sin definir                         | `1` reabre la recepción directa en el perfil `nodo`: denuncias, pruebas, seguimiento, retos de denuncia y mensaje, paso de la cola y pasos del evaluador y del corte nacional. Solo para un nodo que también sea ventanilla. Entonces el operador ve las conexiones de quien denuncia. |
-| `SIGILO_PANEL_PORT`                                                                   | `8788`                              | Saca el panel a su propio puerto (en 127.0.0.1). El puerto principal (`SIGILO_PORT`) queda para la red y las lecturas públicas. El del panel sirve el panel y las lecturas públicas.                                                                                                   |
-| `SIGILO_PUBLIC_PANEL_PORT`                                                            | `8081`                              | Solo en el contenedor: el puerto donde el lanzador publica `SIGILO_PANEL_PORT`, igual que `SIGILO_PUBLIC_PORT` publica `SIGILO_PORT`.                                                                                                                                                  |
-| `SIGILO_RELAY_AUTH_LEGACY`                                                            | `0` cuando el enrutador ya envíe v2 | Con `0`, el buzón exige la etiqueta HMAC v2, con marca de tiempo (±5 min) y nonce de un solo uso. Por omisión acepta también la v1 durante la transición.                                                                                                                              |
-| `SIGILO_HTTPS`                                                                        | `1`                                 | HSTS de al menos un año.                                                                                                                                                                                                                                                               |
-| `SIGILO_REQUEST_LOG`                                                                  | `aggregate` u `off`                 | `requests` está prohibido en producción.                                                                                                                                                                                                                                               |
-| `SIGILO_E2E`, `SIGILO_TEST_CLOCK_FILE`, `SIGILO_DEMO`, `SIGILO_PDN_SOURCES=synthetic` | **sin definir**                     | Son solo para pruebas y la demostración.                                                                                                                                                                                                                                               |
+| Variable                                                                              | Valor recomendado                   | Qué hace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                                            | `production`                        | Activa los valores seguros por omisión, entre ellos el perfil `nodo`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `SIGILO_NODE_PROFILE`                                                                 | `nodo`                              | `nodo` publica solo los frentes **red**, **público** y **panel**. `completo` publica todo y es lo que usan el desarrollo, las pruebas E2E y un nodo único. Por omisión: `nodo` con `NODE_ENV=production` y `completo` en los demás casos.                                                                                                                                                                                                                                                                                                      |
+| `SIGILO_NODE_INTAKE`                                                                  | sin definir                         | `1` reabre la recepción directa en el perfil `nodo`: denuncias, pruebas, seguimiento, retos de denuncia y mensaje, paso de la cola y pasos del evaluador y del corte nacional. Solo para un nodo que también sea ventanilla. Entonces el operador ve las conexiones de quien denuncia.                                                                                                                                                                                                                                                         |
+| `SIGILO_PANEL_PORT`                                                                   | `8788`                              | Saca el panel a su propio puerto (en 127.0.0.1). El puerto principal (`SIGILO_PORT`) queda para la red y las lecturas públicas. El del panel sirve el panel y las lecturas públicas.                                                                                                                                                                                                                                                                                                                                                           |
+| `SIGILO_PUBLIC_PANEL_PORT`                                                            | `8081`                              | Solo en el contenedor: el puerto donde el lanzador publica `SIGILO_PANEL_PORT`, igual que `SIGILO_PUBLIC_PORT` publica `SIGILO_PORT`.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `SIGILO_MFA`                                                                          | `requerido`                         | Segundo factor (TOTP) del panel. Con `requerido`, toda cuenta, sea cual sea su función (también la operación del nodo), entra con contraseña y código, y la que no lo tiene lo inscribe en su primer acceso antes de ver nada. `opcional` solo lo pide a las cuentas que ya lo inscribieron o que llevan `requireMfa` en el archivo de cuentas. Por omisión: `requerido` con `NODE_ENV=production` o en el perfil `nodo`, y `opcional` en desarrollo, pruebas y E2E. `opcional` en producción deja un aviso y `./sigilo diagnostico` lo marca. |
+| `SIGILO_RELAY_AUTH_LEGACY`                                                            | `0` cuando el enrutador ya envíe v2 | Con `0`, el buzón exige la etiqueta HMAC v2, con marca de tiempo (±5 min) y nonce de un solo uso. Por omisión acepta también la v1 durante la transición.                                                                                                                                                                                                                                                                                                                                                                                      |
+| `SIGILO_HTTPS`                                                                        | `1`                                 | HSTS de al menos un año.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `SIGILO_REQUEST_LOG`                                                                  | `aggregate` u `off`                 | `requests` está prohibido en producción.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `SIGILO_E2E`, `SIGILO_TEST_CLOCK_FILE`, `SIGILO_DEMO`, `SIGILO_PDN_SOURCES=synthetic` | **sin definir**                     | Son solo para pruebas y la demostración.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 Siempre activos, sin variable:
 
@@ -131,7 +132,8 @@ Siempre activos, sin variable:
 - OAuth: un secreto de cliente equivocado ya no bloquea al cliente de la SESNA. El tope de fallos
   aplica solo al flujo `password` y se cuenta por cliente ya autenticado.
 - Inicio de sesión del panel: tras 10 fallos en 15 min, el usuario recibe `429` **también con la
-  contraseña correcta** hasta que vence la ventana. La respuesta y el costo son los mismos.
+  contraseña correcta** hasta que vence la ventana. La respuesta y el costo son los mismos. Los
+  códigos equivocados del segundo factor suman en el mismo tope.
 - Prueba de trabajo: hay un tope de subidas de pruebas en retos abiertos, que se calcula de la
   cuota. Al acercarse al tope sube la dificultad de las denuncias; lleno, la subida recibe `429`
   antes de leerse.
@@ -169,6 +171,42 @@ Siempre activos, sin variable:
 - El evaluador ya no responde CORS. La web llega por el paso del mismo origen (ventanilla o nodo),
   así el evaluador no ve la IP de quien denuncia.
 - Mismas cabeceras de aislamiento, tiempos límite del servidor HTTP y `umask 077`.
+
+### Segundo factor del panel
+
+Hecho en la 1.1.0 (antes era trabajo futuro). Cómo funciona:
+
+- **TOTP (RFC 6238)** con HMAC-SHA-1, 6 dígitos y pasos de 30 s, con ±1 paso de tolerancia, como
+  las apps de autenticación comunes. Está hecho con `node:crypto`, sin dependencias nuevas en el
+  servidor (`apps/server/src/security/totp.ts`). El QR de la inscripción se dibuja en el
+  navegador con `qrcode-generator` (MIT, sin dependencias, versión fijada); también se muestra la
+  clave para escribirla a mano.
+- **Inicio en dos pasos.** `POST /api/v1/auth/login` (usuario y contraseña) responde `code` con un
+  reto de 5 minutos; `POST /api/v1/auth/login/code` recibe el código. Un usuario inexistente o una
+  contraseña equivocada reciben un reto señuelo con la misma forma, así que nada revela si la
+  contraseña era correcta antes del segundo factor. Cada código equivocado suma en el tope por
+  usuario de H05 (10 en 15 min, también en un reto señuelo), y un reto admite 5 intentos.
+- **Un solo uso.** El nodo guarda el último paso aceptado de cada cuenta y solo acepta pasos
+  posteriores: el mismo código no sirve dos veces aunque siga vigente.
+- **Códigos de recuperación.** Al inscribir, la persona recibe 10 códigos `XXXXX-XXXXX` (50 bits)
+  que se muestran una sola vez, con descarga en texto o impresión. El nodo guarda solo sus digestos
+  scrypt (N = 2^14) y marca cada uno como usado.
+- **Secretos cifrados en reposo.** Cada secreto TOTP se guarda en la base cifrado con AES-256-GCM,
+  con la cuenta en los datos asociados, bajo la llave del nodo `datos/mfa-key` (32 bytes, `0600`,
+  se crea en el primer arranque). Si el grupo u otros pueden leer la llave, el nodo no arranca.
+  Ningún registro guarda un secreto ni un código. La llave viaja en el respaldo cifrado
+  (`./sigilo respaldar`); sin ella, los segundos factores de la base no sirven y hay que
+  reiniciarlos.
+- **Política en todas las rutas.** La revisa el mismo guardián de sesión del panel, de la
+  supervisión y de la operación del nodo. Con `requerido`, una sesión de solo contraseña sirve
+  únicamente para inscribir el factor y responde `401` en todo lo demás. Una cuenta inscrita nunca
+  entra sin el código, ni con `opcional`.
+- **Reinicio.** `./sigilo cuenta reiniciar-mfa <usuario> --confirmo` borra la inscripción, para una
+  persona que perdió su teléfono y sus códigos. Confírmalo antes en persona. Queda `mfa_reset` en
+  el registro de seguridad (sin secretos) y las sesiones abiertas de la cuenta dejan de servir para
+  el panel. Al volver a entrar, la persona inscribe un secreto nuevo.
+- **Registro de seguridad.** `mfa_enrollment_required`, `mfa_enrolled`, `mfa_failed`,
+  `mfa_recovery_used` y `mfa_reset`, con el seudónimo de la cuenta y el minuto.
 
 ### Contenedores (`compose.yaml`, `docker/Dockerfile`)
 
@@ -210,6 +248,8 @@ Antes de conectar el nodo a la red:
       (derivado por nodo y época; nunca viaja).
 - [ ] Cuando el enrutador ya envía la etiqueta v2: `SIGILO_RELAY_AUTH_LEGACY=0`.
 - [ ] Contraseñas del panel generadas (`./sigilo cuenta nueva`) y no elegidas a mano.
+- [ ] `SIGILO_MFA=requerido` (o sin definir, con el perfil `nodo`) y cada cuenta con su segundo
+      factor inscrito; `datos/mfa-key` con `0600` y dentro del respaldo cifrado.
 - [ ] Respaldos cifrados del directorio de datos, con pruebas de restauración.
 - [ ] Contenedores con los límites de `compose.yaml` y la imagen fijada por digest.
 - [ ] Prueba final, desde fuera de la red de la SESNA:
@@ -231,10 +271,14 @@ Y la SESNA, en el enrutador:
   imagen venga sin EXIF ni su tipo real: lo hace el panel al descifrar. Los hechos sí quedan en
   claro en la base del nodo, así que el disco y los respaldos deben ir cifrados (`./sigilo
 respaldar` ya cifra el respaldo).
-- **Sin segundo factor en el panel (H05).** El bloqueo por usuario ya frena la adivinanza, pero un
-  tercero que conozca el usuario puede bloquear a su dueña durante 15 minutos. Eso es aceptable
-  solo con el panel detrás de VPN. **Trabajo futuro recomendado:** TOTP (RFC 6238) o, mejor,
-  WebAuthn, que la Permissions-Policy ya deja disponible para el propio origen.
+- **Segundo factor TOTP, no resistente a phishing (H05).** El panel ya exige TOTP, así que una
+  contraseña robada no basta. Aun así, una página falsa puede pedir el código y usarlo enseguida,
+  dentro de su ventana de 30 s. La inscripción en el primer acceso confía en quien tenga la
+  contraseña temporal: entrégala en persona. Un tercero que conozca el usuario todavía puede
+  bloquear a su dueña durante 15 minutos, con contraseñas o con códigos equivocados. Eso es
+  aceptable solo con el panel detrás de VPN. **Siguiente paso:** WebAuthn (llaves de seguridad o
+  passkeys), que la Permissions-Policy ya deja disponible para el propio origen, también para
+  aprobar aperturas de identidad.
 - **Paso del relevo en el frente del panel.** El turnado a otro nodo lo usa desde el navegador, así
   que sigue abierto en el frente del panel, sin sesión. Quien entre a la red del panel puede usarlo
   como cualquier persona usa la ventanilla. Es otra razón para la VPN. Pendiente: exigir la sesión
