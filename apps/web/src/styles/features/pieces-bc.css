@@ -618,13 +618,20 @@
   color: var(--color-on-mark);
 }
 
-/* Anclajes, opcionales y plegados al final del seguimiento. */
-.anchors-details summary {
+/* Anclajes (opcionales, al final del seguimiento) y solicitud de medidas de protección. */
+.anchors-details summary,
+.protection-request summary {
   display: flex;
   align-items: center;
   min-block-size: var(--target-min);
   font-weight: 800;
   cursor: pointer;
+}
+
+.protection-request {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
 }
 
 @media (forced-colors: active) {
