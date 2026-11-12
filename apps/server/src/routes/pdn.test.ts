@@ -1,0 +1,281 @@
+// Pruebas del nodo como proveedor de la PDN: el punto de emisión de tokens por HTTP (formulario y
+// JSON, como el servidor OAuth de la PDN), la estadística con paginación al estilo del S2 y del S3,
+// su protección (token, permiso, meses cerrados, redondeo y supresión que los filtros no rompen) y
+// la consulta de la SESNA (cliente) a cada nodo de la red con OAuth 2.0.
+import { describe, expect, it } from 'vitest';
+import {
+  NETWORK_ROUTES,
+  NationalStatisticsSchema,
+  PDN_ROUTES,
+  PDN_SCOPES,
+  PdnErrorSchema,
+  PdnStatisticsResponseSchema,
+  PdnTokenResponseSchema,
+} from '@sigilo/contracts';
+import type { PdnStatisticsResponse } from '@sigilo/contracts';
+import { clientSecretDigest, createNodeOAuthServer } from '../network/oauth-server.ts';
+import { hashPassword } from '../security/passwords.ts';
+import {
+  NEXT_MONTH,
+  buildComplaintRequest,
+  createReporter,
+  createTestServer,
+  moveTo,
+  submitComplaint,
+} from '../test-support/harness.ts';
+import type { TestServer } from '../test-support/harness.ts';
+import { createTestNetwork, scenarioDate, submitDirect } from '../test-support/network-harness.ts';
+
+const SECRET = 'secreto-sintetico-de-la-sesna-para-pruebas';
+const PASSWORD = 'contraseña-sintética-de-la-sesna';
+
+/** Ruido fijo que siempre redondea hacia abajo (6 → 5, 3 → 0 y se suprime). */
+const ROUND_DOWN = () => 0.99;
+
+function serverWithOAuth(): TestServer {
+  return createTestServer({
+    openDataNoise: ROUND_DOWN,
+    oauth: createNodeOAuthServer({
+      issuer: 'node.local',
+      clients: [
+        {
+          clientId: 'sesna',
+          clientSecretDigest: clientSecretDigest(SECRET),
+          scopes: [PDN_SCOPES.deliveries, PDN_SCOPES.statistics],
+          grantTypes: ['client_credentials', 'password', 'refresh_token'],
+          user: { username: 'sesna.pdn', passwordHash: hashPassword(PASSWORD, 10) },
+        },
+      ],
+    }),
+  });
+}
+
+async function tokenFor(server: TestServer, scope: string): Promise<string> {
+  const response = await server.app.request(PDN_ROUTES.token, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`sesna:${SECRET}`).toString('base64')}`,
+    },
+    body: new URLSearchParams({ grant_type: 'client_credentials', scope }).toString(),
+  });
+  expect(response.status).toBe(200);
+  return PdnTokenResponseSchema.parse(await response.json()).access_token;
+}
+
+function query(server: TestServer, body: unknown, token?: string) {
+  return server.app.request(PDN_ROUTES.statistics, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token === undefined ? {} : { Authorization: `Bearer ${token}` }),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function page(server: TestServer, body: unknown, token: string) {
+  const response = await query(server, body, token);
+  expect(response.status).toBe(200);
+  return PdnStatisticsResponseSchema.parse(await response.json());
+}
+
+async function submitMany(server: TestServer, count: number, stateCode: string) {
+  const folios: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+      stateCode,
+    });
+    folios.push((await submitComplaint(server, request)).folio);
+  }
+  return folios;
+}
+
+describe('POST /oauth/token', () => {
+  it('acepta el flujo password de la PDN en JSON con client_secret_post y no guarda en caché', async () => {
+    const server = serverWithOAuth();
+    const response = await server.app.request(PDN_ROUTES.token, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'password',
+        client_id: 'sesna',
+        client_secret: SECRET,
+        username: 'sesna.pdn',
+        password: PASSWORD,
+        scope: PDN_SCOPES.statistics,
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(response.headers.get('Pragma')).toBe('no-cache');
+    const body = PdnTokenResponseSchema.parse(await response.json());
+    expect(body.refresh_token).toBeDefined();
+  });
+
+  it('un secreto incorrecto en Basic responde 401 invalid_client con WWW-Authenticate Basic', async () => {
+    const server = serverWithOAuth();
+    const response = await server.app.request(PDN_ROUTES.token, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from('sesna:otro').toString('base64')}`,
+      },
+      body: 'grant_type=client_credentials',
+    });
+    expect(response.status).toBe(401);
+    expect(response.headers.get('WWW-Authenticate')).toBe('Basic realm="sigilo"');
+    expect(await response.json()).toEqual({
+      error: 'invalid_client',
+      error_description: 'No se pudo autenticar al cliente.',
+    });
+  });
+
+  it('rechaza parámetros repetidos y tipos de contenido ajenos', async () => {
+    const server = serverWithOAuth();
+    for (const [type, body] of [
+      ['application/x-www-form-urlencoded', 'grant_type=password&grant_type=client_credentials'],
+      ['text/plain', 'grant_type=client_credentials'],
+    ] as const) {
+      const response = await server.app.request(PDN_ROUTES.token, {
+        method: 'POST',
+        headers: { 'Content-Type': type },
+        body,
+      });
+      expect(response.status).toBe(400);
+      expect(((await response.json()) as { error: string }).error).toBe('invalid_request');
+    }
+  });
+});
+
+describe('POST /v1/denuncias/estadisticas', () => {
+  it('exige un token del nodo con sesna:estadisticas y responde errores con el formato de la PDN', async () => {
+    const server = serverWithOAuth();
+    const missing = await query(server, {});
+    expect(missing.status).toBe(401);
+    expect(missing.headers.get('WWW-Authenticate')).toContain('error="invalid_token"');
+    expect(PdnErrorSchema.parse(await missing.json()).code).toBe('unauthorized');
+    const deliveries = await tokenFor(server, PDN_SCOPES.deliveries);
+    const wrongScope = await query(server, {}, deliveries);
+    expect(wrongScope.status).toBe(403);
+    expect(PdnErrorSchema.parse(await wrongScope.json()).code).toBe('forbidden');
+    const catalog = await server.app.request(PDN_ROUTES.statisticsAuthorities);
+    expect(catalog.status).toBe(401);
+  });
+
+  it('solo publica meses cerrados, redondeados a 5, con las celdas menores que 5 suprimidas', async () => {
+    const server = serverWithOAuth();
+    const folios = await submitMany(server, 6, '22');
+    for (const folio of folios) await moveTo(server, folio, 'routed');
+    // Tres denuncias de otra entidad: menos que la celda mínima.
+    await submitMany(server, 3, '09');
+    const token = await tokenFor(server, PDN_SCOPES.statistics);
+    // Octubre está en curso: nada que publicar todavía.
+    expect((await page(server, {}, token)).results).toEqual([]);
+    server.setNow(NEXT_MONTH);
+    await submitMany(server, 7, '22');
+    const result = await page(server, {}, token);
+    expect(result.pagination).toEqual({ pageSize: 10, page: 1, totalRows: 2, hasNextPage: false });
+    const [inbox, oic] = result.results;
+    // El buzón general turnó las 6 a tiempo (mismo día): 6 se publica como 5.
+    expect(inbox).toMatchObject({
+      mes: '2026-10',
+      autoridad: { clave: 'authority.buzon-prueba' },
+      entidad: '22',
+      recibidas: null,
+      turnadas: { aTiempo: 5, vencidas: null },
+    });
+    // El OIC las tenía al cerrar el día de recepción, en estatus «turnada».
+    expect(oic).toMatchObject({
+      mes: '2026-10',
+      autoridad: { clave: 'authority.oic-prueba', nombre: expect.any(String) },
+      recibidas: 5,
+      estatusAlCierre: { routed: 5, received: null },
+      tiemposMedianosDiasHabiles: { turno: null, aceptacion: null, archivo: null },
+    });
+    // Las 3 de la entidad 09 no aparecen con ningún filtro: filtrar solo elige filas publicadas.
+    for (const filter of [
+      { entidad: '09' },
+      { mes: '2026-10', entidad: '09' },
+      { estatus: 'received' },
+    ]) {
+      expect((await page(server, { query: filter }, token)).results).toEqual([]);
+    }
+    // `page` ya validó con el esquema que cada conteo es null o un múltiplo de 5 de al menos 5.
+  });
+
+  it('filtra, ordena y pagina como el S2 y el S3', async () => {
+    const server = serverWithOAuth();
+    const folios = await submitMany(server, 6, '22');
+    for (const folio of folios) await moveTo(server, folio, 'routed');
+    server.setNow(NEXT_MONTH);
+    const token = await tokenFor(server, PDN_SCOPES.statistics);
+    const first = await page(server, { pageSize: 1, sort: { autoridad: 'desc' } }, token);
+    expect(first.pagination).toEqual({ pageSize: 1, page: 1, totalRows: 2, hasNextPage: true });
+    expect(first.results[0]?.autoridad.clave).toBe('authority.oic-prueba');
+    const second: PdnStatisticsResponse = await page(
+      server,
+      { page: 2, pageSize: 1, sort: { autoridad: 'desc' } },
+      token,
+    );
+    expect(second.pagination.hasNextPage).toBe(false);
+    expect(second.results[0]?.autoridad.clave).toBe('authority.buzon-prueba');
+    const filtered = await page(server, { query: { autoridad: 'authority.oic-prueba' } }, token);
+    expect(filtered.results.map((row) => row.autoridad.clave)).toEqual(['authority.oic-prueba']);
+    // Página fuera de rango, pageSize por encima de 200 o campos desconocidos: 400.
+    for (const body of [{ page: 3, pageSize: 1 }, { pageSize: 201 }, { query: { folio: 'X' } }]) {
+      const response = await query(server, body, token);
+      expect(response.status).toBe(400);
+      expect(PdnErrorSchema.parse(await response.json()).code).toBe('bad_request');
+    }
+    const catalog = await server.app.request(PDN_ROUTES.statisticsAuthorities, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(catalog.status).toBe(200);
+    expect(((await catalog.json()) as { clave: string }[]).map((item) => item.clave)).toContain(
+      'authority.oic-prueba',
+    );
+  });
+
+  it('el mes congelado no cambia aunque después cambie el trámite', async () => {
+    const server = serverWithOAuth();
+    const folios = await submitMany(server, 6, '22');
+    server.setNow(NEXT_MONTH);
+    const token = await tokenFor(server, PDN_SCOPES.statistics);
+    const before = await page(server, {}, token);
+    for (const folio of folios) await moveTo(server, folio, 'archived');
+    expect(await page(server, {}, token)).toEqual(before);
+  });
+});
+
+describe('la SESNA consulta la estadística de cada nodo', () => {
+  it('pide el token a cada nodo, pagina y arma el corte nacional para el portal', async () => {
+    const network = createTestNetwork();
+    for (let index = 0; index < 6; index += 1) {
+      const request = await buildComplaintRequest(network.federal.server, {
+        mode: 'anonymous',
+        reporter: createReporter(),
+        stateCode: '09',
+      });
+      await submitDirect(network.federal, request);
+    }
+    network.setNow(scenarioDate(30));
+    const cut = NationalStatisticsSchema.parse(await network.statistics.run());
+    expect(cut.closedBefore).toBe('2026-12');
+    expect(cut.nodes.map((node) => [node.nodeId, node.status])).toEqual(
+      expect.arrayContaining([
+        ['node.federal', 'included'],
+        ['node.queretaro', 'included'],
+      ]),
+    );
+    expect(cut.rows.every((row) => row.nodeId === 'node.federal' && row.mes === '2026-11')).toBe(
+      true,
+    );
+    expect(cut.rows.some((row) => row.recibidas !== null)).toBe(true);
+    // El enrutador lo sirve en público (solo números) para el portal.
+    const response = await network.routerApp.request(NETWORK_ROUTES.nationalStatistics);
+    expect(NationalStatisticsSchema.parse(await response.json())).toEqual(cut);
+  });
+});

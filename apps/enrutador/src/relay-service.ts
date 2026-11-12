@@ -71,6 +71,13 @@ export interface RelayDeps {
    * o `null` si el nodo no tiene uno configurado (su buzón rechazará el sobre).
    */
   relaySecret?: (node: DirectoryNode) => Uint8Array | null;
+  /**
+   * Token de acceso que el servidor de autorización del nodo dio a la SESNA con el permiso
+   * `sesna:entregas` (`Authorization: Bearer`), o `null` si no hay. Sin él el nodo rechaza el sobre.
+   */
+  authorization?: (node: DirectoryNode) => Promise<string | null>;
+  /** Avisa que el nodo rechazó el token (`401`), para pedir otro en la siguiente entrega. */
+  onUnauthorized?: (node: DirectoryNode) => void;
   /** Tiempo máximo de espera del nodo, en milisegundos. */
   timeoutMs?: number;
   /**
@@ -110,6 +117,9 @@ export function createRelayService(deps: RelayDeps): RelayService {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       // Seguridad: la etiqueta prueba al nodo que el sobre pasó por el enrutador.
       if (secret !== null) headers[RELAY_AUTH_HEADER] = relayAuthTag(secret, body);
+      // Seguridad: OAuth 2.0 del nodo; el HMAC queda como defensa en profundidad.
+      const token = (await deps.authorization?.(node)) ?? null;
+      if (token !== null) headers.Authorization = `Bearer ${token}`;
       const response = await deps.fetch(`${deps.nodeUrl(node)}${NETWORK_ROUTES.nodeInbox}`, {
         method: 'POST',
         headers,
@@ -117,6 +127,7 @@ export function createRelayService(deps: RelayDeps): RelayService {
         redirect: 'error',
         signal: AbortSignal.timeout(deps.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       });
+      if (response.status === 401) deps.onUnauthorized?.(node);
       // El buzón responde 400 solo a un sobre que no le sirve (no abre, otro nodo, otra autoridad).
       if (response.status === 400) return { kind: 'rejected' };
       if (response.status !== 200) return { kind: 'unavailable', reason: 'failed' };

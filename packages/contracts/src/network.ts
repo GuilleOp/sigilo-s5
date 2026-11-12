@@ -42,6 +42,8 @@ export const NETWORK_ROUTES = {
   nationalOpenData: `${NETWORK_API_PREFIX}/national/open-data`,
   /** `GET`: el mismo corte en CSV, con las columnas del CSV de cada nodo. */
   nationalOpenDataCsv: `${NETWORK_API_PREFIX}/national/open-data.csv`,
+  /** `GET`: último corte nacional de la estadística que la SESNA consultó a cada nodo (OAuth 2.0). */
+  nationalStatistics: `${NETWORK_API_PREFIX}/national/statistics`,
   /** `POST` en el nodo: recibe del enrutador un sobre de red y responde con un sobre de vuelta. */
   nodeInbox: `${NETWORK_API_PREFIX}/inbox`,
   /** `GET`: reto de prueba de trabajo del enrutador para dejar una denuncia en la cola de entrega. */

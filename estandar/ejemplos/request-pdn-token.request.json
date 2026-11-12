@@ -1,0 +1,6 @@
+{
+  "grant_type": "password",
+  "username": "sesna.pdn",
+  "password": "contraseña-ficticia",
+  "scope": "sesna:estadisticas"
+}

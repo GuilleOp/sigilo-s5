@@ -27,22 +27,22 @@ SIGILO_ROUTER_DATA_DIR=.red-demo/enrutador npm run dev:enrutador
 O toda la red con `npm run demo:todo` (o `docker compose build && docker compose up -d`; ver la
 [guía para conectar un estado](../../docs/guia-conecta-tu-estado.md)).
 
-| Variable                                 | Por omisión           | Uso                                                                  |
-| ---------------------------------------- | --------------------- | -------------------------------------------------------------------- |
-| `SIGILO_ROUTER_DATA_DIR`                 | `apps/enrutador/data` | `directory.json`, `trust.json`, `operator-key.json` y `enrutador.db` |
-| `SIGILO_ROUTER_HOST`                     | `127.0.0.1`           | `0.0.0.0` solo dentro de un contenedor                               |
-| `SIGILO_ROUTER_PORT`                     | `8790`                | Puerto                                                               |
-| `SIGILO_ROUTER_NODE_URLS`                | vacío                 | `node.id=http://host:puerto,...`: direcciones internas de los nodos  |
-| `SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS` | `600`                 | Cada cuánto recoge cabezas, emite la cabeza nacional y hace el corte |
-| `SIGILO_ROUTER_CLOCK_FILE`               | vacío                 | Solo demostración (`SIGILO_DEMO=1`): reloj simulado del corte        |
-| `SIGILO_ROUTER_HSTS_MAX_AGE`             | sin HSTS              | `max-age` cuando se publica detrás de HTTPS                          |
-| `SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS`  | `60`                  | Cada cuánto consulta la salud de cada nodo                           |
-| `SIGILO_ROUTER_MIN_NODE_VERSION`         | sin mínima            | `mayor.menor.parche`: a un nodo con versión menor no se le entrega   |
-| `SIGILO_ROUTER_QUEUE_POW_BITS`           | `18`                  | Dificultad del reto propio de la cola de entrega (0 a 24)            |
-| `SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS`   | `15`                  | Cada cuánto revisa la cola (cada sobre lleva su siguiente intento)   |
-| `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir        |
-| `SIGILO_ROUTER_QUEUE_MAX_PER_NODE`       | `500`                 | Sobres en cola por nodo; al llenarse responde `429`                  |
-| `SIGILO_ROUTER_QUEUE_MAX_MB_PER_NODE`    | `64`                  | Megabytes en cola por nodo                                           |
+| Variable                                 | Por omisión           | Uso                                                                                           |
+| ---------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
+| `SIGILO_ROUTER_DATA_DIR`                 | `apps/enrutador/data` | `directory.json`, `trust.json`, `operator-key.json`, `node-credentials.json` y `enrutador.db` |
+| `SIGILO_ROUTER_HOST`                     | `127.0.0.1`           | `0.0.0.0` solo dentro de un contenedor                                                        |
+| `SIGILO_ROUTER_PORT`                     | `8790`                | Puerto                                                                                        |
+| `SIGILO_ROUTER_NODE_URLS`                | vacío                 | `node.id=http://host:puerto,...`: direcciones internas de los nodos                           |
+| `SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS` | `600`                 | Cada cuánto recoge cabezas, emite la cabeza nacional y hace el corte                          |
+| `SIGILO_ROUTER_CLOCK_FILE`               | vacío                 | Solo demostración (`SIGILO_DEMO=1`): reloj simulado del corte                                 |
+| `SIGILO_ROUTER_HSTS_MAX_AGE`             | sin HSTS              | `max-age` cuando se publica detrás de HTTPS                                                   |
+| `SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS`  | `60`                  | Cada cuánto consulta la salud de cada nodo                                                    |
+| `SIGILO_ROUTER_MIN_NODE_VERSION`         | sin mínima            | `mayor.menor.parche`: a un nodo con versión menor no se le entrega                            |
+| `SIGILO_ROUTER_QUEUE_POW_BITS`           | `18`                  | Dificultad del reto propio de la cola de entrega (0 a 24)                                     |
+| `SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS`   | `15`                  | Cada cuánto revisa la cola (cada sobre lleva su siguiente intento)                            |
+| `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir                                 |
+| `SIGILO_ROUTER_QUEUE_MAX_PER_NODE`       | `500`                 | Sobres en cola por nodo; al llenarse responde `429`                                           |
+| `SIGILO_ROUTER_QUEUE_MAX_MB_PER_NODE`    | `64`                  | Megabytes en cola por nodo                                                                    |
 
 Al arrancar verifica `directory.json`: la primera vez contra la raíz fijada `trust.json`; después
 exige la misma versión o exactamente la siguiente, cofirmada por los testigos de la anterior. Si no
@@ -69,6 +69,7 @@ Todas bajo `/api/v1/red`; el detalle está en `estandar/openapi.yaml`.
 | `GET /national/inclusion?nodeId=&seq=&hash=` | Prueba de que esa cabeza de nodo está incluida               |
 | `GET /national/open-data`                    | Último corte nacional de datos abiertos (`404` hasta el 1.º) |
 | `GET /national/open-data.csv`                | El mismo corte en CSV, con las columnas del CSV de cada nodo |
+| `GET /national/statistics`                   | Corte nacional de la estadística que la SESNA jala con OAuth |
 | `POST /inbox` (en cada **nodo**)             | Buzón de red: lo implementa el nodo, no el enrutador         |
 
 Además, el enrutador **recoge** periódicamente la cabeza de cada nodo en `GET /api/v1/ledger/head`,
@@ -163,6 +164,51 @@ para el observatorio. En la demostración, `SIGILO_ROUTER_CLOCK_FILE` usa el rel
 nodos solo para decidir qué meses están cerrados; la bitácora nacional y el directorio siguen con el
 reloj real.
 
+## APIs con los nodos (OAuth 2.0)
+
+Con la metodología de las APIs de la PDN (S2 y S3), **cada nodo es el proveedor y su propio
+servidor de autorización**, y el enrutador (la SESNA) es el **cliente**. Las credenciales que cada
+nodo entrega a la SESNA están en `node-credentials.json` (permisos `0600`; el enrutador no arranca
+si otros pueden leerlo):
+
+```json
+{
+  "version": 1,
+  "nodes": {
+    "node.queretaro": {
+      "clientId": "sesna",
+      "clientSecret": "…",
+      "grantType": "client_credentials",
+      "username": "sesna.pdn",
+      "password": "…"
+    }
+  }
+}
+```
+
+`src/oauth/token-client.ts` pide el token en `POST <nodo>/oauth/token` con
+`Authorization: Basic` en formulario (`client_credentials`, o `password` con usuario y
+contraseña, el flujo de la PDN), lo guarda en memoria hasta 30 s antes de vencer y, con
+`password`, lo renueva con su `refresh_token`. Nunca registra secretos ni tokens.
+
+| Uso                        | Permiso              | Dónde                                                                     |
+| -------------------------- | -------------------- | ------------------------------------------------------------------------- |
+| Entregar sobres            | `sesna:entregas`     | `relay-service.ts` agrega `Authorization: Bearer` junto al HMAC del buzón |
+| Estadística para el portal | `sesna:estadisticas` | `node-statistics.ts` jala `POST /v1/denuncias/estadisticas` por páginas   |
+| Salud del nodo (reservado) | `sesna:salud`        | Sin ruta todavía                                                          |
+
+**Corte nacional de la estadística** (`src/node-statistics.ts`, Bases de la PDN, art. 61). En cada
+vuelta, después del corte de datos abiertos, pide a cada nodo su token y consulta
+`POST /v1/denuncias/estadisticas` con `pageSize` 200 y `query.mesHasta` igual al mes anterior,
+hasta 50 páginas. Valida cada fila (esquema: conteos múltiplos de 5 y de al menos 5 o `null`;
+meses cerrados; autoridades del propio nodo en el directorio; sin repetidas) y descarta completo al
+nodo que no cumple. Copia las filas tal cual, con `nodeId`: no vuelve a sumar ni rebaja la
+supresión. Estados por nodo: `included`, `unreachable`, `rejected` (con `rejection`) y
+`no-credentials`. El corte se guarda en memoria y se sirve en `GET /api/v1/red/national/statistics`.
+
+Las cabezas de bitácora se siguen jalando de la ruta pública de cada nodo; el registro y el
+_push_ opcional de cabezas siguen firmados con la llave del nodo en el directorio, sin token.
+
 ## Qué metadatos ve el enrutador y cuáles no
 
 El diseño sigue la idea de Oblivious HTTP (RFC 9458): el enrutador conoce quién se conecta pero no
@@ -195,7 +241,8 @@ Garantías comprobadas en `src/relay.test.ts`:
   El nodo comprueba además que la autoridad interna esté alojada en él y vigente
   (`hostsAuthority` de `createNodeInboxHandler`); si no, responde como a un sobre que no abre y el
   enrutador devuelve relleno.
-- El nodo recibe una petición armada desde cero con **solo** `Content-Type`; `User-Agent`,
+- El nodo recibe una petición armada desde cero con **solo** `Content-Type` (más el token OAuth
+  del propio nodo y la etiqueta HMAC, que pone el enrutador); `User-Agent`,
   `X-Forwarded-For`, `Accept-Language` y `Cookie` de quien envía no pasan.
 - La respuesta tiene el mismo estatus, las mismas cabeceras y el mismo tamaño para cualquier
   destino. Si no pudo entregar (nodo no registrado o caído), responde relleno aleatorio con la misma

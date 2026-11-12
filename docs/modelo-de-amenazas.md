@@ -261,6 +261,10 @@ al integrar su corrección; el resumen está en [historial-de-seguridad.md](hist
 | G12 | La operación del enrutador cuenta denuncias por autoridad (OIC) leyendo el encabezado        | A9      | LINDDUN L, D | Sobre v2: el encabezado dice solo el nodo; la autoridad va cifrada y el nodo la entrega solo si la aloja; el sobre v1 se rechaza                                                      | Media      | M         |
 | G13 | Llenar la cola de entrega o colar denuncias sin trabajo por la entrega diferida              | A2, A9  | STRIDE D, S  | Reto propio del enrutador de un solo uso; topes de sobres y bytes por nodo; el nodo acepta lo diferido solo con la etiqueta HMAC, solo denuncias con folio y con tope por hora        | Media      | M         |
 | G14 | Un nodo con software viejo (con fallas conocidas) sigue recibiendo denuncias                 | A9      | STRIDE T, I  | Versión mínima en el enrutador: no entrega a un nodo con versión menor o desconocida, avisa y la salud lo publica; lo que pidió la cola espera                                        | Media-baja | M         |
+| G15 | Robar o adivinar las credenciales OAuth que un nodo entregó a la SESNA                       | A9, A4  | STRIDE S     | Secretos aleatorios de 32 bytes y solo digestos en el nodo (scrypt para la contraseña); comparación en tiempo constante, también con clientes desconocidos; 429 tras 10 fallos        | Media      | M         |
+| G16 | Reusar un token de acceso filtrado contra el buzón o la estadística                          | A9, A5  | STRIDE S, I  | Tokens de 5 minutos con `aud` del nodo y permiso mínimo; el buzón exige además el HMAC del enrutador; los tokens no se registran ni se devuelven en errores                           | Media-baja | M         |
+| G17 | Reconstruir una celda suprimida con filtros o con cortes sucesivos de la estadística         | A9, A2  | LINDDUN I, L | Meses cerrados y congelados una vez; redondeo al azar con semilla que se borra al congelar; supresión bajo 5; filtros que solo eligen filas, sin totales ni marginales                | Media      | M parcial |
+| G18 | Un nodo publica de más (mes abierto, autoridad ajena) en la estadística nacional             | A9      | STRIDE T     | El enrutador valida esquema (múltiplos de 5, mínimo 5), meses cerrados, autoridades del propio nodo y repetidas; descarta completo al nodo                                            | Baja       | M         |
 
 Notas:
 
@@ -275,6 +279,14 @@ Notas:
   si el nodo sirve el tramo que la une con la anterior. Residual (riesgo 18): la primera cabeza que
   ve un testigo nuevo no tiene con qué compararse, y un nodo que no sirve su bitácora deja de
   avanzar en la bitácora nacional.
+- **G15–G17 (APIs entre la SESNA y los nodos).** El nodo es su propio servidor de autorización
+  y la SESNA el cliente, como en las APIs de la PDN. Residual (riesgo 20): el bloqueo por fallos
+  es por cliente, así que quien conozca el identificador `sesna` puede forzar `429` hasta 15
+  minutos y retrasar entregas y consultas (los sobres se responden con relleno); los secretos de
+  32 bytes no se pueden adivinar, el bloqueo protege sobre todo la contraseña del flujo
+  `password`. Residual (riesgo 21): la estadística por autoridad y conducta es más fina que el
+  CSV; una fila con un solo indicador publicado revela que los demás quedaron bajo 5 (como la
+  supresión del CSV) y las medianas, aun con 10 observaciones, describen a un grupo pequeño.
 - **G10.** Una versión vieja del directorio sigue bien firmada y cofirmada. La raíz de confianza
   admite `minDirectorySerial` y `maxDirectoryAgeDays`, y el directorio, `validUntil`. Residual
   (riesgo 19): una web construida antes de una revocación acepta copias viejas hasta su
@@ -329,6 +341,10 @@ Notas:
     que ve cada verificador: la primera cabeza no tiene con qué compararse (G04).
 19. Hasta reconstruir la web con el serial nuevo o hasta el `validUntil` del directorio, una copia
     anterior con llaves revocadas sigue verificando (G10).
+20. Quien conozca el identificador del cliente de la SESNA puede bloquearlo 15 minutos ante un
+    nodo con intentos fallidos y retrasar entregas y consultas (G15).
+21. La estadística para la PDN es más fina que el CSV de datos abiertos: lo suprimido se nota por
+    ausencia y una mediana describe a un grupo de al menos 10 (G17).
 
 Residuales inherentes (no tienen corrección dentro del diseño; se aceptan y se documentan):
 

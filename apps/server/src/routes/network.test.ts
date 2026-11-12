@@ -6,10 +6,12 @@ import {
   NETWORK_ROUTES,
   NationalOpenDataSchema,
   NodeHealthReportSchema,
+  PDN_SCOPES,
   RELAY_V1_REJECTION_MESSAGE,
   ROUTES,
   SubmitComplaintResponseSchema,
 } from '@sigilo/contracts';
+import type { PdnScope } from '@sigilo/contracts';
 import { deriveReceiptKeys, generateReceiptPhrase, toBase64Url } from '@sigilo/core';
 import {
   RELAY_AUTH_HEADER,
@@ -43,12 +45,29 @@ const SEALED = {
 function post(
   app: { request: (path: string, init: RequestInit) => Response | Promise<Response> },
   body: unknown,
+  token?: string | null,
 ) {
   return app.request(NETWORK_ROUTES.nodeInbox, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token == null ? {} : { Authorization: `Bearer ${token}` }),
+    },
     body: JSON.stringify(body),
   });
+}
+
+/** Token que el nodo dio a la SESNA (la del harness) con el permiso pedido. */
+async function sesnaToken(
+  network: ReturnType<typeof createTestNetwork>,
+  nodeId: 'node.federal' | 'node.queretaro',
+  scope: PdnScope = PDN_SCOPES.deliveries,
+): Promise<string> {
+  const node = network.services.directory.nodes.find((item) => item.id === nodeId);
+  if (node === undefined) throw new Error('Nodo sin directorio.');
+  const token = await network.tokens.token(node, scope);
+  if (token === null) throw new Error('El nodo no dio token.');
+  return token;
 }
 
 describe('buzón de red', () => {
@@ -58,8 +77,25 @@ describe('buzón de red', () => {
   });
 
   it('un sobre que no abre responde 400', async () => {
-    const { federal } = createTestNetwork();
-    expect((await post(federal.app, SEALED)).status).toBe(400);
+    const network = createTestNetwork();
+    const token = await sesnaToken(network, 'node.federal');
+    expect((await post(network.federal.app, SEALED, token)).status).toBe(400);
+  });
+
+  it('exige el token OAuth 2.0 de la SESNA con sesna:entregas y de este nodo', async () => {
+    const network = createTestNetwork();
+    const missing = await post(network.federal.app, SEALED);
+    expect(missing.status).toBe(401);
+    expect(missing.headers.get('WWW-Authenticate')).toContain('error="invalid_token"');
+    // Otro permiso: 403 con insufficient_scope.
+    const statistics = await sesnaToken(network, 'node.federal', PDN_SCOPES.statistics);
+    const wrongScope = await post(network.federal.app, SEALED, statistics);
+    expect(wrongScope.status).toBe(403);
+    expect(wrongScope.headers.get('WWW-Authenticate')).toContain('insufficient_scope');
+    // Un token de Querétaro no vale en el nodo Federal (otro emisor y otra llave).
+    const foreign = await sesnaToken(network, 'node.queretaro');
+    expect((await post(network.federal.app, SEALED, foreign)).status).toBe(401);
+    expect((await post(network.federal.app, SEALED, 'a.b.c')).status).toBe(401);
   });
 
   it('rechaza un sobre válido que no pasó por el enrutador (H11)', async () => {
@@ -68,12 +104,15 @@ describe('buzón de red', () => {
       operationId: 'getTracking',
       body: { folio: 'K7Q2-M9XP-4RTD', authKey: 'AAAA' },
     });
-    // El mismo sobre, sin la etiqueta HMAC del enrutador o con una falsa, no abre.
-    expect((await post(network.federal.app, sealed.relay)).status).toBe(400);
+    // El mismo sobre, aun con un token válido, sin la etiqueta HMAC del enrutador o con una falsa,
+    // no abre: el HMAC es la defensa en profundidad si el token se filtrara.
+    const token = await sesnaToken(network, 'node.federal');
+    expect((await post(network.federal.app, sealed.relay, token)).status).toBe(400);
     const forged = await network.federal.app.request(NETWORK_ROUTES.nodeInbox, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
         [RELAY_AUTH_HEADER]: relayAuthTag(new Uint8Array(32).fill(7), JSON.stringify(sealed.relay)),
       },
       body: JSON.stringify(sealed.relay),

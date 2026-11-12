@@ -1,0 +1,7 @@
+[
+  { "clave": "authority.buzon-queretaro", "nombre": "Buzón general de Querétaro" },
+  {
+    "clave": "authority.comptroller-queretaro",
+    "nombre": "Contraloría Estatal Ficticia de Querétaro"
+  }
+]

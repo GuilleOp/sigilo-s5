@@ -15,7 +15,12 @@ import {
   STATES,
 } from '@sigilo/contracts';
 import type { ApiErrorCode } from '@sigilo/contracts';
-import { STANDARD_POW_HEADER, STANDARD_VERSION } from '@sigilo/contracts/standard';
+import { PDN_SCOPE_DESCRIPTIONS, PDN_ROUTES } from '@sigilo/contracts';
+import {
+  PDN_OAUTH_DESCRIPTION,
+  STANDARD_POW_HEADER,
+  STANDARD_VERSION,
+} from '@sigilo/contracts/standard';
 import type { StandardBody, StandardComponentName } from '@sigilo/contracts/standard';
 import {
   PUBLISHED_COMPONENTS,
@@ -90,24 +95,29 @@ export function buildComponentSchemas(): Record<string, JsonObject> {
   return result;
 }
 
-/** Cuerpo JSON de una operación de cualquiera de los dos grupos. */
-type JsonBody = { kind: 'json'; component: string; isArray?: boolean; example: string };
+/** Cuerpo JSON de una operación de cualquier grupo; `mediaTypes` agrega otros tipos. */
+type JsonBody = {
+  kind: 'json';
+  component: string;
+  isArray?: boolean;
+  example: string;
+  mediaTypes?: readonly string[];
+};
 
 function jsonContent(body: JsonBody): JsonObject {
   const reference = componentRef(body.component);
-  return {
-    'application/json': {
-      schema: body.isArray === true ? { type: 'array', items: reference } : reference,
-      examples: {
-        sintetico: {
-          summary: 'Ejemplo sintético',
-          // `value` y `externalValue` se excluyen en OpenAPI 3.1: el archivo se cita en el texto.
-          description: `También en \`ejemplos/${body.example}.json\`.`,
-          value: PUBLISHED_EXAMPLES[body.example],
-        },
+  const media = {
+    schema: body.isArray === true ? { type: 'array', items: reference } : reference,
+    examples: {
+      sintetico: {
+        summary: 'Ejemplo sintético',
+        // `value` y `externalValue` se excluyen en OpenAPI 3.1: el archivo se cita en el texto.
+        description: `También en \`ejemplos/${body.example}.json\`.`,
+        value: PUBLISHED_EXAMPLES[body.example],
       },
     },
   };
+  return Object.fromEntries((body.mediaTypes ?? ['application/json']).map((type) => [type, media]));
 }
 
 function bodyContent(body: StandardBody | JsonBody): JsonObject {
@@ -196,11 +206,33 @@ function errorResponses(codes: readonly ApiErrorCode[]): JsonObject {
   return responses;
 }
 
-const SECURITY: Record<PublishedOperation['security'], readonly JsonObject[]> = {
-  none: [],
-  proofOfWork: [{ proofOfWork: [] }],
-  authorityBearer: [{ authorityBearer: [] }],
-};
+/** Requisito de seguridad de una operación; OAuth 2.0 lleva sus permisos. */
+function securityOf(security: PublishedOperation['security']): readonly JsonObject[] {
+  if (typeof security === 'object') return [{ nodeOAuth: [...security.oauth] }];
+  switch (security) {
+    case 'none':
+      return [];
+    case 'proofOfWork':
+      return [{ proofOfWork: [] }];
+    case 'authorityBearer':
+      return [{ authorityBearer: [] }];
+  }
+}
+
+/** Errores con el formato de la PDN (`PdnError` o `PdnTokenError`), por estatus. */
+function pdnErrorResponses(operation: PublishedOperation): JsonObject {
+  if (!('pdnErrors' in operation)) return {};
+  const responses: JsonObject = {};
+  for (const item of operation.pdnErrors) {
+    const response: JsonObject = {
+      description: item.description,
+      headers: { ...NO_STORE_HEADERS },
+      content: { 'application/json': { schema: componentRef(item.component) } },
+    };
+    responses[String(item.status)] = response;
+  }
+  return responses;
+}
 
 function buildOperation(operation: PublishedOperation): JsonObject {
   const { body } = operation.success;
@@ -215,12 +247,13 @@ function buildOperation(operation: PublishedOperation): JsonObject {
     },
   };
   Object.assign(responses, errorResponses([...operation.errors, 'internal']));
+  Object.assign(responses, pdnErrorResponses(operation));
   const result: JsonObject = {
     operationId: operation.operationId,
     tags: [operation.tag],
     summary: operation.summary,
     description: operation.description,
-    security: SECURITY[operation.security],
+    security: securityOf(operation.security),
   };
   if (operation.parameters.length > 0) result.parameters = operation.parameters;
   if (operation.requestBody !== undefined) {
@@ -240,6 +273,8 @@ const DESCRIPTION = [
   'La identidad de la persona denunciante se cifra en su navegador hacia la llave de la autoridad (HPKE, RFC 9180) y el servidor nunca la ve. El seguimiento usa un folio aleatorio y una llave derivada de un recibo de 8 palabras. Toda acción de la autoridad queda en una bitácora pública encadenada y firmada.',
   '',
   'El grupo «Red» describe la red federada: el directorio de autoridades firmado y cofirmado por testigos, el enrutador ciego (que solo ve el destino), el registro de nodos y la bitácora nacional cofirmada m de n. Lo sirve el enrutador, salvo el buzón de red, que lo sirve cada nodo.',
+  '',
+  'El grupo «PDN» describe al nodo como proveedor de la Plataforma Digital Nacional con la metodología de las APIs del S2 y del S3: su servidor de autorización OAuth 2.0 (`POST /oauth/token`) y la estadística agregada de denuncias con paginación (`POST /v1/denuncias/estadisticas`), que consulta la SESNA para el portal. Lo sirve cada nodo.',
   '',
   'El grupo «Corroboración» describe la corroboración ciega con VOPRF (RFC 9497): el evaluador OPRF, que ve solo elementos cegados, y el índice de coincidencias, que ve solo etiquetas y cuenta fuentes independientes. Son dos servicios con operación separada.',
   '',
@@ -287,6 +322,14 @@ export function buildOpenApiDocument(): JsonObject {
           in: 'header',
           name: STANDARD_POW_HEADER,
           description: `Prueba de trabajo sin cuentas ni rastreo: \`${STANDARD_POW_HEADER}: <token>:<contador>\`, donde \`token\` viene de \`GET /api/v1/pow/challenge\` y \`SHA-256(token + ":" + contador)\` empieza con \`bits\` bits en cero. Si falta o no es válida, la respuesta es \`428 proof_required\`.`,
+        },
+        nodeOAuth: {
+          type: 'oauth2',
+          description: PDN_OAUTH_DESCRIPTION,
+          flows: {
+            password: { tokenUrl: PDN_ROUTES.token, scopes: PDN_SCOPE_DESCRIPTIONS },
+            clientCredentials: { tokenUrl: PDN_ROUTES.token, scopes: PDN_SCOPE_DESCRIPTIONS },
+          },
         },
         authorityBearer: {
           type: 'http',

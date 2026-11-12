@@ -2,6 +2,7 @@
 // abre la base, programa la recolección de cabezas y el corte nacional de datos abiertos, y escucha.
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
+import { PDN_SCOPES } from '@sigilo/contracts';
 import type { DirectoryNode } from '@sigilo/contracts';
 import { keyIdFor, toDayDate, toHourDate } from '@sigilo/core';
 import { checkNodeHistory, signingPublicKeyOf } from '@sigilo/red';
@@ -11,6 +12,9 @@ import { loadRelaySecrets, loadRouterConfig, loadRouterFiles, openDataClock } fr
 import { openRouterDatabase } from './database.ts';
 import { loadDirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
+import { createNodeStatisticsAggregator } from './node-statistics.ts';
+import { loadNodeCredentials } from './oauth/node-credentials.ts';
+import { createNodeTokenClient } from './oauth/token-client.ts';
 import { createOpenDataAggregator } from './open-data-aggregator.ts';
 import { createNodeHealthMonitor } from './node-health.ts';
 import { createQueuePow } from './queue-pow.ts';
@@ -34,6 +38,12 @@ function start(): void {
   });
   const directory = loadDirectoryStore(db, files.directory, files.trust, national, today());
   const relaySecrets = loadRelaySecrets(config.dataDir);
+  // OAuth 2.0: cada nodo es su propio servidor de autorización; la SESNA, el cliente.
+  const tokens = createNodeTokenClient({
+    credentials: loadNodeCredentials(config.dataDir),
+    nodeUrl,
+    fetch: doFetch,
+  });
   const relay = createRelayService({
     db,
     nodeUrl,
@@ -41,6 +51,8 @@ function start(): void {
     relaySecret: (node) => relaySecrets.get(node.id) ?? null,
     // El monitor se crea después; se consulta en cada entrega.
     meetsMinimumVersion: (node) => health.meetsMinimumVersion(node),
+    authorization: (node) => tokens.token(node, PDN_SCOPES.deliveries),
+    onUnauthorized: (node) => tokens.invalidate(node, PDN_SCOPES.deliveries),
   });
   // Cola de entrega: sobres cerrados para nodos que no responden, con el reto propio del enrutador.
   const queueStore = createRelayQueue({
@@ -74,6 +86,13 @@ function start(): void {
     fetch: doFetch,
     now: openDataClock(process.env),
   });
+  const statistics = createNodeStatisticsAggregator({
+    directory: directory.directory,
+    nodeUrl,
+    fetch: doFetch,
+    tokens,
+    now: openDataClock(process.env),
+  });
   const app = createRouterApp({
     directory,
     national,
@@ -81,6 +100,7 @@ function start(): void {
     queue: { store: queueStore, pow: queuePow },
     health,
     openData,
+    statistics,
     now,
     hstsMaxAgeSeconds: config.hstsMaxAgeSeconds,
   });
@@ -110,9 +130,16 @@ function start(): void {
       } catch {
         console.error('No se pudo completar el corte nacional de datos abiertos.');
       }
-      // Seguridad: una línea agregada por vuelta, sin destinos, IP ni contenidos.
+      let statisticsNodes: Record<string, string> | null = null;
+      try {
+        const cut = await statistics.run();
+        statisticsNodes = Object.fromEntries(cut.nodes.map((node) => [node.nodeId, node.status]));
+      } catch {
+        console.error('No se pudo completar el corte nacional de estadística.');
+      }
+      // Seguridad: una línea agregada por vuelta, sin destinos, IP, tokens ni contenidos.
       process.stdout.write(
-        `${JSON.stringify({ hour: toHourDate(now()), relay: relay.drainCounters(), queue: queueStore.drainCounters(), nodes, openData: openDataNodes })}\n`,
+        `${JSON.stringify({ hour: toHourDate(now()), relay: relay.drainCounters(), queue: queueStore.drainCounters(), nodes, openData: openDataNodes, statistics: statisticsNodes })}\n`,
       );
     } finally {
       isCollecting = false;

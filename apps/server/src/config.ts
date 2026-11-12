@@ -19,6 +19,11 @@ export interface ServerConfig {
   dataDir: string;
   /** Archivo local de cuentas de la autoridad (`SIGILO_ACCOUNTS_FILE`); no se versiona. */
   accountsFile: string;
+  /**
+   * Clientes OAuth 2.0 del nodo (`SIGILO_OAUTH_CLIENTS_FILE`, por omisión `oauth-clients.json` en
+   * el directorio de datos): la SESNA y sus permisos. Solo digestos; no se versiona.
+   */
+  oauthClientsFile: string;
   /** Origen permitido por CORS; cadena vacía (por omisión) desactiva CORS. */
   allowedOrigin: string;
   /** Directorio de la web construida para servirla en el mismo origen, o `null`. */
@@ -343,6 +348,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
     port: parsePort(env.SIGILO_PORT),
     dataDir,
     accountsFile: resolve(env.SIGILO_ACCOUNTS_FILE || join(dataDir, ACCOUNTS_FILE_NAME)),
+    oauthClientsFile: resolve(env.SIGILO_OAUTH_CLIENTS_FILE || join(dataDir, 'oauth-clients.json')),
     allowedOrigin: env.SIGILO_ALLOWED_ORIGIN ?? '',
     webDistDir: webDist === '' ? null : resolve(webDist),
     hstsMaxAgeSeconds: parseHsts(env),

@@ -24,6 +24,7 @@ describe('loadConfig', () => {
       port: 8787,
       dataDir: DEFAULT_DATA_DIR,
       accountsFile: join(DEFAULT_DATA_DIR, 'authority-accounts.json'),
+      oauthClientsFile: join(DEFAULT_DATA_DIR, 'oauth-clients.json'),
       allowedOrigin: '',
       webDistDir: null,
       hstsMaxAgeSeconds: null,

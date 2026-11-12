@@ -8,9 +8,14 @@ import {
   ApiErrorSchema,
   CORROBORATION_ROUTES,
   NETWORK_ROUTES,
+  PDN_ROUTES,
   ROUTES,
 } from '@sigilo/contracts';
-import { NETWORK_OPERATIONS, STANDARD_OPERATIONS } from '@sigilo/contracts/standard';
+import {
+  NETWORK_OPERATIONS,
+  PDN_OPERATIONS,
+  STANDARD_OPERATIONS,
+} from '@sigilo/contracts/standard';
 import { createTestServer } from './test-support/harness.ts';
 
 /** `/api/v1/authority/complaints/{folio}` → `/api/v1/authority/complaints/:folio`. */
@@ -24,13 +29,20 @@ describe('conformidad con el estándar', () => {
     const registered = new Set(
       app.routes
         .filter((route) => route.method === 'GET' || route.method === 'POST')
-        .filter((route) => route.path.startsWith(`${API_PREFIX}/`))
+        // Además de la API v1, las rutas de la PDN (`/oauth/token` y `/v1/...`).
+        .filter(
+          (route) =>
+            route.path.startsWith(`${API_PREFIX}/`) ||
+            route.path === PDN_ROUTES.token ||
+            route.path.startsWith('/v1/'),
+        )
         .map((route) => `${route.method} ${route.path}`),
     );
     // El nodo sirve también las operaciones de red que le tocan (su buzón); las del enrutador no.
     const nodeOperations = [
       ...STANDARD_OPERATIONS,
       ...NETWORK_OPERATIONS.filter((operation) => operation.servedBy === 'node'),
+      ...PDN_OPERATIONS,
     ];
     // Copias del mismo origen para la web (directorio, enrutador, corte nacional y evaluador): son operaciones del
     // estándar que sirven otros servicios; el nodo solo las pasa, sin cambiarlas.
