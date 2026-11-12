@@ -1,0 +1,15 @@
+{
+  "grants": [
+    {
+      "evidenceId": "16ed88d6f3ea7c6c4841645c43cd2c79",
+      "authorityId": "authority.oic-obras",
+      "envelope": {
+        "v": 1,
+        "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+        "keyId": "c4e19a07b3d25f86",
+        "enc": "vD8n1Lr0cQ4x7mZ2aS5kE9bW3hJ6tY1uP0oI8gF4dCe",
+        "ct": "mQ9vX2bN7kL4sD1fG8hJ3wE6rT0yU5iO2pA9zC4xV7bN1mK8jH3gF6dS0aQ5wE2r"
+      }
+    }
+  ]
+}

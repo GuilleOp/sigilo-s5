@@ -33,14 +33,29 @@ export const ComplaintStatusSchema = z
   });
 export type ComplaintStatus = z.infer<typeof ComplaintStatusSchema>;
 
-/** Las pruebas siempre llegan como imagen limpia (los PDF se convierten a imagen). */
-export const EvidenceMediaTypeSchema = z
-  .enum(['image/jpeg', 'image/png'])
-  .meta({ description: 'Tipo de la prueba ya limpia: imagen JPEG o PNG.' });
+/**
+ * Las pruebas siempre son imágenes limpias (los PDF se convierten a imagen) y viajan cifradas hacia
+ * la autoridad: el tipo describe la imagen que va dentro del contenedor cifrado.
+ */
+export const EvidenceMediaTypeSchema = z.enum(['image/jpeg', 'image/png']).meta({
+  description:
+    'Tipo de la imagen limpia (JPEG o PNG) que va dentro del contenedor cifrado de la prueba.',
+});
 export type EvidenceMediaType = z.infer<typeof EvidenceMediaTypeSchema>;
 
 export const MAX_EVIDENCE_ITEMS = 10;
-export const MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
+
+/** Tamaño máximo de la imagen limpia, antes de cifrarla. */
+export const MAX_EVIDENCE_PLAINTEXT_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Bytes que el cifrado agrega a cada prueba (ver `sealEvidence` en @sigilo/core): cabecera de 117
+ * (formato, compromiso, llave encapsulada y llave del archivo cifrada), sal de 32 y etiqueta de 16.
+ */
+export const EVIDENCE_CONTAINER_OVERHEAD = 165;
+
+/** Tamaño máximo del contenedor cifrado de una prueba: la imagen más la cabecera del cifrado. */
+export const MAX_EVIDENCE_BYTES = MAX_EVIDENCE_PLAINTEXT_BYTES + EVIDENCE_CONTAINER_OVERHEAD;
 
 export const EvidenceDescriptorSchema = z
   .strictObject({
@@ -49,19 +64,19 @@ export const EvidenceDescriptorSchema = z
       .regex(/^[0-9a-f]{32}$/)
       .meta({ description: 'Identificador aleatorio de la prueba (16 bytes en hexadecimal).' }),
     mediaType: EvidenceMediaTypeSchema,
-    /** Digesto del archivo limpio, tal como lo recibe la autoridad. */
+    /** Digesto del contenedor cifrado, tal como lo guarda el nodo y lo recibe la autoridad. */
     sha256: Sha256HexSchema.meta({
-      description: 'Digesto del archivo limpio, tal como lo recibe la autoridad.',
+      description:
+        'Digesto del contenedor cifrado de la prueba, tal como lo guarda el nodo y lo descarga la autoridad.',
     }),
-    sizeBytes: z
-      .number()
-      .int()
-      .positive()
-      .max(MAX_EVIDENCE_BYTES)
-      .meta({ description: 'Tamaño del archivo en bytes (máximo 10 MiB).' }),
+    sizeBytes: z.number().int().positive().max(MAX_EVIDENCE_BYTES).meta({
+      description:
+        'Tamaño del contenedor cifrado en bytes (la imagen, de hasta 10 MiB, más 165 bytes del cifrado).',
+    }),
   })
   .meta({
-    description: 'Descriptor de una prueba subida: identifica el archivo sin revelar su contenido.',
+    description:
+      'Descriptor de una prueba subida: identifica el contenedor cifrado sin revelar su contenido.',
   });
 export type EvidenceDescriptor = z.infer<typeof EvidenceDescriptorSchema>;
 
@@ -290,10 +305,32 @@ export const EscalationContentSchema = z
     protectionRequested: z
       .boolean()
       .meta({ description: 'Solicitud de medidas de protección; solo en modo sealed.' }),
+    /**
+     * Llave de cada archivo de prueba: con ella la supervisora descifra las pruebas sin la llave de
+     * la autoridad. Opcional: las denuncias sin pruebas no la llevan.
+     */
+    evidenceKeys: z
+      .array(
+        z.strictObject({
+          evidenceId: z
+            .string()
+            .regex(/^[0-9a-f]{32}$/)
+            .meta({ description: 'Identificador de la prueba.' }),
+          fileKey: Base64UrlSchema.meta({
+            description: 'Llave ChaCha20-Poly1305 de 32 bytes del archivo de la prueba.',
+          }),
+        }),
+      )
+      .max(MAX_EVIDENCE_ITEMS)
+      .optional()
+      .meta({
+        description:
+          'Llave de cada archivo de prueba, para que la supervisora lo descifre en su navegador.',
+      }),
   })
   .meta({
     description:
-      'Contenido del sobre de escalamiento antes de cifrarse: versión, modo, hechos, pruebas y protección. Nunca la identidad.',
+      'Contenido del sobre de escalamiento antes de cifrarse: versión, modo, hechos, pruebas, llaves de los archivos de prueba y protección. Nunca la identidad.',
   });
 export type EscalationContent = z.infer<typeof EscalationContentSchema>;
 

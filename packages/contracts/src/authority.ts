@@ -14,6 +14,7 @@ import {
   SubmitComplaintRequestSchema,
 } from './complaint.ts';
 import { HpkeEnvelopeSchema } from './envelope.ts';
+import { EvidenceCustodySchema } from './evidence.ts';
 import { MailboxMessageSchema, MailboxSequenceSchema } from './mailbox.ts';
 import { primaryOffenseCode } from './catalogs/index.ts';
 import { AccountIdSchema } from './authority-access.ts';
@@ -188,6 +189,10 @@ export const ComplaintDetailSchema = z
       .max(MAX_EVIDENCE_ITEMS)
       .optional()
       .meta({ description: 'Pruebas cuyo archivo sigue guardado.' }),
+    evidenceCustody: EvidenceCustodySchema.optional().meta({
+      description:
+        'Cadena de custodia de las pruebas cifradas: digestos anclados, eventos de custodia y llaves re-cifradas hacia la autoridad de la sesión. Opcional: los nodos anteriores no la envían.',
+    }),
     messages: z.array(MailboxMessageSchema).meta({ description: 'Mensajes del buzón, cifrados.' }),
     identityOpenedCount: z
       .number()

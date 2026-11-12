@@ -24,6 +24,9 @@ import {
   ComplaintSummarySchema,
   DeadlineViewSchema,
   DiscardEvidenceResponseSchema,
+  EvidenceCustodySchema,
+  EvidenceKeyGrantsRequestSchema,
+  EvidenceKeyGrantsResponseSchema,
   EscalationContentSchema,
   EscalationDeliverySchema,
   EscalationSummarySchema,
@@ -150,6 +153,9 @@ export const STANDARD_COMPONENTS = {
   ImportClosuresResponse: ImportClosuresResponseSchema,
   AuditSummary: AuditSummarySchema,
   DiscardEvidenceResponse: DiscardEvidenceResponseSchema,
+  EvidenceCustody: EvidenceCustodySchema,
+  EvidenceKeyGrantsRequest: EvidenceKeyGrantsRequestSchema,
+  EvidenceKeyGrantsResponse: EvidenceKeyGrantsResponseSchema,
   AuthorityMessageRequest: AuthorityMessageRequestSchema,
   LedgerPage: LedgerPageSchema,
   LedgerEvent: LedgerEventSchema,
@@ -376,13 +382,14 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Denuncia',
     summary: 'Subir una prueba',
     description:
-      'Recibe una imagen ya limpia en el navegador (sin metadatos; los PDF llegan convertidos a imagen) como cuerpo binario. Usa el reto `complaint` de la denuncia. La prueba queda pendiente hasta que se envía la denuncia que la cita.',
+      'Recibe el contenedor cifrado de una imagen ya limpia en el navegador (sin metadatos; los PDF llegan convertidos a imagen) como cuerpo binario. El navegador la cifra hacia la llave de la autoridad competente (HPKE con el folio y la autoridad en el AAD); el nodo solo comprueba el formato del contenedor y guarda su tamaño, su tipo declarado, su digesto y el compromiso de su cabecera. Usa el reto `complaint` de la denuncia. La prueba queda pendiente hasta que se envía la denuncia que la cita.',
     security: 'proofOfWork',
     parameters: [],
     requestBody: {
       kind: 'binary',
       mediaTypes: ['image/jpeg', 'image/png'],
-      description: 'Bytes de la imagen limpia, de hasta 10 MiB.',
+      description:
+        'Contenedor cifrado (formato SGEV v1) de la imagen limpia, de hasta 10 MiB más 165 bytes del cifrado. El tipo de contenido es el de la imagen cifrada.',
     },
     success: {
       status: 201,
@@ -404,9 +411,18 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Denuncia',
     summary: 'Enviar una denuncia',
     description:
-      'Recibe los hechos legibles y, en modo `sealed`, la identidad cifrada hacia la autoridad; con `escalationEnvelope`, la segunda llave hacia la supervisora (solo hechos y pruebas). Rechaza campos desconocidos y caracteres invisibles en el texto libre. No pide cuenta ni datos de contacto. Responde con el folio y un comprobante firmado; el evento `complaint.received` se publica en la bitácora al cerrar el día.',
+      'Recibe los hechos legibles y, en modo `sealed`, la identidad cifrada hacia la autoridad; con `escalationEnvelope`, la segunda llave hacia la supervisora (solo hechos, pruebas y las llaves de sus archivos). Rechaza campos desconocidos y caracteres invisibles en el texto libre. No pide cuenta ni datos de contacto. Responde con el folio y un comprobante firmado; los eventos `complaint.received` y, si trae pruebas, `evidence.received` (digestos y compromisos de las pruebas cifradas) se publican en la bitácora al cerrar el día.',
     security: 'proofOfWork',
-    parameters: [],
+    parameters: [
+      {
+        name: 'folio',
+        in: 'query',
+        required: false,
+        description:
+          'Folio que eligió el navegador al azar, porque las pruebas se cifran con el folio en el AAD antes de enviar la denuncia. Si ya existe, responde 400. Sin él, el nodo elige uno.',
+        schema: { type: 'string', pattern: FOLIO_PATTERN.source },
+      },
+    ],
     requestBody: {
       kind: 'json',
       component: 'SubmitComplaintRequest',
@@ -754,13 +770,39 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     errors: ['unauthorized', 'forbidden', 'not_found'],
   },
   {
+    operationId: 'grantEvidenceKeys',
+    method: 'post',
+    path: templated(ROUTES.authorityEvidenceKeys, 'folio'),
+    tag: 'Autoridad',
+    summary: 'Compartir las llaves de las pruebas',
+    description:
+      'Guarda la llave de cada archivo de prueba re-cifrada en el navegador de la autoridad competente hacia otra autoridad del mismo nodo, antes de turnarla o reasignarla. El contenedor no cambia; el nodo solo comprueba que cada sobre vaya hacia la llave publicada de esa autoridad y no puede abrirlo.',
+    security: 'authorityBearer',
+    parameters: [FOLIO_PARAMETER],
+    requestBody: {
+      kind: 'json',
+      component: 'EvidenceKeyGrantsRequest',
+      example: 'grant-evidence-keys.request',
+    },
+    success: {
+      status: 200,
+      description: 'Número de llaves guardadas.',
+      body: {
+        kind: 'json',
+        component: 'EvidenceKeyGrantsResponse',
+        example: 'grant-evidence-keys.response',
+      },
+    },
+    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden', 'not_found'],
+  },
+  {
     operationId: 'downloadEvidence',
     method: 'get',
     path: templated(ROUTES.authorityEvidence, 'evidenceId'),
     tag: 'Autoridad',
     summary: 'Descargar una prueba',
     description:
-      'Devuelve el archivo limpio como descarga (`Content-Disposition: attachment`, `nosniff`). Las pruebas pendientes, borradas o descartadas responden `404`.',
+      'Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`.',
     security: 'authorityBearer',
     parameters: [
       {
@@ -776,8 +818,8 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
       description: 'Archivo de la prueba.',
       body: {
         kind: 'binary',
-        mediaTypes: ['image/jpeg', 'image/png'],
-        description: 'Bytes del archivo limpio.',
+        mediaTypes: ['application/octet-stream'],
+        description: 'Bytes del contenedor cifrado.',
       },
     },
     errors: ['unauthorized', 'not_found'],

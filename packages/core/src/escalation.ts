@@ -15,6 +15,17 @@ import { padToBlock, unpad } from './padding.ts';
  */
 export const ESCALATION_PADDED_SIZE = 49_152;
 
+/** Llave del archivo de una prueba (Base64URL) que la supervisora recibe en el sobre. */
+export interface EscalationEvidenceKey {
+  evidenceId: string;
+  fileKey: string;
+}
+
+/** Contenido abierto del sobre de escalamiento: la denuncia y las llaves de sus pruebas. */
+export type EscalationOpenedContent = ComplaintContent & {
+  evidenceKeys: EscalationEvidenceKey[];
+};
+
 /** Contexto al que queda ligado el sobre de escalamiento; forma su AAD. */
 export interface EscalationContext {
   authVerifier: string;
@@ -43,16 +54,19 @@ export function escalationEnvelopeDigest(envelope: HpkeEnvelope): string {
 
 /**
  * Cifra hacia la supervisora el contenido de la denuncia (versión, modo, hechos, pruebas y
- * protección), rellenado a `ESCALATION_PADDED_SIZE` bytes y ligado por el AAD al recibo y a las
- * llaves del buzón.
+ * protección) y la llave de cada archivo de prueba, rellenado a `ESCALATION_PADDED_SIZE` bytes y
+ * ligado por el AAD al recibo y a las llaves del buzón.
  * Seguridad: nunca recibe la identidad; el relleno fijo oculta la longitud del relato. El digesto
- * del sobre entra al `submissionDigest`, así que el nodo no puede sustituirlo sin que se note.
+ * del sobre entra al `submissionDigest`, así que el nodo no puede sustituirlo sin que se note. Las
+ * llaves de los archivos solo sirven con el contenedor de cada prueba, que el nodo entrega a la
+ * supervisora cuando la denuncia se escala.
  * Lanza error si el contenido no es válido o excede el tamaño.
  */
 export async function sealEscalation(
   content: ComplaintContent,
   supervisor: EnvelopeRecipient,
   context: EscalationContext,
+  evidenceKeys: readonly EscalationEvidenceKey[] = [],
 ): Promise<HpkeEnvelope> {
   const parsed = EscalationContentSchema.safeParse({
     version: content.version,
@@ -60,6 +74,11 @@ export async function sealEscalation(
     facts: content.facts,
     evidence: content.evidence,
     protectionRequested: content.protectionRequested,
+    ...(evidenceKeys.length === 0
+      ? {}
+      : {
+          evidenceKeys: evidenceKeys.map(({ evidenceId, fileKey }) => ({ evidenceId, fileKey })),
+        }),
   });
   // Seguridad: no se reenvían los detalles de validación porque podrían citar el relato.
   if (!parsed.success) throw new Error('El contenido del sobre de escalamiento no es válido.');
@@ -73,13 +92,14 @@ export async function sealEscalation(
 
 /**
  * Abre el sobre de escalamiento con la llave privada de la supervisora y devuelve el contenido de
- * la denuncia. Lanza el error genérico del sobre si no abre o si el contenido no es válido.
+ * la denuncia con las llaves de sus pruebas (vacías si no trae). Lanza el error genérico del
+ * sobre si no abre o si el contenido no es válido.
  */
 export async function openEscalation(
   envelope: HpkeEnvelope,
   supervisorPrivateKey: Uint8Array,
   context: EscalationContext,
-): Promise<ComplaintContent> {
+): Promise<EscalationOpenedContent> {
   let aad: Uint8Array;
   try {
     aad = escalationAad(context);
@@ -89,7 +109,10 @@ export async function openEscalation(
   const padded = await openEnvelope(envelope, supervisorPrivateKey, aad);
   try {
     if (padded.length !== ESCALATION_PADDED_SIZE) throw new Error(OPEN_ERROR);
-    return EscalationContentSchema.parse(JSON.parse(utf8Decode(unpad(padded))));
+    const { evidenceKeys, ...content } = EscalationContentSchema.parse(
+      JSON.parse(utf8Decode(unpad(padded))),
+    );
+    return { ...content, evidenceKeys: evidenceKeys ?? [] };
   } catch {
     throw new Error(OPEN_ERROR);
   }
