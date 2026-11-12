@@ -62,7 +62,7 @@ atacante 30 (media).
 
 - `@sigilo/contexto-pdn/synthetic`: `createSyntheticSources({ today })` con los datos de
   `docs/demo-escenario.md`, sección 5 (S1, S2, `s3.federal`, `s3.queretaro`, S6 y lista tipo
-  69-B), `SYNTHETIC_COVERAGE_MATRIX` y el Estado Ejemplo con la clave sintética `EJ`. Cada S3 solo
+  69-B), `SYNTHETIC_COVERAGE_MATRIX` y Oaxaca (clave INEGI `20`) como entidad sin CPC ni S3 en el escenario sintético, que no describe su situación real. Cada S3 solo
   expone las resoluciones con fecha igual o anterior a `today`.
 - `@sigilo/contexto-pdn/sqlite` (solo Node): `openSqliteSources({ s3Path, s6Path })` abre en solo
   lectura las salidas privadas de `datos/proceso` (`s3.sqlite`, `s6_apf.sqlite`). Una ruta que no

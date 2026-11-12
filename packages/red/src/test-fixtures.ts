@@ -30,7 +30,7 @@ export function createNetworkFixture(
     baseUrls: {
       'node.queretaro': 'http://nodo-queretaro.invalid',
       'node.federal': 'http://nodo-federal.invalid',
-      'node.ejemplo': 'http://nodo-ejemplo.invalid',
+      'node.oaxaca': 'http://nodo-oaxaca.invalid',
     },
   });
   let signed = signDirectory(directory, keys.operator.privateKey);

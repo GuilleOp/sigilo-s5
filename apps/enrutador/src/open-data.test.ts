@@ -135,7 +135,7 @@ describe('buildNationalOpenData', () => {
       nodes: [
         input('node.queretaro', csv(['22,LGRA-52,2026-10,investigating,10'])),
         input('node.federal', null),
-        input('node.ejemplo', csv(['22,LGRA-52,2026-11,investigating,50'])),
+        input('node.oaxaca', csv(['22,LGRA-52,2026-11,investigating,50'])),
       ],
     });
     expect(cut.nodes.map((node) => [node.status, node.rejection, node.total])).toEqual([

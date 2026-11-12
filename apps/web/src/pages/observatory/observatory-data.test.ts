@@ -1,5 +1,5 @@
-// Pruebas del observatorio: la matriz real del repositorio se resume por entidad, el Estado Ejemplo
-// queda sin cobertura y los CSV conservan la línea base del escenario.
+// Pruebas del observatorio: la matriz real del repositorio se resume por entidad (Oaxaca, con sus
+// datos reales, sin filas sintéticas) y los CSV conservan la línea base del escenario.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -18,13 +18,14 @@ const MATRIX = JSON.parse(
 ) as unknown;
 
 describe('observatorio', () => {
-  it('resume la matriz por entidad y agrega el Estado Ejemplo sin cobertura', () => {
+  it('resume la matriz por entidad, con Oaxaca y sin filas sintéticas', () => {
     const rows = summarizeCoverage(MATRIX);
     expect(rows[0]?.stateCode).toBe('00');
-    expect(rows.length).toBe(34);
-    const example = rows.at(-1);
-    expect(example?.isSynthetic).toBe(true);
-    expect(Object.values(example?.periods ?? {}).every((periods) => periods.length === 0)).toBe(
+    expect(rows.length).toBe(33);
+    expect(rows.every((row) => /^\d{2}$/u.test(row.stateCode))).toBe(true);
+    const oaxaca = rows.find((row) => row.stateCode === '20');
+    expect(oaxaca?.stateName).toBe('Oaxaca');
+    expect(Object.values(oaxaca?.periods ?? {}).every((periods) => periods.length === 0)).toBe(
       true,
     );
     expect(describePeriods([])).toBe('Sin cobertura');

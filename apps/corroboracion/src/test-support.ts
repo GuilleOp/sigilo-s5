@@ -115,7 +115,7 @@ export function createTestCorroboration(
       baseUrls: {
         'node.queretaro': 'http://nodo-queretaro.invalid',
         'node.federal': 'http://nodo-federal.invalid',
-        'node.ejemplo': 'http://nodo-ejemplo.invalid',
+        'node.oaxaca': 'http://nodo-oaxaca.invalid',
       },
     }),
     corroboration: {
@@ -161,7 +161,7 @@ export function createTestCorroboration(
     nodeSecrets: {
       'node.queretaro': new Uint8Array(32).fill(0x11),
       'node.federal': new Uint8Array(32).fill(0x22),
-      'node.ejemplo': new Uint8Array(32).fill(0x33),
+      'node.oaxaca': new Uint8Array(32).fill(0x33),
     },
   } satisfies TestCorroboration;
 }

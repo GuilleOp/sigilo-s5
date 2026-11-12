@@ -14,7 +14,7 @@ import {
   DFPS,
   IFFE,
   SCENARIO_DAY_ZERO,
-  SYNTHETIC_STATE_EJEMPLO,
+  SYNTHETIC_STATE_OAXACA,
 } from './synthetic-sources.ts';
 import { checkContractSuppliers } from './tax-list.ts';
 import type { PersonRef, SanctionsSource, Verification } from './types.ts';
@@ -132,13 +132,13 @@ describe('conflicto de interés antes de turnar (rule.conflict-of-interest)', ()
       s2: sources.s2,
       authorityHead: {
         fullName: 'Persona Ficticia',
-        institution: 'Contraloría Ficticia del Estado Ejemplo',
-        stateCode: SYNTHETIC_STATE_EJEMPLO,
+        institution: 'Contraloría Ficticia de Oaxaca',
+        stateCode: SYNTHETIC_STATE_OAXACA,
       },
       accused: {
         fullName: 'Otra Persona Ficticia',
         institution: 'Ente Ficticio',
-        stateCode: SYNTHETIC_STATE_EJEMPLO,
+        stateCode: SYNTHETIC_STATE_OAXACA,
       },
     });
     expect(result.outcome).toBe('no_coverage');
@@ -330,12 +330,12 @@ describe('verificación de sanciones contra S3 (check.s3-sanction)', () => {
       fileNumber: 'CFE-RES-0003',
       personName: 'Persona Ficticia',
       sanction: 'inhabilitación de 1 año',
-      institution: 'Contraloría Ficticia del Estado Ejemplo',
-      stateCode: SYNTHETIC_STATE_EJEMPLO,
+      institution: 'Contraloría Ficticia de Oaxaca',
+      stateCode: SYNTHETIC_STATE_OAXACA,
       declaredOn: day(-45),
     });
     const result = verifySanction({
-      source: s3For(sources, SYNTHETIC_STATE_EJEMPLO),
+      source: s3For(sources, SYNTHETIC_STATE_OAXACA),
       matrix: sources.matrix,
       claim: declared,
     });

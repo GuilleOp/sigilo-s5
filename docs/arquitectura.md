@@ -258,7 +258,7 @@ flowchart LR
   N -- 2. sobre HPKE v2 al nodo, solo con el nodo destino --> R
   R -- 3. mismo sobre, sin cabeceras de la persona --> Q[Nodo Querétaro]
   R --> F[Nodo Federal]
-  R --> X[Nodo Estado Ejemplo]
+  R --> X[Nodo Oaxaca]
   Q -- cabeza firmada --> R
   F -- cabeza firmada --> R
   X -- cabeza firmada --> R
@@ -420,7 +420,7 @@ flowchart LR
   sintéticas en la demostración o las bases SQLite descargadas; ninguna consulta sale del nodo.
 - **Despliegue local.** `npm run red:demo` genera llaves, tablas de funciones y cuentas sintéticas
   en `.red-demo/` y `docker compose up` levanta el enrutador con la ventanilla única
-  (`127.0.0.1:8790`), los nodos Querétaro (8781), Federal (8782) y Estado Ejemplo (8783) con la web
+  (`127.0.0.1:8790`), los nodos Querétaro (8781), Federal (8782) y Oaxaca (8783) con la web
   en perfil panel, el evaluador, el índice y dos testigos observadores. `npm run demo:seed` siembra
   el escenario. Guía: [conecta tu estado](guia-conecta-tu-estado.md).
 - **Pendiente.** La guarda de custodias de la corroboración (nivel B) y cerrar en el servidor las

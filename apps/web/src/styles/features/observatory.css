@@ -76,10 +76,6 @@
   font-style: italic;
 }
 
-.coverage-matrix tr[data-synthetic] th {
-  font-style: italic;
-}
-
 .dataset-list {
   padding-inline-start: var(--space-5);
 }

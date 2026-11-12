@@ -2,8 +2,9 @@
 // de npm run red:demo y docker compose up): importa los 31 acuerdos con plantilla y los 5 de
 // control, envía por la ventanilla única las denuncias de Marta (con la foto ya limpia), del
 // atacante (tres, día 2), de la persona denunciante de Querétaro y de Luis (día 3, que elige él
-// mismo el buzón general del nodo Federal), deja las solicitudes de alta en el nodo de cada
-// entidad (no hay nodo común: el Estado Ejemplo tiene el suyo), y lleva el trámite de Marta por la calificación de no grave con plantilla y su
+// mismo el buzón general del nodo Federal) y una hacia la Contraloría Ficticia de Oaxaca (día 1),
+// deja las solicitudes de alta en el nodo de cada entidad (no hay nodo común: Oaxaca tiene el
+// suyo), y lleva el trámite de Marta por la calificación de no grave con plantilla y su
 // notificación por el buzón (día 30), las señales y el escalamiento (día 31), la apertura del
 // expediente con la segunda llave (día 32) y la inconformidad con apertura de identidad para el
 // recurso (día 35), adelantando el reloj simulado. Hace lo que harían el navegador y las personas
@@ -67,7 +68,7 @@ const EVALUATOR = process.env.SIGILO_DEMO_EVALUATOR_URL || 'http://127.0.0.1:879
 const NODES = {
   federal: process.env.SIGILO_DEMO_FEDERAL_URL || 'http://127.0.0.1:8782',
   queretaro: process.env.SIGILO_DEMO_QUERETARO_URL || 'http://127.0.0.1:8781',
-  ejemplo: process.env.SIGILO_DEMO_EJEMPLO_URL || 'http://127.0.0.1:8783',
+  oaxaca: process.env.SIGILO_DEMO_OAXACA_URL || 'http://127.0.0.1:8783',
 } as const;
 const CLOCK_FILE = join(OUT, 'reloj', 'desfase');
 const DAY_MS = 86_400_000;
@@ -531,18 +532,18 @@ function registrationRequest(
 
 /**
  * Solicitudes de alta, cada una en el nodo de su entidad por los pasos de la ventanilla única (no
- * hay nodo común: una entidad sin nodo primero monta el suyo). En el nodo del Estado Ejemplo queda
+ * hay nodo común: una entidad sin nodo primero monta el suyo). En el nodo de Oaxaca queda
  * pendiente la del OIC de su Secretaría de Salud, para mostrar la confirmación de la huella; en el
  * Federal, otra queda rechazada con su motivo.
  */
 async function seedRegistrations(): Promise<SeededRegistration[]> {
   const specs = [
     {
-      node: 'ejemplo',
-      nodeId: 'node.ejemplo',
+      node: 'oaxaca',
+      nodeId: 'node.oaxaca',
       request: registrationRequest(
-        'Órgano Interno de Control Ficticio de la Secretaría de Salud del Estado Ejemplo',
-        'state.ejemplo',
+        'Órgano Interno de Control Ficticio de la Secretaría de Salud Ficticia de Oaxaca',
+        '20',
         [
           { fullName: 'Persona Ficticia Uno', functions: ['intake', 'investigation'] },
           { fullName: 'Persona Ficticia Dos', functions: ['intake', 'investigation'] },
@@ -683,6 +684,33 @@ async function main(): Promise<void> {
       'authority.comptroller-queretaro',
     );
     seeded.push({ key: routing.key, folio: routing.folio, words: routing.words });
+    // Oaxaca (clave INEGI 20) tiene su nodo: la ventanilla única la propone a su contraloría
+    // ficticia según la tabla de funciones del nodo, y la contraloría la acepta.
+    const oaxaca = await submitViaRouter(
+      directory,
+      {
+        key: 'case.oaxaca-routing',
+        mode: 'anonymous',
+        facts: {
+          stateCode: '20',
+          entityId: 'VE-SALUD',
+          offenseCode: 'LGRA-52',
+          occurredPeriod: '2026-08',
+          accused: 'Persona servidora ficticia del área de pagos a proveedores',
+          description:
+            'En la Secretaría de Salud Estatal Ficticia se pidió a los proveedores una cuota para agilizar el pago de sus facturas.',
+        },
+        identifier: null,
+      },
+      'authority.comptroller-oaxaca',
+    );
+    seeded.push({ key: oaxaca.key, folio: oaxaca.folio, words: oaxaca.words });
+    await asAuthority('oaxaca', 'contraloria.oaxaca', ROUTES.authorityProcedure(oaxaca.folio), {
+      action: 'accept',
+    });
+    say(
+      '- La Contraloría Ficticia de Oaxaca acepta la denuncia que llegó por la ventanilla única.',
+    );
   }
   if (until >= 2) {
     await advanceTo(2);

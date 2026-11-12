@@ -1,5 +1,5 @@
 // Red sintética del escenario de la demostración (docs/demo-escenario.md, sección 2): un nodo por
-// entidad (Querétaro y el Estado Ejemplo) y el nodo federal, sin nodo común; autoridades (con el
+// entidad (Querétaro y Oaxaca) y el nodo federal, sin nodo común; autoridades (con el
 // buzón general de cada nodo), la tabla de funciones de cada nodo firmada por él, observadores y
 // testigos 2 de 3, con llaves generadas al momento. Nada es real.
 import type {
@@ -17,7 +17,7 @@ import type { KeyPair } from '@sigilo/core';
 import { DIRECTORY_GENESIS_DIGEST, encodePublicKey } from './directory.ts';
 import { signFunctionTable } from './function-table.ts';
 
-export const DEMO_NODE_IDS = ['node.queretaro', 'node.federal', 'node.ejemplo'] as const;
+export const DEMO_NODE_IDS = ['node.queretaro', 'node.federal', 'node.oaxaca'] as const;
 export type DemoNodeId = (typeof DEMO_NODE_IDS)[number];
 
 export const DEMO_AUTHORITY_IDS = [
@@ -26,10 +26,10 @@ export const DEMO_AUTHORITY_IDS = [
   'authority.oic-dfps',
   'authority.prosecutor-anticorruption',
   'authority.comptroller-queretaro',
-  'authority.comptroller-ejemplo',
+  'authority.comptroller-oaxaca',
   'authority.buzon-federal',
   'authority.buzon-queretaro',
-  'authority.buzon-ejemplo',
+  'authority.buzon-oaxaca',
 ] as const;
 export type DemoAuthorityId = (typeof DEMO_AUTHORITY_IDS)[number];
 
@@ -40,14 +40,14 @@ export type DemoAuthorityId = (typeof DEMO_AUTHORITY_IDS)[number];
 export const DEMO_INBOX_AUTHORITY_IDS: Readonly<Record<DemoNodeId, DemoAuthorityId>> = {
   'node.federal': 'authority.buzon-federal',
   'node.queretaro': 'authority.buzon-queretaro',
-  'node.ejemplo': 'authority.buzon-ejemplo',
+  'node.oaxaca': 'authority.buzon-oaxaca',
 };
 
 /** Nombre de cada nodo de la demostración. */
 export const DEMO_NODE_NAMES: Readonly<Record<DemoNodeId, string>> = {
   'node.queretaro': 'Nodo estatal Querétaro',
   'node.federal': 'Nodo Federal',
-  'node.ejemplo': 'Nodo estatal Estado Ejemplo',
+  'node.oaxaca': 'Nodo estatal Oaxaca',
 };
 
 export const DEMO_OBSERVER_IDS = ['observer.cpc-queretaro', 'observer.university-ejemplo'] as const;
@@ -165,15 +165,15 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
     },
     supervisorId: null,
   },
-  'authority.comptroller-ejemplo': {
-    name: 'Contraloría Ficticia del Estado Ejemplo',
-    nodeId: 'node.ejemplo',
+  'authority.comptroller-oaxaca': {
+    name: 'Contraloría Ficticia de Oaxaca',
+    nodeId: 'node.oaxaca',
     governmentLevel: 'estatal',
-    stateCode: 'state.ejemplo',
+    stateCode: '20',
     role: 'investigating',
     competence: {
       governmentLevels: ['estatal'],
-      stateCodes: ['state.ejemplo'],
+      stateCodes: ['20'],
       entityIds: [],
       laws: ['LGRA'],
     },
@@ -209,15 +209,15 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
     },
     supervisorId: null,
   },
-  'authority.buzon-ejemplo': {
-    name: 'Buzón general ficticio del nodo Estado Ejemplo',
-    nodeId: 'node.ejemplo',
+  'authority.buzon-oaxaca': {
+    name: 'Buzón general ficticio del nodo Oaxaca',
+    nodeId: 'node.oaxaca',
     governmentLevel: 'estatal',
-    stateCode: 'state.ejemplo',
+    stateCode: '20',
     role: 'inbox',
     competence: {
       governmentLevels: ['estatal', 'municipal'],
-      stateCodes: ['state.ejemplo'],
+      stateCodes: ['20'],
       entityIds: [],
       laws: ['LGRA', 'CPF'],
     },
@@ -261,7 +261,7 @@ function institutionRule(
 }
 
 /**
- * Tabla de funciones que declara cada nodo de la demostración. Querétaro y el Estado Ejemplo cubren
+ * Tabla de funciones que declara cada nodo de la demostración. Querétaro y Oaxaca cubren
  * sus entes estatales y municipales («municipales sin OIC → Contraloría»); el federal, los entes
  * federales, cada uno con su OIC («ente X → su OIC») y sin regla general: un ente federal sin OIC en
  * el directorio va al buzón federal, que lo turna.
@@ -356,38 +356,36 @@ export function demoFunctionTables(issuedOn: string): Record<DemoNodeId, Functio
         ),
       ],
     }),
-    'node.ejemplo': table('node.ejemplo', 'state.ejemplo', {
-      intake: [authorityRule(STATE_LEVELS, 'authority.buzon-ejemplo')],
+    'node.oaxaca': table('node.oaxaca', '20', {
+      intake: [authorityRule(STATE_LEVELS, 'authority.buzon-oaxaca')],
       operation: [
         institutionRule(
           STATE_LEVELS,
-          'Secretaría de la Contraloría Ficticia del Estado Ejemplo (operación del nodo)',
+          'Secretaría de la Contraloría Ficticia de Oaxaca (operación del nodo)',
         ),
       ],
       investigation: [
-        authorityRule(STATE_LEVELS, 'authority.comptroller-ejemplo', {
+        authorityRule(STATE_LEVELS, 'authority.comptroller-oaxaca', {
           legalBasis: 'LGRA, arts. 3, fr. II, y 10',
         }),
       ],
       substantiation: [
         institutionRule(
           STATE_LEVELS,
-          'Dirección Ficticia de Responsabilidades de la Contraloría del Estado Ejemplo',
+          'Dirección Ficticia de Responsabilidades de la Contraloría Ficticia de Oaxaca',
         ),
       ],
       resolution: [
-        institutionRule(STATE_LEVELS, 'Contraloría Ficticia del Estado Ejemplo (resolutora)', {
+        institutionRule(STATE_LEVELS, 'Contraloría Ficticia de Oaxaca (resolutora)', {
           severity: 'non_serious',
         }),
-        institutionRule(
-          STATE_LEVELS,
-          'Tribunal de Justicia Administrativa Ficticio del Estado Ejemplo',
-          { severity: 'serious' },
-        ),
+        institutionRule(STATE_LEVELS, 'Tribunal de Justicia Administrativa Ficticio de Oaxaca', {
+          severity: 'serious',
+        }),
       ],
       supervision: [],
-      prosecution: [institutionRule(STATE_LEVELS, 'Fiscalía Ficticia del Estado Ejemplo')],
-      // El Estado Ejemplo no tiene CPC (sección 2.4 del escenario).
+      prosecution: [institutionRule(STATE_LEVELS, 'Fiscalía Ficticia de Oaxaca')],
+      // Sin CPC en el escenario sintético (sección 2.4); no describe la situación real de Oaxaca.
       observer: [],
     }),
   };

@@ -43,7 +43,7 @@ autoridades federales y lo opera el lado federal que investiga, no la SESNA.
 | `router.national` | SESNA                                                           | `http://127.0.0.1:8790` | Sirve la **ventanilla única** (la web pública: inicio, denunciar, Mi denuncia, registro público, observatorio, datos abiertos, cómo te cuidamos, solicitar alta y «¿Quién atiende?»), el directorio firmado, el enrutador ciego y la bitácora nacional. Es ciego: de cada envío solo ve el nodo de destino. |
 | `node.queretaro`  | SESEA de Querétaro                                              | `http://127.0.0.1:8781` | Nodo estatal de Querétaro (clave INEGI `22`). Solo panel. Es uno de los testigos de la bitácora nacional.                                                                                                                                                                                                   |
 | `node.federal`    | Secretaría Anticorrupción y Buen Gobierno (ficticia en la demo) | `http://127.0.0.1:8782` | Nodo federal: aloja solo autoridades federales y atiende los entes federales de cualquier entidad. Solo panel.                                                                                                                                                                                              |
-| `node.ejemplo`    | Contraloría del Estado Ejemplo (la entidad no tiene SESEA)      | `http://127.0.0.1:8783` | Nodo estatal del Estado Ejemplo (`state.ejemplo`), con su buzón, su operación y su contraloría. Solo panel.                                                                                                                                                                                                 |
+| `node.oaxaca`     | Contraloría Ficticia de Oaxaca (la entidad no tiene SESEA)      | `http://127.0.0.1:8783` | Nodo estatal de Oaxaca (clave INEGI `20`; escenario sintético), con su buzón, su operación y su contraloría. Solo panel.                                                                                                                                                                                    |
 
 Una entidad sin nodo no recibe por la ventanilla denuncias sobre sus entes estatales o
 municipales: la ventanilla lo dice claramente y no envía nada (decisión 5 de la sección 10). Las
@@ -58,10 +58,10 @@ denuncias sobre entes federales sí se envían, porque las atiende el nodo feder
 | `authority.oic-dfps`                  | Órgano Interno de Control en la Delegación Federal Ficticia de Programas Sociales | `node.federal`   | Recibe las tres denuncias del atacante contra el director honesto.                                                                                                                  |
 | `authority.prosecutor-anticorruption` | Fiscalía Ficticia Especializada en Hechos de Corrupción                           | `node.federal`   | Recibe la vista por posibles delitos del Código Penal Federal.                                                                                                                      |
 | `authority.comptroller-queretaro`     | Contraloría Estatal Ficticia de Querétaro                                         | `node.queretaro` | Autoridad estatal de referencia: archiva poco, motiva sus acuerdos y sus sanciones aparecen en el S3 ficticio.                                                                      |
-| `authority.comptroller-ejemplo`       | Contraloría Ficticia del Estado Ejemplo                                           | `node.ejemplo`   | Autoridad de una entidad sin CPC y sin S3 conectado: sus sanciones quedan «sin cobertura».                                                                                          |
+| `authority.comptroller-oaxaca`        | Contraloría Ficticia de Oaxaca                                                    | `node.oaxaca`    | Autoridad de una entidad sin CPC y sin S3 conectado: sus sanciones quedan «sin cobertura».                                                                                          |
 | `authority.buzon-federal`             | Buzón general ficticio del nodo Federal                                           | `node.federal`   | Buzón general (papel `inbox`) de los entes federales: recibe lo que la tabla federal no asigna (un ente federal sin OIC en el directorio) y lo turna. Su supervisora es la federal. |
 | `authority.buzon-queretaro`           | Buzón general ficticio del nodo Querétaro                                         | `node.queretaro` | Buzón general (papel `inbox`) de la entidad `22`: recibe lo que la tabla de Querétaro no asigna y lo turna.                                                                         |
-| `authority.buzon-ejemplo`             | Buzón general ficticio del nodo Estado Ejemplo                                    | `node.ejemplo`   | Buzón general (papel `inbox`) del Estado Ejemplo.                                                                                                                                   |
+| `authority.buzon-oaxaca`              | Buzón general ficticio del nodo Oaxaca                                            | `node.oaxaca`    | Buzón general (papel `inbox`) de Oaxaca.                                                                                                                                            |
 
 Los tres buzones generales están en el directorio con la llave de `keys.json` de su nodo. La
 ventanilla única nunca los propone por competencia: si la tabla de funciones de la entidad (sección
@@ -78,10 +78,10 @@ Relaciones de supervisión (para el escalamiento):
 | `authority.oic-iffe`              | `authority.oversight-federal` |
 | `authority.oic-dfps`              | `authority.oversight-federal` |
 | `authority.comptroller-queretaro` | ninguna en la demo            |
-| `authority.comptroller-ejemplo`   | ninguna en la demo            |
+| `authority.comptroller-oaxaca`    | ninguna en la demo            |
 | `authority.buzon-federal`         | `authority.oversight-federal` |
 | `authority.buzon-queretaro`       | ninguna en la demo            |
-| `authority.buzon-ejemplo`         | ninguna en la demo            |
+| `authority.buzon-oaxaca`          | ninguna en la demo            |
 
 Cuentas del panel (una por persona; `npm run accounts:generate` o `npm run red:demo` les da
 contraseña). La LGRA no obliga a separar la recepción de la investigación: en los OIC y las
@@ -106,15 +106,15 @@ abre identidades.
 | `buzon.queretaro`                 | `node.queretaro` | Buzón general del nodo Querétaro      | Recepción y turnado         |
 | `contraloria.queretaro`           | `node.queretaro` | `authority.comptroller-queretaro`     | Recepción e investigación   |
 | `operacion.queretaro`             | `node.queretaro` | Operación del nodo Querétaro          | Operación del nodo          |
-| `buzon.ejemplo`                   | `node.ejemplo`   | Buzón general del nodo Estado Ejemplo | Recepción y turnado         |
-| `contraloria-ejemplo`             | `node.ejemplo`   | `authority.comptroller-ejemplo`       | Recepción e investigación   |
-| `operacion.ejemplo`               | `node.ejemplo`   | Operación del nodo Estado Ejemplo     | Operación del nodo          |
+| `buzon.oaxaca`                    | `node.oaxaca`    | Buzón general del nodo Oaxaca         | Recepción y turnado         |
+| `contraloria.oaxaca`              | `node.oaxaca`    | `authority.comptroller-oaxaca`        | Recepción e investigación   |
+| `operacion.oaxaca`                | `node.oaxaca`    | Operación del nodo Oaxaca             | Operación del nodo          |
 
 Las dos personas del OIC IFFE permiten la apertura de identidad de 2 de N. Las cuentas de operación
 solo revisan las solicitudes de alta de autoridades (entran sin llave y no ven denuncias). Cada
 solicitud de alta va al nodo de la entidad de la institución, por los pasos de la ventanilla
-única. La siembra deja pendiente en el nodo del Estado Ejemplo la del «Órgano Interno de Control
-Ficticio de la Secretaría de Salud del Estado Ejemplo» y rechazada en el nodo Federal la del
+única. La siembra deja pendiente en el nodo de Oaxaca la del «Órgano Interno de Control
+Ficticio de la Secretaría de Salud Ficticia de Oaxaca» y rechazada en el nodo Federal la del
 «Órgano Interno de Control Ficticio en la Oficina Federal de Aduanas». La huella de la pendiente sale
 en la salida de `demo:seed` y en `.red-demo/semilla.json` (`solicitudes`), y su llave privada en
 `.red-demo/solicitudes/`. Una institución de una entidad sin nodo (por ejemplo, Oaxaca) no puede
@@ -133,16 +133,21 @@ sigue firmada con los otros dos.
 
 ### 2.4 Entidad sin cobertura
 
-| Clave           | Descripción               | CPC | S1  | S2  | S3  | S6  | Nodo propio                                  |
-| --------------- | ------------------------- | --- | --- | --- | --- | --- | -------------------------------------------- |
-| `state.ejemplo` | Estado Ejemplo (ficticio) | No  | No  | No  | No  | No  | Sí (`node.ejemplo`, lo opera su contraloría) |
+| Clave | Descripción | CPC | S1  | S2  | S3  | S6  | Nodo propio                                 |
+| ----- | ----------- | --- | --- | --- | --- | --- | ------------------------------------------- |
+| `20`  | Oaxaca      | No  | No  | No  | No  | No  | Sí (`node.oaxaca`, lo opera su contraloría) |
 
-El Estado Ejemplo **no** tiene clave INEGI y **no** se agrega a `STATES`, que es el catálogo real.
-Aparece solo en el directorio (su nodo, sus autoridades y su tabla de funciones), en la matriz de
-cobertura, en el observatorio, en «¿Quién atiende tu denuncia en tu estado?» y en la solicitud de
-alta sembrada en su nodo. Como el formulario de denuncia solo admite entidades del catálogo real,
-ninguna denuncia ciudadana del recorrido usa esa entidad; la propuesta de autoridad hacia su nodo
-se comprueba en las pruebas de `packages/red`.
+Oaxaca es una entidad real (clave INEGI `20`, en el catálogo `STATES`), pero su papel en la demo es
+un **escenario sintético**: que no tenga CPC ni S3 conectado en las fuentes sintéticas
+(`packages/contexto-pdn`) y que su nodo lo opere su contraloría **no describe la situación real de
+Oaxaca**. Sus instituciones y personas son ficticias y se rotulan así («Contraloría Ficticia de
+Oaxaca», «Buzón general ficticio del nodo Oaxaca»); ningún nombre es de una dependencia real. El
+observatorio muestra la fila de Oaxaca con los datos reales de la matriz de cobertura
+(`datos/cobertura`), sin fila sintética aparte. Oaxaca aparece en el directorio (su nodo, sus
+autoridades y su tabla de funciones), en «¿Quién atiende tu denuncia en tu estado?», en una denuncia
+sembrada (`case.oaxaca-routing`, día 1) que la ventanilla única propone a
+`authority.comptroller-oaxaca` y que la contraloría acepta, y en la solicitud de alta pendiente de su
+nodo.
 
 ### 2.5 Tabla de funciones de cada nodo
 
@@ -157,15 +162,15 @@ ente es federal); si la tabla no nombra a nadie, propone su buzón general. El p
 detalle quién sigue (substanciación, resolución, supervisión, vía penal y observador) y la página
 pública «¿Quién atiende tu denuncia en tu estado?» (`/quien-atiende`) muestra cada tabla.
 
-| Función                      | Querétaro (`node.queretaro`)                                                               | Federal (`node.federal`)                                                                        | Estado Ejemplo (`node.ejemplo`)                                               |
+| Función                      | Querétaro (`node.queretaro`)                                                               | Federal (`node.federal`)                                                                        | Oaxaca (`node.oaxaca`)                                                        |
 | ---------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Buzón general                | `authority.buzon-queretaro`                                                                | `authority.buzon-federal`                                                                       | `authority.buzon-ejemplo`                                                     |
-| Operación del nodo           | SESEA Ficticia de Querétaro                                                                | Secretaría Anticorrupción y Buen Gobierno Ficticia                                              | Secretaría de la Contraloría Ficticia del Estado Ejemplo                      |
-| Investigación y calificación | Entes estatales y municipales (los municipales sin OIC): `authority.comptroller-queretaro` | `VE-INSTITUTO`: `authority.oic-iffe`; `VE-PROGRAMAS`: `authority.oic-dfps`; los demás, al buzón | Entes estatales y municipales: `authority.comptroller-ejemplo`                |
+| Buzón general                | `authority.buzon-queretaro`                                                                | `authority.buzon-federal`                                                                       | `authority.buzon-oaxaca`                                                      |
+| Operación del nodo           | SESEA Ficticia de Querétaro                                                                | Secretaría Anticorrupción y Buen Gobierno Ficticia                                              | Secretaría de la Contraloría Ficticia de Oaxaca                               |
+| Investigación y calificación | Entes estatales y municipales (los municipales sin OIC): `authority.comptroller-queretaro` | `VE-INSTITUTO`: `authority.oic-iffe`; `VE-PROGRAMAS`: `authority.oic-dfps`; los demás, al buzón | Entes estatales y municipales: `authority.comptroller-oaxaca`                 |
 | Substanciación               | Dirección Ficticia de Responsabilidades de la Contraloría                                  | El área de responsabilidades de cada OIC                                                        | Dirección Ficticia de Responsabilidades de la Contraloría                     |
 | Resolución                   | No grave: la Contraloría; grave: Tribunal de Justicia Administrativa Ficticio              | No grave: cada OIC; grave: Tribunal Federal Ficticio de Justicia Administrativa                 | No grave: la Contraloría; grave: Tribunal de Justicia Administrativa Ficticio |
 | Supervisión                  | Titular de la Contraloría                                                                  | `authority.oversight-federal`                                                                   | Sin asignar                                                                   |
-| Vía penal                    | Fiscalía Anticorrupción Ficticia de Querétaro                                              | `authority.prosecutor-anticorruption`                                                           | Fiscalía Ficticia del Estado Ejemplo                                          |
+| Vía penal                    | Fiscalía Anticorrupción Ficticia de Querétaro                                              | `authority.prosecutor-anticorruption`                                                           | Fiscalía Ficticia de Oaxaca                                                   |
 | Observador                   | `observer.cpc-queretaro`                                                                   | CPC Ficticio del Sistema Nacional                                                               | Sin asignar (no tiene CPC)                                                    |
 
 Reglas de coherencia que revisa el directorio (`functionTableProblems`): una tabla por nodo y por
@@ -390,9 +395,10 @@ sobre el umbral de 0.75: es el acuerdo número 32 que coincide con la plantilla.
 | Clave                        | Descripción                                                                                                                                                          | Uso                                         |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | `case.queretaro-routing`     | Denuncia anónima de «Persona Denunciante Uno», día 1, `stateCode` `22`, `entityId` `VE-FINANZAS`, `offenseCode` `LGRA-54`. El enrutador la envía a `node.queretaro`. | Prueba de turnado estatal                   |
+| `case.oaxaca-routing`        | Denuncia anónima, día 1, `stateCode` `20`, `entityId` `VE-SALUD`, `offenseCode` `LGRA-52`. La ventanilla la propone a `authority.comptroller-oaxaca`, que la acepta. | Prueba de turnado al nodo de Oaxaca         |
 | `case.sanction-contradicted` | Cierre histórico (día -60) de `authority.oic-iffe` que declara «suspensión de 30 días» a `official.sanctioned-6`, expediente `OIC-IFFE-RES-0007`.                    | Verificación S3: contradicho                |
 | `case.sanction-not-found`    | Cierre histórico (día -50) de `authority.oic-iffe` que declara «amonestación pública» a `official.sanctioned-7`, expediente `OIC-IFFE-RES-0009`.                     | Verificación S3: sin cobertura (no aparece) |
-| `case.sanction-uncovered`    | Cierre histórico (día -45) de `authority.comptroller-ejemplo` que declara una inhabilitación de 1 año, expediente `CFE-RES-0003`.                                    | Verificación S3: sin cobertura (sin S3)     |
+| `case.sanction-uncovered`    | Cierre histórico (día -45) de `authority.comptroller-oaxaca` que declara una inhabilitación de 1 año, expediente `CFE-RES-0003`.                                     | Verificación S3: sin cobertura (sin S3)     |
 | `case.sanction-queretaro`    | Cierre histórico (día -90) de `authority.comptroller-queretaro` con amonestación privada, expediente `CEF-RES-0004`, presente en el S3 ficticio de Querétaro.        | Verificación S3: confirmado (histórico)     |
 | `case.queretaro-dormant`     | Denuncia aceptada por `authority.comptroller-queretaro` el día 0 sin actuaciones posteriores.                                                                        | Alerta opcional de inactividad (día 181)    |
 
@@ -550,7 +556,7 @@ Cobertura de las fuentes ficticias:
 | ------------------ | -------------------------------------------------------- | ------------------ |
 | `s3.federal`       | IFFE y Delegación Federal Ficticia de Programas Sociales | día de la consulta |
 | `s3.queretaro`     | Entes estatales de Querétaro del catálogo                | día -1             |
-| Estado Ejemplo     | Sin fuente conectada                                     | no aplica          |
+| Oaxaca             | Sin fuente conectada (escenario sintético)               | no aplica          |
 
 Registros:
 
@@ -561,8 +567,8 @@ Registros:
 | `s3.queretaro-0004` | `s3.queretaro` | Servidor Ficticio Ocho | `CEF-RES-0004`      | Amonestación privada    | día -90           | `case.sanction-queretaro`: **confirmado**                                           |
 
 Cada fuente solo expone los registros con `fechaResolucion` igual o anterior al día actual del
-reloj, así que `s3.marta-outcome` aparece a partir del día 95. No hay registro para `OIC-IFFE-RES-0009` (`case.sanction-not-found`) ni fuente para el Estado
-Ejemplo (`case.sanction-uncovered`). Ambos dan **sin cobertura**, nunca «contradicho»: la ausencia
+reloj, así que `s3.marta-outcome` aparece a partir del día 95. No hay registro para `OIC-IFFE-RES-0009` (`case.sanction-not-found`) ni fuente para Oaxaca en el
+escenario sintético (`case.sanction-uncovered`). Ambos dan **sin cobertura**, nunca «contradicho»: la ausencia
 no es evidencia (sección 6.5). En `s3.marta-outcome` la autoridad sancionadora es «Sala Ficticia
 Especializada en Responsabilidades Administrativas», porque una falta grave la resuelve el
 tribunal y no el OIC.
@@ -728,6 +734,7 @@ columna «Regla del plazo», no las fechas.
 | 1   | mar 2026-11-10      | 86 400 000             | `authority.oic-iffe`          | Acepta el turnado sin excusarse. Queda registrado; `escalation.conflict` se evalúa en su primer acto resolutivo.                                                                                                                                          |                                                                                                   |
 | 1   | mar 2026-11-10      | 86 400 000             | Marta                         | En «Dar seguimiento» ve «Turnada: tu denuncia ya está con la autoridad que puede investigarla» y la explicación de qué significa.                                                                                                                         |                                                                                                   |
 | 1   | mar 2026-11-10      | 86 400 000             | Persona Denunciante Uno       | `case.queretaro-routing` llega a `node.queretaro`.                                                                                                                                                                                                        |                                                                                                   |
+| 1   | mar 2026-11-10      | 86 400 000             | Persona denunciante de Oaxaca | `case.oaxaca-routing` llega a `node.oaxaca` y la contraloría la acepta.                                                                                                                                                                                   |                                                                                                   |
 | 2   | mié 2026-11-11      | 172 800 000            | Atacante                      | Envía `case.attack-1..3` en 40 minutos. El panel de `authority.oic-dfps` las agrupa como posible campaña; `case.attack-3` sale inconsistente con el S6.                                                                                                   |                                                                                                   |
 | 3   | jue 2026-11-12      | 259 200 000            | Luis                          | Envía `case.luis` por la ventanilla al buzón del nodo Federal; el buzón la turna al OIC y el OIC la acepta, y el nodo la confirma ante el índice. Solo entonces el contrato pasa a «2 o más» personas independientes y sube la prioridad de `case.marta`. |                                                                                                   |
 | 30  | mié 2026-12-09      | 2 592 000 000          | `authority.oic-iffe`          | Inicia el procedimiento y el mismo día **califica** la falta grave (`LGRA-59`) como **no grave** con un acuerdo de plantilla (expediente `OIC-IFFE-INV-0032`).                                                                                            | Último de los 30 días naturales (LGRA, art. 64, II); calificación (art. 100)                      |
@@ -775,7 +782,7 @@ autoridad (acuerdos, sanciones declaradas y su verificación) se muestran exacto
 | `authority.oic-iffe`              | 60        | 45         | 75 %            | 15                | 31                     | 2                    | 0           | 1            | 1             |
 | `authority.oic-dfps`              | 40        | 15         | 38 %            | 5                 | 0                      | 1                    | 1           | 0            | 0             |
 | `authority.comptroller-queretaro` | 85        | 25         | 29 %            | 5                 | 0                      | 4                    | 4           | 0            | 0             |
-| `authority.comptroller-ejemplo`   | 20        | 10         | 50 %            | 10                | 0                      | 3                    | 0           | 0            | 3             |
+| `authority.comptroller-oaxaca`    | 20        | 10         | 50 %            | 10                | 0                      | 3                    | 0           | 0            | 3             |
 | `authority.oversight-federal`     | 5         | 0          | 0 %             | 0                 | 0                      | 0                    | 0           | 0            | 0             |
 
 Cambios esperados al día 96: `authority.oic-iffe` suma una recibida, una calificación de no grave y
@@ -804,18 +811,18 @@ del prototipo:
 | ---------------- | ----------------------------- | --- | --- | --- | -------------------- | ---------------- |
 | Federal          | no aplica                     | Sí  | Sí  | Sí  | Sí                   | `node.federal`   |
 | Querétaro (`22`) | Sí (`observer.cpc-queretaro`) | Sí  | Sí  | Sí  | No (S6 solo federal) | `node.queretaro` |
-| Estado Ejemplo   | **No**                        | No  | No  | No  | No                   | `node.ejemplo`   |
+| Oaxaca (`20`)    | **No**                        | No  | No  | No  | No                   | `node.oaxaca`    |
 
 El mapa del observatorio es un coroplético de las 32 entidades con el contorno del INEGI (Marco
 Geoestadístico, diciembre de 2025; proyectado y simplificado por `scripts/mapa-entidades.ts`, ver
 `datos/mapa-entidades/metodologia.md`), servido desde el mismo origen y sin servicios de terceros.
 Nunca baja a nivel municipal ni muestra coordenadas. Es un mapa del S5, no de la PDN completa (la
 cobertura de todos los sistemas la publica la SESNA en su página de cobertura, enlazada desde la
-tabla): tres capas, **conexión al S5** (Querétaro con nodo propio; las demás, sin nodo todavía),
+tabla): tres capas, **conexión al S5** (Querétaro y Oaxaca con nodo propio; las demás, sin nodo todavía),
 **denuncias por 100 000 habitantes** (corte nacional: meses cerrados y celdas de 5 o más, con la
 población del mismo Marco Geoestadístico) y **protección del anonimato** (porcentaje de personas
-cuya área tiene k ≥ 10, de `datos/abiertos/grupos-anonimato/resumen.csv`). Lo federal y el Estado
-Ejemplo no tienen lugar en el mapa.
+cuya área tiene k ≥ 10, de `datos/abiertos/grupos-anonimato/resumen.csv`). Lo federal no tiene lugar en el
+mapa.
 
 ### 8.3 Casos resueltos agregados («¿Sirvió denunciar?»)
 
@@ -855,7 +862,7 @@ contradichas y las sin cobertura. Al día 96, `case.marta` pasa por «calificada
 | Aviso a Marta y ventana de inconformidad                      | 3 funcionalidad, 5 UX             | Certeza sobre el estatus; LGRA, arts. 100-110                                               |
 | Apertura de identidad solo para el recurso                    | 1 confidencialidad                | «Los permisos no equivalen a garantía absoluta de privacidad»: la apertura queda registrada |
 | Verificación S3 con tres resultados                           | 4 datos PDN, 2                    | «La ausencia nunca es evidencia»; sanciones verificables                                    |
-| Estado Ejemplo sin CPC ni S3                                  | 4 datos PDN, 8 replicable         | Cobertura real desigual de la PDN; «qué información agregada aprovechar»                    |
+| Oaxaca sin CPC ni S3 (escenario sintético)                    | 4 datos PDN, 8 replicable         | Cobertura real desigual de la PDN; «qué información agregada aprovechar»                    |
 | Observatorio por autoridad y casos resueltos                  | 4 datos abiertos, 2               | «Qué información agregada aprovechar sin revelar identidades»; Bases, arts. 60 y 61         |
 | Testigos 2 de 3 y un testigo apagado                          | 1, 6                              | Integridad, trazabilidad y no repudio (Bases, «Seguridad de la Información»)                |
 | Todo en local, con reloj simulado y semillas reproducibles    | 8 documentación replicable        | «Evaluarán replicando en local»                                                             |
@@ -881,8 +888,8 @@ Decisiones tomadas en esta especificación:
    Si una entidad no tiene nodo (no hay tabla de funciones que la cubra), la ventanilla no envía sus
    denuncias sobre entes estatales o municipales y lo dice: «… todavía no tiene nodo en la red…».
    No hay buzón nacional de respaldo: un buzón en otro nodo leería denuncias de un estado que no
-   lo eligió. Las denuncias sobre entes federales sí se envían, al nodo federal. Por eso el Estado
-   Ejemplo tiene su propio nodo en el `docker compose` (tres nodos y el enrutador).
+   lo eligió. Las denuncias sobre entes federales sí se envían, al nodo federal. Por eso Oaxaca
+   tiene su propio nodo en el `docker compose` (tres nodos y el enrutador).
 6. **Fechas relativas al día 0** en todas las semillas, porque el reloj de demostración solo suma un
    desfase al reloj real.
 7. **Los 31 acuerdos se importan** como registros históricos con un solo evento de bitácora, porque
@@ -891,8 +898,6 @@ Decisiones tomadas en esta especificación:
 Pendientes y riesgos:
 
 - Agregar `VE-INSTITUTO` a `packages/contracts/src/catalogs/public-entities.ts` (tarea de semillas).
-- Decidir si el Estado Ejemplo necesita una clave propia en algún catálogo; hoy no la tiene y
-  ninguna denuncia del recorrido la usa.
 - Resuelto con el texto vigente de la LGRA: la inconformidad (art. 102) procede contra la
   calificación de no grave y contra la abstención del art. 101, **no** contra un archivo; por eso
   `case.marta` se califica como no grave en lugar de archivarse. Se presenta ante la autoridad

@@ -27,8 +27,8 @@ const ENDPOINTS = [
   { name: 'Nodo Querétaro (API)', url: 'http://127.0.0.1:8781/api/v1/keys' },
   { name: 'Nodo Federal (panel)', url: 'http://127.0.0.1:8782/autoridad' },
   { name: 'Nodo Federal (API)', url: 'http://127.0.0.1:8782/api/v1/keys' },
-  { name: 'Nodo Estado Ejemplo (panel)', url: 'http://127.0.0.1:8783/autoridad' },
-  { name: 'Nodo Estado Ejemplo (API)', url: 'http://127.0.0.1:8783/api/v1/keys' },
+  { name: 'Nodo Oaxaca (panel)', url: 'http://127.0.0.1:8783/autoridad' },
+  { name: 'Nodo Oaxaca (API)', url: 'http://127.0.0.1:8783/api/v1/keys' },
   {
     name: 'Evaluador OPRF',
     url: 'http://127.0.0.1:8791/api/v1/corroboracion/evaluador/llave',
@@ -42,7 +42,7 @@ const HEALTHY_SERVICES = [
   'enrutador',
   'nodo-queretaro',
   'nodo-federal',
-  'nodo-ejemplo',
+  'nodo-oaxaca',
   'evaluador',
   'indice',
 ];
@@ -313,7 +313,7 @@ async function main(): Promise<void> {
   say('  Ventanilla única:     http://127.0.0.1:8790/ (la sirve la SESNA con el enrutador)');
   say('  Paneles de los nodos: Querétaro http://127.0.0.1:8781/autoridad');
   say('                        Federal http://127.0.0.1:8782/autoridad');
-  say('                        Estado Ejemplo http://127.0.0.1:8783/autoridad');
+  say('                        Oaxaca http://127.0.0.1:8783/autoridad');
   say('  Cuentas del panel:    .red-demo/nodos/<nodo>/credenciales.json');
   say('  Llave del panel:      .red-demo/autoridades/<id>.json (la de la autoridad de la cuenta)');
   say('  Llave del buzón:      .red-demo/nodos/<nodo>/data/authority-demo-key.json');

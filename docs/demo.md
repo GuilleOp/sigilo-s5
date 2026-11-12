@@ -97,7 +97,7 @@ por estado**, sin nodo común. Los nodos solo tienen el panel de autoridades.
 | Ventanilla única y enrutador ciego        | SESNA (sin llaves: no lee denuncias)      | <http://127.0.0.1:8790/>          |
 | Nodo Querétaro (solo panel)               | SESEA de Querétaro                        | <http://127.0.0.1:8781/autoridad> |
 | Nodo Federal (solo autoridades federales) | Secretaría Anticorrupción y Buen Gobierno | <http://127.0.0.1:8782/autoridad> |
-| Nodo Estado Ejemplo (solo panel)          | Contraloría del Estado Ejemplo            | <http://127.0.0.1:8783/autoridad> |
+| Nodo Oaxaca (solo panel)                  | Contraloría Ficticia de Oaxaca            | <http://127.0.0.1:8783/autoridad> |
 | Evaluador OPRF e índice de coincidencias  | Corroboración ciega                       | 127.0.0.1:8791 y 127.0.0.1:8792   |
 | Dos testigos                              | CPC de Querétaro y Universidad Ejemplo    | sin puerto publicado              |
 
@@ -154,7 +154,7 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 | Qué                        | Dónde                                                                                                         |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Ventanilla única           | <http://127.0.0.1:8790/> (denunciar, Mi denuncia, registro público, observatorio, «¿Quién atiende?»)          |
-| Paneles de los nodos       | Querétaro <http://127.0.0.1:8781/autoridad>, Federal 8782 y Estado Ejemplo 8783 (misma ruta)                  |
+| Paneles de los nodos       | Querétaro <http://127.0.0.1:8781/autoridad>, Federal 8782 y Oaxaca 8783 (misma ruta)                          |
 | Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                                  |
 | Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                             |
 | Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)          |
@@ -274,7 +274,7 @@ comprobar desde fuera del contenedor que la web no pide nada a terceros:
 Lo que muestra cada perfil de la web: en la ventanilla (8790), el panel `/autoridad` enlista el
 panel de cada nodo; en un nodo (8781, 8782, 8783), toda ruta que no sea `/autoridad` dice «La
 ventanilla única está en http://127.0.0.1:8790». «¿Quién atiende tu denuncia en tu estado?»
-(`/quien-atiende` en la ventanilla) muestra la tabla de funciones de cada nodo y las 31 entidades
+(`/quien-atiende` en la ventanilla) muestra la tabla de funciones de cada nodo y las 30 entidades
 que todavía no tienen nodo. En el panel, el detalle de cada denuncia dice quién sigue según la
 tabla: por ejemplo, para Marta, la resolución de falta no grave es del OIC y la de grave, del
 tribunal federal ficticio.

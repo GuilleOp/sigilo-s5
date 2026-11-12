@@ -125,12 +125,12 @@ describe('bitácora nacional', () => {
     expect(await collectNodeHeads(deps)).toEqual({
       'node.queretaro': 'recorded',
       'node.federal': 'unreachable',
-      'node.ejemplo': 'unreachable',
+      'node.oaxaca': 'unreachable',
     });
     expect(await collectNodeHeads(deps)).toEqual({
       'node.queretaro': 'unchanged',
       'node.federal': 'unreachable',
-      'node.ejemplo': 'unreachable',
+      'node.oaxaca': 'unreachable',
     });
     expect(router.national.pendingHead()?.head.seq).toBe(1);
     const page = await getJson(router, `${NETWORK_ROUTES.nationalEntries}?from=0&limit=10`);

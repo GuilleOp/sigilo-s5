@@ -53,8 +53,11 @@ export interface LegendItem {
   label: string;
 }
 
-/** Entidad con nodo propio en el mapa; las demás aún no montan el suyo (no hay nodo común). */
-export const OWN_NODE_STATE = '22';
+/**
+ * Entidades con nodo propio en la demostración (Querétaro y Oaxaca); las demás aún no montan el suyo
+ * (no hay nodo común).
+ */
+export const OWN_NODE_STATES: readonly string[] = ['22', '20'];
 
 /** Porcentaje de personas en áreas con k ≥ 10, por clave INEGI (sin dato si no hay S1). */
 export type AnonymityByState = ReadonlyMap<string, number>;
@@ -134,8 +137,8 @@ export function mapValue(layer: MapLayer, code: string, data: MapData): MapValue
       text: `${formatPercent(value)} de las personas en áreas con 10 o más`,
     };
   }
-  return code === OWN_NODE_STATE
-    ? { step: 5, text: 'Nodo propio: la SESEA recibe sus denuncias en su servidor' }
+  return OWN_NODE_STATES.includes(code)
+    ? { step: 5, text: 'Nodo propio: la entidad recibe sus denuncias en su servidor' }
     : {
         step: 1,
         text: 'Sin nodo: sus denuncias estatales y municipales aún no pueden enviarse; las federales, sí',
@@ -145,7 +148,7 @@ export function mapValue(layer: MapLayer, code: string, data: MapData): MapValue
 /** Leyenda de cada capa, con texto (el color nunca va solo). */
 export const MAP_LEGENDS: Readonly<Record<MapLayer, readonly LegendItem[]>> = {
   node: [
-    { step: 5, label: 'Nodo propio (Querétaro)' },
+    { step: 5, label: 'Nodo propio (Querétaro y Oaxaca)' },
     { step: 1, label: 'Sin nodo todavía' },
   ],
   complaints: [
@@ -192,5 +195,5 @@ export function mapSummary(layer: MapLayer, data: MapData): string {
       `${entities(total - known, 'entidad no tiene datos', 'entidades no tienen datos')}.`
     );
   }
-  return `Querétaro opera su propio nodo del S5; las otras ${total - 1} entidades todavía no montan el suyo: sus denuncias estatales y municipales no pueden enviarse por la ventanilla hasta que lo hagan.`;
+  return `Querétaro y Oaxaca operan su propio nodo del S5; las otras ${total - OWN_NODE_STATES.length} entidades todavía no montan el suyo: sus denuncias estatales y municipales no pueden enviarse por la ventanilla hasta que lo hagan.`;
 }

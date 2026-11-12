@@ -38,7 +38,7 @@ export const TEST_DAY = '2026-11-09';
 export const NODE_URLS: Record<DemoNodeId, string> = {
   'node.queretaro': 'http://nodo-queretaro.invalid',
   'node.federal': 'http://nodo-federal.invalid',
-  'node.ejemplo': 'http://nodo-ejemplo.invalid',
+  'node.oaxaca': 'http://nodo-oaxaca.invalid',
 };
 
 /** Red sintética firmada y cofirmada por los tres testigos. */
@@ -121,7 +121,7 @@ export function createTestRouter(
   const nodeLedgers: Record<DemoNodeId, LedgerEvent[]> = {
     'node.queretaro': [],
     'node.federal': [],
-    'node.ejemplo': [],
+    'node.oaxaca': [],
   };
   const ledgerFetch: FetchLike = async (input, init) => {
     const request = new Request(input, init);
@@ -164,7 +164,7 @@ export function createTestRouter(
   const secrets: Record<DemoNodeId, Uint8Array> = {
     'node.queretaro': randomBytes(32),
     'node.federal': randomBytes(32),
-    'node.ejemplo': randomBytes(32),
+    'node.oaxaca': randomBytes(32),
   };
   const inboxes = new Map(
     (Object.keys(NODE_URLS) as DemoNodeId[]).map((id) => [
@@ -185,7 +185,7 @@ export function createTestRouter(
   const nodeVersions: Record<DemoNodeId, string> = {
     'node.queretaro': '1.0.1',
     'node.federal': '1.0.1',
-    'node.ejemplo': '1.0.1',
+    'node.oaxaca': '1.0.1',
   };
   const warnings: string[] = [];
   let health: NodeHealthMonitor | null = null;

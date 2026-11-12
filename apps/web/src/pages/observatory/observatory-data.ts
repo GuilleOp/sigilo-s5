@@ -56,8 +56,8 @@ export const DEMO_AUTHORITY_INDICATORS: readonly AuthorityIndicators[] = [
     noCoverage: 0,
   },
   {
-    authorityId: 'authority.comptroller-ejemplo',
-    name: 'Contraloría Ficticia del Estado Ejemplo',
+    authorityId: 'authority.comptroller-oaxaca',
+    name: 'Contraloría Ficticia de Oaxaca',
     received: 20,
     archived: 10,
     overdue: 10,
@@ -122,7 +122,6 @@ export interface CoverageEntityRow {
   stateCode: string;
   stateName: string;
   periods: Readonly<Record<CoverageSystem, readonly string[]>>;
-  isSynthetic: boolean;
 }
 
 interface RawRow {
@@ -142,8 +141,9 @@ function isSystem(value: unknown): value is CoverageSystem {
 }
 
 /**
- * Resume la matriz publicada por entidad y sistema. Agrega al final el Estado Ejemplo sintético del
- * escenario, sin ningún sistema conectado. Lanza si el archivo no tiene el formato esperado.
+ * Resume la matriz publicada por entidad y sistema, con los datos reales de cada entidad (también
+ * Oaxaca, la entidad con nodo propio del escenario). Lanza si el archivo no tiene el formato
+ * esperado.
  */
 export function summarizeCoverage(raw: unknown): CoverageEntityRow[] {
   const rows = (raw as { version?: unknown; filas?: unknown } | null)?.filas;
@@ -158,21 +158,13 @@ export function summarizeCoverage(raw: unknown): CoverageEntityRow[] {
       stateCode: row.entidadClave,
       stateName: row.entidad,
       periods: emptyPeriods(),
-      isSynthetic: false,
     };
     byState.set(row.entidadClave, entry);
     if (row.hayDatos === true && isSystem(row.sistema) && typeof row.periodo === 'string') {
       entry.periods[row.sistema].push(row.periodo);
     }
   }
-  const result = [...byState.values()].sort((a, b) => a.stateCode.localeCompare(b.stateCode));
-  result.push({
-    stateCode: 'state.ejemplo',
-    stateName: 'Estado Ejemplo (ficticio)',
-    periods: emptyPeriods(),
-    isSynthetic: true,
-  });
-  return result;
+  return [...byState.values()].sort((a, b) => a.stateCode.localeCompare(b.stateCode));
 }
 
 /**

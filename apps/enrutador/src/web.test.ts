@@ -104,10 +104,10 @@ describe('ventanilla única en el enrutador', () => {
     expect(calls[0]?.url).toBe(`http://nodo-queretaro.invalid${ROUTES.ledgerHead}`);
     expect(calls[0]?.headers['user-agent']).toBeUndefined();
     expect(calls[0]?.headers.cookie).toBeUndefined();
-    await app.request(`${VENTANILLA_ROUTES.nodeLedgerEvents('node.ejemplo')}?from=3&limit=50`);
-    expect(calls[1]?.url).toBe(`http://nodo-ejemplo.invalid${ROUTES.ledgerEvents}?from=3&limit=50`);
+    await app.request(`${VENTANILLA_ROUTES.nodeLedgerEvents('node.oaxaca')}?from=3&limit=50`);
+    expect(calls[1]?.url).toBe(`http://nodo-oaxaca.invalid${ROUTES.ledgerEvents}?from=3&limit=50`);
     expect(
-      (await app.request(`${VENTANILLA_ROUTES.nodeLedgerEvents('node.ejemplo')}?from=x`)).status,
+      (await app.request(`${VENTANILLA_ROUTES.nodeLedgerEvents('node.oaxaca')}?from=x`)).status,
     ).toBe(400);
     expect((await app.request(VENTANILLA_ROUTES.nodeLedgerHead('node.nadie'))).status).toBe(404);
 

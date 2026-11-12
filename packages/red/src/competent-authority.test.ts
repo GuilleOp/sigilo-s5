@@ -203,17 +203,15 @@ describe('propuesta de autoridad competente', () => {
     expect(proposal.reasons.join(' ')).toContain('órgano de control propio');
   });
 
-  it('el Estado Ejemplo tiene su propio nodo: va a su contraloría según su tabla', () => {
+  it('Oaxaca tiene su propio nodo: va a su contraloría según su tabla', () => {
     const proposal = proposeCompetentAuthority(
       directory,
-      { stateCode: 'state.ejemplo', entityId: 'VE-SALUD', offenseCode: 'LGRA-52' },
+      { stateCode: '20', entityId: 'VE-SALUD', offenseCode: 'LGRA-52' },
       FIXTURE_DAY,
     );
-    expect(proposal.proposed?.authority.id).toBe('authority.comptroller-ejemplo');
-    expect(proposal.proposed?.node.id).toBe('node.ejemplo');
-    expect(proposal.reasons.join(' ')).toContain(
-      'Según la tabla de funciones que firmó el Estado Ejemplo',
-    );
+    expect(proposal.proposed?.authority.id).toBe('authority.comptroller-oaxaca');
+    expect(proposal.proposed?.node.id).toBe('node.oaxaca');
+    expect(proposal.reasons.join(' ')).toContain('Según la tabla de funciones que firmó Oaxaca');
   });
 
   it('«Ninguna se parece» va al buzón general, que la clasifica y la turna', () => {

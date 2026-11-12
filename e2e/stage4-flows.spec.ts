@@ -150,7 +150,7 @@ test('el observatorio muestra «¿Sirvió denunciar?» y la matriz de cobertura 
   );
   await expect(page.getByTestId('authority-indicators')).toContainText('75 %');
   const matrix = page.getByTestId('coverage-matrix');
-  await expect(matrix).toContainText('Estado Ejemplo (ficticio)');
+  await expect(matrix).toContainText('Oaxaca');
   await expect(matrix).toContainText('Sin cobertura');
   await expectNoAccessibilityViolations(page, 'observatorio');
   // Las descargas viven en «Datos abiertos»; el observatorio solo enlaza.
@@ -190,7 +190,9 @@ test('el mapa del S5 cambia de capa y se recorre con el teclado', async ({ page 
   await page.goto('/observatorio');
   const map = page.getByTestId('coverage-map');
   // Capa inicial: conexión al S5 (nodo propio o común).
-  await expect(map.getByTestId('map-summary')).toContainText('Querétaro opera su propio nodo');
+  await expect(map.getByTestId('map-summary')).toContainText(
+    'Querétaro y Oaxaca operan su propio nodo',
+  );
   await expect(map.getByTestId('map-credit')).toContainText(
     'Fuente: INEGI, Marco Geoestadístico, diciembre de 2025.',
   );

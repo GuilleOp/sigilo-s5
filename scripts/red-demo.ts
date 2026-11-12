@@ -1,5 +1,5 @@
 // Genera llaves sintéticas para toda la red de demostración (operación, nodos Querétaro, Federal y
-// Estado Ejemplo, sus autoridades con el buzón general de cada nodo, tres testigos y el evaluador
+// Oaxaca, sus autoridades con el buzón general de cada nodo, tres testigos y el evaluador
 // OPRF), firma y cofirma el directorio (con la tabla de funciones de cada nodo, firmada por el nodo)
 // y la llave del evaluador, arma las cuentas individuales de cada nodo, la raíz de confianza de la
 // ventanilla única que sirve el enrutador y deja listo `docker compose`. No hay nodo común.
@@ -55,7 +55,7 @@ const OUT = resolve(process.env.SIGILO_RED_DEMO_DIR || join(ROOT, '.red-demo'));
 const NODE_PUBLIC_URLS: Record<DemoNodeId, string> = {
   'node.queretaro': 'http://127.0.0.1:8781',
   'node.federal': 'http://127.0.0.1:8782',
-  'node.ejemplo': 'http://127.0.0.1:8783',
+  'node.oaxaca': 'http://127.0.0.1:8783',
 };
 
 /** Orígenes públicos del evaluador y del índice (los que publica `compose.yaml`). */
@@ -66,14 +66,14 @@ const INDEX_PUBLIC_URL = 'http://127.0.0.1:8792';
 const NODE_DIRS: Record<DemoNodeId, DemoAccountsNode> = {
   'node.queretaro': 'queretaro',
   'node.federal': 'federal',
-  'node.ejemplo': 'ejemplo',
+  'node.oaxaca': 'oaxaca',
 };
 
 /** Supervisora (segunda llave) de cada nodo, si tiene. */
 const NODE_SUPERVISOR: Record<DemoNodeId, DemoAuthorityId | null> = {
   'node.queretaro': null,
   'node.federal': 'authority.oversight-federal',
-  'node.ejemplo': null,
+  'node.oaxaca': null,
 };
 
 function writeFile(path: string, content: string, mode: number): void {
@@ -368,7 +368,7 @@ function main(): void {
   }
   console.log('  Ventanilla única (SESNA, con el enrutador): http://127.0.0.1:8790/');
   console.log(
-    '  Paneles: Querétaro http://127.0.0.1:8781/autoridad  ·  Federal http://127.0.0.1:8782/autoridad  ·  Estado Ejemplo http://127.0.0.1:8783/autoridad',
+    '  Paneles: Querétaro http://127.0.0.1:8781/autoridad  ·  Federal http://127.0.0.1:8782/autoridad  ·  Oaxaca http://127.0.0.1:8783/autoridad',
   );
   console.log(
     `  Cuentas del panel de cada nodo: ${display(join(OUT, 'nodos', '<nodo>', 'credenciales.json'))}.`,

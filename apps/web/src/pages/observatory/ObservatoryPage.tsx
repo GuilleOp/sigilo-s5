@@ -387,7 +387,6 @@ export function ObservatoryPage() {
                       key={row.stateCode}
                       id={`coverage-row-${row.stateCode}`}
                       tabIndex={-1}
-                      data-synthetic={row.isSynthetic || undefined}
                       data-selected={row.stateCode === selectedState || undefined}
                     >
                       <th scope="row">{row.stateName}</th>

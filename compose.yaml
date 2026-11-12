@@ -4,7 +4,7 @@
 #                    directorio firmado, bitácora nacional y corte de datos abiertos
 #   nodo-queretaro   nodo estatal de Querétaro (lo opera su SESEA), solo panel 127.0.0.1:8781
 #   nodo-federal     nodo federal (Secretaría Anticorrupción), solo panel      127.0.0.1:8782
-#   nodo-ejemplo     nodo del Estado Ejemplo (lo opera su contraloría), panel  127.0.0.1:8783
+#   nodo-oaxaca      nodo estatal de Oaxaca (lo opera su contraloría), panel   127.0.0.1:8783
 #   evaluador        evaluador OPRF de la corroboración ciega                  127.0.0.1:8791
 #   indice           índice de coincidencias de la corroboración ciega         127.0.0.1:8792
 #   testigo-*        dos observadores que, con el nodo Querétaro, cofirman la bitácora nacional (2 de 3)
@@ -53,7 +53,7 @@ x-witness: &witness
     SIGILO_WITNESS_INTERVAL_SECONDS: '30'
     # H4: el testigo descarga la bitácora de cada nodo para comprobar que su cabeza nueva extiende
     # la anterior.
-    SIGILO_WITNESS_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080,node.ejemplo=http://nodo-ejemplo:8080
+    SIGILO_WITNESS_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080,node.oaxaca=http://nodo-oaxaca:8080
   networks:
     - interna
   depends_on:
@@ -75,7 +75,7 @@ services:
     image: sigilo/enrutador:local
     environment:
       # Direcciones internas de los nodos en la red de compose (las públicas están en el directorio).
-      SIGILO_ROUTER_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080,node.ejemplo=http://nodo-ejemplo:8080
+      SIGILO_ROUTER_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080,node.oaxaca=http://nodo-oaxaca:8080
       # Paso de la ventanilla al evaluador OPRF por la red interna (la web no habla con otro origen).
       SIGILO_ROUTER_EVALUATOR_URL: http://evaluador:8791
       # Cada vuelta recoge las cabezas de los nodos y rehace el corte nacional de datos abiertos.
@@ -93,7 +93,7 @@ services:
         condition: service_healthy
       nodo-federal:
         condition: service_healthy
-      nodo-ejemplo:
+      nodo-oaxaca:
         condition: service_healthy
     ports:
       - '127.0.0.1:8790:8790'
@@ -173,17 +173,17 @@ services:
       - interna
       - publica
 
-  nodo-ejemplo:
+  nodo-oaxaca:
     <<: *hardening
     build:
       <<: *node-build
       additional_contexts:
-        node-keys: ./.red-demo/nodos/ejemplo/web
-    image: sigilo/nodo-ejemplo:local
+        node-keys: ./.red-demo/nodos/oaxaca/web
+    image: sigilo/nodo-oaxaca:local
     env_file:
-      - ./.red-demo/nodos/ejemplo/node.env
+      - ./.red-demo/nodos/oaxaca/node.env
     volumes:
-      - ./.red-demo/nodos/ejemplo/data:/data
+      - ./.red-demo/nodos/oaxaca/data:/data
       - ./.red-demo/reloj:/reloj:ro
     ports:
       - '127.0.0.1:8783:8080'

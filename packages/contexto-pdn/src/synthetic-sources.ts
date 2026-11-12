@@ -22,8 +22,11 @@ import type {
 /** Día 0 del escenario: lunes 9 de noviembre de 2026. */
 export const SCENARIO_DAY_ZERO = '2026-11-09';
 
-/** Clave sintética del Estado Ejemplo (no es clave INEGI y no está en el catálogo de entidades). */
-export const SYNTHETIC_STATE_EJEMPLO = 'EJ';
+/**
+ * Clave INEGI de Oaxaca. En el escenario SINTÉTICO hace el papel de entidad sin CPC y sin S3
+ * conectado; no describe la situación real de Oaxaca.
+ */
+export const SYNTHETIC_STATE_OAXACA = '20';
 
 export const IFFE = 'Instituto Federal Ficticio de Equipamiento';
 export const DFPS = 'Delegación Federal Ficticia de Programas Sociales';
@@ -46,7 +49,7 @@ export interface SyntheticSources {
   matrix: CoverageMatrix;
   s1: DeclaredInterestsSource;
   s2: ProcurementStaffSource;
-  /** `s3.federal` y `s3.queretaro`; el Estado Ejemplo no tiene fuente. */
+  /** `s3.federal` y `s3.queretaro`; Oaxaca no tiene fuente en el escenario. */
   s3: readonly SanctionsSource[];
   s6: ContractsSource;
   taxList: TaxListSource;
@@ -78,7 +81,7 @@ export const SYNTHETIC_COVERAGE_MATRIX: CoverageMatrix = {
     row('22', 'Querétaro', 'S3S', true),
     ...(['S1', 'S2', 'S3P', 'S6'] as const).map((system) => row('22', 'Querétaro', system, false)),
     ...(['S1', 'S2', 'S3S', 'S3P', 'S6'] as const).map((system) =>
-      row(SYNTHETIC_STATE_EJEMPLO, 'Estado Ejemplo', system, false),
+      row(SYNTHETIC_STATE_OAXACA, 'Oaxaca', system, false),
     ),
   ],
 };

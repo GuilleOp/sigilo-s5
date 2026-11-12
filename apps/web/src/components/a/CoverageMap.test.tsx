@@ -27,11 +27,12 @@ const COMPLAINTS = complaintsByState([
 const DATA: MapData = { anonymity: ANONYMITY, complaints: COMPLAINTS };
 
 describe('capas del mapa', () => {
-  it('conexión al S5: Querétaro con nodo propio y el resto sin nodo todavía', () => {
+  it('conexión al S5: Querétaro y Oaxaca con nodo propio y el resto sin nodo todavía', () => {
     expect(mapValue('node', '22', DATA).text).toContain('Nodo propio');
+    expect(mapValue('node', '20', DATA).text).toContain('Nodo propio');
     expect(mapValue('node', '14', DATA).text).toContain('Sin nodo');
     expect(mapSummary('node', DATA)).toBe(
-      'Querétaro opera su propio nodo del S5; las otras 31 entidades todavía no montan el suyo: sus denuncias estatales y municipales no pueden enviarse por la ventanilla hasta que lo hagan.',
+      'Querétaro y Oaxaca operan su propio nodo del S5; las otras 30 entidades todavía no montan el suyo: sus denuncias estatales y municipales no pueden enviarse por la ventanilla hasta que lo hagan.',
     );
   });
 

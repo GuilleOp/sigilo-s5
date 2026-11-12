@@ -217,11 +217,11 @@ npm run demo:seed             # opcional: el escenario de docs/demo-escenario.md
 | Directorio firmado                   | <http://127.0.0.1:8790/api/v1/red/directory> |
 | Nodo Querétaro (solo panel)          | <http://127.0.0.1:8781/autoridad>            |
 | Nodo Federal (solo panel)            | <http://127.0.0.1:8782/autoridad>            |
-| Nodo Estado Ejemplo (solo panel)     | <http://127.0.0.1:8783/autoridad>            |
+| Nodo Oaxaca (solo panel)             | <http://127.0.0.1:8783/autoridad>            |
 | Evaluador OPRF                       | <http://127.0.0.1:8791/>                     |
 | Índice de coincidencias              | <http://127.0.0.1:8792/>                     |
 
-Para tu estado, copia el servicio `nodo-ejemplo` de `compose.yaml` con otro nombre, otro puerto y
+Para tu estado, copia el servicio `nodo-oaxaca` de `compose.yaml` con otro nombre, otro puerto y
 tu carpeta de llaves, y agrega su dirección interna a `SIGILO_ROUTER_NODE_URLS` del enrutador y a
 `SIGILO_WITNESS_NODE_URLS` de los testigos. La imagen del nodo es el servidor de referencia
 `apps/server` tal cual, con la web en el mismo origen en **perfil panel** (argumento

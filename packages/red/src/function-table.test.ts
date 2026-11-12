@@ -29,7 +29,7 @@ function tableOf(target: AuthorityDirectory, stateCode: string | null): Function
 /** Cambia la tabla de un nodo y la vuelve a firmar con su llave, como lo haría el nodo. */
 function withTable(
   edit: (table: FunctionTable) => void,
-  nodeId: 'node.queretaro' | 'node.federal' | 'node.ejemplo' = 'node.queretaro',
+  nodeId: 'node.queretaro' | 'node.federal' | 'node.oaxaca' = 'node.queretaro',
 ): AuthorityDirectory {
   const next = clone(directory);
   next.functionTables = (next.functionTables ?? []).map((signed) => {
@@ -47,7 +47,7 @@ describe('tabla de funciones', () => {
     expect(directory.functionTables?.map((item) => item.table.stateCode)).toEqual([
       '22',
       null,
-      'state.ejemplo',
+      '20',
     ]);
     for (const signed of directory.functionTables ?? []) {
       const node = directory.nodes.find((item) => item.id === signed.table.nodeId);
@@ -77,7 +77,7 @@ describe('tabla de funciones', () => {
         {
           governmentLevels: ['estatal'],
           entityIds: [],
-          holder: { kind: 'authority', authorityId: 'authority.comptroller-ejemplo' },
+          holder: { kind: 'authority', authorityId: 'authority.comptroller-oaxaca' },
         },
       ];
     });
@@ -176,11 +176,11 @@ describe('tabla de funciones', () => {
     expect(rows[2]?.holders[0]?.name).toBe(
       'Unidad Ficticia de Supervisión de Órganos Internos de Control',
     );
-    const ejemplo = assignmentsFor(directory, tableOf(directory, 'state.ejemplo'), ['observer'], {
+    const oaxaca = assignmentsFor(directory, tableOf(directory, '20'), ['observer'], {
       entityId: 'VE-SALUD',
       level: 'estatal',
     });
-    // El Estado Ejemplo no tiene CPC: la función queda sin titular.
-    expect(ejemplo[0]?.holders).toEqual([]);
+    // Oaxaca no tiene CPC en el escenario sintético: la función queda sin titular.
+    expect(oaxaca[0]?.holders).toEqual([]);
   });
 });

@@ -92,7 +92,7 @@ estado real está en la tabla de conformidad de abajo.
   conflicto y el mapa de México del observatorio. El grafo es `aria-hidden` y tiene su tabla
   equivalente. Los sellos dejan de inclinarse con `prefers-reduced-motion`.
 - Mapa de México del observatorio (`CoverageMap.tsx`): tres capas en botones con `aria-pressed`;
-  un resumen calculado en texto («Querétaro opera su propio nodo del S5…») ligado al mapa con
+  un resumen calculado en texto («Querétaro y Oaxaca operan su propio nodo del S5…») ligado al mapa con
   `aria-describedby`; cada entidad es un `role="button"` con nombre y valor, con tabulación itinerante
   (una sola parada; flechas, Inicio y Fin para recorrer, Enter para elegir) y ficha visible al
   enfocar, tocar o pasar el cursor. Escala de un solo tono (tokens del tema, sin rojo-verde) y

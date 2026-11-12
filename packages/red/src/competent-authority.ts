@@ -90,7 +90,6 @@ const FUNCTION_OF_LAW: Readonly<Record<OffenseLaw, NodeFunction>> = {
 };
 
 function stateName(code: string): string {
-  if (code === 'state.ejemplo') return 'el Estado Ejemplo';
   return findState(code) === undefined ? `la entidad ${code}` : stateDisplayName(code);
 }
 

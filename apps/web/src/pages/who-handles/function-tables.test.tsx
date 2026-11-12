@@ -54,11 +54,12 @@ describe('página pública de las tablas de funciones', () => {
     expect(html).toContain('Unidad Ficticia de Supervisión de Órganos Internos de Control');
   });
 
-  it('enlista las entidades sin nodo (todas menos Querétaro en la demostración)', () => {
+  it('enlista las entidades sin nodo (todas menos Querétaro y Oaxaca en la demostración)', () => {
     const without = statesWithoutNode(directory);
-    expect(without).toHaveLength(31);
+    expect(without).toHaveLength(30);
     expect(without).not.toContain('Querétaro');
-    expect(without).toContain('Oaxaca');
+    expect(without).not.toContain('Oaxaca');
+    expect(without).toContain('Puebla');
   });
 });
 
@@ -83,33 +84,33 @@ describe('quién sigue en el trámite', () => {
   it('con la calificación, solo la resolutora de esa gravedad', () => {
     const html = renderToStaticMarkup(
       <NextFunctionsPanel
-        detail={detail({ stateCode: 'state.ejemplo', entityId: 'VE-SALUD' }, 'serious')}
+        detail={detail({ stateCode: '20', entityId: 'VE-SALUD' }, 'serious')}
         directory={directory}
       />,
     );
-    expect(html).toContain('de Estado Ejemplo');
-    expect(html).toContain('Tribunal de Justicia Administrativa Ficticio del Estado Ejemplo');
-    expect(html).not.toContain('Contraloría Ficticia del Estado Ejemplo (resolutora)');
-    // Sin CPC en el Estado Ejemplo: la tabla no asigna observador.
+    expect(html).toContain('de Oaxaca');
+    expect(html).toContain('Tribunal de Justicia Administrativa Ficticio de Oaxaca');
+    expect(html).not.toContain('Contraloría Ficticia de Oaxaca (resolutora)');
+    // Sin CPC en Oaxaca: la tabla no asigna observador.
     expect(html).toContain('La tabla no la asigna para este ente.');
   });
 
   it('una entidad sin tabla lo dice', () => {
     const html = renderToStaticMarkup(
       <NextFunctionsPanel
-        detail={detail({ stateCode: '20', entityId: 'VE-SALUD' })}
+        detail={detail({ stateCode: '21', entityId: 'VE-SALUD' })}
         directory={directory}
       />,
     );
-    expect(html).toContain('no tiene la tabla de funciones del nodo de Oaxaca');
+    expect(html).toContain('no tiene la tabla de funciones del nodo de Puebla');
   });
 });
 
 describe('solicitud de alta en la ventanilla', () => {
   it('va al nodo de la entidad según su tabla, o a ninguno si no tiene nodo', () => {
     expect(nodeForJurisdiction(directory, '22')?.id).toBe('node.queretaro');
-    expect(nodeForJurisdiction(directory, 'state.ejemplo')?.id).toBe('node.ejemplo');
+    expect(nodeForJurisdiction(directory, '20')?.id).toBe('node.oaxaca');
     expect(nodeForJurisdiction(directory, null)?.id).toBe('node.federal');
-    expect(nodeForJurisdiction(directory, '20')).toBeNull();
+    expect(nodeForJurisdiction(directory, '21')).toBeNull();
   });
 });

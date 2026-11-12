@@ -43,12 +43,8 @@ const REQUIRED_ROLE: Partial<Record<NodeFunction, DirectoryAuthority['role']>> =
 /** Funciones que solo puede cumplir una autoridad del directorio (reciben sobres cifrados). */
 const AUTHORITY_ONLY: ReadonlySet<NodeFunction> = new Set(['intake', 'investigation']);
 
-/**
- * Nombre de la entidad para los textos: el del catálogo INEGI, «Estado Ejemplo» para la entidad
- * sintética o la clave si no se conoce.
- */
+/** Nombre de la entidad para los textos: el del catálogo INEGI o la clave si no se conoce. */
 export function stateDisplayName(code: string): string {
-  if (code === 'state.ejemplo') return 'Estado Ejemplo';
   return findState(code)?.name ?? code;
 }
 

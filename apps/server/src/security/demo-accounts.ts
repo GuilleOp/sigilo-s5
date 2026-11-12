@@ -1,4 +1,4 @@
-// Autoridades y cuentas sintéticas de la demostración (nodos Federal, Querétaro y Estado Ejemplo de
+// Autoridades y cuentas sintéticas de la demostración (nodos Federal, Querétaro y Oaxaca de
 // docs/demo-escenario.md): arma el archivo local de cuentas con digestos scrypt y la lista de
 // credenciales para entrar. Cada nodo tiene solo las autoridades de su entidad: no hay nodo común.
 import type { AuthorityAccountsFile, AuthorityFunction } from '@sigilo/contracts';
@@ -131,45 +131,45 @@ export const QUERETARO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
   },
 ];
 
-/** Buzón general del nodo Estado Ejemplo de la demostración. */
-export const DEMO_EJEMPLO_INBOX_AUTHORITY = 'authority.buzon-ejemplo';
+/** Buzón general del nodo Oaxaca de la demostración. */
+export const DEMO_OAXACA_INBOX_AUTHORITY = 'authority.buzon-oaxaca';
 
-const EJEMPLO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
+const OAXACA_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
   {
-    authorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
-    name: 'Buzón general ficticio del nodo Estado Ejemplo',
+    authorityId: DEMO_OAXACA_INBOX_AUTHORITY,
+    name: 'Buzón general ficticio del nodo Oaxaca',
   },
   {
-    authorityId: 'authority.comptroller-ejemplo',
-    name: 'Contraloría Ficticia del Estado Ejemplo',
+    authorityId: 'authority.comptroller-oaxaca',
+    name: 'Contraloría Ficticia de Oaxaca',
   },
 ];
 
 /**
- * Usuarios del nodo Estado Ejemplo: el buzón general, la operación del nodo (la lleva su
- * contraloría: la entidad no tiene CPC ni SESEA en el escenario) y la contraloría, que recibe e
+ * Usuarios del nodo Oaxaca: el buzón general, la operación del nodo (la lleva su
+ * contraloría: en el escenario sintético la entidad no tiene CPC ni SESEA) y la contraloría, que recibe e
  * investiga.
  */
-export const EJEMPLO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
+export const OAXACA_USERS: readonly Omit<DemoCredential, 'password'>[] = [
   {
-    username: 'buzon.ejemplo',
-    authorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
+    username: 'buzon.oaxaca',
+    authorityId: DEMO_OAXACA_INBOX_AUTHORITY,
     functions: ['intake'],
   },
   {
-    username: 'operacion.ejemplo',
-    authorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
+    username: 'operacion.oaxaca',
+    authorityId: DEMO_OAXACA_INBOX_AUTHORITY,
     functions: ['operation'],
   },
   {
-    username: 'contraloria-ejemplo',
-    authorityId: 'authority.comptroller-ejemplo',
+    username: 'contraloria.oaxaca',
+    authorityId: 'authority.comptroller-oaxaca',
     functions: ['intake', 'investigation'],
   },
 ];
 
 /** Nodo de la demostración cuyas cuentas se arman. */
-export type DemoAccountsNode = 'federal' | 'queretaro' | 'ejemplo';
+export type DemoAccountsNode = 'federal' | 'queretaro' | 'oaxaca';
 
 /** Buzón, autoridades y usuarios de cada nodo de la demostración. */
 const NODE_ACCOUNTS: Readonly<
@@ -192,10 +192,10 @@ const NODE_ACCOUNTS: Readonly<
     authorities: QUERETARO_AUTHORITIES,
     users: QUERETARO_USERS,
   },
-  ejemplo: {
-    inboxAuthorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
-    authorities: EJEMPLO_AUTHORITIES,
-    users: EJEMPLO_USERS,
+  oaxaca: {
+    inboxAuthorityId: DEMO_OAXACA_INBOX_AUTHORITY,
+    authorities: OAXACA_AUTHORITIES,
+    users: OAXACA_USERS,
   },
 };
 

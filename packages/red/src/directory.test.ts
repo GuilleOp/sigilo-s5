@@ -191,7 +191,7 @@ describe('directorio firmado', () => {
     expect(directory.previousDigest).toBe(DIRECTORY_GENESIS_DIGEST);
     const authority = findAuthority(directory, 'authority.comptroller-queretaro');
     expect(authority?.nodeId).toBe('node.queretaro');
-    expect(findNode(directory, 'node.ejemplo')?.name).toBe('Nodo estatal Estado Ejemplo');
+    expect(findNode(directory, 'node.oaxaca')?.name).toBe('Nodo estatal Oaxaca');
     expect(authority && isAuthorityValidOn(authority, FIXTURE_DAY)).toBe(true);
     expect(authority && isAuthorityValidOn(authority, '2026-11-08')).toBe(false);
     expect(witnessKeyOf(directory, 'node.queretaro')?.keyId).toBe(

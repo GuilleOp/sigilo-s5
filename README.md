@@ -75,7 +75,7 @@ npm run demo:apagar   # baja la red y borra .red-demo/
 ```
 
 Levanta la red federada completa (la ventanilla única con el enrutador ciego, un nodo por estado
-con su panel: Querétaro, Federal y Estado Ejemplo, sin nodo común; evaluador, índice y testigos) y siembra el escenario de [demo-escenario.md](docs/demo-escenario.md) hasta el
+con su panel: Querétaro, Federal y Oaxaca, sin nodo común; evaluador, índice y testigos) y siembra el escenario de [demo-escenario.md](docs/demo-escenario.md) hasta el
 día 35. Con caché tarda alrededor de un minuto; la primera vez descarga la imagen de Node y los
 paquetes de npm.
 

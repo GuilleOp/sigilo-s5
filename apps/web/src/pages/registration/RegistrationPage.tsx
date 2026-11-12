@@ -21,7 +21,6 @@ import { announce } from '../../lib/announce.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
 import { networkState } from '../../network/directory.ts';
-import { useNetworkState } from '../../network/use-network-state.ts';
 import { createNodeRegistrationApi, nodeForJurisdiction } from '../../network/ventanilla-api.ts';
 import type { NodeRegistrationApi } from '../../network/ventanilla-api.ts';
 import { api } from '../../services/api.ts';
@@ -182,14 +181,6 @@ export function RegistrationPage() {
   const [status, setStatus] = useState('');
   const [isBusy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<RegistrationReceipt | null>(null);
-  const network = useNetworkState();
-  // Entidades sintéticas con nodo en la red (como el Estado Ejemplo), que no están en el catálogo.
-  const extraStates =
-    network.kind === 'verified'
-      ? (network.directory.functionTables ?? [])
-          .map((item) => item.table.stateCode)
-          .filter((code): code is string => code !== null && !STATES.some((s) => s.code === code))
-      : [];
 
   const update = (patch: Partial<Form>) => setForm((current) => ({ ...current, ...patch }));
   const updatePerson = (index: number, patch: Partial<Person>) =>
@@ -319,11 +310,6 @@ export function RegistrationPage() {
               {STATES.map((state) => (
                 <option key={state.code} value={state.code}>
                   {state.name}
-                </option>
-              ))}
-              {extraStates.map((code) => (
-                <option key={code} value={code}>
-                  {code === 'state.ejemplo' ? 'Estado Ejemplo (ficticio)' : code}
                 </option>
               ))}
             </SelectField>
