@@ -34,6 +34,8 @@ import type { NodeStatisticsAggregator } from './node-statistics.ts';
 import type { QueuePow } from './queue-pow.ts';
 import type { RelayQueue } from './relay-queue.ts';
 import type { RelayService } from './relay-service.ts';
+import { registerStandardDocs } from './standard-docs.ts';
+import type { StandardDocsConfig } from './standard-docs.ts';
 import { registerVentanilla } from './web.ts';
 import type { VentanillaDeps } from './web.ts';
 
@@ -59,6 +61,8 @@ export interface RouterAppDeps {
   maxConcurrentRelays?: number;
   /** Ventanilla única en el mismo origen (`web.ts`); sin ella, el enrutador no sirve web. */
   ventanilla?: VentanillaDeps;
+  /** Vista del Estándar S5 en `/estandar/` (`standard-docs.ts`); sin ella, no se sirve. */
+  standardDocs?: StandardDocsConfig;
 }
 
 /** Cuerpo máximo de un sobre de red: el tramo mayor en Base64URL más el encabezado. */
@@ -88,6 +92,7 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
   const maxRelays = deps.maxConcurrentRelays ?? DEFAULT_MAX_CONCURRENT_RELAYS;
   let inFlight = 0;
 
+  registerStandardDocs(app, deps.standardDocs, deps.hstsMaxAgeSeconds ?? null);
   registerVentanilla(app, deps.ventanilla);
   app.use('*', securityHeaders(deps.hstsMaxAgeSeconds ?? null));
 
