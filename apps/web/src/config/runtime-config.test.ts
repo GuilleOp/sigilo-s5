@@ -12,7 +12,12 @@ function respond(status: number, body: unknown) {
   const calls: string[] = [];
   const fetchImpl = (input: string): Promise<Response> => {
     calls.push(input);
-    return Promise.resolve(new Response(JSON.stringify(body), { status }));
+    return Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
   };
   return { calls, fetchImpl };
 }
@@ -24,6 +29,17 @@ describe('configuración en tiempo de ejecución', () => {
     await expect(initRuntimeConfig(fetchImpl)).resolves.toBe('bundle');
     expect(calls).toEqual([WEB_CONFIG_PATH]);
     expect(PINNED_KEYS.set.authority.keyId).toBe(before);
+  });
+
+  it('la página de la web en lugar del archivo (servidor estático) cuenta como sin archivo', async () => {
+    const html = (): Promise<Response> =>
+      Promise.resolve(
+        new Response('<!doctype html>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        }),
+      );
+    await expect(initRuntimeConfig(html)).resolves.toBe('bundle');
   });
 
   it('un archivo inválido detiene la web y no cambia las llaves', async () => {

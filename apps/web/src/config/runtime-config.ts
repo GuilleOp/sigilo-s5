@@ -40,7 +40,12 @@ export async function initRuntimeConfig(
   } catch {
     return hasPinnedKeys ? 'bundle' : 'missing';
   }
-  if (response.status === 404) return hasPinnedKeys ? 'bundle' : 'missing';
+  // Sin archivo: 404, o la página de la web que un servidor estático (Vite en desarrollo) devuelve
+  // para cualquier ruta. Equivale a no tener configuración: se usa el bundle.
+  const isJson = (response.headers.get('Content-Type') ?? '').includes('application/json');
+  if (response.status === 404 || (response.ok && !isJson)) {
+    return hasPinnedKeys ? 'bundle' : 'missing';
+  }
   if (!response.ok) return 'invalid';
   try {
     const config = WebRuntimeConfigSchema.parse(await response.json());
