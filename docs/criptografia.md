@@ -133,6 +133,20 @@ contra el registro público (ver «Comprobante firmado»).
   recalculado desde el detalle. El servidor nunca descifra.
 - Límite: el umbral es un control de política del nodo, no criptográfico; la llave de descifrado
   sigue en un solo navegador. Ver «Trabajo futuro».
+- **Vía penal (CNPP, art. 109 fr. XXVI).** Si la denuncia está en una etapa del proceso penal
+  (`isCriminalStage`: `criminal_investigation` a `sentence`), el `legalBasis` de la solicitud debe
+  tener la forma
+  `Vía penal. Fundamento: {fundamento}. Resolución: {número}. Motivo: {motivo}`, con un
+  fundamento de `CRIMINAL_OPENING_GROUNDS` (art. 109 fr. XXVI y resolución del Órgano
+  jurisdiccional; arts. 218 a 220 y resolución del Juez de control; o art. 131 fr. IX y
+  requerimiento del Ministerio Público), un número de 3 a 80 caracteres y un motivo de al menos 20
+  (`formatCriminalOpeningBasis` y `parseCriminalOpeningBasis` en
+  `packages/contracts/src/catalogs/criminal-opening.ts`). Si no, el nodo responde `400` y no
+  registra nada. El formato vive dentro del `legalBasis` de siempre: el contrato, los eventos
+  `identity.approved` e `identity.opened`, su `payloadDigest` y la conciliación de aperturas no
+  cambian, y la persona denunciante lee el número de la resolución en su seguimiento. La
+  aprobación de la segunda persona sigue siendo texto libre. Ver
+  [proteccion-de-quien-denuncia.md](proteccion-de-quien-denuncia.md).
 - **Apertura para el recurso de inconformidad.** Contra la calificación de no grave la persona
   puede inconformarse (LGRA, arts. 102 a 110), y la ley pide su nombre, domicilio y firma
   (art. 109). Al presentar el recurso desde su seguimiento (`POST tracking/appeal`, autenticada con

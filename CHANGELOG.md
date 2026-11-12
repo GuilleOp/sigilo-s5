@@ -159,6 +159,24 @@ endurecimiento de seguridad y el Estándar S5 0.3.0 al estilo de las especificac
 - **Días inhábiles locales por nodo** (`SIGILO_REST_DAYS_FILE`, `config/dias-inhabiles.csv`): se
   suman a los oficiales en plazos, reglas, auditor y semáforo, y el nodo los publica con su digesto
   en `/datos/dias-inhabiles.json` (frente público).
+- **¿Quién protege a quien denuncia?** (`docs/proteccion-de-quien-denuncia.md`). La SESNA señaló
+  el art. 109 del CNPP (derechos de la víctima u ofendido) como orientación. El documento separa la
+  vía administrativa (LGRA, arts. 64 y 91) de la penal (CNPP), explica que quien denuncia
+  corrupción no siempre es víctima u ofendido y dice quién decide cada medida. Marco legal L-14 a
+  L-21 en `docs/requisitos.md`.
+- **Solicitar medidas de protección desde el seguimiento** (CNPP, art. 109 fr. XVI y XIX; LGRA,
+  art. 64): un mensaje por el buzón cifrado con encabezado fijo y, si la persona quiere, lo que le
+  preocupa; no pide datos nuevos y explica que decide la autoridad. El panel lo marca como «pide
+  medidas de protección» (`ProtectionRequest.tsx`, `lib/protection-request.ts`).
+- **Apertura de identidad en la vía penal con resolución citada** (CNPP, art. 109 fr. XXVI): si la
+  denuncia está en una etapa del proceso penal, el panel pide elegir el fundamento
+  (`CRIMINAL_OPENING_GROUNDS`: fr. XXVI y resolución del Órgano jurisdiccional, arts. 218 a 220 o
+  art. 131 fr. IX) y el número de la resolución o del requerimiento, y el nodo rechaza con `400`
+  un fundamento libre. Siguen las dos aprobaciones y el evento público `identity.opened`; el
+  contrato no cambia de forma (el formato va dentro de `legalBasis`).
+- «Cómo te cuidamos» explica en lenguaje claro las medidas de protección y el CNPP, y
+  `docs/accesibilidad.md` alinea las fr. XI y XII del art. 109 (las lenguas indígenas quedan en
+  «Lo que sigue»).
 
 ### Cambiado
 

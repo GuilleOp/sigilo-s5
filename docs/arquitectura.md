@@ -217,6 +217,30 @@ El servidor nunca descifra: solo decide a quién y cuándo entregar el sobre, y 
 el registro de seguridad. Sigue siendo un control de política: quien tenga la llave de la
 autoridad y una copia de la base puede descifrar sin pasar por la ruta.
 
+**En la vía penal.** Cuando la denuncia está en una etapa del proceso penal (fiscalía, función
+`prosecution`), el resguardo de la identidad solo cede ante una resolución del Órgano
+jurisdiccional o un requerimiento fundado del Ministerio Público (CNPP, art. 109 fr. XXVI, arts.
+218 a 220 y art. 131 fr. IX). El panel cambia el formulario: lista de fundamentos, número de la
+resolución o del requerimiento y motivo. El nodo rechaza con `400` una solicitud penal sin esa
+forma. Lo demás no cambia: segunda aprobación, evento `identity.opened` en la bitácora pública y
+aviso en el seguimiento con el fundamento completo. Análisis legal en
+[proteccion-de-quien-denuncia.md](proteccion-de-quien-denuncia.md).
+
+```mermaid
+sequenceDiagram
+  actor F as Fiscalía (investigación)
+  actor G as Otra persona de la fiscalía
+  participant S as Nodo
+  actor D as Persona denunciante
+  F->>S: POST identity/requests { legalBasis con fundamento, resolución y motivo }
+  S->>S: parseCriminalOpeningBasis (si falla, 400 y nada queda registrado)
+  S->>S: identity.approved (F)
+  G->>S: POST identity/requests/{id}/approvals { legalBasis }
+  S->>S: identity.approved (G) e identity.opened
+  D->>S: Consulta su seguimiento
+  S-->>D: Apertura con el fundamento y el número de la resolución
+```
+
 ### Pruebas y cadena de custodia
 
 Las pruebas se cifran de extremo a extremo hacia la autoridad competente: el navegador limpia cada

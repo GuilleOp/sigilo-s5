@@ -117,6 +117,22 @@ estado real está en la tabla de conformidad de abajo.
 - «Escuchar» lee el folio por grupos y deletrea cada palabra, usa solo voces locales del sistema y
   tiene botón «Detener».
 
+## Alineación con el CNPP (art. 109 fr. XI y XII)
+
+El art. 109 del Código Nacional de Procedimientos Penales da a la víctima u ofendido, en la vía
+penal, el derecho a un intérprete o traductor gratuito «cuando la víctima u ofendido pertenezca a un
+grupo étnico o pueblo indígena o no conozca o no comprenda el idioma español» (fr. XI) y a los
+«ajustes al procedimiento penal que sean necesarios» por discapacidad, con condiciones adaptadas
+para personas adultas mayores (fr. XII). Esas obligaciones son de la autoridad, no de SIGILO, y no
+siempre aplican a quien denuncia ([proteccion-de-quien-denuncia.md](proteccion-de-quien-denuncia.md)).
+Lo que sí hace SIGILO va en la misma dirección:
+
+- **Fr. XII (discapacidad y personas adultas mayores):** lo de esta página: WCAG 2.0 AA, menú de
+  accesibilidad (tamaño, espaciado, alto contraste, lector local), modos de uso (asistida, quiosco y
+  poca conexión), lectura fácil y teclado completo.
+- **Fr. XI (lengua):** lenguaje claro en español y lectura fácil. **No hay** interfaz en lenguas
+  indígenas ni intérprete: es trabajo pendiente (ver «Lo que sigue»).
+
 ## Conformidad con WCAG 2.0 AA (tras la auditoría de la Etapa 5)
 
 Estado de los criterios que la auditoría encontró sin cumplir, después de las correcciones. «Cumple»
@@ -172,3 +188,11 @@ directa.
 ```sh
 npm run test:e2e -- e2e/accessibility.spec.ts e2e/focus.spec.ts e2e/a11y-audit.spec.ts
 ```
+
+## Lo que sigue
+
+- **Lenguas indígenas (CNPP, art. 109 fr. XI, como orientación).** Traducir con personas hablantes,
+  no con traducción automática, al menos los textos del asistente, el recibo y el seguimiento, y
+  probarlos con ellas. Mientras tanto, la vía es la denuncia asistida con un intérprete que la
+  autoridad o una organización acompañante proporcione.
+- Pruebas con lectores de pantalla reales y con personas (ver «Lo que no se ha probado»).
