@@ -52,5 +52,6 @@ npm run dev:indice
 
 ## Integración
 
-El nodo de referencia y `compose.yaml` ya usan estos servicios; la web todavía no. La lista de lo que
+El nodo de referencia, la web (paso opcional de corroboración; en la red, la ventanilla llega al
+evaluador por su paso del mismo origen) y `compose.yaml` ya usan estos servicios. La lista de lo que
 falta y dónde está en [docs/criptografia.md](../../docs/criptografia.md#integración).

@@ -18,21 +18,21 @@ Los paquetes son ESM y TypeScript sin paso de build: el bundler del frontend los
 
 ## Mapeo de campos
 
-| Segmento del formulario | SIGILO                          | Tratamiento                                                               |
-| ----------------------- | ------------------------------- | ------------------------------------------------------------------------- |
-| Persona denunciante     | `IdentityBlock`                 | Se cifra en el navegador con `sealIdentity`; el backend guarda el sobre   |
-| Datos de contacto       | Buzón                           | Se sustituyen por el buzón; no se piden                                   |
-| Hechos                  | `ComplaintFacts`                | En claro para el trámite, siempre tras `stripInvisibleCharacters`         |
-| Ente y conducta         | `entityId`, `offenseCode`       | Claves de los catálogos de `@sigilo/contracts`; el servidor las valida    |
-| Persona denunciada      | `ComplaintFacts.accused`        | En claro                                                                  |
-| Ubicación               | `stateCode`, `municipalityCode` | Claves INEGI; el municipio debe pertenecer a la entidad; sin coordenadas  |
-| Testigos                | `IdentityBlock.witnesses`       | Dentro del sobre                                                          |
-| Pruebas                 | `EvidenceDescriptor`            | Limpias y verificadas en el navegador; el digesto original va en el sobre |
-| Folio de seguimiento    | `Folio` + recibo                | El backend genera el folio; el navegador genera el recibo                 |
+| Segmento del formulario | SIGILO                          | Tratamiento                                                                                                                                                       |
+| ----------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Persona denunciante     | `IdentityBlock`                 | Se cifra en el navegador con `sealIdentity`; el backend guarda el sobre                                                                                           |
+| Datos de contacto       | Buzón                           | Se sustituyen por el buzón; no se piden                                                                                                                           |
+| Hechos                  | `ComplaintFacts`                | En claro para el trámite, siempre tras `stripInvisibleCharacters`                                                                                                 |
+| Ente y conducta         | `entityId`, `offenseCode`       | Claves de los catálogos de `@sigilo/contracts`; el servidor las valida                                                                                            |
+| Persona denunciada      | `ComplaintFacts.accused`        | En claro                                                                                                                                                          |
+| Ubicación               | `stateCode`, `municipalityCode` | Claves INEGI; el municipio debe pertenecer a la entidad; sin coordenadas                                                                                          |
+| Testigos                | `IdentityBlock.witnesses`       | Dentro del sobre                                                                                                                                                  |
+| Pruebas                 | `EvidenceDescriptor`            | Limpias y verificadas en el navegador; el digesto original va en el sobre                                                                                         |
+| Folio de seguimiento    | `Folio` + recibo                | El backend genera el folio (por la red puede elegirlo el navegador al azar, `RoutedRequest.folio`, y el nodo rechaza uno repetido); el navegador genera el recibo |
 
 ## Vocabulario de la bandeja del S5
 
-Revisado el 2026-11-07 con la cuenta compartida del buzón general de la versión de pruebas. SIGILO
+Revisado el 2026-11-07 en la bandeja de la versión de pruebas del S5. SIGILO
 usa los mismos nombres para que quien ya opera la bandeja de la SESNA reconozca el flujo; el
 catálogo los publica en `s5Code` (`packages/contracts/src/catalogs/procedure.ts`).
 
@@ -111,8 +111,8 @@ entradas con la ley de responsabilidades y el código penal de cada una de las 3
 LGRA y el CPF como entidad federal (`entidad` 33), con su clasificación (falta grave, no grave o
 hecho de corrupción) y si la comete una persona servidora pública o un particular.
 
-SIGILO conserva su catálogo corto en lenguaje llano (38 conductas en 5 situaciones, cotejadas con la LGRA y el CPF vigentes, con la clave
-de la LGRA o del CPF) y lo enlaza con el del S5:
+SIGILO conserva su catálogo corto en lenguaje llano (37 conductas en 5 situaciones, cotejadas con la LGRA y el CPF vigentes, con la clave
+de la LGRA o del CPF, más `SIN-CLASIFICAR`, «Ninguna se parece», que llega al buzón general para que lo clasifique) y lo enlaza con el del S5:
 
 - `scripts/s5-equivalencias.ts` empareja cada entrada del S5 con una clave de SIGILO por su
   clasificación, su nombre y quién la comete, y genera `packages/contracts/src/s5/equivalencias-faltas.json` (publicado en la web como `/datos/s5/equivalencias-faltas.json`):

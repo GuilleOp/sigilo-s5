@@ -322,6 +322,19 @@ SESNA (`sesna:entregas`) y con la etiqueta HMAC del buzón. El escenario de demo
 llegan por la ventanilla única. El contrato, para otras implementaciones del nodo, está
 en [`apps/enrutador/README.md`](../apps/enrutador/README.md#integración-con-el-nodo).
 
+Si tu nodo no responde, una denuncia **sin pruebas adjuntas** no se pierde: el enrutador guarda el
+sobre cerrado en su cola, da a quien denuncia un acuse firmado por la operación y reintenta (desde
+30 s, duplicando hasta 1 h) durante 7 días como máximo, con un tope de 500 sobres o 64 MiB por
+nodo. Tu nodo acepta esa entrega diferida solo con la etiqueta HMAC del enrutador. Las denuncias con
+pruebas no entran a la cola: la persona vuelve a intentar.
+
+**Salud y versión mínima.** Tu nodo responde `GET /api/v1/red/health` con su identificador y la
+versión de su software. El enrutador lo consulta cada minuto y la operación de la ventanilla ve el
+estado de todos los nodos en `GET /api/v1/red/health/nodes` (JSON) y
+`/api/v1/red/health/nodes.html` (tabla), sin datos de denuncias. Si la SESNA fija
+`SIGILO_ROUTER_MIN_NODE_VERSION`, no entrega a un nodo con una versión menor: lo que esté en cola
+espera hasta que lo actualices.
+
 ## Seguridad operativa
 
 - El enrutador y el proxy que lo publique no deben registrar direcciones IP ni cabeceras.
