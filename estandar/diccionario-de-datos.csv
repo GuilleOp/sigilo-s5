@@ -527,6 +527,105 @@ NationalOpenDataCell,offenseCode,offenseCode,cadena,hasta 64 caracteres,sí,Clav
 NationalOpenDataCell,month,month,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,sí,"Mes de recepción (AAAA-MM), ya cerrado.",,2026-10
 NationalOpenDataCell,status,status,cadena (ComplaintStatus),,sí,Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.,received (Recibida); routing (Buscando a la autoridad que debe atenderla); routed (Turnada a la autoridad competente); investigating (En investigación); classified (Revisada: la autoridad decidió si la falta es grave); archived (Archivada); resolved (Concluida),investigating
 NationalOpenDataCell,count,count,entero,mínimo 1,sí,Suma de los conteos publicados por los nodos (ya redondeados): múltiplo del redondeo y al menos la celda mínima.,,10
+PdnTokenRequest,grant_type,grant_type,cadena,,sí,"Flujo: password (el de las APIs de la PDN; desaconsejado en OAuth 2.1), client_credentials (recomendado) o refresh_token.",password; client_credentials; refresh_token,password
+PdnTokenRequest,client_id,client_id,cadena,de 1 a 256 caracteres,no,"Identificador del cliente, si no va en la cabecera Authorization: Basic (client_secret_post, como en la PDN).",,
+PdnTokenRequest,client_secret,client_secret,cadena,de 1 a 256 caracteres,no,"Secreto del cliente, si no va en la cabecera Authorization: Basic.",,
+PdnTokenRequest,username,username,cadena,de 1 a 256 caracteres,no,Usuario que el nodo entregó a la SESNA (solo password).,,sesna.pdn
+PdnTokenRequest,password,password,cadena,de 1 a 256 caracteres,no,Contraseña de ese usuario (solo password).,,contraseña-ficticia
+PdnTokenRequest,refresh_token,refresh_token,cadena,de 1 a 256 caracteres,no,Token de renovación (solo refresh_token); cada uso entrega uno nuevo.,,
+PdnTokenRequest,scope,scope,cadena,hasta 256 caracteres,no,"Permisos separados por espacios; si falta, todos los que tiene el cliente.",,sesna:estadisticas
+PdnTokenResponse,access_token,access_token,cadena,al menos 1 caracteres,sí,Token de acceso (JWT HS256 que solo verifica el nodo que lo emitió).,,eyJhbGciOiJIUzI1NiIsInR5cCI6ImF0K2p3dCJ9.eyJpc3…
+PdnTokenResponse,token_type,token_type,cadena,valor fijo Bearer,sí,Siempre Bearer (RFC 6750).,,Bearer
+PdnTokenResponse,expires_in,expires_in,entero,mínimo 1,sí,Segundos de vida del token de acceso.,,300
+PdnTokenResponse,scope,scope,cadena,,sí,"Permisos concedidos, separados por espacios.",,sesna:estadisticas
+PdnTokenResponse,refresh_token,refresh_token,cadena,al menos 1 caracteres,no,Token de renovación de un solo uso; solo con el flujo password.,,cmVub3ZhY2lvbi1maWN0aWNpYS1kZS1lamVtcGxv
+PdnTokenResponse,refresh_token_expires_in,refresh_token_expires_in,entero,mínimo 1,no,Segundos de vida del token de renovación (campo del servidor OAuth de la PDN).,,3600
+PdnTokenError,error,error,cadena,,sí,Código de error de RFC 6749.,invalid_request; invalid_client; invalid_grant; unauthorized_client; unsupported_grant_type; invalid_scope,invalid_client
+PdnTokenError,error_description,error_description,cadena,,sí,"Texto fijo, sin datos de la petición.",,No se pudo autenticar al cliente.
+PdnError,code,code,cadena,,sí,Código del error.,,unauthorized
+PdnError,message,message,cadena,,sí,"Mensaje fijo, sin datos de la petición.",,No autorizado.
+PdnStatisticsRequest,sort,sort,objeto,,no,"Orden por campo, ascendente o descendente; se aplica en el orden en que se escriben las llaves. Por omisión: mes, autoridad, entidad y conducta ascendentes.",,
+PdnStatisticsRequest,sort.mes,mes,cadena,,no,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",asc; desc,desc
+PdnStatisticsRequest,sort.autoridad,autoridad,cadena,,no,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",asc; desc,
+PdnStatisticsRequest,sort.entidad,entidad,cadena,,no,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",asc; desc,
+PdnStatisticsRequest,sort.conducta,conducta,cadena,,no,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",asc; desc,
+PdnStatisticsRequest,page,page,entero,de 1 a 1000000,no,Página a mostrar; 1 por omisión.,,1
+PdnStatisticsRequest,pageSize,pageSize,entero,de 1 a 200,no,"Filas por página: 10 por omisión, 200 como máximo (como en el S2 y el S3).",,10
+PdnStatisticsRequest,query,query,objeto,,no,Filtros; solo seleccionan filas ya publicadas.,,
+PdnStatisticsRequest,query.mes,mes,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,no,Solo ese mes.,,2026-09
+PdnStatisticsRequest,query.mesDesde,mesDesde,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,no,Desde ese mes (incluido).,,2026-09
+PdnStatisticsRequest,query.mesHasta,mesHasta,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,no,Hasta ese mes (incluido).,,2026-09
+PdnStatisticsRequest,query.entidad,entidad,cadena,patrón ^\d{2}$,no,Clave INEGI de la entidad federativa (2 dígitos).,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
+PdnStatisticsRequest,query.autoridad,autoridad,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,no,Identificador estable de la autoridad.,,authority.oic-iffe
+PdnStatisticsRequest,query.conducta,conducta,cadena,hasta 64 caracteres,no,Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).,Catálogo OFFENSES: conductas de la LGRA y del Código Penal Federal (LEY-artículo),LGRA-52
+PdnStatisticsRequest,query.estatus,estatus,cadena (ComplaintStatus),,no,Solo filas con un conteo publicado (no suprimido) en estatusAlCierre.,received (Recibida); routing (Buscando a la autoridad que debe atenderla); routed (Turnada a la autoridad competente); investigating (En investigación); classified (Revisada: la autoridad decidió si la falta es grave); archived (Archivada); resolved (Concluida),
+PdnStatisticsResponse,pagination,pagination,objeto (PdnPagination),,sí,Paginación (la misma de las APIs del S2 y del S3).,,
+PdnStatisticsResponse,results,results,arreglo de PdnStatisticsRow,,sí,Filas de la página.,,
+PdnPagination,pageSize,pageSize,entero,mínimo 1,sí,Filas por página.,,10
+PdnPagination,page,page,entero,mínimo 1,sí,Página actual.,,1
+PdnPagination,totalRows,totalRows,entero,mínimo 0,sí,Filas que cumplen la consulta.,,1
+PdnPagination,hasNextPage,hasNextPage,booleano,,sí,Si hay otra página.,,false
+PdnStatisticsRow,mes,mes,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,sí,Mes cerrado (AAAA-MM) al que se refiere la fila.,,2026-10
+PdnStatisticsRow,autoridad,autoridad,objeto,,sí,Autoridad del directorio que tenía la denuncia en su bandeja.,,
+PdnStatisticsRow,autoridad.clave,clave,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.comptroller-queretaro
+PdnStatisticsRow,autoridad.nombre,nombre,cadena,de 1 a 300 caracteres,sí,Nombre de la autoridad.,,Contraloría Estatal Ficticia de Querétaro
+PdnStatisticsRow,entidad,entidad,cadena,patrón ^\d{2}$,sí,Clave INEGI de la entidad federativa (2 dígitos).,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
+PdnStatisticsRow,conducta,conducta,cadena,hasta 64 caracteres,sí,Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).,Catálogo OFFENSES: conductas de la LGRA y del Código Penal Federal (LEY-artículo),LGRA-52
+PdnStatisticsRow,recibidas,recibidas,valor,,sí,Denuncias recibidas en el mes que quedaron en la bandeja de esta autoridad el día de recepción.,,15
+PdnStatisticsRow,turnadas,turnadas,objeto,,sí,"Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera routing), de las denuncias que esperaban en esta autoridad.",,
+PdnStatisticsRow,turnadas.aTiempo,aTiempo,valor,,sí,Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).,,10
+PdnStatisticsRow,turnadas.vencidas,vencidas,valor,,sí,Con el semáforo de turnado ya en «vencida» al hacerse.,,null
+PdnStatisticsRow,aceptadas,aceptadas,objeto,,sí,"Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera acceptance).",,
+PdnStatisticsRow,aceptadas.aTiempo,aTiempo,valor,,sí,Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).,,10
+PdnStatisticsRow,aceptadas.vencidas,vencidas,valor,,sí,Con el semáforo de turnado ya en «vencida» al hacerse.,,5
+PdnStatisticsRow,archivadas,archivadas,objeto,,sí,Cierres del mes por motivo (catálogo CLOSURE_REASONS).,,
+PdnStatisticsRow,calificadas,calificadas,objeto,,sí,"Calificaciones del mes (LGRA, art. 100).",,
+PdnStatisticsRow,calificadas.graves,graves,valor,,sí,Faltas calificadas como graves.,,null
+PdnStatisticsRow,calificadas.noGraves,noGraves,valor,,sí,Faltas calificadas como no graves.,,5
+PdnStatisticsRow,escalamientos,escalamientos,valor,,sí,Reglas de escalamiento cumplidas en el mes con efecto escalate.,,null
+PdnStatisticsRow,estatusAlCierre,estatusAlCierre,objeto,,sí,Estatus que tenían al cerrarse el mes las denuncias recibidas en él (catálogo COMPLAINT_STATUSES).,,
+PdnStatisticsRow,tiemposMedianosDiasHabiles,tiemposMedianosDiasHabiles,objeto,,sí,Medianas en días hábiles; null si hay menos de 10 observaciones.,,
+PdnStatisticsRow,tiemposMedianosDiasHabiles.turno,turno,valor,,sí,Mediana de días hábiles entre la entrada al buzón y el turno.,,1
+PdnStatisticsRow,tiemposMedianosDiasHabiles.aceptacion,aceptacion,valor,,sí,Mediana de días hábiles entre el turno y la aceptación.,,1
+PdnStatisticsRow,tiemposMedianosDiasHabiles.archivo,archivo,valor,,sí,Mediana de días hábiles entre la recepción y el cierre.,,null
+PdnAuthorities,(valor),PdnAuthorities,arreglo de PdnAuthority,,sí,"Autoridades que el nodo aloja en el directorio, por clave.",,
+PdnAuthority,clave,clave,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.buzon-queretaro
+PdnAuthority,nombre,nombre,cadena,de 1 a 300 caracteres,sí,Nombre de la autoridad.,,Buzón general de Querétaro
+NationalStatistics,v,v,número,valor fijo 1,sí,Versión del formato.,,1
+NationalStatistics,cutAt,cutAt,cadena,patrón ^\d{4}-\d{2}-\d{2}T\d{2}:00Z$,sí,Hora del corte (UTC).,,2026-11-09T17:00Z
+NationalStatistics,closedBefore,closedBefore,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,sí,Mes en curso al hacer el corte: solo se aceptan meses anteriores.,,2026-11
+NationalStatistics,directorySerial,directorySerial,entero,mínimo 1,sí,Versión del directorio.,,1
+NationalStatistics,nodes,nodes,arreglo de NationalStatisticsNode,,sí,"Todos los nodos del directorio, en su orden.",,
+NationalStatistics,rows,rows,arreglo de objeto,,sí,"Filas publicadas por cada nodo, con el nodo que las publicó.",,
+NationalStatistics,rows[].mes,mes,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,sí,Mes cerrado (AAAA-MM) al que se refiere la fila.,,2026-10
+NationalStatistics,rows[].autoridad,autoridad,objeto,,sí,Autoridad del directorio que tenía la denuncia en su bandeja.,,
+NationalStatistics,rows[].autoridad.clave,clave,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.comptroller-queretaro
+NationalStatistics,rows[].autoridad.nombre,nombre,cadena,de 1 a 300 caracteres,sí,Nombre de la autoridad.,,Contraloría Estatal Ficticia de Querétaro
+NationalStatistics,rows[].entidad,entidad,cadena,patrón ^\d{2}$,sí,Clave INEGI de la entidad federativa (2 dígitos).,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
+NationalStatistics,rows[].conducta,conducta,cadena,hasta 64 caracteres,sí,Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).,Catálogo OFFENSES: conductas de la LGRA y del Código Penal Federal (LEY-artículo),LGRA-52
+NationalStatistics,rows[].recibidas,recibidas,valor,,sí,Denuncias recibidas en el mes que quedaron en la bandeja de esta autoridad el día de recepción.,,15
+NationalStatistics,rows[].turnadas,turnadas,objeto,,sí,"Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera routing), de las denuncias que esperaban en esta autoridad.",,
+NationalStatistics,rows[].turnadas.aTiempo,aTiempo,valor,,sí,Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).,,10
+NationalStatistics,rows[].turnadas.vencidas,vencidas,valor,,sí,Con el semáforo de turnado ya en «vencida» al hacerse.,,null
+NationalStatistics,rows[].aceptadas,aceptadas,objeto,,sí,"Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera acceptance).",,
+NationalStatistics,rows[].aceptadas.aTiempo,aTiempo,valor,,sí,Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).,,10
+NationalStatistics,rows[].aceptadas.vencidas,vencidas,valor,,sí,Con el semáforo de turnado ya en «vencida» al hacerse.,,5
+NationalStatistics,rows[].archivadas,archivadas,objeto,,sí,Cierres del mes por motivo (catálogo CLOSURE_REASONS).,,
+NationalStatistics,rows[].calificadas,calificadas,objeto,,sí,"Calificaciones del mes (LGRA, art. 100).",,
+NationalStatistics,rows[].calificadas.graves,graves,valor,,sí,Faltas calificadas como graves.,,null
+NationalStatistics,rows[].calificadas.noGraves,noGraves,valor,,sí,Faltas calificadas como no graves.,,5
+NationalStatistics,rows[].escalamientos,escalamientos,valor,,sí,Reglas de escalamiento cumplidas en el mes con efecto escalate.,,null
+NationalStatistics,rows[].estatusAlCierre,estatusAlCierre,objeto,,sí,Estatus que tenían al cerrarse el mes las denuncias recibidas en él (catálogo COMPLAINT_STATUSES).,,
+NationalStatistics,rows[].tiemposMedianosDiasHabiles,tiemposMedianosDiasHabiles,objeto,,sí,Medianas en días hábiles; null si hay menos de 10 observaciones.,,
+NationalStatistics,rows[].tiemposMedianosDiasHabiles.turno,turno,valor,,sí,Mediana de días hábiles entre la entrada al buzón y el turno.,,1
+NationalStatistics,rows[].tiemposMedianosDiasHabiles.aceptacion,aceptacion,valor,,sí,Mediana de días hábiles entre el turno y la aceptación.,,1
+NationalStatistics,rows[].tiemposMedianosDiasHabiles.archivo,archivo,valor,,sí,Mediana de días hábiles entre la recepción y el cierre.,,null
+NationalStatistics,rows[].nodeId,nodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable del nodo.,,node.queretaro
+NationalStatisticsNode,nodeId,nodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable del nodo.,,node.queretaro
+NationalStatisticsNode,name,name,cadena,de 1 a 200 caracteres,sí,Nombre del nodo en el directorio.,,Nodo estatal Querétaro
+NationalStatisticsNode,status,status,cadena,,sí,included: se consultó y se sumó; unreachable: no respondió; rejected: su respuesta no cumplió las reglas; no-credentials: la SESNA no tiene credenciales de ese nodo.,included; unreachable; rejected; no-credentials,included
+NationalStatisticsNode,rejection,rejection,valor,,sí,"unauthorized (el nodo no dio token o lo rechazó), invalid (no cumple el esquema), open-month, foreign-authority (autoridad de otro nodo), duplicate o too-large; null si no se rechazó.",,null
+NationalStatisticsNode,rows,rows,entero,mínimo 0,sí,Filas que aportó el nodo.,,1
 CorroborationEvaluatorKey,suite,suite,cadena,valor fijo ristretto255-SHA512/VOPRF,sí,"Suite OPRF de RFC 9497: ristretto255-SHA512, modo VOPRF (0x01).",,ristretto255-SHA512/VOPRF
 CorroborationEvaluatorKey,epoch,epoch,entero,mínimo 1,sí,Época de la llave. Cambia solo al rotarla por compromiso; las etiquetas de épocas distintas no coinciden.,,1
 CorroborationEvaluatorKey,keyId,keyId,cadena,patrón ^[0-9a-f]{16}$,sí,Primeros 16 hexadecimales del SHA-256 de la llave pública OPRF.,,7c2e9a4b1d0f3856

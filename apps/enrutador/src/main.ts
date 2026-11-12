@@ -12,6 +12,7 @@ import { loadRelaySecrets, loadRouterConfig, loadRouterFiles, openDataClock } fr
 import { openRouterDatabase } from './database.ts';
 import { loadDirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
+import { createNodeStatisticsAggregator } from './node-statistics.ts';
 import { loadNodeCredentials } from './oauth/node-credentials.ts';
 import { createNodeTokenClient } from './oauth/token-client.ts';
 import { createOpenDataAggregator } from './open-data-aggregator.ts';
@@ -55,11 +56,19 @@ function start(): void {
     fetch: doFetch,
     now: openDataClock(process.env),
   });
+  const statistics = createNodeStatisticsAggregator({
+    directory: directory.directory,
+    nodeUrl,
+    fetch: doFetch,
+    tokens,
+    now: openDataClock(process.env),
+  });
   const app = createRouterApp({
     directory,
     national,
     relay,
     openData,
+    statistics,
     now,
     hstsMaxAgeSeconds: config.hstsMaxAgeSeconds,
   });
@@ -89,9 +98,16 @@ function start(): void {
       } catch {
         console.error('No se pudo completar el corte nacional de datos abiertos.');
       }
+      let statisticsNodes: Record<string, string> | null = null;
+      try {
+        const cut = await statistics.run();
+        statisticsNodes = Object.fromEntries(cut.nodes.map((node) => [node.nodeId, node.status]));
+      } catch {
+        console.error('No se pudo completar el corte nacional de estadística.');
+      }
       // Seguridad: una línea agregada por vuelta, sin destinos, IP, tokens ni contenidos.
       process.stdout.write(
-        `${JSON.stringify({ hour: toHourDate(now()), relay: relay.drainCounters(), nodes, openData: openDataNodes })}\n`,
+        `${JSON.stringify({ hour: toHourDate(now()), relay: relay.drainCounters(), nodes, openData: openDataNodes, statistics: statisticsNodes })}\n`,
       );
     } finally {
       isCollecting = false;

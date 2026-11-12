@@ -26,6 +26,7 @@ import { NationalLedgerRejection } from './national-ledger-service.ts';
 import type { NationalLedgerService } from './national-ledger-service.ts';
 import { nationalOpenDataCsv } from './open-data-aggregator.ts';
 import type { OpenDataAggregator } from './open-data-aggregator.ts';
+import type { NodeStatisticsAggregator } from './node-statistics.ts';
 import type { RelayService } from './relay-service.ts';
 
 /** Dependencias de la aplicación. */
@@ -35,6 +36,8 @@ export interface RouterAppDeps {
   relay: RelayService;
   /** Corte nacional de datos abiertos; sin él, sus rutas responden `404`. */
   openData?: Pick<OpenDataAggregator, 'latest'>;
+  /** Corte nacional de la estadística que la SESNA consulta a cada nodo; sin él, `404`. */
+  statistics?: Pick<NodeStatisticsAggregator, 'latest'>;
   now: () => Date;
   hstsMaxAgeSeconds?: number | null;
   /** Reenvíos simultáneos permitidos; los que excedan reciben `429`. */
@@ -184,6 +187,13 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
     c.header('Content-Type', 'text/csv; charset=utf-8');
     c.header('Content-Disposition', 'attachment; filename="denuncias-nacional.csv"');
     return c.body(csv);
+  });
+
+  // Estadística para el portal de la PDN (art. 61): las filas que cada nodo ya publicó.
+  app.get(NETWORK_ROUTES.nationalStatistics, (c) => {
+    const latest = deps.statistics?.latest() ?? null;
+    if (latest === null) throw new ApiFailure('not_found');
+    return c.json(latest);
   });
 
   app.notFound((c) => errorResponse(c, 'not_found'));

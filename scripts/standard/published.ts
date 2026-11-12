@@ -12,6 +12,11 @@ import {
   NETWORK_EXTRA_EXAMPLES,
   NETWORK_OPERATIONS,
   NETWORK_TAG,
+  PDN_COMPONENTS,
+  PDN_EXAMPLES,
+  PDN_EXTRA_EXAMPLES,
+  PDN_OPERATIONS,
+  PDN_TAG,
   STANDARD_COMPONENTS,
   STANDARD_EXAMPLES,
   STANDARD_OPERATIONS,
@@ -20,16 +25,19 @@ import {
 import type {
   CorroborationOperation,
   NetworkOperation,
+  PdnOperation,
   StandardOperation,
 } from '@sigilo/contracts/standard';
 
-/** Operación publicada: del nodo, del grupo «Red» o del grupo «Corroboración». */
-export type PublishedOperation = StandardOperation | NetworkOperation | CorroborationOperation;
+/** Operación publicada: del nodo, del grupo «Red», del grupo «PDN» o del grupo «Corroboración». */
+export type PublishedOperation =
+  StandardOperation | NetworkOperation | PdnOperation | CorroborationOperation;
 
 /** Esquemas con nombre: primero los del nodo y después los de la red. */
 export const PUBLISHED_COMPONENTS: Readonly<Record<string, z.ZodType>> = {
   ...STANDARD_COMPONENTS,
   ...NETWORK_COMPONENTS,
+  ...PDN_COMPONENTS,
   ...CORROBORATION_COMPONENTS,
 };
 
@@ -37,6 +45,7 @@ export const PUBLISHED_COMPONENTS: Readonly<Record<string, z.ZodType>> = {
 export const PUBLISHED_EXAMPLES: Readonly<Record<string, unknown>> = {
   ...STANDARD_EXAMPLES,
   ...NETWORK_EXAMPLES,
+  ...PDN_EXAMPLES,
   ...CORROBORATION_EXAMPLES,
 };
 
@@ -45,12 +54,14 @@ export const PUBLISHED_EXTRA_EXAMPLES: Readonly<Record<string, string>> = {
   IdentityBlock: 'sealed-identity.content',
   ApiError: 'error',
   ...NETWORK_EXTRA_EXAMPLES,
+  ...PDN_EXTRA_EXAMPLES,
 };
 
 /** Operaciones en el orden del documento. */
 export const PUBLISHED_OPERATIONS: readonly PublishedOperation[] = [
   ...STANDARD_OPERATIONS,
   ...NETWORK_OPERATIONS,
+  ...PDN_OPERATIONS,
   ...CORROBORATION_OPERATIONS,
 ];
 
@@ -58,6 +69,7 @@ export const PUBLISHED_OPERATIONS: readonly PublishedOperation[] = [
 export const PUBLISHED_TAGS: readonly { name: string; description: string }[] = [
   ...STANDARD_TAGS,
   NETWORK_TAG,
+  PDN_TAG,
   CORROBORATION_TAG,
 ];
 

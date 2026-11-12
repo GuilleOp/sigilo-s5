@@ -75,6 +75,7 @@ export const UNCOUNTED_ROUTES: ReadonlySet<string> = new Set([
   NETWORK_ROUTES.nationalInclusion,
   NETWORK_ROUTES.nationalOpenData,
   NETWORK_ROUTES.nationalOpenDataCsv,
+  NETWORK_ROUTES.nationalStatistics,
   CORROBORATION_ROUTES.evaluationCounts,
   CORROBORATION_ROUTES.evaluatorKey,
   CORROBORATION_ROUTES.evaluatorChallenge,

@@ -205,11 +205,53 @@ omitidas) y lo suma con los demás. Para ver si se sumó o por qué se descartó
 curl -s http://127.0.0.1:8790/api/v1/red/national/open-data | jq '.nodes[] | {nodeId, status, rejection}'
 ```
 
+### Credenciales OAuth 2.0 para la SESNA
+
+Como en las APIs del S2 y del S3 de la PDN, tu nodo es el **proveedor**: tiene su propio servidor
+de autorización (`POST /oauth/token`) y entrega a la SESNA unas credenciales con las que ella pide
+sus tokens para entregarte sobres (`sesna:entregas`) y consultar tu estadística agregada
+(`sesna:estadisticas`, `POST /v1/denuncias/estadisticas`). Tu nodo guarda solo digestos en
+`oauth-clients.json` (o donde diga `SIGILO_OAUTH_CLIENTS_FILE`):
+
+```json
+{
+  "version": 1,
+  "clients": [
+    {
+      "clientId": "sesna",
+      "clientSecretDigest": "<SHA-256 en hexadecimal del secreto>",
+      "scopes": ["sesna:entregas", "sesna:estadisticas", "sesna:salud"],
+      "grantTypes": ["client_credentials", "password", "refresh_token"],
+      "user": { "username": "sesna.pdn", "passwordHash": "<digesto scrypt de la contraseña>" }
+    }
+  ]
+}
+```
+
+1. Genera un secreto aleatorio de 32 bytes y, si la SESNA usará el flujo `password` de la PDN, una
+   contraseña aleatoria. `npm run red:demo` lo hace para la demostración: deja
+   `nodos/<nodo>/data/oauth-clients.json` y, del lado de la SESNA,
+   `enrutador/node-credentials.json`, ambos con permisos `0600`.
+2. Entrega a la SESNA, por un canal distinto al del directorio y en persona o cifrado, el
+   `client_id`, el secreto y, si aplica, el usuario y la contraseña. Nunca los subas al
+   repositorio ni a la imagen.
+3. Sin `oauth-clients.json` tu nodo no emite tokens: rechaza las entregas (`401`) y la SESNA no
+   puede consultar tu estadística. Una red de demostración generada antes de esta versión debe
+   regenerarse con `npm run red:demo -- --force`.
+4. Para rotar, cambia el digesto y reinicia el nodo; los tokens vigentes vencen en 5 minutos.
+
+Comprueba que la SESNA consulta tu estadística:
+
+```sh
+curl -s http://127.0.0.1:8790/api/v1/red/national/statistics | jq '.nodes[] | {nodeId, status, rejection}'
+```
+
 ## 5. Recibir denuncias por la red
 
 El servidor de referencia ya monta el buzón de red (`POST /api/v1/red/inbox`) y se registra ante el
 enrutador al arrancar: las denuncias de la ventanilla única llegan cifradas a tu nodo a través del
-enrutador ciego, que no puede leerlas. El escenario de demostración lo usa (Marta y la persona de
+enrutador ciego, que no puede leerlas. Cada entrega llega con el token que tu nodo emitió a la
+SESNA (`sesna:entregas`) y con la etiqueta HMAC del buzón. El escenario de demostración lo usa (Marta y la persona de
 Querétaro envían por la ventanilla única). El contrato, para otras implementaciones del nodo, está
 en [`apps/enrutador/README.md`](../apps/enrutador/README.md#integración-con-el-nodo).
 

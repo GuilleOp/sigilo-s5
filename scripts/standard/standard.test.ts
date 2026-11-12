@@ -122,8 +122,14 @@ describe('documento OpenAPI', () => {
       for (const [status, response] of Object.entries(responses)) {
         if (Number(status) < 400) continue;
         const content = response.content as Record<string, { schema: unknown }>;
+        // El grupo «PDN» responde con los formatos de la PDN (`resError`) y de RFC 6749.
+        const expected =
+          'pdnErrors' in operation &&
+          operation.pdnErrors.some((item) => String(item.status) === status)
+            ? operation.pdnErrors.find((item) => String(item.status) === status)?.component
+            : 'ApiError';
         expect(content['application/json']?.schema).toEqual({
-          $ref: '#/components/schemas/ApiError',
+          $ref: `#/components/schemas/${expected}`,
         });
       }
     }

@@ -33,6 +33,8 @@ import { createRouterApp } from '../../../enrutador/src/app.ts';
 import { openRouterDatabase } from '../../../enrutador/src/database.ts';
 import { loadDirectoryStore } from '../../../enrutador/src/directory-store.ts';
 import { createNationalLedgerService } from '../../../enrutador/src/national-ledger-service.ts';
+import { createNodeStatisticsAggregator } from '../../../enrutador/src/node-statistics.ts';
+import type { NodeStatisticsAggregator } from '../../../enrutador/src/node-statistics.ts';
 import { createNodeTokenClient } from '../../../enrutador/src/oauth/token-client.ts';
 import type { NodeTokenClient } from '../../../enrutador/src/oauth/token-client.ts';
 import { createOpenDataAggregator } from '../../../enrutador/src/open-data-aggregator.ts';
@@ -209,6 +211,8 @@ export interface TestNetwork {
   relay: RelayService;
   /** Agregador nacional de datos abiertos del enrutador. */
   openData: OpenDataAggregator;
+  /** Corte nacional de la estadística que la SESNA consulta a cada nodo con OAuth 2.0. */
+  statistics: NodeStatisticsAggregator;
   /** Cliente OAuth 2.0 de la SESNA ante cada nodo. */
   tokens: NodeTokenClient;
   /** Cuerpos que el enrutador reenvió a los nodos (para comprobar que no ve el contenido). */
@@ -373,7 +377,14 @@ export function createTestNetwork(): TestNetwork {
     fetch: networkFetch,
     now,
   });
-  const routerApp = createRouterApp({ directory, national, relay, openData, now });
+  const statistics = createNodeStatisticsAggregator({
+    directory: directory.directory,
+    nodeUrl: (node) => node.baseUrl,
+    fetch: networkFetch,
+    tokens,
+    now,
+  });
+  const routerApp = createRouterApp({ directory, national, relay, openData, statistics, now });
   const federal = createNode(
     'node.federal',
     services,
@@ -411,6 +422,7 @@ export function createTestNetwork(): TestNetwork {
     routerApp,
     relay,
     openData,
+    statistics,
     tokens,
     forwarded,
     federal,

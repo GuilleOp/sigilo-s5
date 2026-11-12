@@ -51,7 +51,9 @@ import type {
   SignedAuthorityDirectory,
 } from '../network.ts';
 import type { ApiErrorCode } from '../errors.ts';
+import { PDN_SCOPES } from '../pdn-oauth.ts';
 import type { StandardComponentName, StandardParameter } from './operations.ts';
+import type { OAuthSecurity, PdnComponentName, PdnExampleName } from './pdn.ts';
 
 /** Esquemas con nombre propio del grupo «Red», en el orden del diccionario. */
 export const NETWORK_COMPONENTS = {
@@ -369,9 +371,9 @@ export const NETWORK_EXTRA_EXAMPLES: Partial<Record<NetworkComponentName, Networ
 export type NetworkBody =
   | {
       kind: 'json';
-      component: NetworkComponentName | StandardComponentName;
+      component: NetworkComponentName | StandardComponentName | PdnComponentName;
       isArray?: boolean;
-      example: NetworkExampleName;
+      example: NetworkExampleName | PdnExampleName;
     }
   | { kind: 'text'; mediaType: string; description: string; example: string };
 
@@ -384,7 +386,7 @@ export interface NetworkOperation {
   servedBy: 'router' | 'node';
   summary: string;
   description: string;
-  security: 'none';
+  security: 'none' | OAuthSecurity;
   parameters: readonly StandardParameter[];
   requestBody?: NetworkBody;
   success: { status: 200; description: string; body: NetworkBody };
@@ -696,6 +698,28 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
     errors: ['not_found'],
   },
   {
+    operationId: 'getNationalStatistics',
+    method: 'get',
+    path: NETWORK_ROUTES.nationalStatistics,
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Corte nacional de la estadística para el portal de la PDN',
+    description:
+      'Filas de la estadística agregada que la SESNA consultó a cada nodo con OAuth 2.0 (`POST /v1/denuncias/estadisticas`, grupo «PDN»), para el portal de la PDN (Bases, art. 61). El enrutador valida cada fila (meses cerrados, conteos múltiplos de 5 y de al menos 5 o suprimidos, autoridades del propio nodo, sin repetidas) y descarta completo al nodo que no cumple. Copia las filas tal cual, con el nodo que las publicó: no vuelve a sumar ni rebaja la supresión. Responde `404` hasta el primer corte.',
+    security: 'none',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Último corte nacional de la estadística.',
+      body: {
+        kind: 'json',
+        component: 'NationalStatistics',
+        example: 'get-national-statistics.response',
+      },
+    },
+    errors: ['not_found'],
+  },
+  {
     operationId: 'receiveRoutedEnvelope',
     method: 'post',
     path: NETWORK_ROUTES.nodeInbox,
@@ -703,8 +727,8 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
     servedBy: 'node',
     summary: 'Buzón de red del nodo',
     description:
-      'La sirve cada nodo, no el enrutador. Abre el sobre con la llave X25519 del nodo, comprueba que la autoridad interna sea la del encabezado, ejecuta la operación pedida (`RoutedRequest`) como si llegara a su ruta v1 y cifra la respuesta (`RoutedReply`) hacia la llave efímera. Un sobre que no abre responde `400` sin decir por qué.',
-    security: 'none',
+      'La sirve cada nodo, no el enrutador. Exige el token OAuth 2.0 que el propio nodo emitió a la SESNA con el permiso `sesna:entregas` (grupo «PDN»; sin él responde `401`, con otro permiso `403`) y, como defensa en profundidad, la etiqueta HMAC del buzón (`X-Sigilo-Relay-Auth`). Abre el sobre con la llave X25519 del nodo, comprueba que la autoridad interna sea la del encabezado, ejecuta la operación pedida (`RoutedRequest`) como si llegara a su ruta v1 y cifra la respuesta (`RoutedReply`) hacia la llave efímera. Un sobre que no abre responde `400` sin decir por qué.',
+    security: { oauth: [PDN_SCOPES.deliveries] },
     parameters: [],
     requestBody: {
       kind: 'json',
@@ -720,6 +744,6 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
         example: 'receive-routed-envelope.response',
       },
     },
-    errors: JSON_ERRORS,
+    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden'],
   },
 ];

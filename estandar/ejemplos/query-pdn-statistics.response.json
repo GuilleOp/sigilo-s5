@@ -1,0 +1,37 @@
+{
+  "pagination": { "pageSize": 10, "page": 1, "totalRows": 1, "hasNextPage": false },
+  "results": [
+    {
+      "mes": "2026-10",
+      "autoridad": {
+        "clave": "authority.comptroller-queretaro",
+        "nombre": "Contraloría Estatal Ficticia de Querétaro"
+      },
+      "entidad": "22",
+      "conducta": "LGRA-52",
+      "recibidas": 15,
+      "turnadas": { "aTiempo": 10, "vencidas": null },
+      "aceptadas": { "aTiempo": 10, "vencidas": 5 },
+      "archivadas": {
+        "attended": null,
+        "channeled": null,
+        "inadmissible": 5,
+        "insufficient_information": null,
+        "joined": null,
+        "other": null
+      },
+      "calificadas": { "graves": null, "noGraves": 5 },
+      "escalamientos": null,
+      "estatusAlCierre": {
+        "received": null,
+        "routing": null,
+        "routed": 5,
+        "investigating": 10,
+        "classified": null,
+        "archived": null,
+        "resolved": null
+      },
+      "tiemposMedianosDiasHabiles": { "turno": 1, "aceptacion": 1, "archivo": null }
+    }
+  ]
+}

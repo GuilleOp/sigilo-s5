@@ -803,6 +803,25 @@ CREATE TABLE authority_registrations (
 ) WITHOUT ROWID;
 `;
 
+/**
+ * Estadística para la PDN (Bases, art. 61): filas ya redondeadas y suprimidas de cada mes cerrado,
+ * congeladas una sola vez. Solo números por mes, autoridad, entidad y conducta; ningún folio.
+ */
+const PDN_STATISTICS = `
+CREATE TABLE pdn_statistics_months (
+  month TEXT PRIMARY KEY,
+  rows_json TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER pdn_statistics_months_no_update BEFORE UPDATE ON pdn_statistics_months
+BEGIN
+  SELECT RAISE(ABORT, 'La estadística de un mes cerrado no se modifica.');
+END;
+CREATE TRIGGER pdn_statistics_months_no_delete BEFORE DELETE ON pdn_statistics_months
+BEGIN
+  SELECT RAISE(ABORT, 'La estadística de un mes cerrado no se modifica.');
+END;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -819,6 +838,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 12, sql: CORROBORATION_CONFIRMATION },
   { version: 13, sql: CORROBORATION_DIGEST },
   { version: 14, sql: AUTHORITY_REGISTRATIONS },
+  { version: 15, sql: PDN_STATISTICS },
 ];
 
 /** Versión más reciente del esquema. */

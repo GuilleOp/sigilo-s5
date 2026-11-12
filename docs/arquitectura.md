@@ -305,6 +305,31 @@ flowchart LR
     nodo que lo pasa a la web podría alterarlo, y se compara contra el del enrutador.
   - El reloj del corte es el reloj real; en la demostración, con `SIGILO_ROUTER_CLOCK_FILE`, es el
     reloj simulado de los nodos, para que «mes cerrado» signifique lo mismo en ambos lados.
+- **APIs entre la SESNA y los nodos (OAuth 2.0, metodología de la PDN).** Como en las APIs del
+  S2 y del S3, **cada nodo es el proveedor** y su propio servidor de autorización
+  (`POST /oauth/token`, RFC 6749), y **la SESNA (enrutador) es el cliente** con las credenciales
+  que le entrega cada nodo (`node-credentials.json`, 0600). Flujos: `password` (el de la PDN;
+  desaconsejado en OAuth 2.1), `client_credentials` (el que usa el enrutador) y `refresh_token`.
+  El token de acceso es un JWT HS256 de 5 minutos que solo verifica el nodo que lo emitió
+  (`iss` = `aud` = id del nodo, `sub` = cliente, `scope`, `exp`, `jti`). Permisos:
+  `sesna:entregas` (buzón de red, además del HMAC como defensa en profundidad),
+  `sesna:estadisticas` (estadística) y `sesna:salud` (reservado). Todo es _pull_ desde la SESNA:
+  - **Entregas.** El enrutador pide el token con `sesna:entregas`, lo guarda hasta 30 s antes de
+    vencer y lo agrega como `Authorization: Bearer` al reenviar; el nodo lo exige antes de leer el
+    cuerpo. Un `401` hace que el enrutador pida otro en la siguiente entrega.
+  - **Estadística para el portal (Bases, art. 61).** `POST /v1/denuncias/estadisticas` con
+    `sort`, `page`, `pageSize` (máx. 200) y `query`, y respuesta `{ pagination, results }`, como
+    el S2 y el S3. Filas por mes cerrado, autoridad, entidad y conducta: recibidas, turnadas y
+    aceptadas a tiempo o vencidas (semáforo de turnado), archivadas por motivo, calificadas grave
+    o no grave, escalamientos, estatus al cerrar el mes y medianas de días hábiles (solo con 10
+    observaciones). Cada mes se congela una sola vez (`pdn_statistics_months`), cada conteo se
+    redondea al azar a múltiplos de 5 con una semilla que solo existe al congelar y se suprime
+    (`null`) bajo 5; los filtros solo eligen filas, no vuelven a sumar. El enrutador consulta a
+    cada nodo, valida y publica el corte en `GET /api/v1/red/national/statistics`.
+  - **Cabezas, registro y salud.** La cabeza de bitácora ya se jala de la ruta pública
+    `GET /api/v1/ledger/head`; el _push_ opcional (`POST .../heads`) y el registro siguen como
+    _push_ porque van firmados con la llave del nodo en el directorio (no necesitan secreto) y el
+    registro es lo que avisa que el buzón está listo. `sesna:salud` queda para una API de salud.
 - **El nodo en la red.** El servidor de referencia monta el buzón de red, se registra ante el
   enrutador (acepta sobres), publica su cabeza después de cada cierre y, si el directorio lo nombra
   testigo, cofirma la cabeza nacional. Aloja varias autoridades con sus llaves del directorio
