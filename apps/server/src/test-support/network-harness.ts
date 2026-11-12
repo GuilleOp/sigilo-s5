@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
-import { NETWORK_ROUTES, ROUTES } from '@sigilo/contracts';
+import { NETWORK_ROUTES, PDN_SCOPES, ROUTES } from '@sigilo/contracts';
 import type {
   AuthorityFunction,
   AuthorityAccountsFile,
@@ -33,6 +33,8 @@ import { createRouterApp } from '../../../enrutador/src/app.ts';
 import { openRouterDatabase } from '../../../enrutador/src/database.ts';
 import { loadDirectoryStore } from '../../../enrutador/src/directory-store.ts';
 import { createNationalLedgerService } from '../../../enrutador/src/national-ledger-service.ts';
+import { createNodeTokenClient } from '../../../enrutador/src/oauth/token-client.ts';
+import type { NodeTokenClient } from '../../../enrutador/src/oauth/token-client.ts';
 import { createOpenDataAggregator } from '../../../enrutador/src/open-data-aggregator.ts';
 import type { OpenDataAggregator } from '../../../enrutador/src/open-data-aggregator.ts';
 import { createRelayService } from '../../../enrutador/src/relay-service.ts';
@@ -41,6 +43,7 @@ import type { AppContext } from '../context.ts';
 import type { ServerKeys } from '../keys-file.ts';
 import type { NodeNetwork } from '../network/network-context.ts';
 import { createNetworkTasks } from '../network/network-tasks.ts';
+import { clientSecretDigest, createNodeOAuthServer } from '../network/oauth-server.ts';
 import type { NetworkTasks } from '../network/network-tasks.ts';
 import { createAuthorityRegistry } from '../security/authority-registry.ts';
 import { hashPassword } from '../security/passwords.ts';
@@ -50,6 +53,16 @@ import { createTestServer } from './harness.ts';
 import type { TestServer } from './harness.ts';
 
 const ROUTER_URL = 'http://enrutador.invalid';
+
+/** Credenciales sintéticas que cada nodo de prueba entrega a la SESNA (OAuth 2.0). */
+export const SESNA_CLIENT = {
+  clientId: 'sesna',
+  clientSecret: 'secreto-sintetico-de-la-sesna-0123456789',
+  username: 'sesna.pdn',
+  password: 'contraseña-sintética-de-la-sesna',
+} as const;
+
+const SESNA_PASSWORD_HASH = hashPassword(SESNA_CLIENT.password, 10);
 
 /** Día 0 del escenario a las 10 de la mañana en el centro de México. */
 export const DAY_ZERO = '2026-11-09';
@@ -196,6 +209,8 @@ export interface TestNetwork {
   relay: RelayService;
   /** Agregador nacional de datos abiertos del enrutador. */
   openData: OpenDataAggregator;
+  /** Cliente OAuth 2.0 de la SESNA ante cada nodo. */
+  tokens: NodeTokenClient;
   /** Cuerpos que el enrutador reenvió a los nodos (para comprobar que no ve el contenido). */
   forwarded: string[];
   federal: TestNode;
@@ -249,8 +264,22 @@ function createNode(
   for (const [name, account] of Object.entries(NETWORK_ACCOUNTS)) {
     sessions.issue(account.accountId, networkToken(name as NetworkAccountName));
   }
+  // El nodo es su propio servidor de autorización y la SESNA su cliente (como en la PDN).
+  const oauth = createNodeOAuthServer({
+    issuer: nodeId,
+    clients: [
+      {
+        clientId: SESNA_CLIENT.clientId,
+        clientSecretDigest: clientSecretDigest(SESNA_CLIENT.clientSecret),
+        scopes: [PDN_SCOPES.deliveries, PDN_SCOPES.statistics],
+        grantTypes: ['client_credentials', 'password', 'refresh_token'],
+        user: { username: SESNA_CLIENT.username, passwordHash: SESNA_PASSWORD_HASH },
+      },
+    ],
+  });
   const server = createTestServer({
     keys,
+    oauth,
     authorities: createAuthorityRegistry(accountsFile(nodeId), { minScryptLogN: 10 }),
     sessions,
     network,
@@ -315,11 +344,27 @@ export function createTestNetwork(): TestNetwork {
     'node.federal': randomBytes(32),
     'node.queretaro': randomBytes(32),
   };
+  const tokens = createNodeTokenClient({
+    credentials: new Map(
+      (['node.federal', 'node.queretaro'] as const).map((id) => [
+        id,
+        {
+          clientId: SESNA_CLIENT.clientId,
+          clientSecret: SESNA_CLIENT.clientSecret,
+          grantType: 'client_credentials' as const,
+        },
+      ]),
+    ),
+    nodeUrl: (node) => node.baseUrl,
+    fetch: networkFetch,
+  });
   const relay = createRelayService({
     db: routerDb,
     nodeUrl: (node) => node.baseUrl,
     fetch: nodeFetch,
     relaySecret: (node) => relaySecrets[node.id as DemoNodeId] ?? null,
+    authorization: (node) => tokens.token(node, PDN_SCOPES.deliveries),
+    onUnauthorized: (node) => tokens.invalidate(node, PDN_SCOPES.deliveries),
   });
   const openData = createOpenDataAggregator({
     directory: directory.directory,
@@ -366,6 +411,7 @@ export function createTestNetwork(): TestNetwork {
     routerApp,
     relay,
     openData,
+    tokens,
     forwarded,
     federal,
     queretaro,

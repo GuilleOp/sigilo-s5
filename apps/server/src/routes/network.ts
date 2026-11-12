@@ -10,12 +10,14 @@ import {
   CorroborationEvaluationRequestSchema,
   NETWORK_ROUTES,
   NationalOpenDataSchema,
+  PDN_SCOPES,
   POW_HEADER,
   RelayRequestSchema,
 } from '@sigilo/contracts';
 import { createNodeInboxHandler, responseToRoutedReply, routedRequestToFetch } from '@sigilo/red';
 import type { AppContext } from '../context.ts';
-import { errorResponse } from '../http/errors.ts';
+import { errorBody, errorResponse } from '../http/errors.ts';
+import { requireBearer } from '../network/oauth-guard.ts';
 
 /** Mayor sobre de red (tramo de 16 MiB en Base64 con su JSON), como el enrutador. */
 export const MAX_INBOX_BODY_BYTES = 23 * 1024 * 1024;
@@ -80,8 +82,15 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
             return responseToRoutedReply(await app.request(request));
           },
         });
+  const deliveryGuard = requireBearer(ctx.oauth, PDN_SCOPES.deliveries, (c, status) =>
+    c.json(errorBody(status === 401 ? 'unauthorized' : 'forbidden'), status),
+  );
   app.post(
     NETWORK_ROUTES.nodeInbox,
+    // Seguridad: la SESNA entrega con un token del servidor de autorización de este nodo (permiso
+    // `sesna:entregas`) y, como defensa en profundidad, con la etiqueta HMAC del buzón. Se revisa
+    // antes de leer el cuerpo: sin token no se descifra nada.
+    (c, next) => (inbox === null ? next() : deliveryGuard(c, next)),
     bodyLimit({
       maxSize: MAX_INBOX_BODY_BYTES,
       onError: (c) => errorResponse(c, 'payload_too_large'),
