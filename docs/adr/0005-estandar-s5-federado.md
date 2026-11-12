@@ -62,26 +62,26 @@ Cada estado lleva una explicación en lenguaje claro de qué significa y qué si
 
 ```mermaid
 flowchart LR
-  N[Navegador de la persona denunciante] -- sobre cifrado hacia la autoridad --> V[Ventanilla única]
-  V -- solo ve el destino --> R[Enrutador ciego]
-  R --> E1[Nodo estatal]
-  R --> C[Nodo común]
-  D[(Directorio de autoridades firmado)] -.-> N
+  N[Navegador de la persona denunciante] -- web --> V[Ventanilla única de la SESNA]
+  N -- sobre cifrado hacia el nodo --> R[Enrutador ciego, mismo origen]
+  R -- solo ve el nodo destino --> E1[Nodo de un estado]
+  R --> F[Nodo federal]
+  D[(Directorio firmado con la tabla de funciones de cada nodo)] -.-> N
   D -.-> R
   E1 -- cabeza firmada --> B[(Bitácora nacional)]
-  C -- cabeza firmada --> B
+  F -- cabeza firmada --> B
   T[Testigos m de n] -- cofirman --> B
   T -- cofirman --> D
 ```
 
-| Componente         | Decisión                                                                                                                                                                                                                                                                                                                                                 | Nivel |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| Ventanilla única   | Un solo punto de entrada ciudadano (Bases, arts. 56 y 57), que sirve la web y orienta hacia la autoridad competente. No guarda denuncias.                                                                                                                                                                                                                | A     |
-| Directorio firmado | Documento JSON versionado con cada autoridad: identificador, ámbito, entidad, tipos de ente que atiende, nodo, llaves públicas X25519 y Ed25519, vigencia y autoridad supervisora (ADR 0007). Lo firma la operación de la ventanilla y lo cofirman los testigos m de n. Cada versión entra en la bitácora nacional.                                      | A     |
-| Enrutador ciego    | Recibe un sobre HPKE con un encabezado externo que solo dice el identificador de la autoridad destino y lo entrega a su nodo. No puede leer hechos, pruebas ni identidad. Los sobres se rellenan a tamaños fijos por tramo.                                                                                                                              | A     |
-| Nodos              | Cada entidad opera su propio nodo (su SESEA o su contraloría); no hay nodo común (acuerdo con la SESNA, 2026-11-11). El nodo federal aloja solo autoridades federales. Un nodo guarda sobres de sus autoridades y su propia bitácora, y declara su tabla de funciones firmada. `docker compose` levanta ventanilla con enrutador, tres nodos y testigos. | A     |
-| Turnado re-cifrado | Para turnar, el navegador de la autoridad que tiene la denuncia la descifra, toma la llave de la autoridad destino del directorio verificado y vuelve a cifrar. El evento de turnado registra los digestos de origen y destino. Nadie en medio ve el contenido.                                                                                          | A     |
-| Bitácora nacional  | Encadena las cabezas firmadas de cada nodo y las versiones del directorio. Una cabeza nacional vale solo con firmas de m de n testigos, que antes comprueban que la cadena solo creció. El navegador fija las llaves de los testigos, no las de cada autoridad.                                                                                          | A     |
+| Componente         | Decisión                                                                                                                                                                                                                                                                                                                                                   | Nivel |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| Ventanilla única   | Un solo punto de entrada (Bases, arts. 56 y 57) que monta la SESNA con el enrutador: sirve la web (perfil `ventanilla`), y el navegador propone la autoridad competente con la tabla de funciones del nodo. Los nodos no tienen ventanilla propia (perfil `panel`). No guarda denuncias.                                                                   | A     |
+| Directorio firmado | Documento JSON versionado con cada autoridad: identificador, ámbito, entidad, tipos de ente que atiende, nodo, llaves públicas X25519 y Ed25519, vigencia y autoridad supervisora (ADR 0007). Lo firma la operación de la ventanilla y lo cofirman los testigos m de n. Cada versión entra en la bitácora nacional.                                        | A     |
+| Enrutador ciego    | Recibe un sobre HPKE cuyo encabezado externo solo dice el nodo destino (sobre v2, `{ v: 2, node, sealed }`; la autoridad va cifrada adentro) y lo entrega a ese nodo. No puede leer hechos, pruebas ni identidad. Los sobres se rellenan a tamaños fijos por tramo. Si el nodo no responde, guarda cerrada una denuncia sin pruebas en su cola de entrega. | A     |
+| Nodos              | Cada entidad opera su propio nodo (su SESEA o su contraloría); no hay nodo común (acuerdo con la SESNA, 2026-11-11). El nodo federal aloja solo autoridades federales. Un nodo guarda sobres de sus autoridades y su propia bitácora, y declara su tabla de funciones firmada. `docker compose` levanta ventanilla con enrutador, tres nodos y testigos.   | A     |
+| Turnado re-cifrado | Para turnar, el navegador de la autoridad que tiene la denuncia la descifra, toma la llave de la autoridad destino del directorio verificado y vuelve a cifrar. El evento de turnado registra los digestos de origen y destino. Nadie en medio ve el contenido.                                                                                            | A     |
+| Bitácora nacional  | Encadena las cabezas firmadas de cada nodo y las versiones del directorio. Una cabeza nacional vale solo con firmas de m de n testigos, que antes comprueban que la cadena solo creció. El navegador fija las llaves de los testigos, no las de cada autoridad.                                                                                            | A     |
 
 En la red, los hechos viajan cifrados hacia la autoridad: el nodo valida forma, tamaño y prueba de
 trabajo; la validación de catálogos ocurre en el navegador antes de cifrar y en el de la autoridad
@@ -118,7 +118,7 @@ disponible para quien adopte SIGILO sin la red.
 
 ### Riesgos
 
-- El enrutador ve destino, tamaño por tramo y hora: con colusión entre enrutador y nodo se pueden
+- El enrutador ve el nodo destino (no la autoridad), el tamaño por tramo y la hora: con colusión entre enrutador y nodo se pueden
   correlacionar metadatos, no contenidos.
 - Si m testigos se coluden con la operación, pueden aprobar un directorio con una llave falsa. Por
   eso los testigos deben ser de sectores distintos (ADR 0007) y todo cambio queda en la bitácora.

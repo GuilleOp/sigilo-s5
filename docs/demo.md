@@ -162,6 +162,8 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 | Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso; `solicitudes`: alta pendiente y su huella)          |
 | Solicitud de alta          | <http://127.0.0.1:8790/solicitar-alta> (va al nodo de la entidad); bandeja con `operacion.<nodo>` en su panel |
 | Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                  |
+| Salud de los nodos         | <http://127.0.0.1:8790/api/v1/red/health/nodes.html> (para la operación: versiones, último contacto y cola)   |
+| Estadística para la PDN    | <http://127.0.0.1:8790/api/v1/red/national/statistics> (corte que la SESNA arma con OAuth 2.0)                |
 
 Cada autoridad abre el panel con **su propia llave**, la que corresponde a su entrada en el
 directorio firmado: es la llave con la que el navegador de quien denuncia sella la identidad y los

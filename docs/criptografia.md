@@ -604,6 +604,24 @@ red:demo` genera la llave del evaluador y la publica en el directorio, y `compos
 - **Custodio.** Servicio que tenga la llave del custodio y abra solo custodias liberadas; aún no
   existe (nivel B: formato y estados con pruebas).
 
+### Tabla de funciones del nodo
+
+La `FunctionTable` (formato 1) la firma el nodo con su llave Ed25519 de firma del directorio sobre
+`sigilo/red/function-table/v1:` + el SHA-256 de su forma canónica (`signFunctionTable` y
+`verifyFunctionTableSignature` en `packages/red/src/function-table.ts`). Viaja dentro del directorio
+(`functionTables`), que además firma la operación y cofirman los testigos: la operación no puede
+cambiar la tabla de un estado sin la llave de ese nodo, y el navegador rechaza un directorio con una
+tabla sin firma válida de su nodo (`functionTableProblems`).
+
+### Token de acceso entre la SESNA y los nodos
+
+El token de `POST /oauth/token` es un JWT HS256 (`typ: at+jwt`) de 5 minutos que firma y verifica
+solo el nodo que lo emitió, con una llave HMAC aleatoria de 32 bytes que nunca sale del proceso (un
+reinicio invalida los tokens vigentes). Lleva `iss` = `aud` = id del nodo, `sub` = cliente, `scope`,
+`iat`, `exp` y `jti`. El nodo guarda solo el SHA-256 del secreto de cada cliente y el digesto scrypt
+de la contraseña del flujo `password`, y compara en tiempo constante
+(`apps/server/src/network/oauth-server.ts`).
+
 ### Cola de entrega del enrutador
 
 Cuando el nodo destino no responde, el enrutador puede guardar una denuncia sin pruebas en su cola

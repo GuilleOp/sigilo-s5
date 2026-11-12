@@ -265,6 +265,8 @@ al integrar su corrección; el resumen está en [historial-de-seguridad.md](hist
 | G16 | Reusar un token de acceso filtrado contra el buzón o la estadística                          | A9, A5  | STRIDE S, I  | Tokens de 5 minutos con `aud` del nodo y permiso mínimo; el buzón exige además el HMAC del enrutador; los tokens no se registran ni se devuelven en errores                           | Media-baja | M         |
 | G17 | Reconstruir una celda suprimida con filtros o con cortes sucesivos de la estadística         | A9, A2  | LINDDUN I, L | Meses cerrados y congelados una vez; redondeo al azar con semilla que se borra al congelar; supresión bajo 5; filtros que solo eligen filas, sin totales ni marginales                | Media      | M parcial |
 | G18 | Un nodo publica de más (mes abierto, autoridad ajena) en la estadística nacional             | A9      | STRIDE T     | El enrutador valida esquema (múltiplos de 5, mínimo 5), meses cerrados, autoridades del propio nodo y repetidas; descarta completo al nodo                                            | Baja       | M         |
+| G19 | La operación de la ventanilla cambia la tabla de funciones de un estado                      | A9      | STRIDE T     | Tabla firmada por su nodo dentro del directorio; el navegador rechaza la que no lleva esa firma o nombra autoridades de otro nodo o entidad; los testigos ven cada versión            | Media      | M         |
+| G20 | Colar una llave falsa por la solicitud de alta de una autoridad                              | A9, A2  | STRIDE S     | Prueba de trabajo; se aprueba solo si la huella del candado leída por teléfono coincide con la que calcula el navegador de la operación, y el servidor la recalcula                   | Media      | M parcial |
 
 Notas:
 
@@ -304,6 +306,11 @@ Notas:
   diferida: el tope por hora del nodo (`MAX_DEFERRED_PER_HOUR`) lo acota. Residual: lo que vence
   a los 7 días sin que el nodo vuelva se pierde; la persona no recibe aviso (su folio no aparece
   en «Mi denuncia») y la web lo advierte al dejarla en la cola.
+- **G19.** Un estado sí puede declarar una tabla que no corresponde a su ley: la firma prueba quién
+  la declaró, no que sea correcta. «¿Quién atiende tu denuncia en tu estado?» la publica para que
+  cualquiera la revise.
+- **G20.** La huella solo protege si la llamada va a un número obtenido por otra vía, no al de la
+  solicitud; el paso 4 (agregar la entrada al directorio) sigue siendo manual.
 - **G14.** La versión la declara el propio nodo en `GET /api/v1/red/health`: un nodo puede
   mentir. La mínima sirve para detener a tiempo los nodos que no se han actualizado, no contra
   uno malicioso (que ya es A9). La salud se publica sin autenticación: revela qué nodo está caído

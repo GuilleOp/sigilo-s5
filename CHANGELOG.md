@@ -5,31 +5,79 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [1.1.0] - 2026-11-12
+
+Una sola ventanilla nacional en la SESNA, un nodo por estado (sin nodo común), tabla de funciones
+firmada por cada nodo, APIs con la SESNA en el modelo OAuth 2.0 de la PDN, catálogos reales de
+entes y municipios, y la bandeja de turnado con las reglas del S5.
+
 ### Agregado
 
-- Tabla de funciones de cada nodo (`FunctionTable`, formato 1): qué institución cumple cada
-  función en su entidad, por orden de gobierno, por ente y por gravedad. La firma el nodo y viaja
-  en el directorio cofirmado; con ella se propone la autoridad, el panel muestra quién sigue y
-  «¿Quién atiende tu denuncia en tu estado?» la publica.
-- Ventanilla única en la SESNA: el enrutador sirve la web en perfil «ventanilla»; los nodos, solo
-  el panel (perfil «panel»). Sin nodo común: la demo tiene nodo propio de Oaxaca (8783).
-
+- **Ventanilla única en la SESNA.** El enrutador sirve la web compilada con
+  `VITE_SIGILO_PERFIL=ventanilla` en su mismo origen (`apps/enrutador/src/web.ts`,
+  `SIGILO_ROUTER_WEB_DIST`, puerto 8790), con pasos mínimos al evaluador OPRF, a la bitácora
+  pública de cada nodo y a la solicitud de alta. Perfiles de la web: `ventanilla`, `panel` (cada
+  nodo: solo `/autoridad`; lo demás dice dónde está la ventanilla) y `completo` (un solo nodo, por
+  omisión, para pruebas y E2E).
+- **Un nodo por estado, sin nodo común.** Cada estado monta su nodo y el federal aloja solo
+  autoridades federales. Una entidad sin nodo no recibe denuncias sobre sus entes estatales o
+  municipales: la ventanilla lo dice y no envía nada. La demostración levanta Querétaro (8781),
+  Federal (8782) y Oaxaca (8783, entidad real con escenario sintético, en lugar del «Estado
+  Ejemplo» ficticio).
+- **Tabla de funciones de cada nodo** (`FunctionTable`, formato 1, `packages/red/src/function-table.ts`):
+  qué institución cumple cada una de las 8 funciones (buzón, operación, investigación y
+  calificación, substanciación, resolución, supervisión, vía penal y observador), por orden de
+  gobierno, por ente y por gravedad. La firma el nodo y viaja en el directorio cofirmado;
+  `proposeCompetentAuthority` la usa para proponer la autoridad, el panel muestra quién sigue y
+  «¿Quién atiende tu denuncia en tu estado?» (`/quien-atiende`) publica cada tabla y las entidades
+  sin nodo.
+- **Sobre de red v2** (`{ v: 2, node, sealed, deferral? }`): el encabezado externo nombra solo el
+  nodo destino; la autoridad va cifrada adentro. El sobre v1 se rechaza con `400`.
+- **Cola de entrega del enrutador** para nodos que no responden: solo denuncias sin pruebas
+  adjuntas, con reto de prueba de trabajo propio del enrutador, acuse firmado por la operación,
+  reintentos de 30 s a 1 h, vencimiento a los 7 días y tope de 500 sobres o 64 MiB por nodo.
+- **Salud de los nodos y versión mínima:** cada nodo sirve `GET /api/v1/red/health`; el enrutador
+  publica `GET /api/v1/red/health/nodes` y `nodes.html` y, con `SIGILO_ROUTER_MIN_NODE_VERSION`, no
+  entrega a un nodo con software menor.
+- **APIs entre la SESNA y los nodos con OAuth 2.0, como en las APIs del S2 y el S3 de la PDN:** cada
+  nodo es su propio servidor de autorización (`POST /oauth/token`, flujos `password`, `client_credentials` y
+  `refresh_token`) con permisos `sesna:entregas`, `sesna:estadisticas` y `sesna:salud`
+  (reservado). Las entregas al buzón de red exigen el token además del HMAC del enrutador.
+- **Estadística para el portal de la PDN:** `POST /v1/denuncias/estadisticas` en cada nodo, con
+  respuesta `{ pagination, results }` como S2 y S3, meses cerrados y congelados, conteos
+  redondeados a múltiplos de 5, suprimidos bajo 5 y medianas solo con 10 observaciones o más. La
+  SESNA la consulta para publicarla en la PDN; el corte nacional queda en
+  `GET /api/v1/red/national/statistics`.
+- **Corte nacional de datos abiertos:** el enrutador suma el CSV agregado de cada nodo y el
+  observatorio lo muestra (Bases de la PDN, arts. 60 y 61); sin red, rotula los «Datos de ejemplo».
+- **Catálogos reales:** 2,478 municipios y alcaldías del INEGI y 7,213 entes públicos del
+  directorio de la PDN (`packages/contracts/src/entes/`); el asistente descarga solo el fragmento
+  de la entidad elegida y el federal. Los entes ficticios se muestran con «(ficticia)» y ninguna
+  denuncia sembrada acusa a una institución real.
+- **Mapa del S5 por entidad** en el observatorio, con el contorno del INEGI y tres capas: conexión
+  al S5, denuncias por 100 000 habitantes y protección del anonimato. La cobertura de los demás
+  sistemas queda en la página de cobertura de la SESNA, enlazada desde la tabla.
+- **Bandeja de turnado como la del S5:** semáforo de turnado y aceptación (por vencer a 1 día
+  hábil, vencida a 2), motivo del turno obligatorio de al menos 10 caracteres, tope de 3
+  reasignaciones (`reassignment_limit`) y aviso de turnado vencido para la supervisión.
+- La supervisora abre los escalamientos desde «Escalamientos que recibiste», agrupados por regla,
+  con la segunda llave: ve hechos, nunca la identidad.
 - Ayudas automáticas al escribir el relato: cuatro partes (qué pasó, cuándo, dónde, qué efecto
   tuvo) que se marcan solas y conductas sugeridas por las palabras, todo en el navegador.
 - «Ninguna se parece» (`SIN-CLASIFICAR`): la denuncia llega al buzón general, que la clasifica; aviso
   de vía propia si el relato menciona tortura o desaparición.
 - Catálogo de conductas cotejado con la LGRA (DOF 15-12-2025) y el CPF (DOF 13-03-2026): LGRA 64
-  Bis, 64 Ter, 64 Quáter y 73, y CPF 225; «¿Quién lo hizo?» acorta la lista.
+  Bis, 64 Ter, 64 Quáter y 73, y CPF 225 (38 claves con `SIN-CLASIFICAR`); «¿Quién lo hizo?»
+  acorta la lista.
 - El detalle de la denuncia trae `s5References`: artículos de la ley de responsabilidades y del
   código penal de la entidad con su id del catálogo de faltas del S5 (95 % de 3,559 entradas).
 - Cada autoridad entra al panel con su propia llave, comprobada contra el directorio firmado, y
   puede crear su par en el navegador («Crear mis llaves»).
 - Cuentas por función: recepción e investigación juntas, substanciación y resolución separada
-  (LGRA arts. 3 y 115) y operación del nodo; la demo pasa de 16 a 13 cuentas con nombres claros.
-- Buzón general como respaldo: sin autoridad competente en el directorio, la denuncia llega al
-  buzón del nodo de la entidad, que la turna (Bases de la PDN, arts. 56 y 58).
-- Corte nacional de datos abiertos: el enrutador suma el CSV agregado de cada nodo y el
-  observatorio lo muestra (Bases de la PDN, arts. 60 y 61).
+  (LGRA arts. 3 y 115) y operación del nodo, que solo ve las solicitudes de alta; la demo queda
+  en 15 cuentas con nombres claros (9 en el nodo Federal y 3 en cada nodo estatal).
+- Buzón general como respaldo: sin autoridad competente en la tabla de la entidad, la denuncia
+  llega al buzón del nodo de esa entidad, que la turna (Bases de la PDN, arts. 56 y 58).
 - Un solo campo para elegir oficina y conducta (escribir y elegir en la misma lista).
 - Personas ciudadanas (`docs/personas-ciudadanas.md`): aviso propio en la revisión para quien no
   trabaja en la oficina, con información sobre el soborno (LGRA, arts. 66, 88 y 89) y las
@@ -99,6 +147,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   ciega (Marta, Luis y los casos ciudadanos): el digesto del envío incluía la corroboración y el
   detalle no. Ahora entra su digesto (`corroborationDigest`, migración 13), que también recibe la
   supervisora; la autoridad no ve la etiqueta.
+- Los plazos largos se muestran en años y meses («Faltan 6 años y 1 mes») en lugar de miles de
+  días.
+- El paso de envío usa la barra de pasos y termina con «Listo», «Ver mi denuncia» e «Ir al
+  inicio».
+- La tabla del panel ya no parte palabras letra por letra; «Salida rápida» y el enlace al panel ya
+  no aparecen en `/autoridad` ni en `/solicitar-alta`.
+- Un solo estilo para todos los desplegables; selector de archivos en español; los títulos que
+  reciben el foco por programa ya no muestran recuadro.
+- El observatorio ya no muestra «suprimidas» como un estatus (pasan a una nota) y «Datos abiertos»
+  aclara que su tabla es del nodo y la suma de la red está en el observatorio.
+- La bandeja de altas muestra fechas largas y los nombres de ley del catálogo de faltas del S5 se
+  escriben como se citan, sin MAYÚSCULAS.
+- La imagen de Docker de la web incluye las equivalencias del S5.
 
 ## [1.0.1] - 2026-11-05
 

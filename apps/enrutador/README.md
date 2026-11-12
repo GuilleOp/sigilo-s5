@@ -1,13 +1,19 @@
 # Enrutador ciego de SIGILO (`@sigilo/enrutador`)
 
 Pieza central de la red federada «un S5, muchas llaves» ([ADR 0005](../../docs/adr/0005-estandar-s5-federado.md)
-y [ADR 0007](../../docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)). Hace tres cosas:
+y [ADR 0007](../../docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)). Lo opera la SESNA y hace
+cuatro cosas:
 
 1. **Publica el directorio de autoridades** firmado por la operación y cofirmado por m de n testigos.
 2. **Reenvía sobres opacos** al nodo destino, sin poder leerlos: el sobre v2 nombra solo el nodo;
    la autoridad va cifrada adentro y la entrega el nodo.
 3. **Lleva la bitácora nacional**: encadena las cabezas firmadas de cada nodo y las versiones del
    directorio, y publica una cabeza nacional que solo vale con m cofirmas de testigos.
+4. **Sirve la ventanilla única** (`src/web.ts`): con `SIGILO_ROUTER_WEB_DIST`, entrega la web
+   construida en perfil `ventanilla` (`VITE_SIGILO_PERFIL=ventanilla`) en su mismo origen, con su
+   propia CSP, y pasos mínimos a rutas públicas (`VENTANILLA_ROUTES`): el evaluador OPRF, la
+   bitácora pública de cada nodo y la solicitud de alta, que va al nodo de la entidad. Los nodos no
+   tienen ventanilla propia.
 
 Además, como el S1 de la PDN (cada entidad publica y la SESNA consulta por API), arma el **corte
 nacional de datos abiertos** (Bases de la PDN, arts. 60 y 61): **la SESNA consulta números y
@@ -38,6 +44,8 @@ O toda la red con `npm run demo:todo` (o `docker compose build && docker compose
 | `SIGILO_ROUTER_HSTS_MAX_AGE`             | sin HSTS              | `max-age` cuando se publica detrás de HTTPS                                                   |
 | `SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS`  | `60`                  | Cada cuánto consulta la salud de cada nodo                                                    |
 | `SIGILO_ROUTER_MIN_NODE_VERSION`         | sin mínima            | `mayor.menor.parche`: a un nodo con versión menor no se le entrega                            |
+| `SIGILO_ROUTER_WEB_DIST`                 | vacío (sin web)       | Carpeta de la web en perfil `ventanilla`; en la imagen, `/app/ventanilla`                     |
+| `SIGILO_ROUTER_EVALUATOR_URL`            | la del directorio     | Dirección interna del evaluador OPRF para el paso de la ventanilla                            |
 | `SIGILO_ROUTER_QUEUE_POW_BITS`           | `18`                  | Dificultad del reto propio de la cola de entrega (0 a 24)                                     |
 | `SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS`   | `15`                  | Cada cuánto revisa la cola (cada sobre lleva su siguiente intento)                            |
 | `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir                                 |
@@ -158,9 +166,10 @@ Qué se verifica y qué no, con honestidad:
 | Qué cabeza de bitácora tenía cada nodo en el momento del corte       | La cabeza no contiene conteos: es referencia de integridad, no prueba |
 | Que ningún nodo baja las reglas (mes abierto o celda pequeña: fuera) | El corte no lo firma la operación; se guarda solo en memoria          |
 
-El corte se guarda en memoria y se rehace en cada vuelta (el primero, al arrancar). El nodo lo
-pasa a su web en el mismo origen (`GET /api/v1/red/national/open-data`, validado con el esquema)
-para el observatorio. En la demostración, `SIGILO_ROUTER_CLOCK_FILE` usa el reloj simulado de los
+El corte se guarda en memoria y se rehace en cada vuelta (el primero, al arrancar). La ventanilla
+lo lee en su mismo origen para el observatorio y «Datos abiertos»; cada nodo también lo pasa
+en su mismo origen (`GET /api/v1/red/national/open-data`, validado con el esquema) para una web en
+perfil `completo`. En la demostración, `SIGILO_ROUTER_CLOCK_FILE` usa el reloj simulado de los
 nodos solo para decidir qué meses están cerrados; la bitácora nacional y el directorio siguen con el
 reloj real.
 
@@ -315,8 +324,9 @@ nodeId, signingPrivateKey }).register({ sequence, standardVersion, acceptsRelay:
    `.red-demo/autoridades/`.
 7. **Testigo propio.** El nodo Querétaro es testigo y cofirma desde su tarea periódica con
    `runWitnessOnce` de `@sigilo/red/witness`, el mismo código del proceso testigo.
-8. **Web.** Para la ventanilla única, la web fijará `network-trust.json` (se genera junto a
-   `pinned-keys.json`), verificará el directorio con `verifySignedDirectory`, propondrá la
-   autoridad con `proposeCompetentAuthority` y cifrará con `sealRoutedRequest`. Como la web no
-   hace peticiones a otros orígenes, el directorio firmado debe servirse en el mismo origen (un
-   nodo puede servir una copia: está firmado).
+8. **Web.** La ventanilla única fija `network-trust.json` (se genera junto a `pinned-keys.json`),
+   verifica el directorio con `verifySignedDirectory`, propone la autoridad con
+   `proposeCompetentAuthority` (con la tabla de funciones del nodo) y cifra con
+   `sealRoutedRequest`. Como la web no hace peticiones a otros orígenes, el directorio firmado se
+   sirve en el mismo origen: el del enrutador para la ventanilla (un nodo puede servir una copia:
+   está firmado).

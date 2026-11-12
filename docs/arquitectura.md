@@ -102,17 +102,24 @@ de protección). Así no puede moverse a otra denuncia. Ver [criptografia.md](cr
 
 El servidor es un **nodo de varias autoridades**. Cada persona de la autoridad entra con su cuenta
 individual (`authority-accounts.json`, fuera del repositorio), que tiene una autoridad y una
-función:
+función, o recepción e investigación juntas (`AUTHORITY_FUNCTION_SETS`; la LGRA no obliga a
+separarlas). Ninguna otra combinación se admite:
 
-| Función                         | Puede                                                                                                         | No puede                                    |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Recepción y turnado (`intake`)  | Turnar desde el buzón general, aceptar, reasignar, devolver, cerrar lo improcedente del buzón, descartar spam | Solicitar ni aprobar aperturas de identidad |
-| Investigación (`investigation`) | Avanzar etapas legales, cerrar con fundamento, escribir por el buzón, solicitar y aprobar aperturas           | Turnar                                      |
-| Supervisión (`supervision`)     | Aprobar aperturas, leer los acuerdos de cierre (auditor) y, en la supervisora, recibir escalamientos          | Acciones del trámite                        |
+| Función                                        | Puede                                                                                                                                                                | No puede                                    |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Recepción y turnado (`intake`)                 | Turnar desde el buzón general (con motivo de al menos 10 caracteres), aceptar, reasignar (hasta 3 veces), devolver, cerrar lo improcedente del buzón, descartar spam | Solicitar ni aprobar aperturas de identidad |
+| Investigación (`investigation`)                | Investigar y calificar, presentar el informe (IPRA), cerrar lo que investiga, escribir por el buzón, solicitar y aprobar aperturas                                   | Turnar                                      |
+| Substanciación y resolución (`substantiation`) | Avanzar las etapas posteriores al informe y cerrar desde que se presentó (LGRA arts. 3 y 115); nunca es la misma persona que investiga                               | Turnar ni abrir identidades                 |
+| Supervisión (`supervision`)                    | Aprobar aperturas, leer los acuerdos de cierre (auditor) y, en la supervisora, recibir escalamientos y alertas de turnado vencido                                    | Acciones del trámite                        |
+| Operación del nodo (`operation`)               | Revisar y resolver las solicitudes de alta de autoridades                                                                                                            | Ver denuncias, turnar ni abrir identidades  |
 
 Cada denuncia la tiene una autoridad (el buzón general hasta que se turna). Solo las cuentas de esa
 autoridad la ven: otra recibe `404`, igual que con un folio inexistente. La sesión vence a los 15
 minutos sin actividad o a las 8 horas y se cierra en el servidor.
+
+**Semáforo de turnado** (`TURN_SEMAPHORE`, como en la bandeja del S5): una denuncia sin turnar o
+turnada sin aceptar queda «por vencer» al cumplir 1 día hábil esperando y «vencida» a los 2; la
+supervisión recibe el aviso de las vencidas.
 
 ```mermaid
 sequenceDiagram
@@ -242,7 +249,7 @@ acordado con la SESNA:
   Secretaría Anticorrupción y Buen Gobierno), no la SESNA.
 - **Cada nodo declara su tabla de funciones**: qué institución cumple cada función en su entidad
   (buzón general, operación del nodo, investigación y calificación, substanciación, resolución,
-  supervisión, vía penal y observador). La ventanilla turna con esa tabla.
+  supervisión, vía penal y observador). Con esa tabla el navegador propone la autoridad (turnado automático) y el enrutador entrega el sobre a ciegas.
 
 Agrega tres piezas sin cambiar la API v1 del nodo:
 

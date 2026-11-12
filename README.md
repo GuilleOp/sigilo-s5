@@ -9,18 +9,19 @@ de faltas administrativas y hechos de corrupción (S5) de la Plataforma Digital 
 Proyecto del **Equipo Sigilo** para el Datatón Anticorrupción 2026 (reto S5). Estado: prototipo
 funcional de referencia, con pruebas unitarias y de extremo a extremo. **No es el sistema oficial**
 ni está listo para recibir denuncias reales sin una evaluación de seguridad independiente (ver
-[SECURITY.md](SECURITY.md)). Todos los datos de personas, entes y empresas son
-[sintéticos](docs/datos-sinteticos.md).
+[SECURITY.md](SECURITY.md)). Los datos de personas, empresas y casos son
+[sintéticos](docs/datos-sinteticos.md); los catálogos de entes públicos (directorio de la PDN) y de
+municipios (INEGI) son reales, y ninguna institución real aparece denunciada en la demostración.
 
 ## Qué propone
 
-| Idea                                 | En concreto                                                                                                                                                                                                                              |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Un canal único federado              | «Un S5, muchas llaves»: una sola ventanilla, un enrutador ciego que entrega cada denuncia a la autoridad competente sin poder leerla y un nodo por autoridad con sus propias llaves ([ADR 0005](docs/adr/0005-estandar-s5-federado.md)). |
-| Un estándar que se puede comprobar   | Especificación OpenAPI 3.1 y diccionario de datos del S5, perfiles de seguridad y de privacidad con fundamento en OWASP ASVS y la LGRA, y un validador que revisa cualquier sitio contra ellos ([estandar/](estandar/README.md)).        |
-| La PDN como escudo                   | Los datos de la PDN protegen a quien denuncia (tamaño de su grupo de anonimato, calculado con S1) y respaldan su denuncia ante la autoridad (contexto, conflicto de interés y prioridad con S2, S3 y S6).                                |
-| Rendición de cuentas de la autoridad | Plazos legales, reglas públicas de escalamiento a supervisión y un auditor que señala cierres con plantilla o calificaciones degradadas ([ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)).                             |
-| Un auditor que señala y no decide    | Las reglas AUD-01 a AUD-08 son cálculos deterministas y públicos; lo que se escala lo decide una regla, no un modelo ([ADR 0009](docs/adr/0009-ia-local.md)).                                                                            |
+| Idea                                 | En concreto                                                                                                                                                                                                                                                                                         |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Un canal único federado              | «Un S5, muchas llaves»: una sola ventanilla en la SESNA, un enrutador ciego que entrega cada denuncia al nodo de la autoridad competente sin poder leerla y un nodo por estado (más el federal), donde cada autoridad tiene sus propias llaves ([ADR 0005](docs/adr/0005-estandar-s5-federado.md)). |
+| Un estándar que se puede comprobar   | Especificación OpenAPI 3.1 y diccionario de datos del S5, perfiles de seguridad y de privacidad con fundamento en OWASP ASVS y la LGRA, y un validador que revisa cualquier sitio contra ellos ([estandar/](estandar/README.md)).                                                                   |
+| La PDN como escudo                   | Los datos de la PDN protegen a quien denuncia (tamaño de su grupo de anonimato, calculado con S1) y respaldan su denuncia ante la autoridad (contexto, conflicto de interés y prioridad con S2, S3 y S6).                                                                                           |
+| Rendición de cuentas de la autoridad | Plazos legales, reglas públicas de escalamiento a supervisión y un auditor que señala cierres con plantilla o calificaciones degradadas ([ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)).                                                                                        |
+| Un auditor que señala y no decide    | Las reglas AUD-01 a AUD-08 son cálculos deterministas y públicos; lo que se escala lo decide una regla, no un modelo ([ADR 0009](docs/adr/0009-ia-local.md)).                                                                                                                                       |
 
 ## Cómo protege a la persona denunciante
 
@@ -74,9 +75,9 @@ npm run demo:todo     # genera llaves y cuentas sintéticas, construye, levanta,
 npm run demo:apagar   # baja la red y borra .red-demo/
 ```
 
-Levanta la red federada completa (la ventanilla única con el enrutador ciego, un nodo por estado
-con su panel: Querétaro, Federal y Oaxaca, sin nodo común; evaluador, índice y testigos) y siembra el escenario de [demo-escenario.md](docs/demo-escenario.md) hasta el
-día 35. Con caché tarda alrededor de un minuto; la primera vez descarga la imagen de Node y los
+Levanta la red federada completa (la ventanilla única de la SESNA con el enrutador ciego; un nodo
+por estado, solo con su panel: Querétaro, Federal y Oaxaca, sin nodo común; evaluador, índice y
+testigos) y siembra el escenario de [demo-escenario.md](docs/demo-escenario.md) hasta el día 35. Con caché tarda alrededor de un minuto; la primera vez descarga la imagen de Node y los
 paquetes de npm.
 
 | Qué                        | Dónde                                                                    |
@@ -109,13 +110,16 @@ npm run dev:web            # en otra terminal: http://127.0.0.1:5173
 No confirmes ese cambio: son las llaves sintéticas de tu equipo.
 
 Abre `http://127.0.0.1:5173`. La web y la API comparten origen a través del proxy de Vite, así que
-CORS queda desactivado.
+CORS queda desactivado. Sin `VITE_SIGILO_PERFIL`, la web se compila en perfil `completo`: todas las
+pantallas sobre un solo nodo, sin red. La red de Docker usa los otros dos: `ventanilla` (la web
+pública que sirve el enrutador) y `panel` (solo `/autoridad`, en cada nodo).
 
 Panel de la autoridad (enlace «Panel de autoridad» del pie, o `http://127.0.0.1:5173/autoridad`):
 
 - Cuenta: un usuario y su contraseña de `apps/server/data/authority-demo-credentials.json`, que
   `accounts:generate` crea (una cuenta por persona, con su autoridad y sus funciones: recepción y
-  turnado, investigación, las dos juntas, substanciación y resolución, o supervisión). Las
+  turnado, investigación, las dos juntas, substanciación y resolución, supervisión u operación del
+  nodo, que solo ve las solicitudes de alta). Las
   denuncias nuevas llegan al buzón general (`buzon.federal`), que las turna. Abrir una identidad exige dos personas de la autoridad.
 - Llave: importa el archivo `apps/server/data/authority-demo-key.json`.
 
@@ -161,7 +165,7 @@ npx playwright install chromium       # una sola vez
 npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
 ```
 
-Hay más de 1,250 pruebas unitarias, 34 del proceso de datos en Python y más de 90 de extremo a extremo;
+Hay más de 1,300 pruebas unitarias, 34 del proceso de datos en Python y más de 90 de extremo a extremo;
 la [integración continua](.github/workflows/ci.yml) las corre en cada push con Node 22.18 y la
 versión más reciente, junto con `npm audit` de las dependencias de producción.
 
@@ -246,8 +250,10 @@ auditor admite un modelo abierto local opcional, desactivado por omisión. Detal
 
 ## Datos
 
-El repositorio no contiene datos personales reales. Las personas, entes, empresas, folios y recibos
-de la demostración son sintéticos. Los datos de la PDN se usan solo en forma agregada, con su
+El repositorio no contiene datos personales reales. Las personas, empresas, autoridades del
+directorio de la red, folios y recibos de la demostración son sintéticos, y los casos usan entes
+rotulados «(ficticia)». Los catálogos públicos son reales: 7,213 entes del directorio de la PDN y
+2,478 municipios del INEGI ([detalle](packages/contracts/src/entes/README.md)). Los datos de la PDN se usan solo en forma agregada, con su
 proceso reproducible en [datos/](datos/README.md).
 
 ## Licencia
