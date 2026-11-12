@@ -6,10 +6,15 @@ de SIGILO. **Deben operarlos partes distintas**: si una misma parte tiene la lla
 las etiquetas del índice, puede calcular en silencio la etiqueta de cada nombre de las listas
 públicas.
 
-| Servicio                | Puerto | Lo llama  | Rutas                                                                                               |
-| ----------------------- | ------ | --------- | --------------------------------------------------------------------------------------------------- |
-| Evaluador OPRF          | 8791   | Navegador | `GET evaluador/llave`, `GET evaluador/reto`, `POST evaluador/evaluaciones`, `GET evaluador/conteos` |
-| Índice de coincidencias | 8792   | Nodos     | `POST indice/registros`, `POST indice/avisos`                                                       |
+| Servicio                | Puerto | Lo llama                                           | Rutas                                                                                               |
+| ----------------------- | ------ | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Evaluador OPRF          | 8791   | Navegador, por el paso de la ventanilla o del nodo | `GET evaluador/llave`, `GET evaluador/reto`, `POST evaluador/evaluaciones`, `GET evaluador/conteos` |
+| Índice de coincidencias | 8792   | Nodos                                              | `POST indice/registros`, `POST indice/avisos`                                                       |
+
+Los puertos son los del proceso: en `compose.yaml` y en `compose.sesna.yaml` ninguno de los dos se
+publica en el equipo. El evaluador no responde CORS; la web llega a él por el paso del mismo origen
+(la ventanilla en el 8790). Los nodos llegan al índice por la red interna en la demostración y,
+en producción, por la dirección `indiceUrl` de `red.json`, que publica quien opere el índice.
 
 Todas bajo `/api/v1/corroboracion/`. Esquemas en `packages/contracts/src/corroboration.ts` y en el
 grupo «Corroboración» de `estandar/openapi.yaml`.

@@ -58,6 +58,12 @@ volumen y secretos derivados. `./sigilo diagnostico` revisa la lista de abajo.
 | Nodo, frente «panel»        | 443 → 8788     | Restringido           | VPN de la institución                                                |
 | Testigos                    | —              | No                    | Nadie: no tienen entrada                                             |
 
+Los puertos de la tabla son los del proceso. El evaluador (8791) y el índice (8792) no se publican en
+el equipo: en la demostración, la web llega al evaluador por el paso de la ventanilla en el 8790 y
+los nodos, por la red interna. Con `./sigilo instalar`, el contenedor del nodo publica el frente
+«red» en `127.0.0.1:8080` y el «panel» en `127.0.0.1:8081`; Caddy los sirve en el 443 y en el 8443
+([instalacion-nodo.md](instalacion-nodo.md#paso-2-instala)).
+
 **La regla central:** la persona denuncia solo en la ventanilla de la SESNA. El sobre llega cerrado
 al nodo por su buzón. Por eso el nodo, en perfil `nodo`, **no** publica la denuncia directa: si lo
 hiciera, su operador vería la IP de quien denuncia.
@@ -219,10 +225,12 @@ Y la SESNA, en el enrutador:
 
 ## 4. Riesgos que quedan
 
-- **Pruebas en claro en el disco del nodo (H04).** Se están cifrando hacia la autoridad en otro
-  cambio. Hasta entonces, el disco y los respaldos del nodo deben ir cifrados.
-- **Metadatos de las pruebas (H14).** El servidor no comprueba que la imagen venga sin EXIF. Esa
-  limpieza vive en el navegador y se revisa con el cambio de pruebas.
+- **Pruebas (H04, H14).** Ya no quedan en claro: el navegador las limpia (Huella Cero) y las cifra
+  hacia la autoridad, y el nodo guarda solo el contenedor (G21 a G25 del
+  [modelo de amenazas](modelo-de-amenazas.md)). Por lo mismo, el servidor no puede comprobar que la
+  imagen venga sin EXIF ni su tipo real: lo hace el panel al descifrar. Los hechos sí quedan en
+  claro en la base del nodo, así que el disco y los respaldos deben ir cifrados (`./sigilo
+respaldar` ya cifra el respaldo).
 - **Sin segundo factor en el panel (H05).** El bloqueo por usuario ya frena la adivinanza, pero un
   tercero que conozca el usuario puede bloquear a su dueña durante 15 minutos. Eso es aceptable
   solo con el panel detrás de VPN. **Trabajo futuro recomendado:** TOTP (RFC 6238) o, mejor,
@@ -231,8 +239,9 @@ Y la SESNA, en el enrutador:
   que sigue abierto en el frente del panel, sin sesión. Quien entre a la red del panel puede usarlo
   como cualquier persona usa la ventanilla. Es otra razón para la VPN. Pendiente: exigir la sesión
   de la autoridad en ese paso.
-- **Cuota de pruebas por reto en bytes (H06).** Por ahora el tope cuenta subidas, no bytes. La
-  cuota por reto llega con el nuevo almacén de pruebas.
+- **Cuota de pruebas por reto en bytes (H06).** El tope de retos abiertos cuenta subidas, no bytes;
+  la parte de pendientes de la cuota sí se mide en bytes. La cuota por reto en bytes es un
+  siguiente paso.
 - **Análisis de tráfico (H13).** Quien observe la entrada de la SESNA y el enlace hacia un estado
   puede correlacionar por tiempo y por tramo. El tramo de 16 MiB delata «denuncia con pruebas».
   No hay retardo mínimo ni tráfico de cobertura.

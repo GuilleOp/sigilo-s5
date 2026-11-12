@@ -27,7 +27,7 @@ Los paquetes son ESM y TypeScript sin paso de build: el bundler del frontend los
 | Persona denunciada      | `ComplaintFacts.accused`        | En claro                                                                                                                                                          |
 | Ubicación               | `stateCode`, `municipalityCode` | Claves INEGI; el municipio debe pertenecer a la entidad; sin coordenadas                                                                                          |
 | Testigos                | `IdentityBlock.witnesses`       | Dentro del sobre                                                                                                                                                  |
-| Pruebas                 | `EvidenceDescriptor`            | Limpias y verificadas en el navegador; el digesto original va en el sobre                                                                                         |
+| Pruebas                 | `EvidenceDescriptor`            | Limpias y verificadas en el navegador y cifradas hacia la autoridad (`sealEvidence`, contenedor `SGEV`); el backend guarda solo el contenedor                     |
 | Folio de seguimiento    | `Folio` + recibo                | El backend genera el folio (por la red puede elegirlo el navegador al azar, `RoutedRequest.folio`, y el nodo rechaza uno repetido); el navegador genera el recibo |
 
 ## Vocabulario de la bandeja del S5
@@ -140,6 +140,8 @@ Las equivalencias son automáticas: revísalas antes de usarlas como fundamento.
    - pasar cada archivo por `classifyFile`, `sanitizeImage` o `rasterizePdf`, y volver a inspeccionar
      la copia con `inspectImageMetadata` (`includeColorProfile: false`); si conserva metadatos, no se
      sube;
+   - cifrar cada copia limpia hacia la autoridad con `sealEvidence` de `@sigilo/core`, con el folio
+     en el AAD (ver «Pruebas cifradas de extremo a extremo» en [criptografia.md](criptografia.md));
    - aplicar `stripInvisibleCharacters` y `reviewText` a los textos;
    - mostrar `assessRisk` y una vista previa de lo que verá la autoridad;
    - desactivar `spellcheck`, `translate` y `autocomplete` en los campos.
@@ -149,6 +151,8 @@ Las equivalencias son automáticas: revísalas antes de usarlas como fundamento.
    con `sealIdentity`. Enviar `SubmitComplaintRequest` sin campos extra.
 4. **Backend.** Implementar las rutas de `ROUTES` o adaptarlas:
    - validar con los esquemas de contracts, incluidos los catálogos;
+   - aceptar en las pruebas solo contenedores cifrados (`parseEvidenceContainer`) y anclar su
+     digesto y su compromiso en `evidence.received`;
    - guardar `authVerifier` con índice único, nunca el recibo;
    - excluir el sobre de identidad de listados y detalle;
    - entregar el sobre solo por la ruta de apertura, que registra el fundamento en la bitácora;

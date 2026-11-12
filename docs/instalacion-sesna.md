@@ -122,7 +122,7 @@ del enlace (`rotacion-enlace-<estado>-eN.json`, que no cambian el directorio).
 | «Ya hay una propuesta N sin publicar»                              | Propuesta pendiente                             | Publícala primero, o `--reemplazar`                                                          |
 | «La huella no coincide»                                            | Solicitud alterada o error al leer              | No aceptes; pide al estado que reenvíe y vuelve a llamar                                     |
 | Un nodo «unreachable»                                              | DNS, firewall o certificado del estado          | Pide al estado `./sigilo diagnostico`                                                        |
-| Un nodo «below-minimum-version»                                    | No ha actualizado                               | Avísale; las denuncias esperan en la cola hasta 7 días                                       |
+| Un nodo «below-minimum-version»                                    | No ha actualizado                               | Avísale; las denuncias sin pruebas esperan en la cola hasta 7 días                           |
 | 401 al entregar                                                    | Secretos de enlace en épocas distintas          | Acepta el archivo de rotación del estado y pídele `--aplicar`                                |
 | El enrutador no arranca: «… solo habla con los nodos por https://» | Un nodo con `http://` en el directorio          | Corrige el alta; solo en red privada cifrada: `SIGILO_ROUTER_ALLOW_HTTP_NODES=1`             |
 

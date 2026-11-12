@@ -288,9 +288,10 @@ vacíos que se ignoran y filas con `id` y `fechaCaptura`.
    **pdn@sesna.gob.mx**, dirigido a la Unidad de Servicios Tecnológicos y Plataforma Digital
    Nacional. Normalmente pide los datos de la institución y de la persona responsable, el sistema
    (aquí, el S5), el ámbito de gobierno y las URL del token y de consulta.
-3. Entrega las credenciales OAuth (sección 5: `client_id`, secreto y, para el flujo `password`,
-   usuario y contraseña) por el canal que acuerdes con la SESNA, nunca en el mismo correo que las
-   URL ni en texto plano.
+3. El secreto del cliente de la red ya no se entrega: se deriva en los dos lados (sección 6). Si
+   la SESNA pide para la PDN un cliente aparte (por ejemplo, con el flujo `password`), entrega su
+   `client_id`, su secreto y, en su caso, usuario y contraseña por el canal que acuerdes con ella,
+   nunca en el mismo correo que las URL ni en texto plano.
 
 ### 7.2 Pruebas en desarrollo
 
