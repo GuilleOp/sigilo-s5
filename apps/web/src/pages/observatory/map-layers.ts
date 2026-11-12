@@ -53,7 +53,7 @@ export interface LegendItem {
   label: string;
 }
 
-/** Entidad con nodo propio; las demás usan el nodo común. */
+/** Entidad con nodo propio en el mapa; las demás aún no montan el suyo (no hay nodo común). */
 export const OWN_NODE_STATE = '22';
 
 /** Porcentaje de personas en áreas con k ≥ 10, por clave INEGI (sin dato si no hay S1). */
@@ -136,14 +136,17 @@ export function mapValue(layer: MapLayer, code: string, data: MapData): MapValue
   }
   return code === OWN_NODE_STATE
     ? { step: 5, text: 'Nodo propio: la SESEA recibe sus denuncias en su servidor' }
-    : { step: 2, text: 'Nodo común: sus denuncias llegan al buzón general del nodo común' };
+    : {
+        step: 1,
+        text: 'Sin nodo: sus denuncias estatales y municipales aún no pueden enviarse; las federales, sí',
+      };
 }
 
 /** Leyenda de cada capa, con texto (el color nunca va solo). */
 export const MAP_LEGENDS: Readonly<Record<MapLayer, readonly LegendItem[]>> = {
   node: [
     { step: 5, label: 'Nodo propio (Querétaro)' },
-    { step: 2, label: 'Nodo común' },
+    { step: 1, label: 'Sin nodo todavía' },
   ],
   complaints: [
     { step: 1, label: 'Menos' },
@@ -189,5 +192,5 @@ export function mapSummary(layer: MapLayer, data: MapData): string {
       `${entities(total - known, 'entidad no tiene datos', 'entidades no tienen datos')}.`
     );
   }
-  return `Querétaro opera su propio nodo del S5; las otras ${total - 1} entidades usan el nodo común, sin servidor propio.`;
+  return `Querétaro opera su propio nodo del S5; las otras ${total - 1} entidades todavía no montan el suyo: sus denuncias estatales y municipales no pueden enviarse por la ventanilla hasta que lo hagan.`;
 }

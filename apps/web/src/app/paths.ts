@@ -11,4 +11,5 @@ export const PATHS = {
   observatory: '/observatorio',
   protection: '/como-te-cuidamos',
   registration: '/solicitar-alta',
+  whoHandles: '/quien-atiende',
 } as const;

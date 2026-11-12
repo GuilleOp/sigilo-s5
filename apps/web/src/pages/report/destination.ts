@@ -40,7 +40,11 @@ export function resolveDestination(draft: ReportDraft, state: NetworkStatus): Re
   const proposed = choice.options.find((item) => item.kind === 'proposed' || item.kind === 'inbox');
   const selected = chosen ?? proposed;
   if (selected === undefined) {
-    return { kind: 'needs-choice', directory: state.directory, choice, reason: BLOCKED_NONE };
+    // Sin nodo en la entidad no hay a quién proponer: se dice por qué (no hay nodo común).
+    const reason = choice.proposal.isStateWithoutNode
+      ? (choice.proposal.reasons.at(-1) ?? BLOCKED_NONE)
+      : BLOCKED_NONE;
+    return { kind: 'needs-choice', directory: state.directory, choice, reason };
   }
   return { kind: 'network', directory: state.directory, choice, selected };
 }

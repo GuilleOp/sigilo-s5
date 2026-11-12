@@ -5,6 +5,7 @@ import type { LedgerAnchor, MailboxMessage, TrackingView } from '@sigilo/contrac
 import { isMailboxSequenceComplete, ReceiptPhraseError } from '@sigilo/core';
 import { Alert } from '../../components/Alert.tsx';
 import { AnchorsField } from '../../components/AnchorsField.tsx';
+import { WEB_PROFILE } from '../../config/app-config.ts';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import type { PinnedKeys } from '../../config/pinned-keys.ts';
 import { assertServedKeysMatch, KeyMismatchError } from '../../crypto/key-pinning.ts';
@@ -231,6 +232,10 @@ export function TrackingPage() {
       return { view: await known.api.track(session.credentials), transport: known };
     }
     const state = await networkState();
+    // La ventanilla única no guarda denuncias: sin directorio verificado no hay dónde buscar.
+    if (state.kind !== 'verified' && WEB_PROFILE === 'ventanilla') {
+      throw new ApiRequestError('network', 0);
+    }
     if (state.kind !== 'verified') {
       const transport = { api, keys: PINNED_KEYS, replyKeys: PINNED_KEYS, network: null };
       return { view: await api.track(session.credentials), transport };

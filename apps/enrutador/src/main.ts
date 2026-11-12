@@ -13,6 +13,7 @@ import { loadDirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
 import { createOpenDataAggregator } from './open-data-aggregator.ts';
 import { createRelayService } from './relay-service.ts';
+import { loadVentanillaConfig } from './web.ts';
 
 function start(): void {
   const config = loadRouterConfig(process.env);
@@ -44,6 +45,8 @@ function start(): void {
     fetch: doFetch,
     now: openDataClock(process.env),
   });
+  // Perfil «ventanilla»: la SESNA sirve la web pública en el mismo origen que el enrutador.
+  const ventanilla = loadVentanillaConfig(process.env);
   const app = createRouterApp({
     directory,
     national,
@@ -51,6 +54,18 @@ function start(): void {
     openData,
     now,
     hstsMaxAgeSeconds: config.hstsMaxAgeSeconds,
+    ...(ventanilla === null
+      ? {}
+      : {
+          ventanilla: {
+            ...ventanilla,
+            directory: directory.directory,
+            nodeUrl,
+            fetch: doFetch,
+            openData,
+            hstsMaxAgeSeconds: config.hstsMaxAgeSeconds,
+          },
+        }),
   });
 
   let isCollecting = false;
