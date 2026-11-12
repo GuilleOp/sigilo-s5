@@ -1,5 +1,6 @@
 // Arnés de pruebas del enrutador: red sintética con llaves nuevas, base en un archivo temporal y
 // nodos falsos que responden con el buzón de red real de @sigilo/red.
+import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -35,6 +36,9 @@ import { createRelayService } from './relay-service.ts';
 import type { RelayService } from './relay-service.ts';
 
 export const TEST_DAY = '2026-11-09';
+
+/** Token de la operación del enrutador de prueba: con él, la salud incluye la cola por nodo. */
+export const TEST_OPERATION_TOKEN = 'token-sintetico-de-la-operacion-de-pruebas-0123456789';
 export const NODE_URLS: Record<DemoNodeId, string> = {
   'node.queretaro': 'http://nodo-queretaro.invalid',
   'node.federal': 'http://nodo-federal.invalid',
@@ -113,6 +117,8 @@ export function createTestRouter(
     queueLimits?: Partial<RelayQueueLimits>;
     /** Versión mínima del software de los nodos. */
     minimumNodeVersion?: string;
+    /** Topes del relevo (reenvíos simultáneos y bytes en vuelo). */
+    relayLimits?: { maxConcurrentRelays?: number; maxRelayBytesInFlight?: number };
   } = {},
 ): TestRouter {
   const network = options.network ?? createTestNetwork();
@@ -246,6 +252,8 @@ export function createTestRouter(
     queue: { store: queue, pow: createQueuePow({ bits: 0, now }) },
     health,
     now,
+    operationTokenDigest: createHash('sha256').update(TEST_OPERATION_TOKEN, 'utf8').digest(),
+    ...options.relayLimits,
   });
   return {
     app,

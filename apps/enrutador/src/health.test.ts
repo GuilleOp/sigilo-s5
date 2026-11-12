@@ -1,5 +1,5 @@
 // Pruebas de la salud de los nodos y la versión mínima: arriba o abajo, versiones, último contacto
-// y cola por nodo, en JSON y en la página sencilla; a un nodo con versión menor a la mínima no se
+// y cola por nodo (solo para la operación, H08), en JSON y en la página sencilla; a un nodo con versión menor a la mínima no se
 // le entrega (con aviso claro) y lo que pidió la cola espera hasta que se actualiza.
 import { describe, expect, it } from 'vitest';
 import { NETWORK_ROUTES, NetworkHealthSchema, PowChallengeSchema } from '@sigilo/contracts';
@@ -7,7 +7,7 @@ import { formatPowHeader, generateFolio, solvePow } from '@sigilo/core';
 import { createNodeNetworkClient, findNode, openRoutedReply, sealRoutedRequest } from '@sigilo/red';
 import type { DemoNodeId } from '@sigilo/red';
 import { compareVersions } from './node-health.ts';
-import { TEST_DAY, createTestRouter } from './test-support.ts';
+import { TEST_DAY, TEST_OPERATION_TOKEN, createTestRouter } from './test-support.ts';
 import type { TestRouter } from './test-support.ts';
 
 async function register(router: TestRouter, nodeId: DemoNodeId): Promise<void> {
@@ -20,8 +20,20 @@ async function register(router: TestRouter, nodeId: DemoNodeId): Promise<void> {
   await client.register({ sequence: 1, standardVersion: '0.2.0', acceptsRelay: true });
 }
 
+/** Salud vista por la operación (con su token): incluye la cola por nodo. */
 async function healthOf(router: TestRouter) {
-  const response = await router.app.request(NETWORK_ROUTES.networkHealth);
+  const response = await router.app.request(NETWORK_ROUTES.networkHealth, {
+    headers: { Authorization: `Bearer ${TEST_OPERATION_TOKEN}` },
+  });
+  expect(response.status).toBe(200);
+  return NetworkHealthSchema.parse(await response.json());
+}
+
+/** Salud pública, sin token. */
+async function publicHealthOf(router: TestRouter, token?: string) {
+  const response = await router.app.request(NETWORK_ROUTES.networkHealth, {
+    headers: token === undefined ? {} : { Authorization: `Bearer ${token}` },
+  });
   expect(response.status).toBe(200);
   return NetworkHealthSchema.parse(await response.json());
 }
@@ -98,6 +110,15 @@ describe('salud de los nodos', () => {
       warning: 'unreachable',
       queued: 1,
     });
+    // H08: la vista pública (o con un token equivocado) no publica la cola por nodo.
+    for (const token of [undefined, 'token-equivocado']) {
+      const publicView = await publicHealthOf(router, token);
+      expect(publicView.nodes.find((node) => node.nodeId === 'node.queretaro')).toMatchObject({
+        status: 'down',
+        queued: null,
+      });
+      expect(publicView.nodes.every((node) => node.queued === null)).toBe(true);
+    }
     // Nada de denuncias ni autoridades en la salud.
     const text = JSON.stringify(await healthOf(router));
     expect(text).not.toContain('authority.');
@@ -110,6 +131,8 @@ describe('salud de los nodos', () => {
     expect(html).toContain('Salud de los nodos de la red');
     expect(html).toContain('No responde');
     expect(html).not.toContain('<script');
+    // La vista sencilla pública tampoco muestra el conteo.
+    expect(html).toContain('<td>—</td>');
   });
 
   it('con versión mínima no entrega a un nodo con versión menor, avisa y la cola espera', async () => {

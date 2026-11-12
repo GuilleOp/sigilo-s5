@@ -8,7 +8,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { keyIdFor, toBase64Url } from '@sigilo/core';
 import { cosignDirectory, demoWitnessPrivateKey, signDirectory } from '@sigilo/red';
-import { loadRouterConfig, loadRouterFiles, parseNodeUrls } from './config.ts';
+import {
+  assertSecureNodeUrls,
+  loadRouterConfig,
+  loadRouterFiles,
+  parseNodeUrls,
+} from './config.ts';
 import { createLoopbackProxy } from './container/loopback-proxy.ts';
 import { openRouterDatabase } from './database.ts';
 import { loadDirectoryStore } from './directory-store.ts';
@@ -35,6 +40,45 @@ describe('configuración', () => {
     expect(() => loadRouterConfig({ SIGILO_ROUTER_PORT: '99999' })).toThrow();
     expect(() => loadRouterConfig({ SIGILO_ROUTER_HOST: '192.0.2.1' })).toThrow();
     expect(() => loadRouterConfig({ SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS: '0' })).toThrow();
+  });
+
+  it('lee los topes del relevo, el token de la operación y la etiqueta del buzón', () => {
+    const config = loadRouterConfig({
+      SIGILO_ROUTER_MAX_RELAYS: '8',
+      SIGILO_ROUTER_RELAY_MAX_MB_IN_FLIGHT: '64',
+      SIGILO_ROUTER_QUEUE_MAX_TOTAL_MB: '128',
+      SIGILO_ROUTER_OPERATION_TOKEN: 'x'.repeat(32),
+      SIGILO_ROUTER_RELAY_AUTH: 'v1',
+    });
+    expect(config.relay).toEqual({ maxConcurrent: 8, maxBytesInFlight: 64 * 1024 * 1024 });
+    expect(config.queue.maxTotalBytes).toBe(128 * 1024 * 1024);
+    expect(config.operationTokenDigest).toHaveLength(32);
+    expect(config.relayAuthVersion).toBe(1);
+    expect(loadRouterConfig({}).relayAuthVersion).toBe(2);
+    expect(loadRouterConfig({}).operationTokenDigest).toBeNull();
+    expect(() => loadRouterConfig({ SIGILO_ROUTER_OPERATION_TOKEN: 'corto' })).toThrow();
+    expect(() => loadRouterConfig({ SIGILO_ROUTER_RELAY_AUTH: 'v3' })).toThrow();
+    expect(() => loadRouterConfig({ SIGILO_ROUTER_RELAY_MAX_MB_IN_FLIGHT: '1' })).toThrow();
+    // H20: HSTS de al menos un año, como el nodo.
+    expect(() => loadRouterConfig({ SIGILO_ROUTER_HSTS_MAX_AGE: '0' })).toThrow(/un año/u);
+    expect(loadRouterConfig({ SIGILO_ROUTER_HSTS_MAX_AGE: '31536000' }).hstsMaxAgeSeconds).toBe(
+      31_536_000,
+    );
+  });
+
+  it('H13: en producción exige https hacia los nodos salvo que se permita http', () => {
+    const production = loadRouterConfig({ NODE_ENV: 'production' });
+    expect(() => assertSecureNodeUrls(production, ['http://nodo:8080'])).toThrow(/https/u);
+    expect(() => assertSecureNodeUrls(production, ['https://nodo.example'])).not.toThrow();
+    const allowed = loadRouterConfig({
+      NODE_ENV: 'production',
+      SIGILO_ROUTER_ALLOW_HTTP_NODES: '1',
+    });
+    expect(() => assertSecureNodeUrls(allowed, ['http://nodo:8080'])).not.toThrow();
+    // En desarrollo y en la demostración (compose) se permite http en la red interna.
+    const demo = loadRouterConfig({ NODE_ENV: 'production', SIGILO_DEMO: '1' });
+    expect(() => assertSecureNodeUrls(demo, ['http://nodo:8080'])).not.toThrow();
+    expect(() => assertSecureNodeUrls(loadRouterConfig({}), ['http://nodo:8080'])).not.toThrow();
   });
 
   it('lee los archivos del directorio de datos y comprueba la llave de la operación', () => {

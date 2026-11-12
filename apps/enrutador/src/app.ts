@@ -1,6 +1,8 @@
 // Aplicación Hono del enrutador: directorio, reenvío ciego, registro y cabezas de nodos, y
 // bitácora nacional con cofirmas e inclusión. Sin registro de peticiones.
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import {
   NATIONAL_LEDGER_MAX_PAGE,
@@ -8,6 +10,7 @@ import {
   NationalCosignatureRequestSchema,
   NodeIdSchema,
   NodeRegistrationSchema,
+  RELAY_MAX_BODY_BYTES,
   RELAY_QUEUE_MAX_BUCKET,
   RELAY_V1_REJECTION_MESSAGE,
   RelayRequestSchema,
@@ -49,6 +52,11 @@ export interface RouterAppDeps {
   queue?: { store: RelayQueue; pow: QueuePow };
   /** Salud de los nodos; sin ella, sus rutas responden `404`. */
   health?: Pick<NodeHealthMonitor, 'snapshot'>;
+  /**
+   * SHA-256 del token de la operación (`SIGILO_ROUTER_OPERATION_TOKEN`): con él, la salud incluye
+   * los conteos de la cola por nodo. Sin él, nadie los ve.
+   */
+  operationTokenDigest?: Uint8Array | null;
   /** Corte nacional de datos abiertos; sin él, sus rutas responden `404`. */
   openData?: Pick<OpenDataAggregator, 'latest'>;
   /** Corte nacional de la estadística que la SESNA consulta a cada nodo; sin él, `404`. */
@@ -57,14 +65,22 @@ export interface RouterAppDeps {
   hstsMaxAgeSeconds?: number | null;
   /** Reenvíos simultáneos permitidos; los que excedan reciben `429`. */
   maxConcurrentRelays?: number;
+  /**
+   * Bytes de cuerpos de relevo en vuelo a la vez (256 MiB por omisión); lo que exceda recibe `429`
+   * antes de leer el cuerpo. Un cuerpo sin `Content-Length` reserva el tope completo.
+   */
+  maxRelayBytesInFlight?: number;
   /** Ventanilla única en el mismo origen (`web.ts`); sin ella, el enrutador no sirve web. */
   ventanilla?: VentanillaDeps;
 }
 
 /** Cuerpo máximo de un sobre de red: el tramo mayor en Base64URL más el encabezado. */
-export const MAX_RELAY_BODY_BYTES = 22_400_000;
+export const MAX_RELAY_BODY_BYTES = RELAY_MAX_BODY_BYTES;
 const MAX_SMALL_BODY_BYTES = 16 * 1024;
 const DEFAULT_MAX_CONCURRENT_RELAYS = 64;
+/** Presupuesto de bytes de relevo en vuelo por omisión: unos 11 sobres del tramo mayor. */
+export const DEFAULT_MAX_RELAY_BYTES_IN_FLIGHT = 256 * 1024 * 1024;
+const CONTENT_LENGTH_PATTERN = /^\d{1,10}$/u;
 const INTEGER_PATTERN = /^\d{1,15}$/u;
 
 function toHonoPath(path: string): string {
@@ -86,7 +102,34 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
   const app = new Hono();
   const today = (): string => toDayDate(deps.now());
   const maxRelays = deps.maxConcurrentRelays ?? DEFAULT_MAX_CONCURRENT_RELAYS;
+  const maxBytesInFlight = deps.maxRelayBytesInFlight ?? DEFAULT_MAX_RELAY_BYTES_IN_FLIGHT;
   let inFlight = 0;
+  let bytesInFlight = 0;
+
+  // Seguridad (H02): el cupo de reenvíos y el presupuesto de bytes se reservan ANTES de leer el
+  // cuerpo, con lo que declara `Content-Length` (o el tope completo si no viene). Así unas decenas de
+  // peticiones de 22 MB sin autenticar no llenan la memoria: las que no caben reciben `429` sin
+  // que se lea un byte, y `bodyLimit` corta el flujo si el cuerpo real excede lo declarado.
+  const relayGate: MiddlewareHandler = async (c, next) => {
+    const declared = c.req.header('Content-Length');
+    let reserved = MAX_RELAY_BODY_BYTES;
+    if (declared !== undefined) {
+      if (!CONTENT_LENGTH_PATTERN.test(declared)) throw new ApiFailure('bad_request');
+      reserved = Number(declared);
+      if (reserved > MAX_RELAY_BODY_BYTES) throw new ApiFailure('payload_too_large');
+    }
+    if (inFlight >= maxRelays || bytesInFlight + reserved > maxBytesInFlight) {
+      throw new ApiFailure('rate_limited');
+    }
+    inFlight += 1;
+    bytesInFlight += reserved;
+    try {
+      await next();
+    } finally {
+      inFlight -= 1;
+      bytesInFlight -= reserved;
+    }
+  };
 
   registerVentanilla(app, deps.ventanilla);
   app.use('*', securityHeaders(deps.hstsMaxAgeSeconds ?? null));
@@ -96,7 +139,7 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
   // Seguridad: el manejador no lee la dirección del socket ni cabeceras de quien envía; solo el
   // nodo destino y el sobre (v2: la autoridad va cifrada adentro). La respuesta tiene el mismo
   // estatus y forma para cualquier destino.
-  app.post(NETWORK_ROUTES.relay, limitBody(MAX_RELAY_BODY_BYTES), async (c) => {
+  app.post(NETWORK_ROUTES.relay, relayGate, limitBody(MAX_RELAY_BODY_BYTES), async (c) => {
     const raw = await readRawJson(c);
     if (isLegacyRelayRequest(raw)) {
       return c.json({ error: { code: 'bad_request', message: RELAY_V1_REJECTION_MESSAGE } }, 400);
@@ -123,22 +166,22 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
       // aceptar guardar nada.
       if (!queue.pow.spend(relay.deferral.proof)) throw new ApiFailure('proof_required');
     }
-    if (inFlight >= maxRelays) throw new ApiFailure('rate_limited');
-    inFlight += 1;
-    try {
-      const onUnavailable =
-        relay.deferral === undefined || queue === undefined
-          ? undefined
-          : () => {
-              const receipt = queue.store.enqueue(node, relay);
-              if (receipt === null) throw new ApiFailure('rate_limited');
-              // Mismo relleno que un sobre no entregado, con el acuse firmado de la cola.
-              return { ...relayDecoyResponse(toHex(randomBytes(8))), queued: receipt };
-            };
-      return c.json(await deps.relay.forward(node, relay, onUnavailable));
-    } finally {
-      inFlight -= 1;
-    }
+    const onUnavailable =
+      relay.deferral === undefined || queue === undefined
+        ? undefined
+        : () => {
+            const receipt = queue.store.enqueue(node, relay);
+            if (receipt === null) throw new ApiFailure('rate_limited');
+            // Mismo relleno que un sobre no entregado, con el acuse firmado de la cola.
+            return { ...relayDecoyResponse(toHex(randomBytes(8))), queued: receipt };
+          };
+    // Seguridad (H07): la marca de entrega diferida solo viaja desde la cola. El primer intento va
+    // sin ella: si el nodo está arriba cobra su propia prueba de trabajo (la adaptativa) y la marca
+    // no sirve para saltársela ni para gastar el cupo de diferidas del nodo. Solo si el nodo no está
+    // disponible se guarda el sobre completo, con la marca, para los reintentos.
+    const immediate: typeof relay =
+      relay.deferral === undefined ? relay : { v: relay.v, node: relay.node, sealed: relay.sealed };
+    return c.json(await deps.relay.forward(node, immediate, onUnavailable));
   });
 
   app.get(NETWORK_ROUTES.queueChallenge, (c) => {
@@ -220,13 +263,25 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
     return c.json(proof);
   });
 
-  // Salud de los nodos para la operación: nodos, versiones y conteos de la cola, sin denuncias.
-  const health = () => {
+  // Salud de los nodos: nodos y versiones, sin denuncias. Seguridad (H08): el conteo de la cola por
+  // nodo es un canal lateral (dice cuándo alguien denunció ante un nodo caído), así que solo lo ve
+  // la operación con su token (`Authorization: Bearer`); la vista pública lo publica como `null`.
+  const health = (c: Context) => {
     if (deps.health === undefined) throw new ApiFailure('not_found');
-    return deps.health.snapshot();
+    return deps.health.snapshot({ includeQueue: isOperation(c) });
   };
-  app.get(NETWORK_ROUTES.networkHealth, (c) => c.json(health()));
-  app.get(NETWORK_ROUTES.networkHealthView, (c) => c.html(networkHealthHtml(health())));
+  const isOperation = (c: Context): boolean => {
+    const digest = deps.operationTokenDigest;
+    if (digest === undefined || digest === null) return false;
+    const match = /^Bearer ([\x21-\x7e]{1,512})$/u.exec(c.req.header('Authorization') ?? '');
+    if (match === null) return false;
+    const actual = createHash('sha256')
+      .update(match[1] ?? '', 'utf8')
+      .digest();
+    return actual.length === digest.length && timingSafeEqual(actual, digest);
+  };
+  app.get(NETWORK_ROUTES.networkHealth, (c) => c.json(health(c)));
+  app.get(NETWORK_ROUTES.networkHealthView, (c) => c.html(networkHealthHtml(health(c))));
 
   // Corte nacional de datos abiertos: solo números ya publicados por cada nodo.
   const latestOpenData = () => {
