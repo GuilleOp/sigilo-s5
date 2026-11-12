@@ -453,11 +453,25 @@ flowchart LR
   (`127.0.0.1:8790`), los nodos Querétaro (8781), Federal (8782) y Oaxaca (8783) con la web
   en perfil panel, el evaluador, el índice y dos testigos observadores. `npm run demo:seed` siembra
   el escenario. Guía: [conecta tu estado](guia-conecta-tu-estado.md).
-- **Pendiente.** La guarda de custodias de la corroboración (nivel B) y cerrar en el servidor las
-  rutas públicas de denuncia directa en un nodo en perfil panel (hoy solo la web deja de ofrecerlas;
-  la API del Estándar S5 sigue respondiendo).
+- **Hecho: rutas de denuncia directa cerradas en el servidor.** En perfil `nodo`
+  (`apps/server/src/http/exposure.ts`, H03) el nodo publica solo los frentes red, público y panel:
+  la denuncia, las pruebas, el seguimiento y los pasos del evaluador responden `not_found`, con una
+  lista positiva de rutas, y el panel puede ir en su propio puerto (`SIGILO_PANEL_PORT`).
+- **Pendiente.** La guarda de custodias de la corroboración (nivel B).
 
 ## Despliegue
+
+- **Producción.** Imágenes genéricas publicadas en GHCR (sin llaves de ningún nodo) y el CLI `sigilo`
+  dentro de ellas: `sigilo instalar`, `iniciar` y `diagnostico` en cada estado; `sigilo-sesna
+instalar`, `aceptar` y `publicar` en la SESNA; `sigilo testigo cofirmar` en cada testigo
+  ([instalacion-nodo.md](instalacion-nodo.md), [instalacion-sesna.md](instalacion-sesna.md)). El
+  alta viaja sin secretos: solicitud firmada por el nodo y huella por teléfono; los secretos de
+  enlace se derivan con X25519 y HKDF. Los compose de producción están en `instalacion/`.
+- **Configuración en tiempo de ejecución** ([ADR 0011](adr/0011-configuracion-en-tiempo-de-ejecucion.md)).
+  La web lee las llaves de su nodo, la raíz de la red y la ventanilla de `/config/sigilo.json`, del
+  mismo origen, antes de montarse; con 404 usa las del bundle (demostración y E2E).
+- **Días inhábiles locales.** `dias-inhabiles.json` del nodo se suma a los días oficiales en los
+  plazos, las reglas, el auditor y el semáforo, y se publica en `/datos/dias-inhabiles.json`.
 
 - **Un solo origen.** En desarrollo, el proxy de Vite sirve web y API desde `127.0.0.1:5173`. En
   despliegue, `SIGILO_WEB_DIST` hace que el servidor entregue `apps/web/dist` con respaldo de SPA a
@@ -488,8 +502,9 @@ flowchart LR
   autoridades del nodo, el buzón general y una cuenta por persona con su digesto scrypt;
   `npm run accounts:generate` crea las sintéticas de la demostración. Los fallos de acceso, las
   sesiones vencidas y las entregas de sobres quedan en `authority_security_events`, sin IP.
-- **Llaves.** Las llaves privadas viven en `apps/server/data/` y no se versionan. Las públicas se
-  fijan en `apps/web/src/config/pinned-keys.json`.
+- **Llaves.** En desarrollo, las llaves privadas viven en `apps/server/data/` y no se versionan, y
+  las públicas se fijan en `apps/web/src/config/pinned-keys.json`. En producción, el volumen del
+  nodo (`datos/`) tiene solo las del nodo; la del buzón y la de enlace quedan fuera.
 - **Reloj de pruebas.** `SIGILO_TEST_CLOCK_FILE` desplaza el reloj del servidor solo en pruebas
   (`SIGILO_E2E=1` o `NODE_ENV=test`), con un archivo propio no escribible por otros y un desfase de
   0 a 400 días.

@@ -737,6 +737,61 @@ reinicio invalida los tokens vigentes). Lleva `iss` = `aud` = id del nodo, `sub`
 de la contraseña del flujo `password`, y compara en tiempo constante
 (`apps/server/src/network/oauth-server.ts`).
 
+### Secretos de enlace derivados (SESNA ↔ nodo)
+
+La SESNA y cada nodo comparten dos secretos: el **HMAC del buzón** (`relay-secret.json` en el nodo,
+`relay-secrets.json` en el enrutador) y el **secreto del cliente OAuth** de la SESNA en el nodo
+(`oauth-clients.json` guarda su SHA-256; `node-credentials.json`, el secreto). Ninguno viaja ni se
+dicta: cada lado lo **deriva** (`deriveLinkSecrets`, `packages/red/src/node-join.ts`).
+
+- Cada nodo genera una llave X25519 **de enlace**, distinta de su llave de red (separación de
+  dominios), y la manda pública en su solicitud de alta con su época (`enlace.epoca`, 1 al
+  instalar). La SESNA publica la suya en `red.json` (`enlace`).
+- Los dos calculan
+
+  ```text
+  ss     = X25519(privada propia, pública del otro)
+  relay  = HKDF-SHA256(ss, sal = "sigilo/enlace/v1", info = "relay|" + nodeId + "|" + época, 32)
+  oauth  = HKDF-SHA256(ss, sal = "sigilo/enlace/v1", info = "oauth|" + nodeId + "|" + época, 32)
+  ```
+
+  y los escriben con los formatos de siempre: **no cambia ni el servidor ni el enrutador**. Un
+  secreto común nulo (llave de orden bajo) se rechaza.
+
+- **Rotación.** `sigilo rotar-llaves --enlace` crea una llave de enlace nueva con la época
+  siguiente y un archivo de rotación firmado con la llave del nodo del directorio
+  (`sigilo/red/rotacion-enlace/v1:` + SHA-256 canónico). La SESNA lo verifica contra esa llave, exige
+  una época mayor y deriva los secretos nuevos; el nodo los aplica con `--aplicar`. Los tokens
+  vigentes vencen en 5 minutos y los sobres que no entren mientras tanto esperan en la cola.
+- **Llaves.** La del nodo vive en `llaves/enlace-key.json`, fuera del volumen del servidor (que
+  solo tiene los secretos derivados). La de la SESNA vive en `llaves/enlace-key.json`, fuera del
+  volumen del enrutador; se respalda junto con la de la operación.
+
+**Lo que se acepta a cambio.** Quien robe la llave de enlace de la SESNA puede derivar los secretos
+de **todos** los nodos. No es un riesgo nuevo: antes `relay-secrets.json` y `node-credentials.json`
+ya vivían juntos en el enrutador con los secretos de todos los nodos, y lo siguen haciendo. Lo que se
+gana es que ningún secreto pasa por correo, oficio o teléfono, que es donde más se filtran. Otro
+costo: los secretos ya no son independientes entre sí (comparten `ss`), pero HKDF con `info`
+distinto los separa, y conocer uno no da el otro. Si la llave de la SESNA se compromete, se rota
+`red.json` (nueva llave de enlace) y cada nodo rota su enlace; es lo mismo que exigiría hoy cambiar
+todos los secretos a mano.
+
+### Alta de un nodo: solicitud firmada y huellas
+
+- **Paquete de la red (`red.json`).** Lo firma la operación (`sigilo/red/paquete/v1:` + SHA-256
+  canónico) y trae la raíz de confianza, la ventanilla y la llave de enlace de la SESNA. La firma da
+  integridad; la autenticidad la da la **huella de la red**: SHA-256 de la forma canónica de la raíz
+  (sin `minDirectorySerial` ni `maxDirectoryAgeDays`), 32 caracteres hexadecimales en grupos de 4,
+  publicada en el oficio y en el sitio de la SESNA. El instalador del nodo se detiene si no coincide.
+- **Solicitud de alta.** La firma el nodo con su llave del directorio
+  (`sigilo/red/solicitud-alta/v1:` + SHA-256 canónico): prueba que tiene la llave. No lleva llaves
+  privadas ni contraseñas. Su **huella** es el SHA-256 de la llave de firma, la de red y la de enlace
+  del nodo (los bytes, en ese orden), 32 hexadecimales; el estado la lee por teléfono a un número
+  oficial y la SESNA no acepta sin ella.
+- **Por qué 128 bits y no los 64 del candado.** La huella de la red y la del nodo protegen a toda la
+  red y se leen una sola vez; 64 bits quedan cortos contra una segunda preimagen dirigida. Los
+  candados de las autoridades siguen con 16 (`padlockFingerprint`).
+
 ### Cola de entrega del enrutador
 
 Cuando el nodo destino no responde, el enrutador puede guardar una denuncia sin pruebas en su cola

@@ -23,6 +23,25 @@ municipios (INEGI) son reales, y ninguna institución real aparece denunciada en
 | Rendición de cuentas de la autoridad | Plazos legales, reglas públicas de escalamiento a supervisión y un auditor que señala cierres con plantilla o calificaciones degradadas ([ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)).                                                                                        |
 | Un auditor que señala y no decide    | Las reglas AUD-01 a AUD-08 son cálculos deterministas y públicos; lo que se escala lo decide una regla, no un modelo ([ADR 0009](docs/adr/0009-ia-local.md)).                                                                                                                                       |
 
+## Instalar un nodo en tu estado
+
+Para el equipo de TI del estado: un servidor Linux con Docker, un dominio y tres comandos. No se
+necesita Node, npm ni el código fuente; el CLI `sigilo` corre dentro de la imagen publicada
+(`ghcr.io/guilleop/sigilo-nodo`, genérica: las llaves del nodo se leen al arrancar).
+
+```sh
+./sigilo instalar      # unas 10 preguntas; deja una solicitud de alta sin secretos y una huella
+./sigilo iniciar       # cuando la SESNA confirme el alta
+./sigilo diagnostico   # todo en verde
+```
+
+La SESNA acepta la solicitud con la huella que el estado lee por teléfono y la publica en el
+directorio con las cofirmas de los testigos (`./sigilo-sesna aceptar` y `publicar`). Los secretos
+que comparten (HMAC del buzón y OAuth) se derivan en los dos lados y nunca viajan. Guías:
+[instalacion-nodo.md](docs/instalacion-nodo.md) (estado),
+[instalacion-sesna.md](docs/instalacion-sesna.md) (SESNA) y
+[ADR 0011](docs/adr/0011-configuracion-en-tiempo-de-ejecucion.md).
+
 ## Cómo protege a la persona denunciante
 
 | Etapa       | Mecanismo                                                                                                                                                                                                                  |
@@ -33,6 +52,10 @@ municipios (INEGI) son reales, y ninguna institución real aparece denunciada en
 
 Lo que no resuelve y los riesgos residuales están en el [modelo de amenazas](docs/modelo-de-amenazas.md).
 Ninguna pantalla promete un anonimato absoluto: cuando hay un límite, se dice.
+
+Producción: ver [`docs/seguridad-produccion.md`](docs/seguridad-produccion.md). Los nodos en
+producción corren en perfil `nodo` (sin denuncia directa); el evaluador y el índice no publican
+puerto en la demostración.
 
 ### Confianza verificable
 
@@ -225,7 +248,10 @@ Diseño y seguridad:
 Adopción y datos:
 
 - [Integración con el S5](docs/integracion-s5.md)
-- [Guía para conectar un estado](docs/guia-conecta-tu-estado.md)
+- [Instala el nodo de tu estado](docs/instalacion-nodo.md) y
+  [la ventanilla de la SESNA](docs/instalacion-sesna.md)
+- [Guía para conectar un estado](docs/guia-conecta-tu-estado.md) (conceptos)
+- [Seguridad en producción](docs/seguridad-produccion.md)
 - [Datos de la PDN: proceso y productos agregados](datos/README.md)
 - [Datos sintéticos](docs/datos-sinteticos.md)
 - [Accesibilidad](docs/accesibilidad.md)

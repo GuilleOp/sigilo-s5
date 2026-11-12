@@ -5,6 +5,73 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Instalación de producción con el CLI `sigilo`** (`tools/sigilo`, `instalacion/`). Corre dentro
+  de la imagen publicada; el envoltorio POSIX sh solo necesita Docker. Estado: `sigilo instalar`,
+  `iniciar`, `diagnostico` (sale con 0, 1 o 2), `respaldar` (cifrado con AES-256-GCM y scrypt sobre
+  una frase de 8 palabras, `VACUUM INTO` con el nodo en marcha), `restaurar`, `actualizar` (con
+  regreso automático), `cuenta nueva`, `tabla revisar|firmar` (la tabla de funciones como CSV),
+  `calendario revisar`, `directorio actualizar` y `rotar-llaves --enlace`. SESNA: `sigilo-sesna
+instalar|aceptar|publicar|empaquetar`. Testigos: `sigilo testigo crear-llave|cofirmar`, con el
+  resumen de cambios recalculado contra la versión vigente. Toda respuesta va también por bandera o
+  variable `SIGILO_<CLAVE>`; `tools/sigilo/src/flujo.test.ts` recorre el alta completa sin Docker.
+  Guías: `docs/instalacion-nodo.md` y `docs/instalacion-sesna.md`.
+- **Solicitud de alta firmada y sin secretos** (`packages/red/src/node-join.ts`): `red.json` firmado
+  por la operación con su huella de 128 bits, solicitud firmada por el nodo con su huella para leer
+  por teléfono, rotación del enlace firmada.
+- **Secretos de enlace derivados**: el HMAC del buzón y el secreto OAuth de la SESNA se derivan con
+  X25519 y HKDF-SHA256 entre la llave de enlace del nodo y la de la SESNA, por época. Nunca viajan;
+  los formatos de archivo del servidor y del enrutador no cambian.
+- **Configuración de la web en tiempo de ejecución** (ADR 0011): la web lee las llaves del nodo, la
+  raíz de la red y la ventanilla de `/config/sigilo.json`, en su mismo origen
+  (`SIGILO_WEB_CONFIG_FILE`, `SIGILO_ROUTER_WEB_CONFIG_FILE`). Con 404 usa su bundle.
+- **Imágenes genéricas en GHCR** (`.github/workflows/imagenes.yml`): `sigilo-nodo`,
+  `-enrutador`, `-testigo`, `-evaluador` e `-indice` para amd64 y arm64 con cada etiqueta `v*`, con
+  etiquetas OCI, SBOM, procedencia y firma sin llave de cosign. Sin llaves de ningún nodo.
+- **`compose.nodo.yaml` y `compose.sesna.yaml`** (`instalacion/`): perfil `nodo`, endurecimiento de
+  `compose.yaml` y Caddy opcional sin registro de accesos (Let's Encrypt, certificado propio o
+  proxy existente); el panel en el 8443 solo para redes privadas.
+- **Días inhábiles locales por nodo** (`SIGILO_REST_DAYS_FILE`, `config/dias-inhabiles.csv`): se
+  suman a los oficiales en plazos, reglas, auditor y semáforo, y el nodo los publica con su digesto
+  en `/datos/dias-inhabiles.json` (frente público).
+
+### Cambiado
+
+- `queued` es `null` en `NetworkHealth` sin el token de operación (H08). Rompe a quien lo leía como
+  número.
+- El enrutador envía la etiqueta HMAC **v2** del buzón por omisión (H13); un nodo sin actualizar
+  necesita `SIGILO_ROUTER_RELAY_AUTH=v1` en el enrutador mientras tanto.
+- `red:demo` deja la llave del buzón y la de la supervisora en `.red-demo/nodos/<nodo>/llaves-demo/`,
+  fuera del volumen del nodo.
+- `docs/guia-conecta-tu-estado.md` se queda con los conceptos y remite a la guía de instalación.
+
+### Seguridad
+
+- **H01.** Un secreto OAuth equivocado ya no bloquea al cliente de la SESNA: el tope de fallos
+  aplica solo al flujo `password`, por cliente autenticado.
+- **H02.** El relevo aplica sus topes (concurrencia y bytes en vuelo) antes de leer el cuerpo.
+- **H03.** Perfil `nodo`: el nodo en producción no publica la denuncia directa; frentes red, público
+  y panel, con el panel en su propio puerto (`SIGILO_PANEL_PORT`).
+- **H05.** Con el usuario bloqueado se rechaza también la contraseña correcta.
+- **H06.** Tope de subidas de pruebas pendientes en retos abiertos.
+- **H07.** La marca de entrega diferida solo viene de la cola; prueba de trabajo adaptativa y
+  reparto justo por nodo.
+- **H08.** La cola cuenta solo para la operación (con su token).
+- **H10.** Límites de recursos en contenedores, imagen base por digesto y ejecución sin npm.
+- **H11.** COEP, CORP y Permissions-Policy común.
+- **H12.** Tiempos límite en peticiones salientes, servidores HTTP y reenvío TCP.
+- **H13.** `https://` hacia los nodos en producción y etiqueta HMAC v2 con marca de tiempo y nonce.
+- **H15.** CI con acciones fijadas por SHA, firmas de npm, SBOM y Dependabot.
+- **H16 y H17.** El evaluador y el índice no publican puerto ni salen a internet.
+- **H18.** `umask 077`: bases, WAL, secretos y pruebas en `0600`.
+- **H20.** HSTS de un año como mínimo en el nodo y en el enrutador.
+- **H22.** Sin CORS en el evaluador.
+- La llave privada del buzón ya no se escribe en el volumen del nodo (ni en la instalación ni en
+  la demostración); `sigilo diagnostico` la marca si aparece.
+- Un nodo con `NODE_ENV=production` y `SIGILO_E2E=1` no arranca; con `SIGILO_DEMO=1` avisa en cada
+  arranque.
+
 ## [1.1.0] - 2026-11-12
 
 Una sola ventanilla nacional en la SESNA, un nodo por estado (sin nodo común), tabla de funciones

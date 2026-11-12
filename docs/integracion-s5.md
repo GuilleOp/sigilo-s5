@@ -271,9 +271,11 @@ sumar, así que filtrar no reconstruye una celda suprimida).
 
 **Configuración.** El nodo lee `oauth-clients.json` (`SIGILO_OAUTH_CLIENTS_FILE`): por cliente,
 el digesto SHA-256 del secreto, permisos, flujos y, para `password`, el usuario con su digesto
-scrypt. El enrutador lee `node-credentials.json` en su directorio de datos (0600). `npm run
-red:demo` genera ambos con secretos sintéticos. Ver la [guía para conectar un
-estado](guia-conecta-tu-estado.md#credenciales-oauth-20-para-la-sesna).
+scrypt. El enrutador lee `node-credentials.json` en su directorio de datos (0600). En producción,
+`sigilo instalar` y `sigilo-sesna publicar` los escriben con el secreto **derivado** en los dos
+lados (X25519 y HKDF, sin que viaje; [criptografia.md](criptografia.md#secretos-de-enlace-derivados-sesna--nodo));
+`npm run red:demo` genera ambos con secretos sintéticos. Ver la [guía para conectar un
+estado](guia-conecta-tu-estado.md#6-recibir-denuncias-por-la-red).
 
 ## Pruebas
 
