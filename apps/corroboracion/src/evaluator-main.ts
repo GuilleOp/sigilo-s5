@@ -9,6 +9,8 @@ import { createEvaluatorApp } from './evaluator-app.ts';
 import { createEvaluatorService } from './evaluator-service.ts';
 
 function start(): void {
+  // Seguridad (H18): bases, WAL y llaves se crean 0600 aunque el umask del sistema sea 022.
+  process.umask(0o077);
   const config = loadEvaluatorConfig(process.env);
   const keys = loadEvaluatorKeys(config.dataDir);
   mkdirSync(config.dataDir, { recursive: true });

@@ -28,6 +28,8 @@ function readJson(path: string): unknown {
 }
 
 function start(): void {
+  // Seguridad (H18): bases, WAL y llaves se crean 0600 aunque el umask del sistema sea 022.
+  process.umask(0o077);
   const dataDir = resolve(process.env.SIGILO_WITNESS_DATA_DIR || 'data');
   const routerUrl = process.env.SIGILO_WITNESS_ROUTER_URL || 'http://127.0.0.1:8790';
   const intervalSeconds = Number(process.env.SIGILO_WITNESS_INTERVAL_SECONDS || '60');

@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # Imágenes de la red de SIGILO, en varias etapas sobre la imagen oficial de Node 22:
 #   enrutador  enrutador ciego y bitácora nacional (apps/enrutador), con la ventanilla única: la web
 #              en perfil «ventanilla» en el mismo origen (la sirve la SESNA)
@@ -11,7 +11,12 @@
 # La web fija las llaves públicas de su nodo (o la raíz de la red, en la ventanilla), que entran por
 # el contexto adicional `node-keys`; el perfil de la web llega con el argumento SIGILO_WEB_PROFILE.
 
-ARG NODE_IMAGE=node:22-bookworm-slim
+# Imagen base fijada por digest (H10): la etiqueta sola puede cambiar de contenido sin aviso. Para
+# actualizarla (Dependabot la propone), comprobar el índice multiarquitectura con:
+#   docker buildx imagetools inspect node:22-bookworm-slim
+# y copiar el «Digest:» del índice (no el de una sola arquitectura). El frontend de la primera
+# línea se fija igual (docker buildx imagetools inspect docker/dockerfile:1). Ambos, el 2026-11-12.
+ARG NODE_IMAGE=node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
 
 # Manifiestos de todos los workspaces, para que npm ci resuelva el lockfile completo.
 FROM ${NODE_IMAGE} AS manifests
@@ -64,8 +69,13 @@ COPY --from=node-keys network-trust.json apps/web/src/config/network-trust.json
 RUN VITE_SIGILO_PERFIL="$SIGILO_WEB_PROFILE" VITE_SIGILO_VENTANILLA_URL="$SIGILO_VENTANILLA_URL" \
     npm run build -w @sigilo/web
 
-# Base de ejecución común: paquetes compartidos y dependencias de producción.
+# Base de ejecución común: paquetes compartidos y dependencias de producción. Sin npm, npx,
+# corepack ni yarn (H10): en ejecución solo corre `node`, así que se quitan las herramientas que
+# un atacante dentro del contenedor podría usar para bajar o instalar código.
 FROM ${NODE_IMAGE} AS runtime
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+      /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 WORKDIR /app
 ENV NODE_ENV=production \
     NPM_CONFIG_UPDATE_NOTIFIER=false \

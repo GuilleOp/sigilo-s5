@@ -64,7 +64,8 @@ import {
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(process.env.SIGILO_RED_DEMO_DIR || join(ROOT, '.red-demo'));
 const ROUTER = process.env.SIGILO_DEMO_ROUTER_URL || 'http://127.0.0.1:8790';
-const EVALUATOR = process.env.SIGILO_DEMO_EVALUATOR_URL || 'http://127.0.0.1:8791';
+// El evaluador no publica puerto (H16): se llega por el paso de la ventanilla, como la web.
+const EVALUATOR = process.env.SIGILO_DEMO_EVALUATOR_URL || 'http://127.0.0.1:8790';
 const NODES = {
   federal: process.env.SIGILO_DEMO_FEDERAL_URL || 'http://127.0.0.1:8782',
   queretaro: process.env.SIGILO_DEMO_QUERETARO_URL || 'http://127.0.0.1:8781',

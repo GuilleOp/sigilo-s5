@@ -31,6 +31,8 @@ function indexClock(env: NodeJS.ProcessEnv): () => Date {
 }
 
 function start(): void {
+  // Seguridad (H18): bases, WAL y llaves se crean 0600 aunque el umask del sistema sea 022.
+  process.umask(0o077);
   const config = loadIndexConfig(process.env);
   const now = indexClock(process.env);
   const directory = loadVerifiedDirectory(config.dataDir);

@@ -34,6 +34,8 @@ import { createRelayService } from './relay-service.ts';
 import { loadVentanillaConfig } from './web.ts';
 
 function start(): void {
+  // Seguridad (H18): bases, WAL y llaves se crean 0600 aunque el umask del sistema sea 022.
+  process.umask(0o077);
   const config = loadRouterConfig(process.env);
   const files = loadRouterFiles(config.dataDir);
   const now = (): Date => new Date();

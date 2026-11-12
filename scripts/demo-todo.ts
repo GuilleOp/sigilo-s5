@@ -11,8 +11,11 @@ import { resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
-/** Puertos que publica `compose.yaml` en 127.0.0.1. */
-const PORTS = [8781, 8782, 8783, 8790, 8791, 8792];
+/**
+ * Puertos que publica `compose.yaml` en 127.0.0.1. El evaluador y el índice ya no se publican
+ * (H16): solo los usan el enrutador y los nodos por la red interna.
+ */
+const PORTS = [8781, 8782, 8783, 8790];
 
 /** Lo que se comprueba por HTTP después de que Docker reporta los servicios sanos. */
 const ENDPOINTS = [
@@ -29,12 +32,12 @@ const ENDPOINTS = [
   { name: 'Nodo Federal (API)', url: 'http://127.0.0.1:8782/api/v1/keys' },
   { name: 'Nodo Oaxaca (panel)', url: 'http://127.0.0.1:8783/autoridad' },
   { name: 'Nodo Oaxaca (API)', url: 'http://127.0.0.1:8783/api/v1/keys' },
+  // El evaluador, por el paso de la ventanilla (sin puerto propio en el equipo). El índice no tiene
+  // puerto ni rutas públicas: lo cubre su verificación de salud en Docker.
   {
-    name: 'Evaluador OPRF',
-    url: 'http://127.0.0.1:8791/api/v1/corroboracion/evaluador/llave',
+    name: 'Evaluador OPRF (por la ventanilla)',
+    url: 'http://127.0.0.1:8790/api/v1/corroboracion/evaluador/reto',
   },
-  // El índice no tiene rutas públicas de lectura: basta con que responda (como su healthcheck).
-  { name: 'Índice de coincidencias', url: 'http://127.0.0.1:8792/', anyAnswer: true },
 ];
 
 /** Servicios con verificación de salud en la imagen (los testigos no publican puerto). */
@@ -173,8 +176,7 @@ function isPortFree(port: number): Promise<boolean> {
 
 async function waitForEndpoints(): Promise<void> {
   for (const endpoint of ENDPOINTS) {
-    const isUp = (status: number): boolean =>
-      'anyAnswer' in endpoint ? status > 0 && status < 500 : status === 200;
+    const isUp = (status: number): boolean => status === 200;
     let status = 0;
     for (let attempt = 0; attempt < 30 && !isUp(status); attempt += 1) {
       try {
