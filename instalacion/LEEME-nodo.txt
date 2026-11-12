@@ -1,0 +1,15 @@
+SIGILO · Nodo estatal de la red S5 (instalación de producción)
+
+Necesitas: un servidor Linux con Docker Engine 24 o más y Docker Compose 2.24 o más, un usuario de
+servicio (por ejemplo «sigilo») en el grupo docker, un dominio institucional que ya apunte a este
+equipo y salida a internet por el puerto 443.
+
+1. Revisa la descarga:           sha256sum -c SHA256SUMS
+2. Instala (unas 10 preguntas):  ./sigilo instalar
+3. Envía a la SESNA:             salida/solicitud-alta-<estado>.json  (no tiene secretos)
+   y lee por teléfono la huella del nodo que te muestra el paso 2.
+4. Cuando la SESNA confirme:     ./sigilo iniciar
+5. Revisa que todo esté en verde: ./sigilo diagnostico
+
+Sin internet: ./sigilo cargar sigilo-imagenes-<versión>.tar antes del paso 2.
+Ayuda: ./sigilo ayuda · Guía completa: docs/instalacion-nodo.md del repositorio de SIGILO.

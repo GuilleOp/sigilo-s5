@@ -1,0 +1,175 @@
+#!/bin/sh
+# Envoltorio del nodo estatal de SIGILO. Solo necesita Docker con Compose ≥ 2.24: el CLI corre
+# dentro de la imagen publicada (servicio «herramientas» de compose.nodo.yaml) con tu usuario.
+# Uso: ./sigilo instalar | iniciar | diagnostico | respaldar | actualizar <versión> | ayuda
+# Guía: docs/instalacion-nodo.md
+set -eu
+
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$DIR"
+COMPOSE_FILE_NODO="$DIR/compose.nodo.yaml"
+VERSION_POR_OMISION=1.1.0
+
+fallar() {
+  printf '✗ %s\n' "$1" >&2
+  exit "${2:-1}"
+}
+
+valor_env() {
+  # Valor de una variable de .env, o vacío.
+  [ -f .env ] || return 0
+  sed -n "s/^$1=//p" .env | tail -n 1
+}
+
+poner_env() {
+  # Cambia (o agrega) una variable de .env sin tocar las demás.
+  if grep -q "^$1=" .env 2>/dev/null; then
+    tmp=$(mktemp "$DIR/.env.XXXXXX")
+    awk -v clave="$1" -v valor="$2" 'BEGIN { FS = OFS = "=" } $1 == clave { print clave "=" valor; next } { print }' .env >"$tmp"
+    mv "$tmp" .env
+  else
+    printf '%s=%s\n' "$1" "$2" >>.env
+  fi
+}
+
+# Usuario de los contenedores: el tuyo (nunca root), salvo que .env diga otro.
+SIGILO_UID=$(valor_env SIGILO_UID)
+SIGILO_GID=$(valor_env SIGILO_GID)
+SIGILO_UID=${SIGILO_UID:-$(id -u)}
+SIGILO_GID=${SIGILO_GID:-$(id -g)}
+SIGILO_VERSION=$(valor_env SIGILO_VERSION)
+SIGILO_VERSION=${SIGILO_VERSION:-$VERSION_POR_OMISION}
+export SIGILO_UID SIGILO_GID SIGILO_VERSION
+
+compose() {
+  docker compose -f "$COMPOSE_FILE_NODO" --project-directory "$DIR" "$@"
+}
+
+cli() {
+  # El CLI dentro de la imagen, con la carpeta de la instalación montada en /sigilo.
+  if [ -t 0 ] && [ -t 1 ]; then tty=""; else tty="-T"; fi
+  # shellcheck disable=SC2086
+  compose --profile herramientas run --rm $tty herramientas "$@"
+}
+
+requisitos() {
+  command -v docker >/dev/null 2>&1 || fallar 'Docker no está instalado. Instala Docker Engine ≥ 24.'
+  docker info >/dev/null 2>&1 || fallar 'Docker no responde: sudo systemctl start docker y agrega tu usuario al grupo docker.'
+  docker compose version >/dev/null 2>&1 || fallar 'Falta Docker Compose ≥ 2.24 (paquete docker-compose-plugin).'
+  if [ "$(id -u)" = 0 ] && [ "${SIGILO_PERMITIR_ROOT:-0}" != 1 ]; then
+    fallar 'Eres root. Usa el usuario de servicio (por ejemplo «sigilo»): sudo chown -R sigilo: . y vuelve a correr como sigilo.'
+  fi
+  libre=$(df -Pk . | awk 'NR == 2 { print int($4 / 1048576) }')
+  if [ "${libre:-0}" -lt 20 ]; then
+    printf '! Solo hay %s GB libres aquí; se recomiendan 20 GB o más.\n' "${libre:-0}"
+  fi
+  printf '✓ %s · %s · usuario %s\n' "$(docker --version)" "$(docker compose version --short 2>/dev/null || echo compose)" "$SIGILO_UID"
+}
+
+carpetas() {
+  # Las carpetas que montan los contenedores deben ser tuyas antes de arrancarlos.
+  umask 077
+  mkdir -p datos llaves salida tls/propio
+  umask 022
+  mkdir -p config
+}
+
+reiniciar_nodo() {
+  if compose ps --status running --services 2>/dev/null | grep -qx nodo; then
+    compose restart nodo
+  fi
+}
+
+orden=${1:-ayuda}
+[ "$#" -gt 0 ] && shift
+
+case "$orden" in
+  instalar)
+    requisitos
+    carpetas
+    cli instalar "$@"
+    ;;
+  iniciar)
+    carpetas
+    cli iniciar "$@" || exit $?
+    compose up -d --wait
+    cli diagnostico || true
+    printf '\nTu nodo está en la red. Programa la revisión diaria del directorio: ./sigilo programar\n'
+    ;;
+  directorio)
+    set +e
+    cli directorio "$@"
+    codigo=$?
+    set -e
+    # 0: hubo versión nueva (se reinicia el nodo); 3: sin cambios.
+    if [ "$codigo" = 0 ]; then reiniciar_nodo; elif [ "$codigo" != 3 ]; then exit "$codigo"; fi
+    ;;
+  cuenta | calendario)
+    cli "$orden" "$@"
+    reiniciar_nodo
+    ;;
+  rotar-llaves)
+    cli rotar-llaves "$@"
+    case " $* " in *" --aplicar "*) reiniciar_nodo ;; esac
+    ;;
+  diagnostico)
+    compose ps || true
+    cli diagnostico "$@"
+    ;;
+  restaurar)
+    compose stop nodo || true
+    cli restaurar "$@"
+    printf 'Revisa lo restaurado y arranca con: ./sigilo iniciar\n'
+    ;;
+  actualizar)
+    nueva=${1:-}
+    if [ "$nueva" = --regresar ]; then
+      [ -f .env.anterior ] || fallar 'No hay una versión anterior guardada.'
+      cp .env.anterior .env
+      compose up -d --wait
+      printf '✓ De regreso a la versión %s.\n' "$(valor_env SIGILO_VERSION)"
+      exit 0
+    fi
+    [ -n "$nueva" ] || fallar 'Indica la versión: ./sigilo actualizar 1.2.0 (o una imagen por digesto con SIGILO_IMAGEN_NODO).'
+    anterior=$SIGILO_VERSION
+    cli respaldar --etiqueta "antes-de-$nueva"
+    cp .env .env.anterior
+    poner_env SIGILO_VERSION "$nueva"
+    poner_env SIGILO_IMAGEN_NODO "${SIGILO_IMAGEN_NODO:-ghcr.io/guilleop/sigilo-nodo:$nueva}"
+    SIGILO_VERSION=$nueva
+    export SIGILO_VERSION
+    if compose pull nodo && compose up -d --wait && cli diagnostico; then
+      printf '✓ Actualizado a %s. Si algo falla: ./sigilo actualizar --regresar\n' "$nueva"
+    else
+      printf '! El nodo no quedó sano con %s: regreso a %s.\n' "$nueva" "$anterior"
+      cp .env.anterior .env
+      SIGILO_VERSION=$anterior
+      compose up -d --wait
+      fallar "Seguiste en $anterior. Si la base ya migró, restaura el respaldo previo: ./sigilo restaurar salida/respaldos/<…antes-de-$nueva.respaldo>" 2
+    fi
+    ;;
+  detener)
+    compose down
+    ;;
+  estado)
+    compose ps
+    ;;
+  registros)
+    compose logs --tail 200 nodo
+    ;;
+  cargar)
+    # Instalación sin internet: docker load de las imágenes que entrega la SESNA.
+    [ -n "${1:-}" ] || fallar 'Uso: ./sigilo cargar sigilo-imagenes-<versión>.tar'
+    docker load -i "$1"
+    ;;
+  programar)
+    # Revisión diaria del directorio (03:15) y respaldo semanal con la frase de un archivo.
+    command -v crontab >/dev/null 2>&1 || fallar 'No hay crontab en este equipo; programa ./sigilo directorio actualizar a diario.'
+    linea="15 3 * * * cd $DIR && ./sigilo directorio actualizar >/dev/null 2>&1"
+    (crontab -l 2>/dev/null | grep -vF "$DIR && ./sigilo directorio actualizar"; printf '%s\n' "$linea") | crontab -
+    printf '✓ Revisión diaria del directorio programada: %s\n' "$linea"
+    ;;
+  *)
+    cli "$orden" "$@"
+    ;;
+esac

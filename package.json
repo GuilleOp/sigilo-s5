@@ -21,7 +21,8 @@
     "apps/web",
     "apps/enrutador",
     "apps/corroboracion",
-    "tools/validador"
+    "tools/validador",
+    "tools/sigilo"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
@@ -45,6 +46,7 @@
     "demo:reset": "node scripts/demo-reset.ts",
     "standard:build": "node scripts/build-standard.ts",
     "validate": "node tools/validador/src/cli.ts",
+    "sigilo": "node tools/sigilo/src/cli.ts",
     "red:demo": "node scripts/red-demo.ts",
     "demo:seed": "node scripts/demo-seed.ts",
     "demo:todo": "node scripts/demo-todo.ts",
