@@ -13,10 +13,14 @@ import {
   networkToken,
   submitDirect,
 } from '../../../server/src/test-support/network-harness.ts';
+import type { TestNetwork } from '../../../server/src/test-support/network-harness.ts';
+import type { AuthorityKeys } from '../crypto/authority.ts';
+import { openForAuthority, verifyEvidenceAnchor } from '../crypto/evidence.ts';
 import { createReceipt } from '../crypto/submission.ts';
 import { transferToOtherNode } from '../pages/authority/transfer.ts';
 import { createSigiloApi } from '../services/api.ts';
-import { toBase64Url } from '@sigilo/core';
+import { keyIdFor, toBase64Url } from '@sigilo/core';
+import type { DemoAuthorityId } from '@sigilo/red';
 import { SubmitComplaintResponseSchema } from '@sigilo/contracts';
 import { corroborateBlindly } from '../corroboration/blind-corroboration.ts';
 import { inlinePowSolver } from '../crypto/proof-of-work.ts';
@@ -26,6 +30,7 @@ import { submitReport } from '../pages/report/submit-report.ts';
 import type { SigiloApi } from '../services/api.ts';
 import { createApiClient } from '../services/api-client.ts';
 import { emptyDraft } from '../state/report-draft.ts';
+import type { EvidenceItem } from '../state/report-draft.ts';
 import { loadNetworkState } from './directory.ts';
 import { destinationFor, keysForDestination } from './network-keys.ts';
 import { trackAcrossNetwork } from './network-tracking.ts';
@@ -41,6 +46,34 @@ const UNUSED_API = new Proxy(
     },
   },
 ) as SigiloApi;
+
+/** Llaves de una autoridad de la red de prueba, como las importa el panel. */
+function authorityKeysOf(network: TestNetwork, authorityId: DemoAuthorityId): AuthorityKeys {
+  const pair = network.services.network.authorities[authorityId];
+  return {
+    keyId: keyIdFor(pair.box.publicKey),
+    boxPublicKey: pair.box.publicKey,
+    boxPrivateKey: pair.box.privateKey,
+    signingPublicKey: pair.signing.publicKey,
+    signingPrivateKey: pair.signing.privateKey,
+  };
+}
+
+/** Imagen PNG limpia sintética: firma real seguida de relleno. */
+function cleanPngItem(id: string): EvidenceItem {
+  const bytes = new Uint8Array(400).fill(3);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  return {
+    id,
+    fileName: `foto-${id}.png`,
+    kind: 'image',
+    original: new Blob(['original']),
+    originalSha256: '0'.repeat(64),
+    status: 'clean',
+    clean: [{ id: `${id}-limpia`, blob: new Blob([bytes], { type: 'image/png' }), url: 'blob:x' }],
+    cleanVerified: true,
+  };
+}
 
 async function setup() {
   const network = createTestNetwork();
@@ -108,6 +141,7 @@ describe('ventanilla única por la red', () => {
       network: {
         api: relayApi,
         keys: keysForDestination(destination),
+        authorityId: destination.authority.id,
         authorityName: destination.authority.name,
         nodeName: destination.node.name,
       },
@@ -155,6 +189,7 @@ describe('ventanilla única por la red', () => {
       network: {
         api: relayApi,
         keys,
+        authorityId: destination.authority.id,
         authorityName: destination.authority.name,
         nodeName: destination.node.name,
         corroborate: (text) =>
@@ -220,6 +255,8 @@ describe('ventanilla única por la red', () => {
     const detail = await panelApi.getComplaint(token, submitted.folio);
     const result = await transferToOtherNode({
       token,
+      keys: authorityKeysOf(network, 'authority.buzon-federal'),
+      authorityId: 'authority.buzon-federal',
       detail,
       directory,
       targetAuthorityId: 'authority.comptroller-queretaro',
@@ -245,6 +282,111 @@ describe('ventanilla única por la red', () => {
     );
     const notes = origin?.view.procedure?.steps.map((step) => step.note ?? '').join(' ') ?? '';
     expect(notes).toContain(result.folio);
+  });
+
+  it('pruebas cifradas: el buzón las abre, las re-cifra al turnar, el destino las abre y el origen las borra', async () => {
+    const { network, client, directory } = await setup();
+    const inboxId = 'authority.buzon-federal';
+    const draft = emptyDraft();
+    draft.mode = 'anonymous';
+    draft.facts = {
+      stateCode: '09',
+      municipalityCode: '',
+      entityId: 'VE-ADUANA',
+      offenseCode: 'LGRA-54',
+      periodMonth: '04',
+      periodYear: '2026',
+      accused: 'Servidor Ficticio Cinco',
+      description: 'Hechos sintéticos con una foto de prueba cifrada hacia la autoridad.',
+    };
+    draft.evidence = [cleanPngItem('a')];
+    const destination = destinationFor(directory, inboxId);
+    const submitted = await submitReport(draft, UNUSED_API, () => undefined, {
+      solver: inlinePowSolver,
+      network: {
+        api: createRelayApi(
+          { authorityId: destination.authority.id, node: destination.node },
+          sameOriginRelaySender(client),
+        ),
+        keys: keysForDestination(destination),
+        authorityId: destination.authority.id,
+        authorityName: destination.authority.name,
+        nodeName: destination.node.name,
+      },
+    });
+    // El enrutador y el nodo solo vieron el contenedor cifrado.
+    const plain = toBase64Url(new Uint8Array(400).fill(3).subarray(0, 300));
+    expect(network.forwarded.some((body) => body.includes(plain.slice(20, 80)))).toBe(false);
+
+    const federalClient = createApiClient((input, init) =>
+      Promise.resolve(network.federal.app.request(`http://nodo-federal.invalid${input}`, init)),
+    );
+    const panelApi = createSigiloApi(federalClient);
+    const token = networkToken('federalInboxIntake');
+    const inboxKeys = authorityKeysOf(network, inboxId);
+    const detail = await panelApi.getComplaint(token, submitted.folio);
+    const [descriptor] = detail.evidence;
+    if (descriptor === undefined) throw new Error('Sin prueba.');
+    const container = new Uint8Array(
+      await (await panelApi.getEvidence(token, descriptor.evidenceId)).arrayBuffer(),
+    );
+    const opened = await openForAuthority(container, descriptor, detail, inboxKeys, inboxId);
+    expect(opened.matchesAnchor).toBe(true);
+    expect(opened.plaintext.subarray(0, 8)).toEqual(
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+    expect(
+      await verifyEvidenceAnchor(
+        detail,
+        (from, limit) => panelApi.getLedgerEvents(from, limit),
+        keysForDestination(destination),
+      ),
+    ).toBe('pending');
+
+    const result = await transferToOtherNode({
+      token,
+      keys: inboxKeys,
+      authorityId: inboxId,
+      detail,
+      directory,
+      targetAuthorityId: 'authority.comptroller-queretaro',
+      note: 'Los hechos son de competencia estatal: la turnamos a la Contraloría de Querétaro.',
+      api: panelApi,
+      send: sameOriginRelaySender(federalClient),
+      solver: inlinePowSolver,
+    });
+    // Custodia entregada: el origen ya no guarda la prueba.
+    expect(network.federal.server.evidenceStore.read(descriptor.evidenceId)).toBeNull();
+    expect(
+      network.federal.ctx.evidence.listCustodyEvents(submitted.folio).map((event) => event.type),
+    ).toEqual(['evidence.received', 'evidence.custody_transferred']);
+
+    // La Contraloría de Querétaro abre la copia re-cifrada con su llave; el compromiso es el mismo.
+    const queretaroApi = createSigiloApi(
+      createApiClient((input, init) =>
+        Promise.resolve(
+          network.queretaro.app.request(`http://nodo-queretaro.invalid${input}`, init),
+        ),
+      ),
+    );
+    const there = await queretaroApi.getComplaint(networkToken('queretaroIntake'), result.folio);
+    const [copy] = there.evidence;
+    if (copy === undefined) throw new Error('Sin prueba en el destino.');
+    const copyContainer = new Uint8Array(
+      await (
+        await queretaroApi.getEvidence(networkToken('queretaroIntake'), copy.evidenceId)
+      ).arrayBuffer(),
+    );
+    const reopened = await openForAuthority(
+      copyContainer,
+      copy,
+      there,
+      authorityKeysOf(network, 'authority.comptroller-queretaro'),
+      'authority.comptroller-queretaro',
+    );
+    expect(reopened.plaintext).toEqual(opened.plaintext);
+    expect(reopened.commitment).toBe(opened.commitment);
+    expect(reopened.matchesAnchor).toBe(true);
   });
 
   it('nodo caído: la denuncia queda en la cola, se entrega al volver y se sigue con folio y palabras', async () => {
@@ -280,6 +422,7 @@ describe('ventanilla única por la red', () => {
       network: {
         api: relayApi,
         keys: keysForDestination(destination),
+        authorityId: destination.authority.id,
         authorityName: destination.authority.name,
         nodeName: destination.node.name,
       },

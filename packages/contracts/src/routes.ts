@@ -41,6 +41,8 @@ export const ROUTES = {
   authorityTransferReceipt: (folio: string) => `${COMPLAINT(folio)}/transfer/receipt`,
   /** `POST`: la autoridad descarta los archivos de las pruebas de la denuncia (queda en la bitácora). */
   authorityEvidenceDiscard: (folio: string) => `${COMPLAINT(folio)}/evidence/discard`,
+  /** `POST`: llaves de los archivos de prueba re-cifradas hacia otra autoridad del nodo. */
+  authorityEvidenceKeys: (folio: string) => `${COMPLAINT(folio)}/evidence/keys`,
   authorityEvidence: (evidenceId: string) => `${API_PREFIX}/authority/evidence/${evidenceId}`,
   /** `GET ?offset=&limit=`: acuerdos de cierre en versión pública, para el auditor. */
   authorityClosures: `${API_PREFIX}/authority/closures`,

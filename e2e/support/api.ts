@@ -2,9 +2,11 @@
 // que usa la web, sesiones de las cuentas de prueba, trámite y apertura de identidad 2 de 3.
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import {
+  AuthorityDemoKeySchema,
   AuthoritySessionSchema,
   ComplaintDetailSchema,
   IdentityOpeningRequestViewSchema,
+  NODE_KEY_AUTHORITY_ID,
   OpenIdentityResponseSchema,
   POW_HEADER,
   PowChallengeSchema,
@@ -15,12 +17,19 @@ import {
 import type {
   ComplaintDetail,
   ComplaintFacts,
+  EvidenceDescriptor,
   HpkeEnvelope,
   OpenIdentityResponse,
   ProcedureActionRequest,
   SubmitComplaintRequest,
 } from '@sigilo/contracts';
-import { formatPowHeader, fromBase64Url, solvePow } from '@sigilo/core';
+import {
+  formatPowHeader,
+  fromBase64Url,
+  openEvidenceBody,
+  openEvidenceKey,
+  solvePow,
+} from '@sigilo/core';
 import type { PowPurpose } from '@sigilo/contracts';
 import type { PinnedKeys } from '../../apps/web/src/config/pinned-keys.ts';
 import {
@@ -224,6 +233,25 @@ export async function downloadEvidence(
   });
   if (!response.ok()) throw new Error(`No se pudo descargar la prueba: ${response.status()}`);
   return response.body();
+}
+
+/**
+ * Abre en Node, como lo hace el panel, una prueba descargada con la llave de autoridad de la
+ * demostración (`authority-demo-key.json`, la del buzón general del nodo): las pruebas llegan
+ * cifradas hacia esa llave, con el folio y la llave del nodo en el AAD.
+ */
+export async function decryptEvidence(
+  container: Uint8Array,
+  descriptor: EvidenceDescriptor,
+  folio: string,
+  keyFileText: string,
+): Promise<Uint8Array> {
+  const key = AuthorityDemoKeySchema.parse(JSON.parse(keyFileText));
+  const fileKey = await openEvidenceKey(container, fromBase64Url(key.boxPrivateKey), key.keyId, {
+    folio,
+    authorityId: NODE_KEY_AUTHORITY_ID,
+  });
+  return (await openEvidenceBody(container, fileKey, folio, descriptor.mediaType)).plaintext;
 }
 
 /** Solicitud de apertura de una cuenta; devuelve la respuesta cruda. */

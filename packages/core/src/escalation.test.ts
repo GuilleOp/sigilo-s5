@@ -61,15 +61,26 @@ describe('sobre de escalamiento', () => {
       facts: request.facts,
       evidence: [],
       protectionRequested: false,
+      evidenceKeys: [],
     });
     // Nunca lleva campos fuera del contenido (la identidad sellada no entra).
     expect(Object.keys(content).sort()).toEqual([
       'evidence',
+      'evidenceKeys',
       'facts',
       'mode',
       'protectionRequested',
       'version',
     ]);
+  });
+
+  it('lleva las llaves de los archivos de prueba para la supervisora', async () => {
+    const { supervisor, recipient, request, context } = scenario();
+    const evidenceKeys = [{ evidenceId: 'a'.repeat(32), fileKey: toBase64Url(randomBytes(32)) }];
+    const envelope = await sealEscalation(request, recipient, context, evidenceKeys);
+    expect(fromBase64Url(envelope.ct).length).toBe(ESCALATION_PADDED_SIZE + 16);
+    const content = await openEscalation(envelope, supervisor.privateKey, context);
+    expect(content.evidenceKeys).toEqual(evidenceKeys);
   });
 
   it('el tamaño no depende de la longitud del relato', async () => {

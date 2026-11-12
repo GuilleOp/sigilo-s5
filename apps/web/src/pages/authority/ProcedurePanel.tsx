@@ -29,7 +29,10 @@ import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate } from '../../lib/format.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
+import { PINNED_KEYS } from '../../config/pinned-keys.ts';
+import { useNetworkState } from '../../network/use-network-state.ts';
 import type { AuthoritySession } from './authority-session.ts';
+import { EvidenceKeysError, shareEvidenceKeys } from './evidence-keys.ts';
 
 interface ProcedurePanelProps {
   session: AuthoritySession;
@@ -176,6 +179,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
   const isSavingRef = useRef(false);
   const isMounted = useRef(true);
   const current = detail.summary.assignedAuthorityId;
+  const network = useNetworkState();
 
   useEffect(() => {
     isMounted.current = true;
@@ -293,6 +297,18 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     isSavingRef.current = true;
     setSaving(true);
     try {
+      // Turnar o reasignar dentro del nodo: antes, la autoridad destino recibe las llaves de las
+      // pruebas cifradas (re-cifradas aquí hacia su llave); sin ellas no podría abrirlas.
+      if (request.action === 'route' || request.action === 'reassign') {
+        await shareEvidenceKeys({
+          session,
+          detail,
+          targetAuthorityId: request.authorityId,
+          network,
+          pinned: PINNED_KEYS,
+          api,
+        });
+      }
       const state = await api.applyProcedure(session.token, detail.summary.folio, request);
       if (!isMounted.current) return;
       // Si la denuncia pasó a otra autoridad, ya no se puede volver a leer: no se recarga.
@@ -312,7 +328,11 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
       if (isMounted.current) focusAfterRender('procedure-title');
     } catch (failure) {
       if (isMounted.current) {
-        setMessage(describeError(failure, 'No pudimos aplicar la acción. Inténtalo de nuevo.'));
+        setMessage(
+          failure instanceof EvidenceKeysError
+            ? failure.message
+            : describeError(failure, 'No pudimos aplicar la acción. Inténtalo de nuevo.'),
+        );
       }
     } finally {
       isSavingRef.current = false;

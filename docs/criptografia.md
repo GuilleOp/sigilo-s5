@@ -160,6 +160,121 @@ protectionRequested }`) en UTF-8, rellenado a exactamente `ESCALATION_PADDED_SIZ
   supervisora y solo si una regla de escalamiento se cumplió; cada entrega queda en el registro
   de seguridad.
 
+## Pruebas cifradas de extremo a extremo
+
+Las pruebas se limpian en el navegador (Huella Cero; los PDF se convierten a imagen; hasta 10
+archivos de 10 MiB) y, desde esta versión, se cifran ahí mismo hacia la autoridad competente. El
+nodo guarda solo el contenedor cifrado y sus metadatos (tipo declarado, tamaño, digesto del
+contenedor y compromiso del contenido); el enrutador, el nodo, la SESEA y la SESNA no pueden ver
+las imágenes. Implementación: `packages/core/src/evidence.ts` y `apps/web/src/crypto/evidence.ts`.
+
+### Contenedor (`SGEV` versión 1)
+
+Cifrado híbrido con la misma suite HPKE que la identidad: cada archivo tiene una llave aleatoria
+de 32 bytes (`fileKey`) y esa llave se sella con HPKE (`sealToPublicKey`, info `sigilo/v1/hpke`)
+hacia la llave X25519 de la autoridad.
+
+| Bytes | Campo                     | Contenido                                                                  |
+| ----- | ------------------------- | -------------------------------------------------------------------------- |
+| 5     | formato                   | `SGEV` y `0x01`                                                            |
+| 32    | compromiso                | `SHA-256("sigilo/v1/evidence-commitment:" ‖ sal ‖ imagen)`                 |
+| 32    | `enc`                     | llave efímera encapsulada de HPKE                                          |
+| 48    | llave del archivo sellada | `fileKey` cifrada con HPKE (32 + 16 de etiqueta)                           |
+| resto | cuerpo                    | ChaCha20-Poly1305(`fileKey`, nonce de 12 ceros, `sal ‖ imagen`) + etiqueta |
+
+- Sobrecosto fijo: `EVIDENCE_CONTAINER_OVERHEAD` = 165 bytes (cabecera de 117, sal de 32 y etiqueta
+  de 16); `MAX_EVIDENCE_BYTES` es 10 MiB más ese sobrecosto. El nonce fijo es seguro porque cada
+  `fileKey` se usa una sola vez.
+- AAD de la llave: `sigilo/v1/evidence-key:` + `canonicalize({ folio, authorityId, commitment })`.
+  Liga la llave al folio, a la autoridad destinataria y al archivo: no se puede trasplantar a otra
+  denuncia ni presentarse como de otra autoridad.
+- AAD del cuerpo: `sigilo/v1/evidence-body:` + `canonicalize({ folio, mediaType, commitment })`. El
+  nodo no puede cambiar el tipo declarado ni la cabecera sin que el cuerpo deje de abrir.
+- `authorityId` es el de la autoridad del directorio firmado (ventanilla única). Cuando el
+  navegador cifra hacia la llave fijada del nodo (perfil de nodo único o página propia del nodo,
+  que la usan para su buzón general) no conoce el identificador de la autoridad y usa
+  `NODE_KEY_AUTHORITY_ID` = `authority.llave-del-nodo`; el panel prueba el suyo y después ese.
+- El folio va en el AAD, así que el navegador lo elige antes de cifrar (`generateFolio`, 60 bits):
+  por la red viaja en `RoutedRequest.folio`, como ya hacía; en el envío directo, en `?folio=` de
+  `POST /api/v1/complaints`. El nodo rechaza un folio repetido. Un reintento del navegador
+  conserva el folio de las pruebas ya subidas.
+
+El nodo comprueba solo el formato (prefijo, versión y al menos un byte de imagen) y guarda el
+compromiso de la cabecera; ya no puede comprobar los bytes mágicos de la imagen. Lo hace el panel
+al abrirla, antes de mostrarla: el digesto del contenedor debe ser el del descriptor (que va en el
+comprobante firmado), el compromiso recalculado el de la cabecera y los bytes, una imagen del tipo
+declarado. La descarga (`downloadEvidence`) es `application/octet-stream`.
+
+### Compromiso del contenido: por qué salado
+
+Para la cadena de custodia hace falta un digesto del contenido que sobreviva al re-cifrado (el
+contenedor cambia en cada turnado entre nodos). El SHA-256 simple de la imagen serviría, pero
+sería un oráculo: quien tenga una imagen candidata (la persona denunciada con el documento
+original, o quien sospeche de una foto) podría confirmar con el anclaje que esa imagen es la
+prueba, y con ello quién la filtró. Por eso se ancla un compromiso con una sal aleatoria de 32
+bytes que viaja cifrada dentro del cuerpo: sin la sal no se puede recalcular, y con ella (la
+autoridad, la supervisora o quien turna) se comprueba exactamente. Al re-cifrar se conserva la
+sal, así que la copia del destino tiene el mismo compromiso que la anclada en el origen. El nodo
+conoce el compromiso pero no la sal; no le sirve para confirmar nada. Los digestos de los
+originales antes de limpiar siguen solo dentro de la identidad sellada (`originalEvidenceSha256`).
+
+### Cadena de custodia en la bitácora
+
+- `evidence.received`: al recibir la denuncia, en la misma transacción, el nodo registra
+  `{ folio, evidence: [{ evidenceId, sha256, commitment }] }` (`evidenceReceivedPayload`), con el
+  digesto de cada contenedor y su compromiso. Como los demás eventos, solo se publica el digesto
+  de esos datos, que incluyen el folio.
+- `evidence.custody_transferred`: al confirmar un turnado a otro nodo (ver abajo), con el folio,
+  el turnado, los nodos de origen y destino, la autoridad destino, el folio destino, los digestos
+  y compromisos de las copias del origen y los digestos de las copias del destino. Nunca el
+  contenido.
+- El detalle de la autoridad trae `evidenceCustody`: lo anclado, los eventos (con su secuencia si
+  ya se publicaron) y las llaves re-cifradas hacia la autoridad de la sesión. El panel
+  («Cadena de custodia») recalcula el digesto de `evidence.received`, exige que lo anclado sean
+  las mismas pruebas del detalle y, si ya se publicó, prueba el evento en la cadena hasta la
+  cabeza firmada por la llave fijada (`verifyEvidenceAnchor`). Cada miniatura dice si lo que se
+  descifró coincide con lo anclado.
+
+### Supervisora (segunda llave)
+
+`EscalationContent` lleva ahora `evidenceKeys: [{ evidenceId, fileKey }]`: la llave de cada
+archivo en Base64URL. Cabe en los 49 152 bytes del relleno fijo. Cuando una regla escala la
+denuncia, el nodo entrega a la supervisora el sobre y los contenedores; ella abre el cuerpo con la
+llave del archivo, sin usar la llave de la autoridad competente. Una denuncia sin pruebas no lleva
+el campo.
+
+### Turnado y reasignación
+
+- Dentro del nodo (turnar desde el buzón general o reasignar): el navegador de quien la tiene abre
+  la llave de cada archivo y la vuelve a cifrar hacia la llave pública de la autoridad destino
+  (`grantEvidenceKey`, mismo AAD con la autoridad destino) antes de ceder la denuncia, y la sube a
+  `POST authority/complaints/{folio}/evidence/keys`. El contenedor no cambia, así que su digesto
+  (que va en el comprobante firmado) y su compromiso tampoco. El nodo solo comprueba que cada
+  sobre vaya hacia la llave publicada de esa autoridad (directorio firmado, o `keys.json` con un
+  solo nodo).
+- A otro nodo: el navegador de recepción y turnado abre cada prueba, elige el folio del destino,
+  la vuelve a cifrar hacia la autoridad destino del directorio con ese folio y la misma sal, la
+  sube por el enrutador y la cita en la denuncia re-cifrada; la segunda llave de la supervisora
+  del destino lleva las llaves nuevas. Esto amplía lo descrito en «Turnado entre nodos
+  (SEC-19)»: el navegador usa ahora la llave de su autoridad para abrir las pruebas, no para la
+  identidad sellada (esas denuncias siguen sin turnarse a otro nodo).
+- Entrega de custodia: el comprobante firmado del destino cubre el digesto del envío, que incluye
+  los descriptores de las copias nuevas; cuando el origen lo verifica (`confirmTransfer`), en la
+  misma transacción registra `evidence.custody_transferred` y marca sus copias como no guardadas,
+  y después borra los archivos. Queda una sola copia viva. Si el destino nunca confirma (no
+  respondió o el turnado venció a los 10 días hábiles), el origen conserva sus copias.
+
+### Pendiente
+
+- Sellado de tiempo RFC 3161: opcional y trabajo futuro. Hoy la fecha de cada anclaje la da la
+  bitácora (encadenada, con cabeza firmada y anclada fuera del sistema); un sello de una autoridad
+  de tiempo externa sobre la cabeza del día daría una fecha que no depende del nodo. No se llama
+  a ningún servicio externo.
+- Subidas por partes y reanudables de pruebas grandes, y pruebas en la cola de entrega del
+  enrutador (hoy solo las denuncias sin pruebas pueden esperar en la cola): siguientes pasos.
+- Las pruebas guardadas en claro antes de la migración 16 no tienen compromiso ni anclaje; el
+  panel las muestra marcadas como anteriores al cifrado.
+
 ## Buzón
 
 - Texto en claro: mensaje en UTF-8 con prefijo de longitud, rellenado a exactamente

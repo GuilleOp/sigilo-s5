@@ -17,5 +17,6 @@ export * from './ledger.ts';
 export * from './pow.ts';
 export * from './deadlines.ts';
 export * from './escalation.ts';
+export * from './evidence.ts';
 export * from './escalation-rules.ts';
 export * from './turn-semaphore.ts';

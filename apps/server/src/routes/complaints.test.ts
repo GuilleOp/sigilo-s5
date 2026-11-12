@@ -11,6 +11,7 @@ import type { EvidenceDescriptor } from '@sigilo/contracts';
 import {
   computeSubmissionDigest,
   formatPowHeader,
+  generateFolio,
   isFolio,
   receivedPayloadDigest,
   solvePow,
@@ -54,6 +55,24 @@ describe('POST complaints', () => {
     });
     expect(receipt).not.toHaveProperty('ledgerSeq');
     expect(verifyReceipt(receipt, server.serverPublicKey)).toBe(true);
+  });
+
+  it('acepta el folio que eligió el navegador y rechaza uno mal formado o repetido', async () => {
+    const server = createTestServer();
+    const folio = generateFolio();
+    const build = () =>
+      buildComplaintRequest(server, { mode: 'anonymous', reporter: createReporter() });
+    const chosen = await postJson(server.app, `${ROUTES.complaints}?folio=${folio}`, await build());
+    expect(chosen.status).toBe(201);
+    expect(SubmitComplaintResponseSchema.parse(await chosen.json()).folio).toBe(folio);
+    const repeated = await postJson(
+      server.app,
+      `${ROUTES.complaints}?folio=${folio}`,
+      await build(),
+    );
+    expect(repeated.status).toBe(400);
+    const malformed = await postJson(server.app, `${ROUTES.complaints}?folio=nada`, await build());
+    expect(malformed.status).toBe(400);
   });
 
   it('recibe una denuncia anónima sin identidad', async () => {

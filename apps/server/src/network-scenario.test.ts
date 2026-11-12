@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 import {
   AppealResponseSchema,
   ComplaintDetailSchema,
+  EvidenceUploadResponseSchema,
+  NODE_KEY_AUTHORITY_ID,
   ROUTES,
   SubmitComplaintResponseSchema,
   TrackingViewSchema,
@@ -14,12 +16,22 @@ import {
 } from '@sigilo/contracts';
 import type { SubmitComplaintRequest } from '@sigilo/contracts';
 import {
+  decodeFileKey,
   deriveReceiptKeys,
+  encodeFileKey,
+  evidenceReceivedPayloadDigest,
   fromBase64Url,
+  generateFolio,
   generateReceiptPhrase,
+  grantEvidenceKey,
   identityContextFor,
   keyIdFor,
+  openEscalation,
+  openEvidenceBody,
+  openEvidenceGrant,
+  openEvidenceKey,
   sealEscalation,
+  sealEvidence,
   sealIdentity,
   sealMailboxMessage,
   toBase64Url,
@@ -619,5 +631,265 @@ describe('canal único: sin autoridad competente llega al buzón general (Bases 
     expect(stored?.sealedIdentity?.keyId).toBe(
       queretaro.ctx.deps.keys.publicKeySet.authority.keyId,
     );
+  });
+});
+
+describe('pruebas cifradas de extremo a extremo y su custodia en la red', () => {
+  const QUERETARO = 'authority.comptroller-queretaro';
+
+  function cleanPng(): Uint8Array {
+    const bytes = new Uint8Array(600).fill(5);
+    bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    return bytes;
+  }
+
+  async function upload(node: TestNode, container: Uint8Array) {
+    const response = await node.app.request(ROUTES.evidenceUpload, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/png' },
+      body: container,
+    });
+    expect(response.status).toBe(201);
+    return EvidenceUploadResponseSchema.parse(await response.json());
+  }
+
+  async function download(node: TestNode, name: NetworkAccountName, evidenceId: string) {
+    const response = await asAccount(node, name, ROUTES.authorityEvidence(evidenceId));
+    return response.status === 200 ? new Uint8Array(await response.arrayBuffer()) : null;
+  }
+
+  /** Denuncia directa al nodo Federal con una prueba cifrada hacia la llave del nodo. */
+  async function withEvidence(network: TestNetwork) {
+    const { federal } = network;
+    const keys = reporter();
+    const folio = generateFolio();
+    const plaintext = cleanPng();
+    const inbox = {
+      keyId: keyIdFor(federal.inboxBox.publicKey),
+      publicKey: federal.inboxBox.publicKey,
+    };
+    const sealed = await sealEvidence(plaintext, inbox, {
+      folio,
+      authorityId: NODE_KEY_AUTHORITY_ID,
+      mediaType: 'image/png',
+    });
+    const descriptor = await upload(federal, sealed.container);
+    const request = await complaintRequest(network, keys, {
+      mode: 'anonymous',
+      narrative: demoCase('case.luis').narrative,
+      withCorroboration: false,
+    });
+    request.evidence = [descriptor];
+    request.escalationEnvelope = await sealEscalation(
+      request,
+      directoryKey(network, OVERSIGHT),
+      { authVerifier: request.authVerifier, reporterKeys: request.reporterKeys },
+      [{ evidenceId: descriptor.evidenceId, fileKey: encodeFileKey(sealed.fileKey) }],
+    );
+    const response = await federal.app.request(`${ROUTES.complaints}?folio=${folio}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    expect(response.status).toBe(201);
+    expect(SubmitComplaintResponseSchema.parse(await response.json()).folio).toBe(folio);
+    return { keys, folio, plaintext, sealed, descriptor, request };
+  }
+
+  it('el nodo guarda solo el contenedor y ancla sus digestos; la autoridad lo abre y comprueba', async () => {
+    const network = createTestNetwork();
+    const { federal } = network;
+    const { folio, plaintext, sealed, descriptor } = await withEvidence(network);
+    // Lo guardado no contiene la imagen en claro.
+    const stored = federal.server.evidenceStore.read(descriptor.evidenceId);
+    expect(stored).toEqual(sealed.container);
+    expect(Buffer.from(stored ?? []).includes(Buffer.from(plaintext.subarray(0, 32)))).toBe(false);
+
+    const view = await detail(federal, 'federalInboxIntake', folio);
+    expect(view.evidenceCustody?.items).toEqual([
+      {
+        evidenceId: descriptor.evidenceId,
+        sha256: sealed.sha256,
+        commitment: sealed.commitment,
+        isStored: true,
+      },
+    ]);
+    const anchored = view.evidenceCustody?.events[0];
+    expect(anchored?.type).toBe('evidence.received');
+    expect(anchored?.payloadDigest).toBe(
+      evidenceReceivedPayloadDigest(folio, view.evidenceCustody?.items ?? []),
+    );
+    // Al cerrar el día, el anclaje queda publicado en la bitácora con ese digesto.
+    network.setNow(scenarioDate(1));
+    await network.runNodeTasks(federal);
+    const published = await detail(federal, 'federalInboxIntake', folio);
+    expect(published.evidenceCustody?.events[0]?.seq).toBeTypeOf('number');
+
+    // El navegador del buzón abre la prueba con su llave y el compromiso coincide con el anclado.
+    const container = await download(federal, 'federalInboxIntake', descriptor.evidenceId);
+    if (container === null) throw new Error('Sin prueba.');
+    const fileKey = await openEvidenceKey(
+      container,
+      federal.inboxBox.privateKey,
+      keyIdFor(federal.inboxBox.publicKey),
+      { folio, authorityId: NODE_KEY_AUTHORITY_ID },
+    );
+    const opened = await openEvidenceBody(container, fileKey, folio, 'image/png');
+    expect(opened.plaintext).toEqual(plaintext);
+    expect(opened.commitment).toBe(sealed.commitment);
+  });
+
+  it('al turnar dentro del nodo, el buzón re-cifra la llave hacia la autoridad competente', async () => {
+    const network = createTestNetwork();
+    const { federal } = network;
+    const { folio, sealed, descriptor, plaintext } = await withEvidence(network);
+    const iffe = directoryKey(network, IFFE);
+    const grant = {
+      evidenceId: descriptor.evidenceId,
+      authorityId: IFFE,
+      envelope: await grantEvidenceKey(
+        sealed.fileKey,
+        iffe,
+        { folio, authorityId: IFFE },
+        sealed.commitment,
+      ),
+    };
+    // Un sobre que no va hacia la llave publicada de la autoridad nombrada se rechaza.
+    const wrongKey = await asAccount(
+      federal,
+      'federalInboxIntake',
+      ROUTES.authorityEvidenceKeys(folio),
+      { grants: [{ ...grant, authorityId: OVERSIGHT }] },
+    );
+    expect(wrongKey.status).toBe(400);
+    const granted = await asAccount(
+      federal,
+      'federalInboxIntake',
+      ROUTES.authorityEvidenceKeys(folio),
+      { grants: [grant] },
+    );
+    expect(granted.status).toBe(200);
+    const routed = await asAccount(
+      federal,
+      'federalInboxIntake',
+      ROUTES.authorityProcedure(folio),
+      {
+        action: 'route',
+        authorityId: IFFE,
+        note: 'Se turna a la autoridad competente para el ente (motivo sintético).',
+      },
+    );
+    expect(routed.status).toBe(200);
+    const view = await detail(federal, 'iffeIntake', folio);
+    const own = view.evidenceCustody?.keyGrants[0];
+    if (own === undefined) throw new Error('Sin llave re-cifrada.');
+    const iffeKeys = network.services.network.authorities[IFFE].box;
+    const fileKey = await openEvidenceGrant(
+      own.envelope,
+      iffeKeys.privateKey,
+      { folio, authorityId: IFFE },
+      sealed.commitment,
+    );
+    const container = await download(federal, 'iffeIntake', descriptor.evidenceId);
+    if (container === null) throw new Error('Sin prueba.');
+    expect((await openEvidenceBody(container, fileKey, folio, 'image/png')).plaintext).toEqual(
+      plaintext,
+    );
+  });
+
+  it('la supervisora abre las pruebas con las llaves del sobre de escalamiento', async () => {
+    const network = createTestNetwork();
+    const { folio, request, plaintext, descriptor, sealed } = await withEvidence(network);
+    const supervisor = network.services.network.authorities[OVERSIGHT].box;
+    if (request.escalationEnvelope === undefined) throw new Error('Sin segunda llave.');
+    const content = await openEscalation(request.escalationEnvelope, supervisor.privateKey, {
+      authVerifier: request.authVerifier,
+      reporterKeys: request.reporterKeys,
+    });
+    const key = content.evidenceKeys.find((item) => item.evidenceId === descriptor.evidenceId);
+    if (key === undefined) throw new Error('Sin llave del archivo.');
+    const opened = await openEvidenceBody(
+      sealed.container,
+      decodeFileKey(key.fileKey),
+      folio,
+      'image/png',
+    );
+    expect(opened.plaintext).toEqual(plaintext);
+  });
+
+  it('al confirmar el turnado a otro nodo, el origen borra sus copias y registra la custodia', async () => {
+    const network = createTestNetwork();
+    const { federal, queretaro } = network;
+    await federal.tasks.run();
+    await queretaro.tasks.run();
+    const { folio, request, sealed, descriptor } = await withEvidence(network);
+
+    // El navegador de quien turna abre la prueba y la vuelve a cifrar hacia la autoridad destino,
+    // con el folio que elige para el destino y la misma sal: el compromiso no cambia.
+    const opened = await openEvidenceBody(sealed.container, sealed.fileKey, folio, 'image/png');
+    const targetFolio = generateFolio();
+    const resealed = await sealEvidence(
+      opened.plaintext,
+      directoryKey(network, QUERETARO),
+      { folio: targetFolio, authorityId: QUERETARO, mediaType: 'image/png' },
+      opened.salt,
+    );
+    expect(resealed.commitment).toBe(sealed.commitment);
+    const targetDescriptor = await upload(queretaro, resealed.container);
+    const reencrypted: SubmitComplaintRequest = { ...request, evidence: [targetDescriptor] };
+    delete reencrypted.escalationEnvelope;
+    const sealedRequest = await sealedRelay(network, QUERETARO, {
+      operationId: 'submitComplaint',
+      body: reencrypted,
+      folio: targetFolio,
+    });
+    const transferred = await asAccount(
+      federal,
+      'federalInboxIntake',
+      ROUTES.authorityTransfer(folio),
+      {
+        toAuthorityId: QUERETARO,
+        relay: sealedRequest.relay,
+        note: 'Los hechos son de competencia estatal: la turnamos a la Contraloría de Querétaro.',
+      },
+    );
+    expect(transferred.status).toBe(200);
+    // Sin el comprobante del destino, el origen conserva su copia.
+    expect(federal.server.evidenceStore.read(descriptor.evidenceId)).not.toBeNull();
+    expect((await detail(federal, 'federalInboxIntake', folio)).storedEvidenceCount).toBe(1);
+
+    const { relay, transferId } = TransferComplaintResponseSchema.parse(await transferred.json());
+    const reply = await openRoutedReply(relay, sealedRequest.replyPrivateKey, QUERETARO);
+    if (reply.body.kind !== 'json') throw new Error('Respuesta sin cuerpo.');
+    const there = SubmitComplaintResponseSchema.parse(reply.body.value);
+    expect(there.folio).toBe(targetFolio);
+
+    const confirmed = await asAccount(
+      federal,
+      'federalInboxIntake',
+      ROUTES.authorityTransferReceipt(folio),
+      { transferId, receipt: there.receipt, request: reencrypted },
+    );
+    expect(confirmed.status).toBe(204);
+    // Una sola copia viva: la del destino.
+    expect(federal.server.evidenceStore.read(descriptor.evidenceId)).toBeNull();
+    expect(queretaro.server.evidenceStore.read(targetDescriptor.evidenceId)).toEqual(
+      resealed.container,
+    );
+    const custody = federal.ctx.evidence.listCustodyEvents(folio);
+    expect(custody.map((event) => event.type)).toEqual([
+      'evidence.received',
+      'evidence.custody_transferred',
+    ]);
+    expect(custody[1]).toMatchObject({ toNodeId: 'node.queretaro', toAuthorityId: QUERETARO });
+    // El destino ancló la misma prueba (mismo compromiso) al recibirla.
+    expect(queretaro.ctx.evidence.listCustodyItems(targetFolio)).toEqual([
+      {
+        evidenceId: targetDescriptor.evidenceId,
+        sha256: resealed.sha256,
+        commitment: sealed.commitment,
+        isStored: true,
+      },
+    ]);
   });
 });

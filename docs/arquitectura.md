@@ -215,6 +215,29 @@ El servidor nunca descifra: solo decide a quién y cuándo entregar el sobre, y 
 el registro de seguridad. Sigue siendo un control de política: quien tenga la llave de la
 autoridad y una copia de la base puede descifrar sin pasar por la ruta.
 
+### Pruebas y cadena de custodia
+
+Las pruebas se cifran de extremo a extremo hacia la autoridad competente: el navegador limpia cada
+imagen, elige el folio y la cifra (llave aleatoria por archivo sellada con HPKE, con el folio y la
+autoridad en el AAD) antes de subirla. El nodo guarda solo el contenedor cifrado con su tipo
+declarado, su tamaño, su digesto y el compromiso salado de su contenido; el enrutador, el nodo, la
+SESEA y la SESNA no pueden ver las imágenes.
+
+- **Al recibir**, el nodo ancla en la bitácora (`evidence.received`) el digesto de cada contenedor
+  y su compromiso. El panel abre las pruebas en el navegador con la llave de la autoridad, comprueba
+  que coincidan con lo anclado y lo muestra en «Cadena de custodia».
+- **Supervisora**: la segunda llave lleva la llave de cada archivo; si una regla escala la
+  denuncia, la supervisora abre las pruebas sin la llave de la autoridad competente.
+- **Turnado dentro del nodo**: el navegador re-cifra la llave de cada archivo hacia la autoridad
+  destino antes de cederla; el contenedor no cambia.
+- **Turnado a otro nodo**: el navegador abre cada prueba y la vuelve a cifrar hacia la autoridad
+  destino con el folio nuevo y la misma sal (mismo compromiso). Cuando el destino confirma con su
+  comprobante firmado, el origen borra sus copias y registra `evidence.custody_transferred`: queda
+  una sola copia viva. Sin confirmación, el origen las conserva.
+
+Detalle del formato en [criptografia.md](criptografia.md), «Pruebas cifradas de extremo a
+extremo». Subidas reanudables y pruebas en la cola de entrega son siguientes pasos.
+
 ## Bitácora
 
 - Cada evento (`complaint.received`, `complaint.status_changed`, `identity.approved`,

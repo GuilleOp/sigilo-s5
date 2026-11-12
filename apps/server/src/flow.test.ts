@@ -137,9 +137,13 @@ describe('flujo completo', () => {
     );
     const described = page.events.map((event) => `${event.at} ${event.type} ${event.actorRole}`);
     // Cada día va completo y en orden de días; dentro del día el orden es barajado.
-    expect(described[0]).toBe('2026-10-20 complaint.received system');
+    // La recepción ancla también los digestos de sus pruebas cifradas (cadena de custodia).
+    expect(described.slice(0, 2).sort()).toEqual([
+      '2026-10-20 complaint.received system',
+      '2026-10-20 evidence.received system',
+    ]);
     // La apertura 2 de 3 deja dos aprobaciones, la apertura misma y la entrega del sobre (H7).
-    expect(described.slice(1, 7).sort()).toEqual([
+    expect(described.slice(2, 8).sort()).toEqual([
       '2026-10-21 identity.approved authority',
       '2026-10-21 identity.approved authority',
       '2026-10-21 identity.opened authority',
@@ -148,7 +152,7 @@ describe('flujo completo', () => {
       '2026-10-21 message.sent reporter',
     ]);
     // Turnar y devolver al buzón general son dos acciones del trámite.
-    expect(described.slice(7)).toEqual([
+    expect(described.slice(8)).toEqual([
       '2026-10-25 complaint.status_changed authority',
       '2026-10-25 complaint.status_changed authority',
     ]);

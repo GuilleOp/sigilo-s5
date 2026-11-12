@@ -822,6 +822,43 @@ BEGIN
 END;
 `;
 
+/**
+ * Migración 16: pruebas cifradas de extremo a extremo y cadena de custodia. Cada prueba guarda el
+ * compromiso de su contenido (de la cabecera del contenedor cifrado; el nodo no puede calcularlo);
+ * las llaves de los archivos re-cifradas hacia otra autoridad del nodo, que el nodo no puede abrir;
+ * y el registro de solo agregar de los eventos de custodia (anclaje al recibir y entrega a otro
+ * nodo), con el digesto con que cada uno quedó en la bitácora. Las pruebas en claro de antes de la
+ * migración quedan sin compromiso: el panel las marca como no cifradas.
+ */
+const ENCRYPTED_EVIDENCE = `
+ALTER TABLE evidence ADD COLUMN commitment TEXT;
+CREATE TABLE evidence_key_grants (
+  evidence_id TEXT NOT NULL REFERENCES evidence (evidence_id),
+  authority_id TEXT NOT NULL,
+  envelope_json TEXT NOT NULL,
+  granted_on TEXT NOT NULL,
+  PRIMARY KEY (evidence_id, authority_id)
+) STRICT, WITHOUT ROWID;
+CREATE TABLE evidence_custody (
+  folio TEXT NOT NULL REFERENCES complaints (folio),
+  position INTEGER NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('evidence.received', 'evidence.custody_transferred')),
+  on_day TEXT NOT NULL,
+  payload_digest TEXT NOT NULL,
+  to_node TEXT,
+  to_authority TEXT,
+  PRIMARY KEY (folio, position)
+) STRICT, WITHOUT ROWID;
+CREATE TRIGGER evidence_custody_no_update BEFORE UPDATE ON evidence_custody
+BEGIN
+  SELECT RAISE(ABORT, 'La cadena de custodia es de solo agregar.');
+END;
+CREATE TRIGGER evidence_custody_no_delete BEFORE DELETE ON evidence_custody
+BEGIN
+  SELECT RAISE(ABORT, 'La cadena de custodia es de solo agregar.');
+END;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -839,6 +876,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 13, sql: CORROBORATION_DIGEST },
   { version: 14, sql: AUTHORITY_REGISTRATIONS },
   { version: 15, sql: PDN_STATISTICS },
+  { version: 16, sql: ENCRYPTED_EVIDENCE },
 ];
 
 /** Versión más reciente del esquema. */

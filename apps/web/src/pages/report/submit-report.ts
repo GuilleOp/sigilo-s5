@@ -1,10 +1,12 @@
-// Envío de la denuncia: llaves fijadas, prueba de trabajo, subida de pruebas limpias comprobadas,
-// recibo, sellado y comprobante.
-import { IDENTITY_PADDED_SIZE, generateFolio } from '@sigilo/core';
+// Envío de la denuncia: llaves fijadas, prueba de trabajo, pruebas limpias cifradas hacia la
+// autoridad y comprobadas al subirlas, recibo, sellado y comprobante.
+import { NODE_KEY_AUTHORITY_ID } from '@sigilo/contracts';
+import { encodeFileKey, generateFolio, IDENTITY_PADDED_SIZE } from '@sigilo/core';
+import type { SealedEvidence } from '@sigilo/core';
 import type { EvidenceDescriptor, EvidenceMediaType } from '@sigilo/contracts';
-import { digestBlob } from '@sigilo/huella';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import type { PinnedKeys } from '../../config/pinned-keys.ts';
+import { sealEvidenceBlob } from '../../crypto/evidence.ts';
 import { assertServedKeysMatch } from '../../crypto/key-pinning.ts';
 import {
   createProofProvider,
@@ -54,6 +56,8 @@ export interface SubmittedReport {
 export interface NetworkSubmission {
   api: RelayReporterApi;
   keys: PinnedKeys;
+  /** Autoridad destino del directorio: va en el AAD de las pruebas cifradas hacia ella. */
+  authorityId: string;
   authorityName: string;
   nodeName: string;
   /** Corroboración ciega opcional: se calcula con el relato final, justo antes de cifrar. */
@@ -82,7 +86,7 @@ export class SubmissionBlockedError extends Error {
 }
 
 /**
- * Error cuando el servidor devuelve un descriptor que no corresponde a la copia limpia enviada:
+ * Error cuando el servidor devuelve un descriptor que no corresponde a la prueba cifrada enviada:
  * otro digesto, tamaño o tipo. El mensaje es para mostrarse.
  */
 export class EvidenceMismatchError extends Error {
@@ -94,8 +98,20 @@ export class EvidenceMismatchError extends Error {
   }
 }
 
-/** Descriptores de las pruebas ya subidas, por copia limpia, para no volver a subirlas. */
-export type UploadCache = WeakMap<Blob, EvidenceDescriptor>;
+/**
+ * Prueba ya cifrada y subida: su descriptor, el folio y el destinatario con que se cifró, y la llave
+ * de su archivo (para la segunda llave). Solo vive en la memoria de esta pestaña.
+ */
+export interface UploadedEvidence {
+  descriptor: EvidenceDescriptor;
+  folio: string;
+  /** `keyId` y autoridad del destinatario: si cambian, hay que volver a cifrar y subir. */
+  recipient: string;
+  fileKey: Uint8Array;
+}
+
+/** Pruebas ya subidas, por copia limpia, para no volver a subirlas en un reintento. */
+export type UploadCache = WeakMap<Blob, UploadedEvidence>;
 
 /**
  * Opciones del envío; por omisión, las llaves fijadas del bundle, la caché del módulo y la prueba
@@ -114,20 +130,20 @@ function mediaTypeOf(blob: Blob): EvidenceMediaType {
 }
 
 /**
- * Comprueba que el descriptor devuelto describa exactamente la copia limpia que se subió.
+ * Comprueba que el descriptor devuelto describa exactamente el contenedor cifrado que se subió.
  * Seguridad: el digesto del descriptor entra en el contenido firmado de la denuncia; si el
- * servidor guardara otra imagen (o la cambiara) y se aceptara su descriptor, la autoridad
+ * servidor guardara otro contenedor (o lo cambiara) y se aceptara su descriptor, la autoridad
  * recibiría una prueba distinta con un comprobante válido.
  */
-async function assertDescriptorMatches(
+function assertDescriptorMatches(
   descriptor: EvidenceDescriptor,
-  blob: Blob,
+  sealed: SealedEvidence,
   mediaType: EvidenceMediaType,
-): Promise<void> {
+): void {
   const isMatch =
     descriptor.mediaType === mediaType &&
-    descriptor.sizeBytes === blob.size &&
-    descriptor.sha256 === (await digestBlob(blob));
+    descriptor.sizeBytes === sealed.container.length &&
+    descriptor.sha256 === sealed.sha256;
   if (!isMatch) throw new EvidenceMismatchError();
 }
 
@@ -148,8 +164,10 @@ const DEFAULT_UPLOADS: UploadCache = new WeakMap();
  * Ejecuta el envío completo e informa cada etapa con `onProgress`.
  * Seguridad: lo primero es comparar las llaves publicadas con las fijadas; si difieren no se
  * sube ni se cifra nada. El cifrado usa siempre las llaves fijadas. Solo se suben copias limpias
- * ya verificadas, cada descriptor devuelto se compara con la copia local, y en un reintento se
- * reutilizan los descriptores de las que ya se subieron (salvo que el servidor los haya rechazado).
+ * ya verificadas y cifradas aquí hacia la autoridad (HPKE, con el folio y la autoridad en el AAD):
+ * el nodo nunca ve la imagen. El folio lo elige este navegador antes de cifrar. Cada descriptor
+ * devuelto se compara con el contenedor local, y en un reintento se reutilizan los descriptores de
+ * las que ya se subieron con el mismo folio y destinatario (salvo que el servidor los rechace).
  * Lanza `EvidenceMismatchError` si un descriptor no corresponde a la copia enviada.
  */
 export async function submitReport(
@@ -198,22 +216,46 @@ export async function submitReport(
   // si el servidor lo rechaza (por ejemplo, porque venció).
   const proofs = createProofProvider(transport, 'complaint', solver, onProgress);
   const images = draft.evidence.flatMap((item) => item.clean);
-  const evidence: EvidenceDescriptor[] = [];
+  // Destinatario de las pruebas: la autoridad elegida en el directorio o, con un solo nodo, la
+  // llave fijada del nodo (el navegador no conoce entonces el identificador de la autoridad).
+  const recipient = { keyId: pinned.set.authority.keyId, publicKey: pinned.authorityBoxPublicKey };
+  const recipientAuthorityId = network?.authorityId ?? NODE_KEY_AUTHORITY_ID;
+  const recipientTag = `${recipient.keyId}:${recipientAuthorityId}`;
+  // El folio se elige aquí al azar, antes de cifrar las pruebas, porque va en su AAD; un reintento
+  // reutiliza el de las pruebas ya subidas. La persona lo conoce aunque la respuesta se pierda o la
+  // denuncia quede en la cola de entrega (el nodo lo rechaza si ya existe).
+  const reusable = (entry: UploadedEvidence | undefined): entry is UploadedEvidence =>
+    entry !== undefined && entry.recipient === recipientTag;
+  const folio =
+    images.map((image) => uploads.get(image.blob)).find(reusable)?.folio ?? generateFolio();
+  const uploaded: UploadedEvidence[] = [];
   for (const [index, image] of images.entries()) {
     const known = uploads.get(image.blob);
-    if (known !== undefined) {
-      evidence.push(known);
+    if (reusable(known) && known.folio === folio) {
+      uploaded.push(known);
       continue;
     }
     const mediaType = mediaTypeOf(image.blob);
-    const descriptor = await sendWithProof(proofs, (proof) => {
-      onProgress(`Enviando tus pruebas limpias: ${index + 1} de ${images.length}.`);
-      return transport.uploadEvidence(image.blob, mediaType, proof);
+    onProgress(`Cerrando con llave tus pruebas limpias: ${index + 1} de ${images.length}.`);
+    const sealed = await sealEvidenceBlob(image.blob, mediaType, {
+      recipient,
+      folio,
+      authorityId: recipientAuthorityId,
     });
-    await assertDescriptorMatches(descriptor, image.blob, mediaType);
-    uploads.set(image.blob, descriptor);
-    evidence.push(descriptor);
+    const descriptor = await sendWithProof(proofs, (proof) => {
+      onProgress(`Enviando tus pruebas cifradas: ${index + 1} de ${images.length}.`);
+      return transport.uploadEvidence(
+        new Blob([new Uint8Array(sealed.container)], { type: mediaType }),
+        mediaType,
+        proof,
+      );
+    });
+    assertDescriptorMatches(descriptor, sealed, mediaType);
+    const entry = { descriptor, folio, recipient: recipientTag, fileKey: sealed.fileKey };
+    uploads.set(image.blob, entry);
+    uploaded.push(entry);
   }
+  const evidence = uploaded.map((entry) => entry.descriptor);
 
   onProgress('Preparando tus 8 palabras.');
   const receipt = createReceipt();
@@ -233,8 +275,17 @@ export async function submitReport(
     sealedIdentity = await sealReporterIdentity(block, input, receipt.keys, pinned);
   }
 
-  // Segunda llave: si la autoridad no actúa a tiempo, la supervisora recibe los hechos.
-  const escalationEnvelope = await sealReporterEscalation(input, receipt.keys, pinned);
+  // Segunda llave: si la autoridad no actúa a tiempo, la supervisora recibe los hechos y las
+  // llaves de los archivos de las pruebas.
+  const escalationEnvelope = await sealReporterEscalation(
+    input,
+    receipt.keys,
+    pinned,
+    uploaded.map((entry) => ({
+      evidenceId: entry.descriptor.evidenceId,
+      fileKey: encodeFileKey(entry.fileKey),
+    })),
+  );
   // Corroboración ciega opcional: si falla, la denuncia sale igual (solo suma prioridad).
   let corroboration: CorroborationPayload | null = null;
   let corroborationResult: SubmittedReport['corroboration'];
@@ -250,9 +301,6 @@ export async function submitReport(
     escalationEnvelope,
     corroboration ?? undefined,
   );
-  // Por la red, el folio se elige aquí al azar: la persona lo conoce aunque la respuesta se pierda
-  // o la denuncia quede en la cola de entrega (el nodo lo rechaza si ya existe).
-  const folio = network === undefined ? undefined : generateFolio();
   const destinationInfo =
     network === undefined
       ? {}
@@ -264,8 +312,8 @@ export async function submitReport(
   try {
     response = await sendWithProof(proofs, (proof) => {
       onProgress('Enviando tu denuncia.');
-      return network === undefined || folio === undefined
-        ? transport.submitComplaint(request, proof)
+      return network === undefined
+        ? transport.submitComplaint(request, proof, folio)
         : network.api.submitRoutedComplaint(request, proof, folio);
     });
   } catch (error) {
@@ -275,7 +323,6 @@ export async function submitReport(
     // El nodo no respondió: una denuncia sin pruebas puede esperar cerrada en la cola.
     const canQueue =
       network?.api.hasQueue === true &&
-      folio !== undefined &&
       images.length === 0 &&
       error instanceof ApiRequestError &&
       error.code === 'network';
@@ -304,7 +351,8 @@ export async function submitReport(
   }
 
   onProgress('Comprobando que tu denuncia llegó completa.');
-  if (!verifySubmission(request, response, pinned)) {
+  // El folio debe ser el elegido aquí: con otro, las pruebas cifradas no abrirían.
+  if (response.folio !== folio || !verifySubmission(request, response, pinned)) {
     throw new ReceiptVerificationError(response.folio, receipt.words);
   }
   return {

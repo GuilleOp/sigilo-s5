@@ -19,10 +19,12 @@ export const LedgerEventTypeSchema = z
     'corroboration.viewed',
     'corroboration.confirmed',
     'corroboration.withdrawn',
+    'evidence.received',
+    'evidence.custody_transferred',
   ])
   .meta({
     description:
-      'Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo o señal del auditor.',
+      'Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo, señal del auditor, anclaje de las pruebas recibidas o entrega de su custodia a otro nodo.',
   });
 export type LedgerEventType = z.infer<typeof LedgerEventTypeSchema>;
 

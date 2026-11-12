@@ -15,7 +15,7 @@ import { hasInvisibleCharacters } from '../security/invisible-text.ts';
 import { hasEscalationShape, hasIdentityShape, isKey32 } from './crypto-checks.ts';
 import { directoryAuthority } from '../network/network-context.ts';
 import { authorityOfKeyId, isAcceptedIdentityKey } from './authority-keys.ts';
-import { budgetOf } from './evidence-service.ts';
+import { anchorReceivedEvidence, budgetOf } from './evidence-service.ts';
 import { queueCorroboration } from './corroboration-service.ts';
 import { reviewConflictOnAssignment } from './pdn-context.ts';
 
@@ -24,8 +24,9 @@ export interface SubmissionOrigin {
   /** Autoridad destino del sobre de red, si llegó por el enrutador. */
   routedTo?: string;
   /**
-   * Folio que eligió el navegador (solo por el buzón de red): así la persona lo conoce aunque la
-   * denuncia espere en la cola del enrutador. Se rechaza si ya existe.
+   * Folio que eligió el navegador: por el buzón de red, así la persona lo conoce aunque la
+   * denuncia espere en la cola del enrutador; directo, con `?folio=`, porque las pruebas se cifran
+   * con el folio en el AAD antes de enviar la denuncia. Se rechaza si ya existe.
    */
   folio?: string;
 }
@@ -204,6 +205,8 @@ export function submitComplaint(
         request.corroboration === undefined ? null : corroborationDigest(request.corroboration),
     });
     associateEvidence(ctx, request, folio);
+    // Cadena de custodia: los digestos de las pruebas cifradas quedan anclados al recibirlas.
+    anchorReceivedEvidence(ctx, folio);
     ctx.statusHistory.insert(folio, 'received', receivedOn);
     ctx.procedure.insertStep(folio, {
       action: 'received',

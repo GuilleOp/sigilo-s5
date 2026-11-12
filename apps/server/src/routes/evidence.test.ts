@@ -1,4 +1,5 @@
-// Pruebas de subida de pruebas: tipo real por bytes mágicos, tamaño máximo, descriptor devuelto,
+// Pruebas de subida de pruebas: solo contenedores cifrados, tamaño máximo, descriptor devuelto,
+// anclaje en la bitácora, llaves re-cifradas dentro del nodo,
 // reparto de la cuota (sin desalojo), purga de pendientes (diaria y por reto vencido), retención
 // sin atención o archivadas y descarte por la autoridad.
 import { describe, expect, it } from 'vitest';
@@ -7,6 +8,7 @@ import {
   DiscardEvidenceResponseSchema,
   EvidenceUploadResponseSchema,
   LedgerPageSchema,
+  EVIDENCE_CONTAINER_OVERHEAD,
   MAX_EVIDENCE_BYTES,
   POW_HEADER,
   PowChallengeSchema,
@@ -43,7 +45,7 @@ import {
 import type { TestServer } from '../test-support/harness.ts';
 
 describe('POST evidence', () => {
-  it('guarda PNG y JPEG y devuelve su descriptor con SHA-256', async () => {
+  it('guarda contenedores cifrados de PNG y JPEG y devuelve su descriptor con SHA-256', async () => {
     const { app } = createTestServer();
     for (const [bytes, mediaType] of [
       [samplePng(), 'image/png'],
@@ -61,13 +63,21 @@ describe('POST evidence', () => {
     }
   });
 
-  it('rechaza bytes mágicos que no coinciden con el tipo declarado', async () => {
+  it('rechaza lo que no es un contenedor cifrado, incluida una imagen en claro', async () => {
     const { app } = createTestServer();
-    const mismatched = await uploadEvidence(app, sampleJpeg(), 'image/png');
-    expect(mismatched.status).toBe(415);
-    const garbage = await uploadEvidence(app, new Uint8Array(64).fill(1), 'image/jpeg');
+    const clearPng = new Uint8Array(400).fill(7);
+    clearPng.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const plain = await uploadEvidence(app, clearPng, 'image/png');
+    expect(plain.status).toBe(415);
+    const garbage = await uploadEvidence(app, new Uint8Array(400).fill(1), 'image/jpeg');
     expect(garbage.status).toBe(415);
     expect(ApiErrorSchema.parse(await garbage.json()).error.code).toBe('unsupported_media_type');
+    // Solo la cabecera, sin un byte de imagen cifrada.
+    const headerOnly = samplePng(EVIDENCE_CONTAINER_OVERHEAD + 1).subarray(
+      0,
+      EVIDENCE_CONTAINER_OVERHEAD,
+    );
+    expect((await uploadEvidence(app, headerOnly, 'image/png')).status).toBe(415);
   });
 
   it('rechaza tipos de contenido distintos de JPEG y PNG', async () => {
@@ -92,17 +102,17 @@ describe('POST evidence', () => {
 
 describe('cuota de almacenamiento', () => {
   it('limita las pendientes a su parte de la cuota y responde 507 al excederla', async () => {
-    // Cuota 400: las pendientes pueden ocupar 100.
-    const server = createTestServer({ evidenceQuotaBytes: 400 });
-    expect((await uploadEvidence(server.app, samplePng(60), 'image/png')).status).toBe(201);
-    const full = await uploadEvidence(server.app, samplePng(60), 'image/png');
+    // Cuota 4000: las pendientes pueden ocupar 1000.
+    const server = createTestServer({ evidenceQuotaBytes: 4000 });
+    expect((await uploadEvidence(server.app, samplePng(600), 'image/png')).status).toBe(201);
+    const full = await uploadEvidence(server.app, samplePng(600), 'image/png');
     expect(full.status).toBe(507);
     expect(ApiErrorSchema.parse(await full.json()).error.code).toBe('storage_full');
-    expect((await uploadEvidence(server.app, samplePng(40), 'image/png')).status).toBe(201);
+    expect((await uploadEvidence(server.app, samplePng(400), 'image/png')).status).toBe(201);
   });
 
   it('nunca borra pruebas asociadas para hacer sitio: sin espacio responde storage_full', async () => {
-    const server = createTestServer({ evidenceQuotaBytes: 1000 });
+    const server = createTestServer({ evidenceQuotaBytes: 10_000 });
     const attach = async (size: number) => {
       const evidence = EvidenceUploadResponseSchema.parse(
         await (await uploadEvidence(server.app, samplePng(size), 'image/png')).json(),
@@ -117,22 +127,22 @@ describe('cuota de almacenamiento', () => {
       );
       return evidence;
     };
-    const kept = [await attach(240), await attach(240), await attach(240), await attach(240)];
-    // 960 guardados + 60 superan la cuota de 1000: se rechaza en lugar de desalojar.
-    const full = await uploadEvidence(server.app, samplePng(60), 'image/png');
+    const kept = [await attach(2400), await attach(2400), await attach(2400), await attach(2400)];
+    // 9600 guardados + 600 superan la cuota de 10 000: se rechaza en lugar de desalojar.
+    const full = await uploadEvidence(server.app, samplePng(600), 'image/png');
     expect(full.status).toBe(507);
     expect(ApiErrorSchema.parse(await full.json()).error.code).toBe('storage_full');
     for (const evidence of kept) {
       expect(server.evidenceStore.read(evidence.evidenceId)).not.toBeNull();
     }
-    expect((await uploadEvidence(server.app, samplePng(40), 'image/png')).status).toBe(201);
+    expect((await uploadEvidence(server.app, samplePng(400), 'image/png')).status).toBe(201);
   });
 
   it('rechaza una denuncia cuyas pruebas exceden su parte de la cuota', async () => {
     // Cuota pequeña: la parte por denuncia es una prueba de tamaño máximo.
     const server = createTestServer({ evidenceQuotaBytes: 1000 });
     const evidence = EvidenceUploadResponseSchema.parse(
-      await (await uploadEvidence(server.app, samplePng(100), 'image/png')).json(),
+      await (await uploadEvidence(server.app, samplePng(200), 'image/png')).json(),
     );
     const request = await buildComplaintRequest(server, {
       mode: 'anonymous',

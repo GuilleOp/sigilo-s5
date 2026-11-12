@@ -1,15 +1,27 @@
-// Repositorio de pruebas: registro de cada imagen subida, su asociación a una denuncia y los
-// descartes de la autoridad.
+// Repositorio de pruebas: registro de cada contenedor cifrado subido, su asociación a una denuncia,
+// los descartes de la autoridad, las llaves re-cifradas hacia otras autoridades del nodo y la
+// cadena de custodia.
 import type { DatabaseSync } from 'node:sqlite';
-import { EvidenceMediaTypeSchema } from '@sigilo/contracts';
-import type { EvidenceDescriptor, EvidenceDiscardEntry } from '@sigilo/contracts';
+import { EvidenceMediaTypeSchema, HpkeEnvelopeSchema } from '@sigilo/contracts';
+import type {
+  EvidenceCustodyEvent,
+  EvidenceCustodyItem,
+  EvidenceDescriptor,
+  EvidenceDiscardEntry,
+  EvidenceKeyGrant,
+} from '@sigilo/contracts';
 import { readInteger, readOptionalText, readText } from './database.ts';
 import type { Row } from './database.ts';
 
 /** Registro de una prueba; `folio` es nulo mientras está pendiente. */
 export interface EvidenceRecord extends EvidenceDescriptor {
   folio: string | null;
+  /** Compromiso del contenido, de la cabecera del contenedor (nulo en pruebas anteriores en claro). */
+  commitment: string | null;
 }
+
+/** Evento de custodia guardado, sin su secuencia en la bitácora (se busca por su digesto). */
+export type StoredCustodyEvent = Omit<EvidenceCustodyEvent, 'seq'>;
 
 /** Prueba guardada de una denuncia sin atender o archivada, candidata a la retención. */
 export interface UnattendedEvidence {
@@ -19,7 +31,7 @@ export interface UnattendedEvidence {
 
 /** Operaciones sobre la tabla `evidence`. */
 export interface EvidenceRepository {
-  insertPending(descriptor: EvidenceDescriptor, uploadedOn: string): void;
+  insertPending(descriptor: EvidenceDescriptor, uploadedOn: string, commitment: string): void;
   find(evidenceId: string): EvidenceRecord | null;
   /** Asocia una prueba pendiente; devuelve `false` si ya no estaba pendiente. */
   associate(evidenceId: string, folio: string, position: number): boolean;
@@ -47,6 +59,16 @@ export interface EvidenceRepository {
   insertDiscard(folio: string, discardedOn: string, count: number): void;
   /** Descartes de la denuncia en el orden en que ocurrieron. */
   listDiscardsByFolio(folio: string): EvidenceDiscardEntry[];
+  /** Pruebas de la denuncia con su compromiso y si siguen guardadas, en orden. */
+  listCustodyItems(folio: string): EvidenceCustodyItem[];
+  /** Guarda (o reemplaza) la llave re-cifrada de una prueba hacia una autoridad. */
+  upsertKeyGrant(grant: EvidenceKeyGrant, grantedOn: string): void;
+  /** Llaves re-cifradas de las pruebas de la denuncia hacia la autoridad. */
+  listKeyGrants(folio: string, authorityId: string): EvidenceKeyGrant[];
+  /** Agrega un evento a la cadena de custodia de la denuncia. */
+  insertCustodyEvent(folio: string, event: StoredCustodyEvent): void;
+  /** Eventos de custodia de la denuncia en orden. */
+  listCustodyEvents(folio: string): StoredCustodyEvent[];
 }
 
 function toDescriptor(row: Row): EvidenceDescriptor {
@@ -61,8 +83,8 @@ function toDescriptor(row: Row): EvidenceDescriptor {
 /** Crea el repositorio de pruebas sobre `db`. */
 export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
   const insertStatement = db.prepare(
-    `INSERT INTO evidence (evidence_id, media_type, sha256, size_bytes, uploaded_on)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO evidence (evidence_id, media_type, sha256, size_bytes, uploaded_on, commitment)
+     VALUES (?, ?, ?, ?, ?, ?)`,
   );
   const findStatement = db.prepare('SELECT * FROM evidence WHERE evidence_id = ?');
   const associateStatement = db.prepare(
@@ -106,21 +128,47 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
   const listDiscardsStatement = db.prepare(
     'SELECT * FROM evidence_discards WHERE folio = ? ORDER BY position',
   );
+  const upsertGrantStatement = db.prepare(
+    `INSERT INTO evidence_key_grants (evidence_id, authority_id, envelope_json, granted_on)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT (evidence_id, authority_id)
+     DO UPDATE SET envelope_json = excluded.envelope_json, granted_on = excluded.granted_on`,
+  );
+  const listGrantsStatement = db.prepare(
+    `SELECT evidence_key_grants.* FROM evidence_key_grants
+     JOIN evidence ON evidence.evidence_id = evidence_key_grants.evidence_id
+     WHERE evidence.folio = ? AND evidence_key_grants.authority_id = ?
+     ORDER BY evidence.position`,
+  );
+  const insertCustodyStatement = db.prepare(
+    `INSERT INTO evidence_custody
+       (folio, position, type, on_day, payload_digest, to_node, to_authority)
+     VALUES (?, (SELECT COALESCE(MAX(position) + 1, 0) FROM evidence_custody WHERE folio = ?),
+       ?, ?, ?, ?, ?)`,
+  );
+  const listCustodyStatement = db.prepare(
+    'SELECT * FROM evidence_custody WHERE folio = ? ORDER BY position',
+  );
 
   return {
-    insertPending: (descriptor, uploadedOn) => {
+    insertPending: (descriptor, uploadedOn, commitment) => {
       insertStatement.run(
         descriptor.evidenceId,
         descriptor.mediaType,
         descriptor.sha256,
         descriptor.sizeBytes,
         uploadedOn,
+        commitment,
       );
     },
     find: (evidenceId) => {
       const row = findStatement.get(evidenceId);
       if (row === undefined) return null;
-      return { ...toDescriptor(row), folio: readOptionalText(row, 'folio') };
+      return {
+        ...toDescriptor(row),
+        folio: readOptionalText(row, 'folio'),
+        commitment: readOptionalText(row, 'commitment'),
+      };
     },
     associate: (evidenceId, folio, position) =>
       Number(associateStatement.run(folio, position, evidenceId).changes) === 1,
@@ -155,5 +203,58 @@ export function createEvidenceRepository(db: DatabaseSync): EvidenceRepository {
         on: readText(row, 'discarded_on'),
         count: readInteger(row, 'evidence_count'),
       })),
+    listCustodyItems: (folio) =>
+      listStatement.all(folio).flatMap((row) => {
+        const commitment = readOptionalText(row, 'commitment');
+        if (commitment === null) return [];
+        return [
+          {
+            evidenceId: readText(row, 'evidence_id'),
+            sha256: readText(row, 'sha256'),
+            commitment,
+            isStored: readInteger(row, 'is_stored') === 1,
+          },
+        ];
+      }),
+    upsertKeyGrant: (grant, grantedOn) => {
+      upsertGrantStatement.run(
+        grant.evidenceId,
+        grant.authorityId,
+        JSON.stringify(grant.envelope),
+        grantedOn,
+      );
+    },
+    listKeyGrants: (folio, authorityId) =>
+      listGrantsStatement.all(folio, authorityId).map((row) => ({
+        evidenceId: readText(row, 'evidence_id'),
+        authorityId: readText(row, 'authority_id'),
+        envelope: HpkeEnvelopeSchema.parse(JSON.parse(readText(row, 'envelope_json'))),
+      })),
+    insertCustodyEvent: (folio, event) => {
+      insertCustodyStatement.run(
+        folio,
+        folio,
+        event.type,
+        event.on,
+        event.payloadDigest,
+        event.toNodeId ?? null,
+        event.toAuthorityId ?? null,
+      );
+    },
+    listCustodyEvents: (folio) =>
+      listCustodyStatement.all(folio).map((row) => {
+        const toNodeId = readOptionalText(row, 'to_node');
+        const toAuthorityId = readOptionalText(row, 'to_authority');
+        return {
+          type:
+            readText(row, 'type') === 'evidence.received'
+              ? ('evidence.received' as const)
+              : ('evidence.custody_transferred' as const),
+          on: readText(row, 'on_day'),
+          payloadDigest: readText(row, 'payload_digest'),
+          ...(toNodeId === null ? {} : { toNodeId }),
+          ...(toAuthorityId === null ? {} : { toAuthorityId }),
+        };
+      }),
   };
 }

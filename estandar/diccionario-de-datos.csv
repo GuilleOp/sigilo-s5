@@ -24,12 +24,15 @@ EscalationContent,mode,mode,cadena (ComplaintMode),,sí,"Modo de la denuncia: an
 EscalationContent,facts,facts,objeto (ComplaintFacts),,sí,"Hechos legibles de la denuncia. Las claves de ubicación, ente y conducta salen de catálogos públicos; el texto libre nunca se publica.",,
 EscalationContent,evidence,evidence,arreglo de EvidenceDescriptor,hasta 10 elementos,sí,"Descriptores de las pruebas, tal como se enviaron.",,
 EscalationContent,protectionRequested,protectionRequested,booleano,,sí,Solicitud de medidas de protección; solo en modo sealed.,,
+EscalationContent,evidenceKeys,evidenceKeys,arreglo de objeto,hasta 10 elementos,no,"Llave de cada archivo de prueba, para que la supervisora lo descifre en su navegador.",,
+EscalationContent,evidenceKeys[].evidenceId,evidenceId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador de la prueba.,,
+EscalationContent,evidenceKeys[].fileKey,fileKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,Llave ChaCha20-Poly1305 de 32 bytes del archivo de la prueba.,,
 ReporterKeys,boxPublicKey,boxPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Llave pública X25519, derivada del recibo, para recibir mensajes cifrados del buzón.",,PCLP94gM6QhqKrW5rUxRyOkjYp_c20X88FzkKeeBPeE
 ReporterKeys,signingPublicKey,signingPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Llave pública Ed25519, derivada del recibo, para firmar respuestas.",,5C-TWh-HnoKNmmiGagV86aRffsRIHL0GRv7TbrS-CBU
 EvidenceDescriptor,evidenceId,evidenceId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador aleatorio de la prueba (16 bytes en hexadecimal).,,16ed88d6f3ea7c6c4841645c43cd2c79
-EvidenceDescriptor,mediaType,mediaType,cadena,,sí,Tipo de la prueba ya limpia: imagen JPEG o PNG.,image/jpeg; image/png,image/jpeg
-EvidenceDescriptor,sha256,sha256,cadena,patrón ^[0-9a-f]{64}$,sí,"Digesto del archivo limpio, tal como lo recibe la autoridad.",,2fba3e8225db3948a2560e78ff0f3c161472b03d83f6505…
-EvidenceDescriptor,sizeBytes,sizeBytes,entero,máximo 10485760,sí,Tamaño del archivo en bytes (máximo 10 MiB).,,482113
+EvidenceDescriptor,mediaType,mediaType,cadena,,sí,Tipo de la imagen limpia (JPEG o PNG) que va dentro del contenedor cifrado de la prueba.,image/jpeg; image/png,image/jpeg
+EvidenceDescriptor,sha256,sha256,cadena,patrón ^[0-9a-f]{64}$,sí,"Digesto del contenedor cifrado de la prueba, tal como lo guarda el nodo y lo descarga la autoridad.",,2fba3e8225db3948a2560e78ff0f3c161472b03d83f6505…
+EvidenceDescriptor,sizeBytes,sizeBytes,entero,máximo 10485925,sí,"Tamaño del contenedor cifrado en bytes (la imagen, de hasta 10 MiB, más 165 bytes del cifrado).",,482113
 HpkeEnvelope,v,v,número,valor fijo 1,sí,Versión del formato del sobre.,,1
 HpkeEnvelope,suite,suite,cadena,valor fijo DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305,sí,"Suite HPKE: DHKEM X25519, HKDF-SHA256 y ChaCha20-Poly1305 (RFC 9180, modo base).",,DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Po…
 HpkeEnvelope,keyId,keyId,cadena,patrón ^[0-9a-f]{16}$,sí,Identificador de la llave pública destinataria.,,f7bc219ff223a248
@@ -186,6 +189,7 @@ ComplaintDetail,corroborationDigest,corroborationDigest,cadena,patrón ^[0-9a-f]
 ComplaintDetail,receivedEventSeq,receivedEventSeq,entero,mínimo 0,no,Secuencia del evento complaint.received una vez publicado.,,41
 ComplaintDetail,evidenceDeletionOn,evidenceDeletionOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,no,"Día en que la retención borrará los archivos de las pruebas, si aplica.",,2026-11-05
 ComplaintDetail,storedEvidenceCount,storedEvidenceCount,entero,de 0 a 10,no,Pruebas cuyo archivo sigue guardado.,,1
+ComplaintDetail,evidenceCustody,evidenceCustody,objeto (EvidenceCustody),,no,"Cadena de custodia de las pruebas cifradas: digestos anclados, eventos de custodia y llaves re-cifradas hacia la autoridad de la sesión. Opcional: los nodos anteriores no la envían.",,
 ComplaintDetail,messages,messages,arreglo de MailboxMessage,,sí,"Mensajes del buzón, cifrados.",,
 ComplaintDetail,identityOpenedCount,identityOpenedCount,entero,mínimo 0,sí,Veces que se ha abierto la identidad sellada.,,1
 ComplaintDetail,s5References,s5References,arreglo de objeto,hasta 200 elementos,no,"Artículos equivalentes en el catálogo de faltas del S5 (ley de responsabilidades y código penal de la entidad), con su id del S5. Los calcula el nodo.",,
@@ -314,13 +318,34 @@ AuditSummary,[].authorityId,authorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-
 AuditSummary,[].ruleId,ruleId,cadena,,sí,Regla del auditor (AUD-01 a AUD-08).,,AUD-01
 AuditSummary,[].count,count,entero,mínimo 0,sí,Señales registradas.,,3
 DiscardEvidenceResponse,discarded,discarded,entero,de 0 a 10,sí,Archivos borrados; 0 si ya no había.,,1
+EvidenceCustody,items,items,arreglo de objeto,hasta 10 elementos,sí,"Pruebas ancladas, en el orden de la denuncia.",,
+EvidenceCustody,items[].evidenceId,evidenceId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador aleatorio de la prueba (16 bytes en hexadecimal).,,
+EvidenceCustody,items[].sha256,sha256,cadena,patrón ^[0-9a-f]{64}$,sí,Digesto del contenedor cifrado.,,
+EvidenceCustody,items[].commitment,commitment,cadena,patrón ^[0-9a-f]{64}$,sí,"Compromiso del contenido: SHA-256 de un prefijo de dominio, una sal secreta de 32 bytes que viaja cifrada y la imagen limpia. Sin la sal no confirma si una imagen conocida es la prueba.",,
+EvidenceCustody,items[].isStored,isStored,booleano,,sí,El archivo sigue guardado en este nodo (no se borró ni se cedió).,,
+EvidenceCustody,events,events,arreglo de objeto,hasta 20 elementos,sí,Eventos de custodia en orden.,,
+EvidenceCustody,events[].type,type,cadena,,sí,evidence.received (pruebas ancladas al recibirse) o evidence.custody_transferred (las copias pasaron a otro nodo y aquí se borraron).,evidence.received; evidence.custody_transferred,
+EvidenceCustody,events[].on,on,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,Día del evento.,,2026-11-05
+EvidenceCustody,events[].payloadDigest,payloadDigest,cadena,patrón ^[0-9a-f]{64}$,sí,Identifica el evento en la bitácora.,,
+EvidenceCustody,events[].seq,seq,entero,mínimo 0,no,Secuencia del evento una vez publicado.,,
+EvidenceCustody,events[].toNodeId,toNodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,no,Solo en la entrega de custodia: nodo que recibió las pruebas.,,node.queretaro
+EvidenceCustody,events[].toAuthorityId,toAuthorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,no,Solo en la entrega de custodia: autoridad que recibió las pruebas.,,authority.oic-iffe
+EvidenceCustody,keyGrants,keyGrants,arreglo de objeto,hasta 10 elementos,sí,"Llaves re-cifradas hacia la autoridad de la sesión, si las hay.",,
+EvidenceCustody,keyGrants[].evidenceId,evidenceId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador aleatorio de la prueba (16 bytes en hexadecimal).,,
+EvidenceCustody,keyGrants[].authorityId,authorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.oic-iffe
+EvidenceCustody,keyGrants[].envelope,envelope,objeto (HpkeEnvelope),,sí,Sobre cifrado con HPKE hacia una llave pública X25519. Solo quien tiene la llave privada lo abre.,,
+EvidenceKeyGrantsRequest,grants,grants,arreglo de objeto,hasta 10 elementos,sí,"Llaves re-cifradas, una por prueba guardada.",,
+EvidenceKeyGrantsRequest,grants[].evidenceId,evidenceId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador aleatorio de la prueba (16 bytes en hexadecimal).,,16ed88d6f3ea7c6c4841645c43cd2c79
+EvidenceKeyGrantsRequest,grants[].authorityId,authorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.oic-obras
+EvidenceKeyGrantsRequest,grants[].envelope,envelope,objeto (HpkeEnvelope),,sí,Sobre cifrado con HPKE hacia una llave pública X25519. Solo quien tiene la llave privada lo abre.,,
+EvidenceKeyGrantsResponse,granted,granted,entero,de 0 a 10,sí,Llaves guardadas.,,1
 AuthorityMessageRequest,sequence,sequence,entero,mínimo 0,sí,Número de mensaje del remitente en el folio: 0 el primero y consecutivo después.,,1
 AuthorityMessageRequest,envelope,envelope,objeto (HpkeEnvelope),,sí,Sobre cifrado con HPKE hacia una llave pública X25519. Solo quien tiene la llave privada lo abre.,,
 AuthorityMessageRequest,signature,signature,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Firma Ed25519 de la autoridad sobre { envelope, from, sequence }.",,7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg…
 LedgerPage,events,events,arreglo de LedgerEvent,,sí,"Eventos encadenados de la página, en orden.",,
 LedgerPage,head,head,objeto (SignedLedgerHead),,sí,Cabeza pública firmada de la bitácora.,,
 LedgerEvent,seq,seq,entero,mínimo 0,sí,Posición del evento en la cadena.,,41
-LedgerEvent,type,type,cadena (LedgerEventType),,sí,"Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo o señal del auditor.",complaint.received; complaint.status_changed; identity.opened; message.sent; evidence.discarded; identity.approved; rule.triggered; complaint.transferred; audit.signal; closures.imported; appeal.filed; identity.released; corroboration.viewed; corroboration.confirmed; corroboration.withdrawn,complaint.received
+LedgerEvent,type,type,cadena (LedgerEventType),,sí,"Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo, señal del auditor, anclaje de las pruebas recibidas o entrega de su custodia a otro nodo.",complaint.received; complaint.status_changed; identity.opened; message.sent; evidence.discarded; identity.approved; rule.triggered; complaint.transferred; audit.signal; closures.imported; appeal.filed; identity.released; corroboration.viewed; corroboration.confirmed; corroboration.withdrawn; evidence.received; evidence.custody_transferred,complaint.received
 LedgerEvent,folioDigest,folioDigest,cadena,patrón ^[0-9a-f]{64}$,sí,"SHA-256 de ""sigilo/ledger/folio:"" + folio; el folio no se publica.",,1cadc826d104014d2ed7b5bb2fef5c22b8d940aeaa2f14d…
 LedgerEvent,at,at,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,Día del evento (UTC).,,2026-11-05
 LedgerEvent,actorRole,actorRole,cadena,,sí,"Quién originó el evento: system, authority o reporter.",system; authority; reporter,system
@@ -350,7 +375,7 @@ ApiError,error.code,code,cadena,,sí,Código estable del error.,bad_request; not
 ApiError,error.message,message,cadena,,sí,Mensaje fijo en español; nunca incluye datos de la solicitud.,,Falta una prueba de trabajo válida y vigente.
 ComplaintMode,(valor),ComplaintMode,cadena,,sí,"Modo de la denuncia: anonymous (sin identidad) o sealed (identidad cifrada que solo abre la autoridad, con registro público).",anonymous; sealed,sealed
 ComplaintStatus,(valor),ComplaintStatus,cadena,,sí,Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.,received (Recibida); routing (Buscando a la autoridad que debe atenderla); routed (Turnada a la autoridad competente); investigating (En investigación); classified (Revisada: la autoridad decidió si la falta es grave); archived (Archivada); resolved (Concluida),investigating
-LedgerEventType,(valor),LedgerEventType,cadena,,sí,"Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo o señal del auditor.",complaint.received; complaint.status_changed; identity.opened; message.sent; evidence.discarded; identity.approved; rule.triggered; complaint.transferred; audit.signal; closures.imported; appeal.filed; identity.released; corroboration.viewed; corroboration.confirmed; corroboration.withdrawn,complaint.received
+LedgerEventType,(valor),LedgerEventType,cadena,,sí,"Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo, señal del auditor, anclaje de las pruebas recibidas o entrega de su custodia a otro nodo.",complaint.received; complaint.status_changed; identity.opened; message.sent; evidence.discarded; identity.approved; rule.triggered; complaint.transferred; audit.signal; closures.imported; appeal.filed; identity.released; corroboration.viewed; corroboration.confirmed; corroboration.withdrawn; evidence.received; evidence.custody_transferred,complaint.received
 PowPurpose,(valor),PowPurpose,cadena,,sí,"Propósito del reto: complaint (una denuncia con sus pruebas), message (un mensaje del buzón) o registration (una solicitud de alta de autoridad).",complaint; message; registration,
 ManagementState,(valor),ManagementState,cadena,,sí,Estado del flujo de gestión del S5. Nombres y explicaciones en el catálogo MANAGEMENT_STATES.,received_in_inbox (Recibida en el buzón general); routed (Turnada); accepted (Aceptada); reassigned (Reasignada); returned_to_inbox (Devuelta al buzón general); closed (Cerrada),accepted
 ClosureReason,(valor),ClosureReason,cadena,,sí,Motivo de cierre del flujo de gestión. Nombres y explicaciones en CLOSURE_REASONS.,attended (Atendido); channeled (Canalizado); inadmissible (Improcedente); insufficient_information (Información insuficiente); joined (Acumulado); other (Otro),attended

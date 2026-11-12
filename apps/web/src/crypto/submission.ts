@@ -29,7 +29,7 @@ import {
   utf8Encode,
   verifyReceipt,
 } from '@sigilo/core';
-import type { ReceiptKeys } from '@sigilo/core';
+import type { EscalationEvidenceKey, ReceiptKeys } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
 
 /** Recibo recién generado: las 8 palabras y las llaves que derivan de ellas. */
@@ -166,7 +166,8 @@ export function sealReporterIdentity(
 }
 
 /**
- * Sella la segunda llave (ADR 0007): hechos y pruebas, nunca la identidad, hacia la llave FIJADA de
+ * Sella la segunda llave (ADR 0007): hechos, pruebas y las llaves de sus archivos (con las que la
+ * supervisora descifra las pruebas), nunca la identidad, hacia la llave FIJADA de
  * la supervisora, ligados por el AAD al recibo y a las llaves del buzón. Devuelve `undefined` si
  * el despliegue no tiene supervisora. El nodo lo guarda sin poder leerlo y solo lo entrega si una
  * regla pública de escalamiento se cumple.
@@ -175,6 +176,7 @@ export function sealReporterEscalation(
   input: SubmissionInput,
   keys: ReceiptKeys,
   pinned: PinnedKeys,
+  evidenceKeys: readonly EscalationEvidenceKey[] = [],
 ): Promise<HpkeEnvelope> | undefined {
   const supervisor = pinned.set.supervisor;
   const publicKey = pinned.supervisorBoxPublicKey;
@@ -184,6 +186,7 @@ export function sealReporterEscalation(
     { version: 1, ...content },
     { keyId: supervisor.keyId, publicKey },
     { authVerifier: keys.authVerifier, reporterKeys: reporterKeysOf(keys) },
+    evidenceKeys,
   );
 }
 

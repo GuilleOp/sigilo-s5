@@ -62,6 +62,18 @@ entes y municipios, y la bandeja de turnado con las reglas del S5.
   reasignaciones (`reassignment_limit`) y aviso de turnado vencido para la supervisión.
 - La supervisora abre los escalamientos desde «Escalamientos que recibiste», agrupados por regla,
   con la segunda llave: ve hechos, nunca la identidad.
+- Pruebas cifradas de extremo a extremo hacia la autoridad competente: el navegador cifra cada
+  imagen limpia (contenedor `SGEV` v1: llave por archivo sellada con HPKE, con el folio y la
+  autoridad en el AAD) y el nodo guarda solo el contenedor y sus metadatos. El panel las abre en el
+  navegador; la supervisora, con la llave de cada archivo que ahora lleva la segunda llave
+  (`EscalationContent.evidenceKeys`).
+- Cadena de custodia: eventos `evidence.received` (digesto de cada contenedor y compromiso salado
+  del contenido, anclados al recibir) y `evidence.custody_transferred`; `ComplaintDetail` trae
+  `evidenceCustody` y el panel muestra «Cadena de custodia» con la comprobación contra la bitácora.
+- Entrega de custodia al turnar a otro nodo: las pruebas se vuelven a cifrar en el navegador hacia la
+  autoridad destino (misma sal, mismo compromiso) y, con el comprobante del destino, el origen borra
+  sus copias. Dentro del nodo, `POST authority/complaints/{folio}/evidence/keys` guarda las llaves
+  re-cifradas hacia la autoridad destino. Migración 16.
 - Ayudas automáticas al escribir el relato: cuatro partes (qué pasó, cuándo, dónde, qué efecto
   tuvo) que se marcan solas y conductas sugeridas por las palabras, todo en el navegador.
 - «Ninguna se parece» (`SIN-CLASIFICAR`): la denuncia llega al buzón general, que la clasifica; aviso
@@ -112,6 +124,10 @@ entes y municipios, y la bandeja de turnado con las reglas del S5.
   («Bandeja general de turnado», «Denuncias asignadas»). Equivalencias en `docs/integracion-s5.md`.
 
 ### Cambiado
+
+- `POST /api/v1/evidence` acepta solo contenedores cifrados (hasta 10 MiB más 165 bytes);
+  `downloadEvidence` responde `application/octet-stream`. `POST /api/v1/complaints` acepta
+  `?folio=` elegido por el navegador, porque las pruebas se cifran con el folio en el AAD.
 
 - Capa visual moderna (`styles/features/modern.css`), tras compararla con la versión de pruebas
   del S5: fondo con profundidad (brillo y ondas de líneas, sin recursos externos), barra superior

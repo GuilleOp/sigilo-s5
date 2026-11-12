@@ -44,7 +44,15 @@ export interface ReporterApi {
     mediaType: 'image/jpeg' | 'image/png',
     proof: string,
   ): Promise<EvidenceDescriptor>;
-  submitComplaint(request: SubmitComplaintRequest, proof: string): Promise<SubmitComplaintResponse>;
+  /**
+   * Envía la denuncia; `folio` es el que eligió el navegador (`generateFolio`), porque las pruebas
+   * se cifran con el folio en el AAD antes de enviarla.
+   */
+  submitComplaint(
+    request: SubmitComplaintRequest,
+    proof: string,
+    folio?: string,
+  ): Promise<SubmitComplaintResponse>;
   track(credentials: TrackingCredentials): Promise<TrackingView>;
   sendReporterMessage(request: ReporterMessageRequest, proof: string): Promise<MailboxMessage>;
   fileAppeal(request: AppealRequest, proof: string): Promise<AppealResponse>;
@@ -234,12 +242,12 @@ export function createRelayApi(
         { kind: 'binary', mediaType, data: await blobToBase64Url(image) },
         { proof },
       ),
-    submitComplaint: (request, proof) =>
+    submitComplaint: (request, proof, folio) =>
       call(
         'submitComplaint',
         SubmitComplaintResponseSchema,
         { kind: 'json', value: request },
-        { proof },
+        folio === undefined ? { proof } : { proof, folio },
       ),
     track: (credentials) =>
       call('getTracking', TrackingViewSchema, { kind: 'json', value: credentials }),

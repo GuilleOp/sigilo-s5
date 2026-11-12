@@ -26,6 +26,8 @@ import type {
   ProcedureView,
   ComplaintSummary,
   DiscardEvidenceResponse,
+  EvidenceKeyGrantsRequest,
+  EvidenceKeyGrantsResponse,
   EvidenceDescriptor,
   HpkeEnvelope,
   IdentityBlock,
@@ -517,6 +519,22 @@ const escalationDelivery: EscalationDelivery = {
 
 const discardEvidenceResponse: DiscardEvidenceResponse = { discarded: 1 };
 
+const grantEvidenceKeysRequest: EvidenceKeyGrantsRequest = {
+  grants: [
+    {
+      evidenceId: evidence.evidenceId,
+      authorityId: 'authority.oic-obras',
+      envelope: {
+        ...envelope('vD8n1Lr0cQ4x7mZ2aS5kE9bW3hJ6tY1uP0oI8gF4dCe'),
+        keyId: 'c4e19a07b3d25f86',
+        ct: 'mQ9vX2bN7kL4sD1fG8hJ3wE6rT0yU5iO2pA9zC4xV7bN1mK8jH3gF6dS0aQ5wE2r',
+      },
+    },
+  ],
+};
+
+const grantEvidenceKeysResponse: EvidenceKeyGrantsResponse = { granted: 1 };
+
 const authorityMessageRequest: AuthorityMessageRequest = {
   sequence: 1,
   envelope: envelope('HqeQ13nw2-w2vRlVp7ccmEQsI9CmpwCJnrSSV6FVt0E'),
@@ -651,6 +669,8 @@ export const STANDARD_EXAMPLES = {
   'send-authority-message.request': authorityMessageRequest,
   'send-authority-message.response': { ...authorityMessage, sequence: 1 },
   'discard-evidence.response': discardEvidenceResponse,
+  'grant-evidence-keys.request': grantEvidenceKeysRequest,
+  'grant-evidence-keys.response': grantEvidenceKeysResponse,
   'get-ledger-head.response': ledgerHead,
   'list-ledger-events.response': ledgerPage,
   'sealed-identity.content': identityBlock,

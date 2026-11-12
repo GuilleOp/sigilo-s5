@@ -10,19 +10,29 @@ export interface TestDeployment {
   server: KeyPair;
   authorityBox: KeyPair;
   authoritySigning: KeyPair;
+  /** Llave de la supervisora (segunda llave), solo si se pidió con `withSupervisor`. */
+  supervisorBox?: KeyPair;
 }
 
-/** Genera un despliegue sintético con llaves nuevas. */
-export function createTestDeployment(): TestDeployment {
+/** Genera un despliegue sintético con llaves nuevas; con `withSupervisor`, también la segunda llave. */
+export function createTestDeployment(options: { withSupervisor?: boolean } = {}): TestDeployment {
   const server = generateSigningKeyPair();
   const authorityBox = generateBoxKeyPair();
   const authoritySigning = generateSigningKeyPair();
+  const supervisorBox = options.withSupervisor === true ? generateBoxKeyPair() : undefined;
   const pinned = parsePinnedKeys(
     buildPublicKeySet({
       serverSigningPublicKey: server.publicKey,
       authorityBoxPublicKey: authorityBox.publicKey,
       authoritySigningPublicKey: authoritySigning.publicKey,
+      ...(supervisorBox === undefined ? {} : { supervisorBoxPublicKey: supervisorBox.publicKey }),
     }),
   );
-  return { pinned, server, authorityBox, authoritySigning };
+  return {
+    pinned,
+    server,
+    authorityBox,
+    authoritySigning,
+    ...(supervisorBox === undefined ? {} : { supervisorBox }),
+  };
 }

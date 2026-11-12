@@ -496,7 +496,7 @@ export async function sendThroughRouter(
 export async function sealedRelay(
   network: TestNetwork,
   to: string,
-  operation: { operationId: 'submitComplaint' | 'getTracking'; body: unknown },
+  operation: { operationId: 'submitComplaint' | 'getTracking'; body: unknown; folio?: string },
 ) {
   const authority = network.services.directory.authorities.find((item) => item.id === to);
   const node = network.services.directory.nodes.find((item) => item.id === authority?.nodeId);
@@ -508,6 +508,7 @@ export async function sealedRelay(
       query: {},
       proofOfWork: null,
       body: { kind: 'json', value: operation.body },
+      ...(operation.folio === undefined ? {} : { folio: operation.folio }),
     },
     node,
   );

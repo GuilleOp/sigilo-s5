@@ -3,7 +3,7 @@
 // las pruebas por la autoridad, visible en el seguimiento.
 import { readFileSync } from 'node:fs';
 import exifr from 'exifr';
-import { downloadEvidence, fetchComplaintDetail } from './support/api.ts';
+import { decryptEvidence, downloadEvidence, fetchComplaintDetail } from './support/api.ts';
 import { loginAsAuthority, openComplaint } from './support/authority.ts';
 import { expect, test } from './support/fixtures.ts';
 import {
@@ -91,12 +91,19 @@ test('una denuncia anónima limpia sus pruebas, revisa el texto y entrega un rec
   const original = readFileSync(fixturePath(FIXTURE_FILES.photo));
   expect(await exifr.gps(original)).toMatchObject({ latitude: 20.5, longitude: -100.25 });
 
-  // Lo que recibió el servidor: dos imágenes limpias, sin GPS ni datos del equipo.
+  // Lo que guardó el servidor: dos contenedores cifrados hacia la autoridad (no son imágenes). Ya
+  // abiertos con la llave de la autoridad, dos imágenes limpias, sin GPS ni datos del equipo.
   const detail = await fetchComplaintDetail(request, folio);
   expect(detail.summary.mode).toBe('anonymous');
   expect(detail.evidence).toHaveLength(2);
+  expect(detail.evidenceCustody?.items).toHaveLength(2);
+  const keyFile = readFileSync(fixturePath(FIXTURE_FILES.authorityKey), 'utf8');
   for (const item of detail.evidence) {
-    const bytes = await downloadEvidence(request, item.evidenceId);
+    const container = await downloadEvidence(request, item.evidenceId);
+    expect([...container.subarray(0, 4)]).toEqual([0x53, 0x47, 0x45, 0x56]);
+    const bytes = Buffer.from(
+      await decryptEvidence(new Uint8Array(container), item, folio, keyFile),
+    );
     expect(await exifr.gps(bytes)).toBeUndefined();
     expect(await exifr.parse(bytes, { tiff: true, exif: true, gps: true })).toBeUndefined();
   }
@@ -108,6 +115,12 @@ test('una denuncia anónima limpia sus pruebas, revisa el texto y entrega un rec
   await expect(page.getByTestId('evidence-deletion-warning')).toContainText(
     `Los archivos de las pruebas se borrarán el ${detail.evidenceDeletionOn ?? ''}.`,
   );
+  // El panel abre las pruebas en el navegador y las compara con lo anclado al recibirlas.
+  await expect(page.getByTestId('evidence-check')).toHaveCount(2);
+  await expect(page.getByTestId('evidence-check').first()).toContainText(
+    'coincide con lo anclado en la bitácora',
+  );
+  await expect(page.getByTestId('custody-panel')).toContainText('Cadena de custodia');
 
   // Descartar pruebas exige confirmar; la persona lo ve de inmediato en su seguimiento.
   const discard = page.getByTestId('discard-evidence');

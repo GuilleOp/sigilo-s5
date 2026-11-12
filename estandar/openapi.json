@@ -203,11 +203,11 @@
         "operationId": "uploadEvidence",
         "tags": ["Denuncia"],
         "summary": "Subir una prueba",
-        "description": "Recibe una imagen ya limpia en el navegador (sin metadatos; los PDF llegan convertidos a imagen) como cuerpo binario. Usa el reto `complaint` de la denuncia. La prueba queda pendiente hasta que se envía la denuncia que la cita.",
+        "description": "Recibe el contenedor cifrado de una imagen ya limpia en el navegador (sin metadatos; los PDF llegan convertidos a imagen) como cuerpo binario. El navegador la cifra hacia la llave de la autoridad competente (HPKE con el folio y la autoridad en el AAD); el nodo solo comprueba el formato del contenedor y guarda su tamaño, su tipo declarado, su digesto y el compromiso de su cabecera. Usa el reto `complaint` de la denuncia. La prueba queda pendiente hasta que se envía la denuncia que la cita.",
         "security": [{ "proofOfWork": [] }],
         "requestBody": {
           "required": true,
-          "description": "Cuerpo de la petición. Bytes de la imagen limpia, de hasta 10 MiB.",
+          "description": "Cuerpo de la petición. Contenedor cifrado (formato SGEV v1) de la imagen limpia, de hasta 10 MiB más 165 bytes del cifrado. El tipo de contenido es el de la imagen cifrada.",
           "content": { "image/jpeg": {}, "image/png": {} }
         },
         "responses": {
@@ -359,8 +359,20 @@
         "operationId": "submitComplaint",
         "tags": ["Denuncia"],
         "summary": "Enviar una denuncia",
-        "description": "Recibe los hechos legibles y, en modo `sealed`, la identidad cifrada hacia la autoridad; con `escalationEnvelope`, la segunda llave hacia la supervisora (solo hechos y pruebas). Rechaza campos desconocidos y caracteres invisibles en el texto libre. No pide cuenta ni datos de contacto. Responde con el folio y un comprobante firmado; el evento `complaint.received` se publica en la bitácora al cerrar el día.",
+        "description": "Recibe los hechos legibles y, en modo `sealed`, la identidad cifrada hacia la autoridad; con `escalationEnvelope`, la segunda llave hacia la supervisora (solo hechos, pruebas y las llaves de sus archivos). Rechaza campos desconocidos y caracteres invisibles en el texto libre. No pide cuenta ni datos de contacto. Responde con el folio y un comprobante firmado; los eventos `complaint.received` y, si trae pruebas, `evidence.received` (digestos y compromisos de las pruebas cifradas) se publican en la bitácora al cerrar el día.",
         "security": [{ "proofOfWork": [] }],
+        "parameters": [
+          {
+            "name": "folio",
+            "in": "query",
+            "required": false,
+            "description": "Folio que eligió el navegador al azar, porque las pruebas se cifran con el folio en el AAD antes de enviar la denuncia. Si ya existe, responde 400. Sin él, el nodo elige uno.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "description": "Cuerpo de la petición.",
@@ -3155,12 +3167,211 @@
         }
       }
     },
+    "/api/v1/authority/complaints/{folio}/evidence/keys": {
+      "post": {
+        "operationId": "grantEvidenceKeys",
+        "tags": ["Autoridad"],
+        "summary": "Compartir las llaves de las pruebas",
+        "description": "Guarda la llave de cada archivo de prueba re-cifrada en el navegador de la autoridad competente hacia otra autoridad del mismo nodo, antes de turnarla o reasignarla. El contenedor no cambia; el nodo solo comprueba que cada sobre vaya hacia la llave publicada de esa autoridad y no puede abrirlo.",
+        "security": [{ "authorityBearer": [] }],
+        "parameters": [
+          {
+            "name": "folio",
+            "in": "path",
+            "required": true,
+            "description": "Folio de la denuncia.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EvidenceKeyGrantsRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/grant-evidence-keys.request.json`.",
+                  "value": {
+                    "grants": [
+                      {
+                        "evidenceId": "16ed88d6f3ea7c6c4841645c43cd2c79",
+                        "authorityId": "authority.oic-obras",
+                        "envelope": {
+                          "v": 1,
+                          "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+                          "keyId": "c4e19a07b3d25f86",
+                          "enc": "vD8n1Lr0cQ4x7mZ2aS5kE9bW3hJ6tY1uP0oI8gF4dCe",
+                          "ct": "mQ9vX2bN7kL4sD1fG8hJ3wE6rT0yU5iO2pA9zC4xV7bN1mK8jH3gF6dS0aQ5wE2r"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Número de llaves guardadas.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EvidenceKeyGrantsResponse" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/grant-evidence-keys.response.json`.",
+                    "value": { "granted": 1 }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/authority/evidence/{evidenceId}": {
       "get": {
         "operationId": "downloadEvidence",
         "tags": ["Autoridad"],
         "summary": "Descargar una prueba",
-        "description": "Devuelve el archivo limpio como descarga (`Content-Disposition: attachment`, `nosniff`). Las pruebas pendientes, borradas o descartadas responden `404`.",
+        "description": "Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -3173,14 +3384,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Archivo de la prueba. Bytes del archivo limpio.",
+            "description": "Archivo de la prueba. Bytes del contenedor cifrado.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "const": "no-store" }
               }
             },
-            "content": { "image/jpeg": {}, "image/png": {} }
+            "content": { "application/octet-stream": {} }
           },
           "401": {
             "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
@@ -9012,11 +9223,33 @@
           "protectionRequested": {
             "type": "boolean",
             "description": "Solicitud de medidas de protección; solo en modo sealed."
+          },
+          "evidenceKeys": {
+            "description": "Llave de cada archivo de prueba, para que la supervisora lo descifre en su navegador.",
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "evidenceId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$",
+                  "description": "Identificador de la prueba."
+                },
+                "fileKey": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$",
+                  "description": "Llave ChaCha20-Poly1305 de 32 bytes del archivo de la prueba."
+                }
+              },
+              "required": ["evidenceId", "fileKey"],
+              "additionalProperties": false
+            }
           }
         },
         "required": ["version", "mode", "facts", "evidence", "protectionRequested"],
         "additionalProperties": false,
-        "description": "Contenido del sobre de escalamiento antes de cifrarse: versión, modo, hechos, pruebas y protección. Nunca la identidad."
+        "description": "Contenido del sobre de escalamiento antes de cifrarse: versión, modo, hechos, pruebas, llaves de los archivos de prueba y protección. Nunca la identidad."
       },
       "ReporterKeys": {
         "type": "object",
@@ -9047,23 +9280,23 @@
           "mediaType": {
             "type": "string",
             "enum": ["image/jpeg", "image/png"],
-            "description": "Tipo de la prueba ya limpia: imagen JPEG o PNG."
+            "description": "Tipo de la imagen limpia (JPEG o PNG) que va dentro del contenedor cifrado de la prueba."
           },
           "sha256": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
-            "description": "Digesto del archivo limpio, tal como lo recibe la autoridad."
+            "description": "Digesto del contenedor cifrado de la prueba, tal como lo guarda el nodo y lo descarga la autoridad."
           },
           "sizeBytes": {
             "type": "integer",
             "exclusiveMinimum": 0,
-            "maximum": 10485760,
-            "description": "Tamaño del archivo en bytes (máximo 10 MiB)."
+            "maximum": 10485925,
+            "description": "Tamaño del contenedor cifrado en bytes (la imagen, de hasta 10 MiB, más 165 bytes del cifrado)."
           }
         },
         "required": ["evidenceId", "mediaType", "sha256", "sizeBytes"],
         "additionalProperties": false,
-        "description": "Descriptor de una prueba subida: identifica el archivo sin revelar su contenido."
+        "description": "Descriptor de una prueba subida: identifica el contenedor cifrado sin revelar su contenido."
       },
       "HpkeEnvelope": {
         "type": "object",
@@ -10073,6 +10306,10 @@
             "minimum": 0,
             "maximum": 10
           },
+          "evidenceCustody": {
+            "description": "Cadena de custodia de las pruebas cifradas: digestos anclados, eventos de custodia y llaves re-cifradas hacia la autoridad de la sesión. Opcional: los nodos anteriores no la envían.",
+            "$ref": "#/components/schemas/EvidenceCustody"
+          },
           "messages": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/MailboxMessage" },
@@ -11065,6 +11302,166 @@
         "additionalProperties": false,
         "description": "Resultado del descarte de pruebas."
       },
+      "EvidenceCustody": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "evidenceId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$",
+                  "description": "Identificador aleatorio de la prueba (16 bytes en hexadecimal)."
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "description": "Digesto del contenedor cifrado."
+                },
+                "commitment": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "description": "Compromiso del contenido: SHA-256 de un prefijo de dominio, una sal secreta de 32 bytes que viaja cifrada y la imagen limpia. Sin la sal no confirma si una imagen conocida es la prueba."
+                },
+                "isStored": {
+                  "type": "boolean",
+                  "description": "El archivo sigue guardado en este nodo (no se borró ni se cedió)."
+                }
+              },
+              "required": ["evidenceId", "sha256", "commitment", "isStored"],
+              "additionalProperties": false,
+              "description": "Prueba en la cadena de custodia."
+            },
+            "description": "Pruebas ancladas, en el orden de la denuncia."
+          },
+          "events": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["evidence.received", "evidence.custody_transferred"],
+                  "description": "evidence.received (pruebas ancladas al recibirse) o evidence.custody_transferred (las copias pasaron a otro nodo y aquí se borraron)."
+                },
+                "on": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "description": "Día del evento.",
+                  "examples": ["2026-11-05"]
+                },
+                "payloadDigest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "description": "Identifica el evento en la bitácora."
+                },
+                "seq": {
+                  "description": "Secuencia del evento una vez publicado.",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "toNodeId": {
+                  "description": "Solo en la entrega de custodia: nodo que recibió las pruebas.",
+                  "type": "string",
+                  "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "examples": ["node.queretaro"]
+                },
+                "toAuthorityId": {
+                  "description": "Solo en la entrega de custodia: autoridad que recibió las pruebas.",
+                  "type": "string",
+                  "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "examples": ["authority.oic-iffe"]
+                }
+              },
+              "required": ["type", "on", "payloadDigest"],
+              "additionalProperties": false,
+              "description": "Evento de la cadena de custodia de las pruebas."
+            },
+            "description": "Eventos de custodia en orden."
+          },
+          "keyGrants": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "evidenceId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$",
+                  "description": "Identificador aleatorio de la prueba (16 bytes en hexadecimal)."
+                },
+                "authorityId": {
+                  "type": "string",
+                  "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "Identificador estable de la autoridad.",
+                  "examples": ["authority.oic-iffe"]
+                },
+                "envelope": { "$ref": "#/components/schemas/HpkeEnvelope" }
+              },
+              "required": ["evidenceId", "authorityId", "envelope"],
+              "additionalProperties": false,
+              "description": "Llave de un archivo de prueba re-cifrada hacia otra autoridad del mismo nodo. El nodo la guarda sin poder abrirla."
+            },
+            "description": "Llaves re-cifradas hacia la autoridad de la sesión, si las hay."
+          }
+        },
+        "required": ["items", "events", "keyGrants"],
+        "additionalProperties": false,
+        "description": "Cadena de custodia de las pruebas: digestos anclados, eventos de custodia y llaves re-cifradas hacia la autoridad de la sesión."
+      },
+      "EvidenceKeyGrantsRequest": {
+        "type": "object",
+        "properties": {
+          "grants": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "evidenceId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$",
+                  "description": "Identificador aleatorio de la prueba (16 bytes en hexadecimal)."
+                },
+                "authorityId": {
+                  "type": "string",
+                  "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "Identificador estable de la autoridad.",
+                  "examples": ["authority.oic-iffe"]
+                },
+                "envelope": { "$ref": "#/components/schemas/HpkeEnvelope" }
+              },
+              "required": ["evidenceId", "authorityId", "envelope"],
+              "additionalProperties": false,
+              "description": "Llave de un archivo de prueba re-cifrada hacia otra autoridad del mismo nodo. El nodo la guarda sin poder abrirla."
+            },
+            "description": "Llaves re-cifradas, una por prueba guardada."
+          }
+        },
+        "required": ["grants"],
+        "additionalProperties": false,
+        "description": "Llaves de los archivos de prueba re-cifradas en el navegador hacia otra autoridad del nodo."
+      },
+      "EvidenceKeyGrantsResponse": {
+        "type": "object",
+        "properties": {
+          "granted": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Llaves guardadas."
+          }
+        },
+        "required": ["granted"],
+        "additionalProperties": false,
+        "description": "Resultado de guardar las llaves re-cifradas."
+      },
       "AuthorityMessageRequest": {
         "type": "object",
         "properties": {
@@ -11359,9 +11756,11 @@
           "identity.released",
           "corroboration.viewed",
           "corroboration.confirmed",
-          "corroboration.withdrawn"
+          "corroboration.withdrawn",
+          "evidence.received",
+          "evidence.custody_transferred"
         ],
-        "description": "Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo o señal del auditor."
+        "description": "Tipo de evento: recepción, cambio de estatus o trámite, apertura de identidad, mensaje, descarte de pruebas, aprobación de una apertura, regla pública cumplida, turnado a otro nodo, señal del auditor, anclaje de las pruebas recibidas o entrega de su custodia a otro nodo."
       },
       "PowPurpose": {
         "type": "string",

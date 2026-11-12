@@ -28,6 +28,7 @@ import { withTransaction } from '../db/database.ts';
 import { ApiFailure } from '../http/errors.ts';
 import { directoryAuthority } from '../network/network-context.ts';
 import type { AuthorityAccount } from '../security/authority-registry.ts';
+import { handOverEvidenceCustody } from './evidence-service.ts';
 import { isCompetent } from './procedure-service.ts';
 
 /**
@@ -188,7 +189,7 @@ export function confirmTransfer(
     throw new ApiFailure('bad_request');
   }
   const nodeName = node?.name ?? transfer.toNode;
-  withTransaction(ctx.deps.db, () => {
+  const handedOver = withTransaction(ctx.deps.db, () => {
     try {
       ctx.integration.completeTransfer(
         transfer.transferId,
@@ -220,5 +221,21 @@ export function confirmTransfer(
       actorId: account.accountId,
       note: `${transfer.note === null ? '' : `${transfer.note} `}Tu denuncia continúa en ${nodeName} con el folio ${request.receipt.folio}. Usa las mismas 8 palabras para darle seguimiento allá.`,
     });
+    // Entrega de custodia: el comprobante firmado prueba que el destino recibió las pruebas (sus
+    // digestos van en el digesto del envío); aquí se borran las copias y queda una sola viva.
+    return handOverEvidenceCustody(
+      ctx,
+      folio,
+      {
+        transferId: transfer.transferId,
+        fromNodeId: network.nodeId,
+        toNodeId: transfer.toNode,
+        toAuthorityId: transfer.toAuthority,
+        actorId: account.accountId,
+      },
+      request,
+    );
   });
+  // Los archivos se borran después de confirmar la transacción, como en el descarte.
+  for (const evidenceId of handedOver) ctx.deps.evidenceStore.remove(evidenceId);
 }

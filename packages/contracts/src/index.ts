@@ -3,6 +3,7 @@ export * from './primitives.ts';
 export * from './catalogs/index.ts';
 export * from './envelope.ts';
 export * from './complaint.ts';
+export * from './evidence.ts';
 export * from './mailbox.ts';
 export * from './tracking.ts';
 export * from './authority-access.ts';
