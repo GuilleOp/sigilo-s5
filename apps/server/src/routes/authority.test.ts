@@ -68,7 +68,7 @@ async function setup(
 ): Promise<Scenario> {
   const server = createTestServer();
   const reporter = createReporter();
-  const upload = await uploadEvidence(server.app, samplePng(128), 'image/png');
+  const upload = await uploadEvidence(server.app, samplePng(256), 'image/png');
   const evidence = (await upload.json()) as EvidenceDescriptor;
   const request = await buildComplaintRequest(server, {
     mode,
@@ -451,19 +451,19 @@ describe('buzón de la autoridad', () => {
 });
 
 describe('descarga de pruebas', () => {
-  it('sirve el binario como adjunto con su tipo y nosniff', async () => {
+  it('sirve el contenedor cifrado como adjunto opaco y nosniff', async () => {
     const { server, evidence } = await setup();
     const response = await getAsAuthority(
       server.app,
       ROUTES.authorityEvidence(evidence.evidenceId),
     );
     expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')).toBe('image/png');
+    expect(response.headers.get('Content-Type')).toBe('application/octet-stream');
     expect(response.headers.get('Content-Disposition')).toBe(
-      `attachment; filename="${evidence.evidenceId}.png"`,
+      `attachment; filename="${evidence.evidenceId}.png.sigilo"`,
     );
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
-    expect(new Uint8Array(await response.arrayBuffer())).toEqual(samplePng(128));
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(samplePng(256));
   });
 
   it('no sirve pruebas pendientes ni identificadores inválidos', async () => {

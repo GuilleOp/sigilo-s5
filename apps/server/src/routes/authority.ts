@@ -5,6 +5,7 @@ import {
   API_PREFIX,
   ApproveIdentityRequestSchema,
   AuthorityMessageRequestSchema,
+  EvidenceKeyGrantsRequestSchema,
   FolioSchema,
   OpenIdentityRequestSchema,
   OpeningIdSchema,
@@ -30,7 +31,8 @@ import {
   isEscalatedTo,
   listEscalations,
 } from '../services/escalation-service.ts';
-import { discardEvidence } from '../services/evidence-service.ts';
+import { discardEvidence, grantEvidenceKeys } from '../services/evidence-service.ts';
+import { authorityKeysFor } from '../services/authority-keys.ts';
 import {
   approveIdentityOpening,
   IDENTITY_CUSTODIAN_FUNCTIONS,
@@ -106,11 +108,12 @@ function serveEvidence(ctx: AppContext, c: Context): Response {
     (isCompetent(ctx, account, complaint) || isEscalatedTo(ctx, account, complaint.folio));
   const bytes = isAllowed ? ctx.deps.evidenceStore.read(evidenceId) : null;
   if (record === null || bytes === null) throw new ApiFailure('not_found');
-  c.header('Content-Type', record.mediaType);
-  // Seguridad: se fuerza la descarga y se impide que el navegador reinterprete el tipo.
+  // Seguridad: es el contenedor cifrado; el navegador de la autoridad lo abre con su llave. Se
+  // fuerza la descarga y se impide que el navegador reinterprete el tipo.
+  c.header('Content-Type', 'application/octet-stream');
   c.header(
     'Content-Disposition',
-    `attachment; filename="${evidenceId}.${EXTENSION_BY_TYPE[record.mediaType]}"`,
+    `attachment; filename="${evidenceId}.${EXTENSION_BY_TYPE[record.mediaType]}.sigilo"`,
   );
   c.header('X-Content-Type-Options', 'nosniff');
   return c.body(new Uint8Array(bytes));
@@ -234,6 +237,19 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
     const account = requireFunction(ctx, c, ['intake', 'investigation']);
     const complaint = findCompetent(ctx, c, account);
     return c.json({ discarded: discardEvidence(ctx, complaint.folio, account.accountId) });
+  });
+
+  // Llaves de los archivos de prueba re-cifradas en el navegador hacia otra autoridad del nodo,
+  // antes de turnarla o reasignarla dentro del nodo: el contenedor no cambia, solo su llave.
+  app.post(ROUTES.authorityEvidenceKeys(':folio'), jsonBodyLimit, async (c) => {
+    const account = requireFunction(ctx, c, ['intake', 'investigation']);
+    const complaint = findCompetent(ctx, c, account);
+    const { grants } = await readJson(c, EvidenceKeyGrantsRequestSchema);
+    const keyIdOf = (authorityId: string): string | null =>
+      ctx.authorities.authority(authorityId) === null
+        ? null
+        : authorityKeysFor(ctx, authorityId).keyId;
+    return c.json({ granted: grantEvidenceKeys(ctx, complaint.folio, grants, keyIdOf) });
   });
 
   app.get(ROUTES.authorityEvidence(':evidenceId'), (c) => serveEvidence(ctx, c));

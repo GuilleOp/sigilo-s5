@@ -1,5 +1,10 @@
 // Vistas de lectura: seguimiento de la persona denunciante y detalle para la autoridad.
-import type { ComplaintDetail, ComplaintSummary, TrackingView } from '@sigilo/contracts';
+import type {
+  ComplaintDetail,
+  ComplaintSummary,
+  EvidenceCustody,
+  TrackingView,
+} from '@sigilo/contracts';
 import { primaryOffenseCode } from '@sigilo/contracts';
 import { s5ReferencesFor } from '@sigilo/contracts/s5';
 import {
@@ -146,6 +151,7 @@ export function buildComplaintDetail(
     ...(receivedEvent === null ? {} : { receivedEventSeq: receivedEvent.seq }),
     ...(deletionOn === null ? {} : { evidenceDeletionOn: deletionOn }),
     storedEvidenceCount: ctx.evidence.listStoredIdsForFolio(complaint.folio).length,
+    ...optional('evidenceCustody', evidenceCustodyView(ctx, complaint.folio, account)),
     messages: ctx.messages.listByFolio(complaint.folio),
     identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
     s5References: s5ReferencesFor(
@@ -159,6 +165,29 @@ export function buildComplaintDetail(
     ...optional('conflictReview', conflictReview(ctx, complaint)),
     ...optional('corroboration', corroboration),
     auditSignals: auditSignalViews(ctx, complaint.folio),
+  };
+}
+
+/**
+ * Cadena de custodia de las pruebas cifradas: lo anclado al recibirlas, los eventos de custodia con
+ * su secuencia si ya se publicaron y las llaves re-cifradas hacia la autoridad de la sesión.
+ * `null` si la denuncia no tiene pruebas cifradas.
+ */
+function evidenceCustodyView(
+  ctx: AppContext,
+  folio: string,
+  account: AuthorityAccount | null,
+): EvidenceCustody | null {
+  const items = ctx.evidence.listCustodyItems(folio);
+  if (items.length === 0) return null;
+  const events = ctx.evidence.listCustodyEvents(folio).map((event) => {
+    const published = ctx.ledgerRepository.findByPayloadDigest(event.type, event.payloadDigest);
+    return published === null ? event : { ...event, seq: published.seq };
+  });
+  return {
+    items,
+    events,
+    keyGrants: account === null ? [] : ctx.evidence.listKeyGrants(folio, account.authorityId),
   };
 }
 

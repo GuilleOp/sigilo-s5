@@ -1,20 +1,29 @@
-// Recepción de pruebas: verificación del tipo real por bytes mágicos, reparto de la cuota de
-// almacenamiento (pendientes y por denuncia), retención de las pruebas de denuncias sin atender o
-// archivadas, descarte por la autoridad y purga de las pendientes que nunca se asociaron.
-import type { EvidenceDescriptor, EvidenceMediaType } from '@sigilo/contracts';
+// Recepción de pruebas cifradas de extremo a extremo: verificación del formato del contenedor (el
+// nodo no puede abrirlo), reparto de la cuota de almacenamiento (pendientes y por denuncia),
+// retención de las pruebas de denuncias sin atender o archivadas, descarte por la autoridad, purga
+// de las pendientes que nunca se asociaron, anclaje de sus digestos en la bitácora al recibirlas,
+// llaves re-cifradas hacia otras autoridades del nodo y entrega de la custodia al turnar.
+import type {
+  EvidenceDescriptor,
+  EvidenceKeyGrant,
+  EvidenceMediaType,
+  TransferReceiptRequest,
+} from '@sigilo/contracts';
 import { MAX_EVIDENCE_BYTES } from '@sigilo/contracts';
-import { randomBytes, sha256Hex, toDayDate, toHex } from '@sigilo/core';
+import {
+  evidenceReceivedPayload,
+  parseEvidenceContainer,
+  randomBytes,
+  sha256Hex,
+  toDayDate,
+  toHex,
+} from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import { withTransaction } from '../db/database.ts';
 import type { EvidenceRepository } from '../db/evidence-repository.ts';
 import { ApiFailure } from '../http/errors.ts';
 import type { PowReceipt } from '../security/proof-of-work.ts';
 import type { EvidenceStore } from '../storage/evidence-store.ts';
-
-const MAGIC_BYTES: Record<EvidenceMediaType, readonly number[]> = {
-  'image/jpeg': [0xff, 0xd8, 0xff],
-  'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RETENTION_BATCH = 100;
@@ -135,10 +144,13 @@ export function budgetOf(ctx: AppContext): EvidenceBudget {
   return evidenceBudget(ctx.deps.evidenceQuotaBytes ?? DEFAULT_EVIDENCE_QUOTA_BYTES);
 }
 
-/** Indica si los primeros bytes corresponden a la firma del tipo declarado. */
-export function hasMagicBytes(bytes: Uint8Array, mediaType: EvidenceMediaType): boolean {
-  const magic = MAGIC_BYTES[mediaType];
-  return bytes.length > magic.length && magic.every((byte, index) => bytes[index] === byte);
+/**
+ * Compromiso del contenido de un contenedor cifrado, o `null` si los bytes no tienen el formato.
+ * El nodo no puede comprobar el tipo real de la imagen (va cifrada): lo comprueba el navegador de
+ * la autoridad al abrirla, antes de mostrarla.
+ */
+export function evidenceCommitmentOf(bytes: Uint8Array): string | null {
+  return parseEvidenceContainer(bytes)?.commitment ?? null;
 }
 
 /** Dependencias de la retención. */
@@ -151,12 +163,13 @@ export interface EvidenceRetentionStoreDeps {
  * Guarda una prueba pendiente (sin denuncia asociada) y devuelve su descriptor. `consumeProof`
  * gasta el uso del reto solo cuando la prueba ya es válida y cabe; si devuelve un reto, la prueba
  * se anota en `challengeUploads` para purgarla si el reto vence sin denuncia.
- * Seguridad: el tipo declarado debe coincidir con los bytes reales; así el visor de la autoridad
- * solo recibe imágenes. Nunca se borran pruebas ya asociadas a una denuncia para hacer sitio: si
- * no cabe, se rechaza la subida, porque no aceptar más es preferible a perder pruebas de
- * corrupción. Antes de medir la cuota se purgan las pendientes de retos vencidos. Lanza
- * `unsupported_media_type` si el tipo no coincide y `storage_full` si las pendientes ya ocupan su
- * parte o si la cuota total se excedería.
+ * Seguridad: solo se aceptan contenedores cifrados en el navegador hacia la autoridad (ver
+ * `sealEvidence`); el nodo guarda el contenedor, su tipo declarado, su tamaño, su digesto y el
+ * compromiso de su cabecera, y nunca ve la imagen. Nunca se borran pruebas ya asociadas a una
+ * denuncia para hacer sitio: si no cabe, se rechaza la subida, porque no aceptar más es
+ * preferible a perder pruebas de corrupción. Antes de medir la cuota se purgan las pendientes de
+ * retos vencidos. Lanza `unsupported_media_type` si no es un contenedor cifrado y `storage_full`
+ * si las pendientes ya ocupan su parte o si la cuota total se excedería.
  */
 export function storeEvidence(
   ctx: AppContext,
@@ -164,7 +177,8 @@ export function storeEvidence(
   mediaType: EvidenceMediaType,
   consumeProof: () => PowReceipt | null = () => null,
 ): EvidenceDescriptor {
-  if (!hasMagicBytes(bytes, mediaType)) throw new ApiFailure('unsupported_media_type');
+  const commitment = evidenceCommitmentOf(bytes);
+  if (commitment === null) throw new ApiFailure('unsupported_media_type');
   purgeExpiredChallengeUploads(ctx);
   const budget = budgetOf(ctx);
   if (ctx.evidence.pendingStoredBytes() + bytes.length > budget.pendingMax) {
@@ -182,7 +196,7 @@ export function storeEvidence(
   };
   ctx.deps.evidenceStore.write(descriptor.evidenceId, bytes);
   try {
-    ctx.evidence.insertPending(descriptor, toDayDate(ctx.deps.now()));
+    ctx.evidence.insertPending(descriptor, toDayDate(ctx.deps.now()), commitment);
   } catch (error) {
     ctx.deps.evidenceStore.remove(descriptor.evidenceId);
     throw error;
@@ -327,4 +341,123 @@ export function startEvidencePurge(
       onError(error);
     }
   });
+}
+
+/**
+ * Ancla en la bitácora las pruebas que la denuncia acaba de asociar: registra `evidence.received`
+ * con el folio y, por prueba, el digesto del contenedor y el compromiso del contenido, y lo agrega
+ * a la cadena de custodia. Sin pruebas no registra nada. Debe llamarse dentro de la transacción
+ * de la recepción.
+ * Seguridad: el evento solo publica el digesto de esos datos, que incluyen el folio (60 bits
+ * secretos), así que nadie fuera puede adivinarlo; la autoridad lo recalcula desde el detalle y lo
+ * compara con lo que descifra. El compromiso es salado: tampoco sirve para confirmar una imagen.
+ */
+export function anchorReceivedEvidence(ctx: AppContext, folio: string): void {
+  const items = ctx.evidence.listCustodyItems(folio);
+  if (items.length === 0) return;
+  const event = ctx.ledger.record({
+    type: 'evidence.received',
+    folio,
+    at: toDayDate(ctx.deps.now()),
+    actorRole: 'system',
+    payload: evidenceReceivedPayload(folio, items),
+  });
+  ctx.evidence.insertCustodyEvent(folio, {
+    type: 'evidence.received',
+    on: event.at,
+    payloadDigest: event.payloadDigest,
+  });
+}
+
+/**
+ * Guarda las llaves de los archivos de prueba que el navegador de la autoridad competente
+ * re-cifró hacia otra autoridad de este nodo (antes de turnarla o reasignarla) y devuelve
+ * cuántas guardó. `keyIdOf` da el `keyId` publicado de una autoridad del nodo, o `null`.
+ * Lanza `bad_request` si una prueba no es de la denuncia o ya no está guardada, si la autoridad
+ * destino no es de este nodo o si el sobre no va hacia su llave.
+ * Seguridad: el nodo no puede abrir las llaves; solo comprueba que el sobre vaya hacia la llave
+ * publicada de la autoridad destino. El AAD liga el folio, la autoridad y el compromiso de cada
+ * archivo, así que una llave no sirve para otra prueba ni para otra autoridad.
+ */
+export function grantEvidenceKeys(
+  ctx: AppContext,
+  folio: string,
+  grants: readonly EvidenceKeyGrant[],
+  keyIdOf: (authorityId: string) => string | null,
+): number {
+  const stored = new Set(ctx.evidence.listStoredIdsForFolio(folio));
+  for (const grant of grants) {
+    const expectedKeyId = keyIdOf(grant.authorityId);
+    if (!stored.has(grant.evidenceId) || expectedKeyId !== grant.envelope.keyId) {
+      throw new ApiFailure('bad_request');
+    }
+  }
+  const on = toDayDate(ctx.deps.now());
+  withTransaction(ctx.deps.db, () => {
+    for (const grant of grants) ctx.evidence.upsertKeyGrant(grant, on);
+  });
+  return grants.length;
+}
+
+/** Turnado cuyo comprobante llegó: de qué nodo a qué nodo y autoridad pasó la denuncia. */
+export interface CustodyHandover {
+  transferId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  toAuthorityId: string;
+  actorId: string;
+}
+
+/**
+ * Entrega de custodia: cuando el nodo destino confirma con su comprobante firmado que recibió la
+ * denuncia con sus pruebas (sus digestos van en el digesto del envío que firma), el origen
+ * registra `evidence.custody_transferred` con los digestos de sus copias y de las del destino, y
+ * marca sus copias como no guardadas. Devuelve los identificadores cuyos archivos hay que borrar
+ * después de confirmar la transacción. Debe llamarse dentro de la transacción de la confirmación.
+ * Seguridad: queda una sola copia viva, la del destino. Sin comprobante (el destino no respondió
+ * o el turnado venció) nada se borra y el origen conserva sus copias. El evento nunca lleva el
+ * contenido: solo digestos, compromisos y los nodos y autoridades.
+ */
+export function handOverEvidenceCustody(
+  ctx: AppContext,
+  folio: string,
+  handover: CustodyHandover,
+  receipt: TransferReceiptRequest,
+): string[] {
+  const storedIds = ctx.evidence.listStoredIdsForFolio(folio);
+  if (storedIds.length === 0) return [];
+  const items = ctx.evidence.listCustodyItems(folio).filter((item) => item.isStored);
+  const event = ctx.ledger.record(
+    {
+      type: 'evidence.custody_transferred',
+      folio,
+      at: toDayDate(ctx.deps.now()),
+      actorRole: 'authority',
+      payload: {
+        folio,
+        transferId: handover.transferId,
+        fromNodeId: handover.fromNodeId,
+        toNodeId: handover.toNodeId,
+        toAuthorityId: handover.toAuthorityId,
+        targetFolio: receipt.receipt.folio,
+        evidence: items.map(({ evidenceId, sha256, commitment }) => ({
+          evidenceId,
+          sha256,
+          commitment,
+        })),
+        targetEvidence: receipt.request.evidence.map(({ sha256 }) => sha256),
+        actor: handover.actorId,
+      },
+    },
+    { isExemptFromDailyCap: true },
+  );
+  ctx.evidence.insertCustodyEvent(folio, {
+    type: 'evidence.custody_transferred',
+    on: event.at,
+    payloadDigest: event.payloadDigest,
+    toNodeId: handover.toNodeId,
+    toAuthorityId: handover.toAuthorityId,
+  });
+  for (const evidenceId of storedIds) ctx.evidence.markUnstored(evidenceId);
+  return storedIds;
 }

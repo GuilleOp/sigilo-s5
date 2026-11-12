@@ -1,7 +1,8 @@
 // Recepción de denuncias.
 import type { Hono } from 'hono';
-import { POW_HEADER, ROUTES, SubmitComplaintRequestSchema } from '@sigilo/contracts';
+import { FolioSchema, POW_HEADER, ROUTES, SubmitComplaintRequestSchema } from '@sigilo/contracts';
 import type { AppContext } from '../context.ts';
+import { ApiFailure } from '../http/errors.ts';
 import { jsonBodyLimit, readJson } from '../http/request.ts';
 import { requireProofOfWork } from '../security/proof-of-work.ts';
 import { submitComplaint } from '../services/complaint-service.ts';
@@ -13,6 +14,18 @@ declare module 'hono' {
     routedTo: string | undefined;
     routedSubmission: RoutedSubmission | undefined;
   }
+}
+
+/**
+ * Folio que eligió el navegador para un envío directo (`?folio=`), o `undefined`. Las pruebas se
+ * cifran con el folio en el AAD antes de enviar la denuncia, así que el navegador lo elige al azar
+ * (como por la red). Lanza `bad_request` si no tiene el formato.
+ */
+function directFolioOf(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const parsed = FolioSchema.safeParse(value);
+  if (!parsed.success) throw new ApiFailure('bad_request');
+  return parsed.data;
 }
 
 /** Registra `POST complaints`, que exige la prueba de trabajo de propósito `complaint`. */
@@ -36,13 +49,14 @@ export function registerComplaintRoutes(app: Hono, ctx: AppContext): void {
     async (c) => {
       const request = await readJson(c, SubmitComplaintRequestSchema);
       const routed = c.get('routedSubmission');
+      const folio = routed?.folio ?? directFolioOf(c.req.query('folio'));
       // Seguridad: el reto se gasta solo con un cuerpo válido.
       if (routed?.deferred !== true) ctx.pow.verify(c.req.header(POW_HEADER), 'complaint');
       const routedTo = c.get('routedTo');
       return c.json(
         submitComplaint(ctx, request, {
           ...(routedTo === undefined ? {} : { routedTo }),
-          ...(routed === undefined ? {} : { folio: routed.folio }),
+          ...(folio === undefined ? {} : { folio }),
         }),
         201,
       );

@@ -2,6 +2,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Hono } from 'hono';
 import {
+  EVIDENCE_CONTAINER_OVERHEAD,
   IdentityOpeningRequestViewSchema,
   OpenIdentityResponseSchema,
   ROUTES,
@@ -21,6 +22,7 @@ import type {
 import {
   buildPublicKeySet,
   deriveReceiptKeys,
+  EVIDENCE_CONTAINER_MAGIC,
   generateBoxKeyPair,
   generateReceiptPhrase,
   generateSigningKeyPair,
@@ -316,18 +318,30 @@ export function createTestServer(overrides: Partial<AppDeps> = {}): TestServer {
   };
 }
 
-/** Imagen PNG sintética: firma real seguida de bytes de relleno. */
-export function samplePng(size = 64): Uint8Array {
-  const bytes = new Uint8Array(size).fill(7);
-  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+/**
+ * Contenedor cifrado sintético de `size` bytes: el formato de `sealEvidence` (prefijo y versión),
+ * un compromiso de relleno y bytes de relleno. El nodo no abre las pruebas, así que para él basta
+ * el formato; las pruebas que descifran usan `sealEvidence` de verdad.
+ */
+function sampleContainer(size: number, fill: number): Uint8Array {
+  if (size <= EVIDENCE_CONTAINER_OVERHEAD) {
+    throw new Error(
+      `Un contenedor de prueba necesita más de ${EVIDENCE_CONTAINER_OVERHEAD} bytes.`,
+    );
+  }
+  const bytes = new Uint8Array(size).fill(fill);
+  bytes.set(EVIDENCE_CONTAINER_MAGIC);
   return bytes;
 }
 
-/** Imagen JPEG sintética: firma real seguida de bytes de relleno. */
-export function sampleJpeg(size = 64): Uint8Array {
-  const bytes = new Uint8Array(size).fill(9);
-  bytes.set([0xff, 0xd8, 0xff, 0xe0]);
-  return bytes;
+/** Contenedor cifrado sintético de una imagen PNG (ver `sampleContainer`). */
+export function samplePng(size = 256): Uint8Array {
+  return sampleContainer(size, 7);
+}
+
+/** Contenedor cifrado sintético de una imagen JPEG (ver `sampleContainer`). */
+export function sampleJpeg(size = 256): Uint8Array {
+  return sampleContainer(size, 9);
 }
 
 /** Envía JSON con el token de autoridad si se indica. */
