@@ -1,7 +1,8 @@
 // Vencimiento de la sesión del panel (H2, WCAG 2.2.1): dos minutos antes de vencer por inactividad
 // avisa con un diálogo de alerta y «Seguir conectada», que renueva la sesión con la petición
-// autenticada más ligera. Si la sesión ya venció, pide la contraseña otra vez sin desmontar el
-// panel: lo que la persona escribió sigue ahí.
+// autenticada más ligera. Si la sesión ya venció, pide la contraseña (y el código del segundo
+// factor, si la cuenta lo tiene) otra vez sin desmontar el panel: lo que la persona escribió sigue
+// ahí.
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { SESSION_IDLE_TIMEOUT_SECONDS } from '@sigilo/contracts';
@@ -15,6 +16,7 @@ import {
   onSessionExpired,
 } from '../../services/session-activity.ts';
 import type { AuthoritySession } from './authority-session.ts';
+import { MfaCodeForm } from './MfaSteps.tsx';
 
 /** Segundos antes del vencimiento en que se avisa. */
 export const SESSION_WARNING_SECONDS = 2 * 60;
@@ -38,6 +40,9 @@ export function SessionGuard({ session, onRenewed, now = Date.now }: SessionGuar
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  /** Reto del segundo factor al volver a entrar, si la cuenta lo tiene. */
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [isBusy, setBusy] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -78,13 +83,50 @@ export function SessionGuard({ session, onRenewed, now = Date.now }: SessionGuar
     event.preventDefault();
     setError('');
     try {
-      const renewed = await api.login(username.trim(), password);
+      const result = await api.login(username.trim(), password);
       setPassword('');
-      setState('active');
-      onRenewed({ token: renewed.token, account: renewed.account, keys: session.keys });
+      if (result.step === 'code') {
+        setChallenge(result.challenge);
+        return;
+      }
+      if (result.step === 'enroll') {
+        // La verificación en dos pasos se reinició: se inscribe desde la entrada del panel.
+        void api.logout(result.token).catch(() => undefined);
+        setError(
+          'Tu cuenta debe activar de nuevo la verificación en dos pasos. Sal del panel y vuelve a entrar.',
+        );
+        return;
+      }
+      renew(result);
     } catch (failure) {
       setError(describeError(failure, 'No pudimos abrir tu sesión. Inténtalo de nuevo.'));
       focusAfterRender('relogin-username');
+    }
+  }
+
+  function renew(renewed: { token: string; account: AuthoritySession['account'] }): void {
+    setChallenge(null);
+    setError('');
+    setState('active');
+    onRenewed({ token: renewed.token, account: renewed.account, keys: session.keys });
+  }
+
+  async function submitCode(code: string): Promise<void> {
+    if (challenge === null) return;
+    setBusy(true);
+    setError('');
+    try {
+      renew(await api.loginCode(challenge, code));
+    } catch (failure) {
+      setError(
+        describeError(
+          failure,
+          'El código no es válido o ya se usó, o el usuario o la contraseña no coinciden.',
+        ),
+      );
+      focusAfterRender('relogin-code');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -126,29 +168,43 @@ export function SessionGuard({ session, onRenewed, now = Date.now }: SessionGuar
             Tu sesión se cerró por inactividad
           </h2>
           <p>Vuelve a entrar. Lo que escribiste sigue aquí.</p>
-          <form onSubmit={(event) => void relogin(event)} noValidate>
-            <TextField
-              id="relogin-username"
-              label="Usuario"
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              data-testid="relogin-username"
+          {challenge !== null ? (
+            <MfaCodeForm
+              idPrefix="relogin"
+              error={error}
+              isBusy={isBusy}
+              onSubmit={(code) => void submitCode(code)}
+              onRestart={() => {
+                setChallenge(null);
+                setError('');
+                focusAfterRender('relogin-username');
+              }}
             />
-            <TextField
-              id="relogin-password"
-              label="Contraseña"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              error={error || undefined}
-              onChange={(event) => setPassword(event.target.value)}
-              data-testid="relogin-password"
-            />
-            <button type="submit" className="button" data-testid="relogin-submit">
-              Volver a entrar
-            </button>
-          </form>
+          ) : (
+            <form onSubmit={(event) => void relogin(event)} noValidate>
+              <TextField
+                id="relogin-username"
+                label="Usuario"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                data-testid="relogin-username"
+              />
+              <TextField
+                id="relogin-password"
+                label="Contraseña"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                error={error || undefined}
+                onChange={(event) => setPassword(event.target.value)}
+                data-testid="relogin-password"
+              />
+              <button type="submit" className="button" data-testid="relogin-submit">
+                Volver a entrar
+              </button>
+            </form>
+          )}
         </section>
       )}
     </>

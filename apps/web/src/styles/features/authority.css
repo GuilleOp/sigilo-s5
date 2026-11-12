@@ -295,3 +295,39 @@
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
+
+/* Verificación en dos pasos: QR con fondo blanco y margen, clave y códigos en monoespaciada. */
+.mfa-steps > li + li {
+  margin-block-start: var(--space-3);
+}
+
+.mfa-qr-frame {
+  display: inline-block;
+  margin-block: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  line-height: 0;
+}
+
+.mfa-qr {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+.mfa-secret,
+.mfa-recovery-list code {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+.mfa-recovery-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-2);
+  padding-inline-start: var(--space-5);
+}

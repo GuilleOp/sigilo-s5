@@ -1,9 +1,12 @@
 // Operaciones tipadas de la API v1. Todas las rutas salen de `ROUTES`; ninguna se escribe a mano.
 import {
   AuthorityProfileSchema,
-  AuthoritySessionSchema,
   AuthoritySessionInfoSchema,
   ComplaintDetailSchema,
+  LoginResponseSchema,
+  LoginSessionStepSchema,
+  MfaConfirmResponseSchema,
+  MfaEnrollmentSchema,
   EscalationDeliverySchema,
   EscalationSummarySchema,
   IdentityOpeningRequestViewSchema,
@@ -31,8 +34,11 @@ import {
 import type {
   AuthorityMessageRequest,
   AuthorityProfile,
-  AuthoritySession,
   AuthoritySessionInfo,
+  LoginResponse,
+  LoginSessionStep,
+  MfaConfirmResponse,
+  MfaEnrollment,
   ComplaintDetail,
   EscalationDelivery,
   EscalationSummary,
@@ -125,8 +131,17 @@ export interface SigiloApi {
     requestId: string,
     decision: RegistrationDecision,
   ): Promise<RegistrationView>;
-  /** Inicio de sesión con la cuenta individual de la autoridad. */
-  login(username: string, password: string): Promise<AuthoritySession>;
+  /**
+   * Primer paso del inicio de sesión: sesión abierta, falta el código del segundo factor (`code`)
+   * o la cuenta debe inscribirlo (`enroll`, sesión limitada).
+   */
+  login(username: string, password: string): Promise<LoginResponse>;
+  /** Segundo paso: código de la app o de recuperación para el reto de `login`. */
+  loginCode(challenge: string, code: string): Promise<LoginSessionStep>;
+  /** Secreto TOTP nuevo para inscribir el segundo factor (sesión de solo contraseña). */
+  enrollMfa(token: string): Promise<MfaEnrollment>;
+  /** Confirma la inscripción con el primer código: códigos de recuperación y sesión completa. */
+  confirmMfa(token: string, code: string): Promise<MfaConfirmResponse>;
   /**
    * Datos de la sesión vigente. Es la petición autenticada más ligera: renueva la sesión por
    * inactividad («Seguir conectada»).
@@ -251,7 +266,16 @@ export function createSigiloApi(
         json: decision,
       }),
     login: (username, password) =>
-      client.json(ROUTES.authLogin, AuthoritySessionSchema, { json: { username, password } }),
+      client.json(ROUTES.authLogin, LoginResponseSchema, { json: { username, password } }),
+    loginCode: (challenge, code) =>
+      client.json(ROUTES.authLoginCode, LoginSessionStepSchema, { json: { challenge, code } }),
+    enrollMfa: (token) =>
+      client.json(ROUTES.authMfaEnroll, MfaEnrollmentSchema, { bearer: token, method: 'POST' }),
+    confirmMfa: (token, code) =>
+      client.json(ROUTES.authMfaConfirm, MfaConfirmResponseSchema, {
+        bearer: token,
+        json: { code },
+      }),
     getSession: (token) =>
       client.json(ROUTES.authSession, AuthoritySessionInfoSchema, { bearer: token }),
     logout: async (token) => {
