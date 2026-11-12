@@ -17,10 +17,14 @@ import {
   RegistrationRequestSchema,
   ROUTES,
   VENTANILLA_ROUTES,
+  WEB_CONFIG_FILE_NAME,
+  WEB_CONFIG_PATH,
+  WebRuntimeConfigSchema,
 } from '@sigilo/contracts';
-import type { AuthorityDirectory, DirectoryNode } from '@sigilo/contracts';
+import type { AuthorityDirectory, DirectoryNode, WebRuntimeConfig } from '@sigilo/contracts';
 import { findNode } from '@sigilo/red';
 import type { FetchLike } from '@sigilo/red';
+import { DEFAULT_ROUTER_DATA_DIR } from './config.ts';
 import { errorResponse, securityHeaders } from './http.ts';
 import { nationalOpenDataCsv } from './open-data-aggregator.ts';
 import type { OpenDataAggregator } from './open-data-aggregator.ts';
@@ -31,6 +35,11 @@ export interface VentanillaConfig {
   distDir: string;
   /** Dirección interna del evaluador OPRF; sin ella, la del directorio. */
   evaluatorUrl: string | null;
+  /**
+   * Configuración de la web en tiempo de ejecución (ADR 0011) que se sirve en
+   * `/config/sigilo.json`; sin ella, 404 y la web usa su bundle.
+   */
+  webConfig?: WebRuntimeConfig;
 }
 
 /** Dependencias de la ventanilla dentro de la aplicación del enrutador. */
@@ -51,9 +60,30 @@ const MAX_EVALUATION_BODY_BYTES = 1024;
 const INTEGER_PATTERN = /^\d{1,9}$/u;
 
 /**
- * Lee `SIGILO_ROUTER_WEB_DIST` (carpeta de la web en perfil ventanilla) y
- * `SIGILO_ROUTER_EVALUATOR_URL` (dirección interna del evaluador). Sin la primera, el enrutador no
- * sirve web. Lanza error si un valor no es válido.
+ * Lee la configuración de la web en tiempo de ejecución, o `null` si no hay archivo. Lanza error si
+ * el archivo no es válido: la ventanilla no arranca sirviendo una raíz que la web no aceptaría.
+ */
+export function loadVentanillaWebConfig(path: string): WebRuntimeConfig | null {
+  if (!existsSync(path)) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    throw new Error('No se pudo leer la configuración de la web (web-config.json).');
+  }
+  const parsed = WebRuntimeConfigSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error('La configuración de la web (web-config.json) no tiene el formato esperado.');
+  }
+  return parsed.data;
+}
+
+/**
+ * Lee `SIGILO_ROUTER_WEB_DIST` (carpeta de la web en perfil ventanilla),
+ * `SIGILO_ROUTER_EVALUATOR_URL` (dirección interna del evaluador) y
+ * `SIGILO_ROUTER_WEB_CONFIG_FILE` (configuración de la web en tiempo de ejecución; por omisión
+ * `web-config.json` en el directorio de datos del enrutador). Sin la primera, el enrutador no sirve
+ * web. Lanza error si un valor no es válido.
  */
 export function loadVentanillaConfig(env: NodeJS.ProcessEnv): VentanillaConfig | null {
   const dist = env.SIGILO_ROUTER_WEB_DIST ?? '';
@@ -66,7 +96,17 @@ export function loadVentanillaConfig(env: NodeJS.ProcessEnv): VentanillaConfig |
   if (evaluator !== '' && !URL_PATTERN.test(evaluator)) {
     throw new Error('SIGILO_ROUTER_EVALUATOR_URL debe tener la forma http://host:puerto.');
   }
-  return { distDir, evaluatorUrl: evaluator === '' ? null : evaluator };
+  const webConfig = loadVentanillaWebConfig(
+    resolve(
+      env.SIGILO_ROUTER_WEB_CONFIG_FILE ||
+        join(env.SIGILO_ROUTER_DATA_DIR || DEFAULT_ROUTER_DATA_DIR, WEB_CONFIG_FILE_NAME),
+    ),
+  );
+  return {
+    distDir,
+    evaluatorUrl: evaluator === '' ? null : evaluator,
+    ...(webConfig === null ? {} : { webConfig }),
+  };
 }
 
 const CONTENT_TYPES: Readonly<Record<string, string>> = {
@@ -178,7 +218,8 @@ export function registerVentanilla(app: Hono, deps: VentanillaDeps | undefined):
   // (también a la de los pasos de abajo) y, en la web, cambia la CSP por la de la web.
   app.use('*', async (c, next) => {
     await routerHeaders(c, next);
-    if (!isApiPath(c.req.path)) {
+    // La configuración en tiempo de ejecución es un JSON: conserva la CSP del enrutador.
+    if (!isApiPath(c.req.path) && c.req.path !== WEB_CONFIG_PATH) {
       c.res.headers.set('Content-Security-Policy', VENTANILLA_WEB_CSP);
     }
   });
@@ -285,6 +326,10 @@ export function registerVentanilla(app: Hono, deps: VentanillaDeps | undefined):
     c.header('Content-Disposition', 'attachment; filename="denuncias-nacional.csv"');
     return c.body(nationalOpenDataCsv(latest));
   });
+
+  // Configuración de la web en tiempo de ejecución (ADR 0011): raíz de la red y llaves de relleno.
+  const webConfig = deps.webConfig;
+  if (webConfig !== undefined) app.get(WEB_CONFIG_PATH, (c) => c.json(webConfig));
 
   // La web: archivos tal cual e `index.html` para las rutas de la web. La API sigue de largo.
   app.get('*', async (c, next) => {

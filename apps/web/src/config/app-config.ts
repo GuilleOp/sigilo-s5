@@ -47,9 +47,15 @@ export function readVentanillaUrl(value: unknown): string | null {
   }
 }
 
-export const VENTANILLA_URL: string | null = readVentanillaUrl(
+/** Enlace vivo: `/config/sigilo.json` lo sustituye antes de montar (`setVentanillaUrl`). */
+export let VENTANILLA_URL: string | null = readVentanillaUrl(
   import.meta.env.VITE_SIGILO_VENTANILLA_URL,
 );
+
+/** Fija el origen de la ventanilla de la configuración en tiempo de ejecución. */
+export function setVentanillaUrl(value: unknown): void {
+  VENTANILLA_URL = readVentanillaUrl(value);
+}
 
 function readHttpsUrl(value: unknown, fallback: string): string {
   if (typeof value !== 'string' || value === '') return fallback;
