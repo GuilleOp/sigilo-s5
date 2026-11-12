@@ -20,6 +20,7 @@ import type {
 import { activeDeadlines, evaluateDeadline, toMexicoCentralDay } from '@sigilo/core';
 import type { ProcedureSnapshot } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
+import { nodeCalendar } from './calendar.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import type { StoredRuleTrigger, StoredStep } from '../db/procedure-repository.ts';
 import { archiveSignalCount, downgradeSignalCount } from './audit-service.ts';
@@ -152,7 +153,9 @@ function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: strin
     const rule = findDeadlineRule(deadline.key);
     if (rule === undefined) return [];
     try {
-      const evaluation = evaluateDeadline(deadline.key, deadline.startsOn, today);
+      const evaluation = evaluateDeadline(deadline.key, deadline.startsOn, today, {
+        calendar: nodeCalendar(ctx),
+      });
       return [
         {
           key: deadline.key,

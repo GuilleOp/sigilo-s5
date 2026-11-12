@@ -15,6 +15,7 @@ import { openDatabase } from './db/database.ts';
 import { restrictToFronts } from './http/exposure.ts';
 import type { NodeFront } from './http/exposure.ts';
 import { createRequestLog } from './http/request-log.ts';
+import { loadWebConfig } from './http/web-assets.ts';
 import { loadNodeNetwork } from './network/network-context.ts';
 import { createNetworkTasks } from './network/network-tasks.ts';
 import { createNodeOAuthServer, loadOAuthClients } from './network/oauth-server.ts';
@@ -31,6 +32,7 @@ import {
 } from './services/evidence-service.ts';
 import { freezeClosedMonths } from './services/open-data.ts';
 import { runEscalationRules } from './services/rules-engine.ts';
+import { loadNodeCalendar } from './services/calendar.ts';
 import { createFileEvidenceStore } from './storage/evidence-store.ts';
 
 /** Frentes del puerto propio del panel (`SIGILO_PANEL_PORT`): el panel y las lecturas públicas. */
@@ -78,8 +80,12 @@ function start(): void {
   // umask del sistema sea 022.
   process.umask(0o077);
   const config = loadConfig(process.env);
+  for (const warning of config.warnings) console.warn(warning);
   const keys = loadServerKeys(config.dataDir);
   const authorities = loadAuthorityRegistry(config.accountsFile);
+  // Días inhábiles locales y configuración de la web (ADR 0011): se leen una vez al arrancar.
+  const calendar = loadNodeCalendar(config.restDaysFile);
+  const webConfig = config.webDistDir === null ? null : loadWebConfig(config.webConfigFile);
   const releaseLock = acquireServerLock(config.dataDir);
   const db = openDatabase(join(config.dataDir, 'sigilo.db'));
   const evidenceStore = createFileEvidenceStore(join(config.dataDir, 'evidence'));
@@ -134,6 +140,8 @@ function start(): void {
     oauth,
     exposedFronts: config.fronts,
     allowLegacyRelayAuth: config.allowLegacyRelayAuth,
+    calendar,
+    ...(webConfig === null ? {} : { webConfig }),
   });
   const networkTasks =
     network === undefined

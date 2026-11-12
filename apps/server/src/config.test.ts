@@ -43,7 +43,19 @@ describe('loadConfig', () => {
       fronts: ALL_FRONTS,
       panelPort: null,
       allowLegacyRelayAuth: true,
+      webConfigFile: join(DEFAULT_DATA_DIR, 'web-config.json'),
+      restDaysFile: join(DEFAULT_DATA_DIR, 'dias-inhabiles.json'),
+      warnings: [],
     });
+  });
+
+  it('separa la demostración de producción: SIGILO_E2E no arranca y SIGILO_DEMO avisa', () => {
+    expect(() => loadConfig({ NODE_ENV: 'production', SIGILO_E2E: '1' })).toThrow(/SIGILO_E2E/u);
+    const demo = loadConfig({ NODE_ENV: 'production', SIGILO_DEMO: '1' });
+    expect(demo.warnings.join(' ')).toMatch(/DEMOSTRACIÓN/u);
+    expect(loadConfig({ NODE_ENV: 'production' }).warnings).toEqual([]);
+    // Fuera de producción, la demostración y las pruebas son lo normal.
+    expect(loadConfig({ SIGILO_DEMO: '1', SIGILO_E2E: '1' }).warnings).toEqual([]);
   });
 
   it('lee la red, las fuentes de la PDN, el índice y el auditor', () => {

@@ -23,6 +23,7 @@ import {
 } from '@sigilo/core';
 import { findDeadlineRule } from '@sigilo/contracts';
 import type { AppContext } from '../context.ts';
+import { nodeCalendar } from './calendar.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import { withTransaction } from '../db/database.ts';
 import type { StoredQualification } from '../db/qualification-repository.ts';
@@ -106,11 +107,15 @@ export function qualificationNotifiedOn(
   return firstAuthorityMessageAfter(ctx, folio, 'qualification', qualification.legalOn);
 }
 
-function dueOn(key: 'appeal_filing' | 'appeal_resolution', startsOn: string): string | null {
+function dueOn(
+  ctx: AppContext,
+  key: 'appeal_filing' | 'appeal_resolution',
+  startsOn: string,
+): string | null {
   const rule = findDeadlineRule(key);
   if (rule === undefined) return null;
   try {
-    return computeDueDate(startsOn, termForRule(rule));
+    return computeDueDate(startsOn, termForRule(rule), nodeCalendar(ctx));
   } catch {
     return null;
   }
@@ -125,9 +130,9 @@ export function qualificationView(
   if (qualification === null) return null;
   const isNonSerious = qualification.severity === 'non_serious';
   const notifiedOn = qualificationNotifiedOn(ctx, complaint.folio, qualification);
-  const appealDueOn = notifiedOn === null ? null : dueOn('appeal_filing', notifiedOn);
+  const appealDueOn = notifiedOn === null ? null : dueOn(ctx, 'appeal_filing', notifiedOn);
   const appeal = ctx.qualifications.findAppeal(complaint.folio);
-  const resolutionDueOn = appeal === null ? null : dueOn('appeal_resolution', appeal.legalOn);
+  const resolutionDueOn = appeal === null ? null : dueOn(ctx, 'appeal_resolution', appeal.legalOn);
   return {
     on: qualification.on,
     legalOn: qualification.legalOn,
@@ -182,7 +187,8 @@ export function fileAppeal(
     const notifiedOn = qualificationNotifiedOn(ctx, complaint.folio, qualification);
     if (
       notifiedOn !== null &&
-      evaluateDeadline('appeal_filing', notifiedOn, legalOn).remaining < 0
+      evaluateDeadline('appeal_filing', notifiedOn, legalOn, { calendar: nodeCalendar(ctx) })
+        .remaining < 0
     ) {
       throw new ApiFailure('conflict');
     }
@@ -247,7 +253,7 @@ export function fileAppeal(
       actorId: null,
       note: null,
     });
-    const resolutionDueOn = dueOn('appeal_resolution', legalOn);
+    const resolutionDueOn = dueOn(ctx, 'appeal_resolution', legalOn);
     return {
       filedOn,
       openingId,

@@ -22,6 +22,7 @@ import {
   verifyReceipt,
 } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
+import { nodeCalendar } from './calendar.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import type { StoredTransfer } from '../db/integration-repository.ts';
 import { withTransaction } from '../db/database.ts';
@@ -111,11 +112,12 @@ export async function transferComplaint(
 export const TRANSFER_CONFIRMATION_BUSINESS_DAYS = 10;
 
 /** Fecha en que vence un turnado sin comprobante. */
-function transferDueOn(transferredOn: string): string {
-  return computeDueDate(transferredOn, {
-    unit: 'business_days',
-    amount: TRANSFER_CONFIRMATION_BUSINESS_DAYS,
-  });
+function transferDueOn(ctx: AppContext, transferredOn: string): string {
+  return computeDueDate(
+    transferredOn,
+    { unit: 'business_days', amount: TRANSFER_CONFIRMATION_BUSINESS_DAYS },
+    nodeCalendar(ctx),
+  );
 }
 
 /**
@@ -127,8 +129,9 @@ export function pendingTransferOf(ctx: AppContext, folio: string): StoredTransfe
   return (
     ctx.integration
       .listTransfers(folio)
-      .find((item) => item.targetFolio === null && today <= transferDueOn(item.transferredOn)) ??
-    null
+      .find(
+        (item) => item.targetFolio === null && today <= transferDueOn(ctx, item.transferredOn),
+      ) ?? null
   );
 }
 

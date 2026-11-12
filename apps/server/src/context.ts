@@ -35,7 +35,8 @@ import { emptyAuthorityRegistry } from './security/authority-registry.ts';
 import type { AuthorityRegistry } from './security/authority-registry.ts';
 import { createSessionStore, DEFAULT_SESSION_TIMEOUTS } from './security/sessions.ts';
 import type { SessionStore, SessionTimeouts } from './security/sessions.ts';
-import type { PowPurpose } from '@sigilo/contracts';
+import type { PowPurpose, WebRuntimeConfig } from '@sigilo/contracts';
+import type { NodeCalendar } from './services/calendar.ts';
 import type { NodeFront } from './http/exposure.ts';
 import type { RequestLog } from './http/request-log.ts';
 import type { ServerKeys } from './keys-file.ts';
@@ -158,6 +159,16 @@ export interface AppDeps {
    * Si el buzón acepta todavía la etiqueta HMAC v1 sin frescura (sí por omisión; H13).
    */
   allowLegacyRelayAuth?: boolean;
+  /**
+   * Calendario del nodo con los días inhábiles locales (`dias-inhabiles.json`); ausente, solo los
+   * oficiales. Se publica en `/datos/dias-inhabiles.json`.
+   */
+  calendar?: NodeCalendar;
+  /**
+   * Configuración de la web en tiempo de ejecución (`web-config.json`, ADR 0011), que se sirve en
+   * `/config/sigilo.json`; ausente, la ruta responde 404 y la web usa su bundle.
+   */
+  webConfig?: WebRuntimeConfig;
 }
 
 /** Limitadores compartidos por las rutas. */

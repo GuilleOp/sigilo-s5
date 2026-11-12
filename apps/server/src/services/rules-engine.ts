@@ -10,6 +10,7 @@ import {
   toMexicoCentralDay,
 } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
+import { nodeCalendar } from './calendar.ts';
 import { withTransaction } from '../db/database.ts';
 import { assignedAuthorityOf } from './procedure-service.ts';
 import { procedureSnapshot } from './procedure-view.ts';
@@ -40,7 +41,9 @@ export function runEscalationRules(ctx: AppContext): RulesRunResult {
     result.evaluated += 1;
     let triggered;
     try {
-      triggered = evaluateEscalationRules(procedureSnapshot(ctx, complaint), today);
+      triggered = evaluateEscalationRules(procedureSnapshot(ctx, complaint), today, {
+        calendar: nodeCalendar(ctx),
+      });
     } catch {
       continue;
     }
