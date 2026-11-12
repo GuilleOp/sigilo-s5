@@ -25,7 +25,15 @@ test('una contraseña equivocada no abre el panel y no dice si el usuario existe
     .getByTestId('authority-key-file')
     .setInputFiles(fixturePath(FIXTURE_FILES.authorityKey));
   await form.getByTestId('authority-login-submit').click();
-  await expect(page.getByTestId('authority-error')).toContainText('No tienes permiso');
+  // Antes del segundo factor no se revela si la contraseña era correcta: pide el código (reto
+  // señuelo) y el fallo se dice hasta verificarlo, sin decir qué falló.
+  const code = page.getByTestId('authority-code-form');
+  await expect(code).toBeVisible();
+  await code.getByTestId('authority-code').fill('123456');
+  await code.getByTestId('authority-code-submit').click();
+  await expect(page.getByTestId('authority-code-error')).toContainText(
+    'o el usuario o la contraseña no coinciden',
+  );
   await expect(page.getByTestId('authority-logout')).toHaveCount(0);
 });
 

@@ -34,7 +34,8 @@ import {
 import type { DemoAuthorityId, DemoNetworkKeys, DemoNodeId } from '@sigilo/red';
 import { ACCOUNTS_FILE_NAME } from '../apps/server/src/config.ts';
 import { createAuthorityRegistry } from '../apps/server/src/security/authority-registry.ts';
-import { buildDemoAccounts } from '../apps/server/src/security/demo-accounts.ts';
+import { buildDemoAccounts, withRecoveryCodes } from '../apps/server/src/security/demo-accounts.ts';
+import { provisionMfaInDataDir } from '../apps/server/src/services/mfa-provisioning.ts';
 import type { DemoAccountsNode } from '../apps/server/src/security/demo-accounts.ts';
 import {
   OAUTH_CLIENTS_FILE_NAME,
@@ -140,6 +141,8 @@ function nodeEnv(nodeId: DemoNodeId, dayZero: string): string {
     'SIGILO_PDN_SOURCES=synthetic',
     'SIGILO_DEMO=1',
     `SIGILO_DEMO_DAY_ZERO=${dayZero}`,
+    '# Segundo factor opcional: las cuentas con factor inscrito lo piden; las demás entran sin él.',
+    'SIGILO_MFA=opcional',
     '# Reloj simulado de la demostración (npm run demo:seed lo adelanta). Solo para la demo.',
     'NODE_ENV=development',
     'SIGILO_E2E=1',
@@ -290,9 +293,13 @@ function main(): void {
     const accounts = buildDemoAccounts({ node: NODE_DIRS[nodeId] });
     createAuthorityRegistry(accounts.file);
     writeJson(join(dataDir, ACCOUNTS_FILE_NAME), accounts.file);
+    // Segundo factor ya inscrito de la supervisora, la operación y la fiscalía (secretos
+    // sintéticos junto a las credenciales; cifrados en la base con la llave mfa-key del nodo).
+    const codes = provisionMfaInDataDir(dataDir, accounts.mfa);
     writeJson(join(nodeDir, 'credenciales.json'), {
-      aviso: 'Credenciales sintéticas de la demostración. No se versionan.',
-      credenciales: accounts.credentials,
+      aviso:
+        'Credenciales sintéticas de la demostración. No se versionan. Código del segundo factor: npm run demo:codigo -- <usuario>.',
+      credenciales: withRecoveryCodes(accounts.credentials, accounts.mfa, codes),
     });
     // Llaves públicas que se fijan en la web de este nodo al construir su imagen.
     writeJson(join(nodeDir, 'web', 'pinned-keys.json'), keysFile.publicKeys, 0o644);
@@ -376,6 +383,9 @@ function main(): void {
   );
   console.log(
     `  Cuentas del panel de cada nodo: ${display(join(OUT, 'nodos', '<nodo>', 'credenciales.json'))}.`,
+  );
+  console.log(
+    '  Segundo factor: supervision-oic, operacion.<nodo> y fiscalia lo tienen inscrito; código vigente con npm run demo:codigo -- <usuario>. oic-programas lo inscribe al entrar.',
   );
   console.log('  Escenario completo: npm run demo:seed');
 }
