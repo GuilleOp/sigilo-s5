@@ -4,7 +4,8 @@ Pieza central de la red federada «un S5, muchas llaves» ([ADR 0005](../../docs
 y [ADR 0007](../../docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)). Hace tres cosas:
 
 1. **Publica el directorio de autoridades** firmado por la operación y cofirmado por m de n testigos.
-2. **Reenvía sobres opacos** al nodo de la autoridad destino, sin poder leerlos ni guardarlos.
+2. **Reenvía sobres opacos** al nodo destino, sin poder leerlos: el sobre v2 nombra solo el nodo;
+   la autoridad va cifrada adentro y la entrega el nodo.
 3. **Lleva la bitácora nacional**: encadena las cabezas firmadas de cada nodo y las versiones del
    directorio, y publica una cabeza nacional que solo vale con m cofirmas de testigos.
 
@@ -47,7 +48,7 @@ Todas bajo `/api/v1/red`; el detalle está en `estandar/openapi.yaml`.
 | Método y ruta                                | Qué hace                                                     |
 | -------------------------------------------- | ------------------------------------------------------------ |
 | `GET /directory`                             | Directorio firmado y cofirmado                               |
-| `POST /relay`                                | Sobre opaco hacia una autoridad; responde el sobre de vuelta |
+| `POST /relay`                                | Sobre opaco (v2) hacia un nodo; responde el sobre de vuelta  |
 | `POST /nodes/{nodeId}/registration`          | Registro firmado del nodo (secuencia creciente)              |
 | `POST /nodes/{nodeId}/heads`                 | El nodo publica su cabeza firmada                            |
 | `GET /national/head`                         | Última cabeza nacional con m cofirmas (`404` si aún no hay)  |
@@ -102,7 +103,7 @@ qué pide; el nodo conoce qué se pide pero no quién se conecta.
 
 | Ve (en memoria, mientras atiende la petición)                                          | ¿Se guarda o registra?                                                                  |
 | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| La autoridad destino (`to`) y, por el directorio, su nodo                              | No                                                                                      |
+| El nodo destino (`node`): a lo más, el estado; nunca la autoridad ni el OIC            | No                                                                                      |
 | El tramo de tamaño del sobre: 4 KiB, 64 KiB, 1 MiB o 16 MiB                            | No                                                                                      |
 | El `keyId` del sobre (es la llave pública del nodo, que ya es pública)                 | No                                                                                      |
 | La hora de llegada y cuánto tarda el nodo en responder                                 | No                                                                                      |
@@ -111,6 +112,7 @@ qué pide; el nodo conoce qué se pide pero no quién se conecta.
 
 | No ve                                                                                      |
 | ------------------------------------------------------------------------------------------ |
+| La autoridad destino (OIC, contraloría o buzón): va cifrada en `RoutedRequest.to` (v2)     |
 | Hechos, narración, pruebas, identidad sellada, folio, recibo ni mensajes del buzón         |
 | Qué operación se pide (denuncia, prueba, seguimiento, mensaje o reto): va dentro del sobre |
 | La prueba de trabajo y la llave efímera de respuesta                                       |
@@ -118,6 +120,13 @@ qué pide; el nodo conoce qué se pide pero no quién se conecta.
 
 Garantías comprobadas en `src/relay.test.ts`:
 
+- El sobre que recibe y reenvía es `{ v: 2, node, sealed }`: ningún campo dice la autoridad. Un
+  sobre v1 (con `to`) se rechaza con `400` y `RELAY_V1_REJECTION_MESSAGE` («actualiza la
+  ventanilla»); el paso del mismo origen del nodo hace lo mismo antes de reenviar.
+- El sobre queda ligado al nodo por su AAD: cambiar `node` en el encabezado hace que no abra.
+  El nodo comprueba además que la autoridad interna esté alojada en él y vigente
+  (`hostsAuthority` de `createNodeInboxHandler`); si no, responde como a un sobre que no abre y el
+  enrutador devuelve relleno.
 - El nodo recibe una petición armada desde cero con **solo** `Content-Type`; `User-Agent`,
   `X-Forwarded-For`, `Accept-Language` y `Cookie` de quien envía no pasan.
 - La respuesta tiene el mismo estatus, las mismas cabeceras y el mismo tamaño para cualquier
@@ -158,6 +167,10 @@ El servidor de referencia (`apps/server`) ya cumple este contrato (`src/routes/n
    ```ts
    const inbox = createNodeInboxHandler({
      nodeBoxPrivateKey,
+     nodeId, // sobres dirigidos a otro nodo no abren
+     relaySecret, // etiqueta HMAC del enrutador (H11)
+     // La autoridad viaja cifrada (sobre v2): el nodo solo entrega a las que aloja y están vigentes.
+     hostsAuthority: (authorityId) => isHostedAndValidToday(authorityId),
      handle: async (routed) =>
        responseToRoutedReply(await app.request(routedRequestToFetch(routed))),
    });

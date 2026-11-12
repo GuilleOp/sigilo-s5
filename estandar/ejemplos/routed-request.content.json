@@ -1,5 +1,5 @@
 {
-  "v": 1,
+  "v": 2,
   "to": "authority.comptroller-queretaro",
   "operationId": "getPowChallenge",
   "query": { "purpose": "complaint" },

@@ -258,6 +258,7 @@ al integrar su corrección; el resumen está en [historial-de-seguridad.md](hist
 | G09 | El conteo por hora incluye rutas de red, de inconformidad y de corroboración                 | A3      | LINDDUN L    | Excluir esas rutas del conteo por hora, como las de la persona denunciante                                                                                                            | Baja       | M         |
 | G10 | Volver a servir una versión anterior del directorio con llaves revocadas                     | A9      | STRIDE S     | Serial mínimo fijado en la raíz de confianza de la web y frescura (`issuedOn`, `validUntil`) al verificar (H10)                                                                       | Baja       | M         |
 | G11 | Entregar sobres al buzón de red de un nodo sin pasar por el enrutador                        | A9, A5  | STRIDE S, D  | El buzón de red acepta solo peticiones del enrutador (autenticación del enrutador o red interna), con la misma respuesta uniforme                                                     | Baja       | M         |
+| G12 | La operación del enrutador cuenta denuncias por autoridad (OIC) leyendo el encabezado        | A9      | LINDDUN L, D | Sobre v2: el encabezado dice solo el nodo; la autoridad va cifrada y el nodo la entrega solo si la aloja; el sobre v1 se rechaza                                                      | Media      | M         |
 
 Notas:
 
@@ -272,6 +273,12 @@ Notas:
   si el nodo sirve el tramo que la une con la anterior. Residual (riesgo 18): la primera cabeza que
   ve un testigo nuevo no tiene con qué compararse, y un nodo que no sirve su bitácora deja de
   avanzar en la bitácora nacional.
+- **G12.** Con el sobre v1 el enrutador leía `to` (la autoridad) y podía llevar, sin guardar
+  nada, un conteo de denuncias por OIC. Con el sobre v2 ve el nodo (estado), el tramo de tamaño,
+  la hora y la conexión, nada más; el seguimiento, las respuestas del buzón, la inconformidad y la
+  búsqueda del folio en todos los nodos (`receivingAuthorityPerNode`) viajan con el mismo
+  encabezado. Residual: en un nodo que aloja una sola autoridad, el nodo equivale a la autoridad;
+  y el tramo y la hora siguen visibles (ver «Qué metadatos ve el enrutador» en su README).
 - **G10.** Una versión vieja del directorio sigue bien firmada y cofirmada. La raíz de confianza
   admite `minDirectorySerial` y `maxDirectoryAgeDays`, y el directorio, `validUntil`. Residual
   (riesgo 19): una web construida antes de una revocación acepta copias viejas hasta su

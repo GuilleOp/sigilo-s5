@@ -56,10 +56,13 @@ export function sameOriginRelaySender(client: ApiClient = createApiClient()): Re
   return (relay) => client.json(NETWORK_ROUTES.relay, RelayResponseSchema, { json: relay });
 }
 
-/** Destino de la red: autoridad y llave del nodo que la aloja. */
+/**
+ * Destino de la red: autoridad y nodo que la aloja. El enrutador solo ve el nodo; la autoridad va
+ * cifrada dentro del sobre (v2).
+ */
 export interface RelayTarget {
   authorityId: string;
-  node: Pick<DirectoryNode, 'boxKeyId' | 'boxPublicKey'>;
+  node: Pick<DirectoryNode, 'id' | 'boxKeyId' | 'boxPublicKey'>;
 }
 
 async function blobToBase64Url(blob: Blob): Promise<string> {
@@ -68,8 +71,8 @@ async function blobToBase64Url(blob: Blob): Promise<string> {
 
 /**
  * Crea las operaciones de quien denuncia hacia una autoridad de la red.
- * Seguridad: el enrutador solo ve la autoridad destino y el tramo de tamaño; la operación, el
- * cuerpo y la prueba de trabajo van dentro del sobre. Si la respuesta no abre (el enrutador no
+ * Seguridad: el enrutador solo ve el nodo destino y el tramo de tamaño; la autoridad, la
+ * operación, el cuerpo y la prueba de trabajo van dentro del sobre. Si la respuesta no abre (el enrutador no
  * pudo entregar y respondió relleno), se trata como un fallo de conexión.
  */
 export function createRelayApi(target: RelayTarget, send: RelaySender): ReporterApi {

@@ -1,8 +1,8 @@
 {
   "toAuthorityId": "authority.oic-iffe",
   "relay": {
-    "v": 1,
-    "to": "authority.oic-iffe",
+    "v": 2,
+    "node": "node.federal",
     "sealed": {
       "v": 1,
       "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",

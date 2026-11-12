@@ -1,4 +1,5 @@
-// Pruebas de los sobres de red: ida y vuelta, tramos fijos, ligadura al destino y relleno.
+// Pruebas de los sobres de red v2: ida y vuelta, tramos fijos, autoridad solo dentro del sobre,
+// ligadura al nodo destino, rechazo de v1 y relleno.
 import { describe, expect, it } from 'vitest';
 import { RELAY_PLAINTEXT_BUCKETS } from '@sigilo/contracts';
 import type { RoutedRequest } from '@sigilo/contracts';
@@ -6,6 +7,7 @@ import { envelopePlaintextLength, generateBoxKeyPair } from '@sigilo/core';
 import { findNode } from './directory.ts';
 import {
   hasRelayBucketSize,
+  isLegacyRelayRequest,
   openRoutedReply,
   openRoutedRequest,
   relayBucketFor,
@@ -31,8 +33,11 @@ const INPUT = {
 describe('sobres de red', () => {
   it('el nodo abre la petición y el navegador abre la respuesta', async () => {
     const { relay, replyPrivateKey } = await sealRoutedRequest(INPUT, federal);
-    expect(Object.keys(relay).sort()).toEqual(['sealed', 'to', 'v']);
+    // El encabezado externo dice solo el nodo: ni la autoridad ni el contenido.
+    expect(Object.keys(relay).sort()).toEqual(['node', 'sealed', 'v']);
+    expect(relay).toMatchObject({ v: 2, node: 'node.federal' });
     expect(JSON.stringify(relay)).not.toContain('hechos-sinteticos');
+    expect(JSON.stringify(relay)).not.toContain('authority.');
     const opened = await openRoutedRequest(relay, federalBoxKey);
     expect(opened).toMatchObject(INPUT);
     const response = await sealRoutedReply(
@@ -56,14 +61,32 @@ describe('sobres de red', () => {
     expect(() => relayBucketFor(64 * 1024 * 1024)).toThrow();
   });
 
-  it('el sobre queda ligado a la autoridad destino y a la llave del nodo', async () => {
+  it('el sobre queda ligado al nodo destino y a su llave', async () => {
     const { relay } = await sealRoutedRequest(INPUT, federal);
+    // Cambiar el nodo del encabezado rompe el AAD aunque la llave sea la misma.
     await expect(
-      openRoutedRequest({ ...relay, to: 'authority.oic-dfps' }, federalBoxKey),
+      openRoutedRequest({ ...relay, node: 'node.queretaro' }, federalBoxKey),
     ).rejects.toThrow('No se pudo abrir el sobre de red.');
+    await expect(
+      openRoutedRequest(relay, federalBoxKey, { nodeId: 'node.queretaro' }),
+    ).rejects.toThrow('No se pudo abrir el sobre de red.');
+    await expect(
+      openRoutedRequest(relay, federalBoxKey, { nodeId: 'node.federal' }),
+    ).resolves.toMatchObject({ to: INPUT.to });
     await expect(
       openRoutedRequest(relay, keys.nodes['node.queretaro'].box.privateKey),
     ).rejects.toThrow('No se pudo abrir el sobre de red.');
+  });
+
+  it('reconoce y rechaza un sobre v1 con la autoridad en el encabezado', async () => {
+    const { relay } = await sealRoutedRequest(INPUT, federal);
+    const legacy = { v: 1, to: INPUT.to, sealed: relay.sealed };
+    expect(isLegacyRelayRequest(legacy)).toBe(true);
+    expect(isLegacyRelayRequest(relay)).toBe(false);
+    expect(isLegacyRelayRequest(null)).toBe(false);
+    await expect(openRoutedRequest(legacy, federalBoxKey)).rejects.toThrow(
+      'No se pudo abrir el sobre de red.',
+    );
   });
 
   it('la respuesta de relleno tiene la misma forma y no abre', async () => {

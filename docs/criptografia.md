@@ -609,7 +609,8 @@ red:demo` genera la llave del evaluador y la publica en el directorio, y `compos
 El navegador de recepción y turnado arma de nuevo la denuncia con los hechos y las pruebas del
 detalle (no usa la llave de su autoridad: las denuncias con identidad sellada todavía no se turnan a
 otro nodo) y la cifra en un sobre del enrutador hacia el nodo de la autoridad destino
-(`sealRoutedRequest`), conservando las llaves de seguimiento de la persona denunciante. El nodo de
+(`sealRoutedRequest`; sobre v2: el encabezado dice solo el nodo y la autoridad va cifrada en
+`RoutedRequest.to`, con AAD `sigilo/red/relay/request/v2:` + nodo), conservando las llaves de seguimiento de la persona denunciante. El nodo de
 origen solo lleva ese
 sobre al enrutador y registra `complaint.transferred` con el SHA-256 canónico del sobre y de la
 respuesta; nunca ve el contenido re-cifrado. El comprobante del nodo destino se verifica con la

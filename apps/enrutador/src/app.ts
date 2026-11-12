@@ -8,20 +8,20 @@ import {
   NationalCosignatureRequestSchema,
   NodeIdSchema,
   NodeRegistrationSchema,
+  RELAY_V1_REJECTION_MESSAGE,
   RelayRequestSchema,
   Sha256HexSchema,
   SignedLedgerHeadSchema,
 } from '@sigilo/contracts';
 import { toDayDate } from '@sigilo/core';
 import {
-  findAuthority,
   findNode,
   hasRelayBucketSize,
-  isAuthorityValidOn,
+  isLegacyRelayRequest,
   verifyNodeRegistration,
 } from '@sigilo/red';
 import type { DirectoryStore } from './directory-store.ts';
-import { ApiFailure, errorResponse, readJson, securityHeaders } from './http.ts';
+import { ApiFailure, errorResponse, readJson, readRawJson, securityHeaders } from './http.ts';
 import { NationalLedgerRejection } from './national-ledger-service.ts';
 import type { NationalLedgerService } from './national-ledger-service.ts';
 import { nationalOpenDataCsv } from './open-data-aggregator.ts';
@@ -73,15 +73,17 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
   app.get(NETWORK_ROUTES.directory, (c) => c.json(deps.directory.signed()));
 
   // Seguridad: el manejador no lee la dirección del socket ni cabeceras de quien envía; solo el
-  // destino y el sobre. La respuesta tiene el mismo estatus y forma para cualquier destino.
+  // nodo destino y el sobre (v2: la autoridad va cifrada adentro). La respuesta tiene el mismo
+  // estatus y forma para cualquier destino.
   app.post(NETWORK_ROUTES.relay, limitBody(MAX_RELAY_BODY_BYTES), async (c) => {
-    const relay = await readJson(c, RelayRequestSchema);
-    const directory = deps.directory.directory();
-    const authority = findAuthority(directory, relay.to);
-    if (authority === undefined || !isAuthorityValidOn(authority, today())) {
-      throw new ApiFailure('bad_request');
+    const raw = await readRawJson(c);
+    if (isLegacyRelayRequest(raw)) {
+      return c.json({ error: { code: 'bad_request', message: RELAY_V1_REJECTION_MESSAGE } }, 400);
     }
-    const node = findNode(directory, authority.nodeId);
+    const parsed = RelayRequestSchema.safeParse(raw);
+    if (!parsed.success) throw new ApiFailure('bad_request');
+    const relay = parsed.data;
+    const node = findNode(deps.directory.directory(), relay.node);
     if (
       node === undefined ||
       relay.sealed.keyId !== node.boxKeyId ||

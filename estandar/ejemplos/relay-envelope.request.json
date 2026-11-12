@@ -1,6 +1,6 @@
 {
-  "v": 1,
-  "to": "authority.comptroller-queretaro",
+  "v": 2,
+  "node": "node.queretaro",
   "sealed": {
     "v": 1,
     "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",

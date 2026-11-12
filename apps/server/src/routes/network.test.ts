@@ -5,11 +5,18 @@ import {
   CORROBORATION_ROUTES,
   NETWORK_ROUTES,
   NationalOpenDataSchema,
+  RELAY_V1_REJECTION_MESSAGE,
   ROUTES,
   SubmitComplaintResponseSchema,
 } from '@sigilo/contracts';
 import { deriveReceiptKeys, generateReceiptPhrase, toBase64Url } from '@sigilo/core';
-import { RELAY_AUTH_HEADER, relayAuthTag, verifySignedDirectory } from '@sigilo/red';
+import {
+  RELAY_AUTH_HEADER,
+  openRoutedReply,
+  relayAuthTag,
+  sealRoutedRequest,
+  verifySignedDirectory,
+} from '@sigilo/red';
 import { createTestServer } from '../test-support/harness.ts';
 import {
   createTestNetwork,
@@ -19,8 +26,8 @@ import {
 import { routedTargetOf } from './network.ts';
 
 const SEALED = {
-  v: 1,
-  to: 'authority.oic-iffe',
+  v: 2,
+  node: 'node.federal',
   sealed: {
     v: 1,
     suite: 'HPKE-v1-X25519-HKDF-SHA256-AES-256-GCM',
@@ -105,6 +112,42 @@ describe('buzón de red', () => {
     );
   });
 
+  it('el nodo entrega solo a autoridades que aloja: una de otro nodo dentro del sobre no pasa', async () => {
+    const network = createTestNetwork();
+    await network.federal.tasks.run();
+    const federalNode = network.services.directory.nodes.find((node) => node.id === 'node.federal');
+    if (federalNode === undefined) throw new Error('sin nodo');
+    // Sobre hacia el nodo Federal que dice, adentro, una autoridad de Querétaro.
+    const sealed = await sealRoutedRequest(
+      {
+        to: 'authority.comptroller-queretaro',
+        operationId: 'getPowChallenge',
+        query: { purpose: 'complaint' },
+        proofOfWork: null,
+        body: { kind: 'none' },
+      },
+      federalNode,
+    );
+    const response = await network.routerApp.request(
+      `http://enrutador.invalid${NETWORK_ROUTES.relay}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sealed.relay),
+      },
+    );
+    expect(response.status).toBe(200);
+    // El nodo lo rechazó: el enrutador respondió relleno, que no abre.
+    await expect(
+      openRoutedReply(
+        await response.json(),
+        sealed.replyPrivateKey,
+        'authority.comptroller-queretaro',
+      ),
+    ).rejects.toThrow();
+    expect(network.relay.drainCounters()).toMatchObject({ delivered: 0, failed: 1 });
+  });
+
   it('una petición directa nunca tiene autoridad destino', () => {
     expect(routedTargetOf(new Request(`http://nodo.invalid${ROUTES.complaints}`))).toBeUndefined();
   });
@@ -153,6 +196,18 @@ describe('pasos del mismo origen para la web', () => {
       body: '{"to":"nadie"}',
     });
     expect(invalid.status).toBe(400);
+    // Un sobre v1 (autoridad a la vista) se rechaza con un mensaje claro antes de salir del nodo.
+    const forwardedBefore = network.forwarded.length;
+    const legacy = await network.federal.app.request(NETWORK_ROUTES.relay, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ v: 1, to: 'authority.oic-iffe', sealed: sealed.relay.sealed }),
+    });
+    expect(legacy.status).toBe(400);
+    expect(await legacy.json()).toEqual({
+      error: { code: 'bad_request', message: RELAY_V1_REJECTION_MESSAGE },
+    });
+    expect(network.forwarded.length).toBe(forwardedBefore);
   });
 
   it('pasa el corte nacional de datos abiertos, que suma el CSV real de cada nodo', async () => {

@@ -21,7 +21,7 @@ export const NETWORK_API_PREFIX = '/api/v1/red';
 export const NETWORK_ROUTES = {
   /** `GET`: directorio de autoridades vigente, firmado y cofirmado. */
   directory: `${NETWORK_API_PREFIX}/directory`,
-  /** `POST`: sobre opaco con solo la autoridad destino; el enrutador lo entrega a su nodo. */
+  /** `POST`: sobre opaco con solo el nodo destino; el enrutador lo entrega a ese nodo. */
   relay: `${NETWORK_API_PREFIX}/relay`,
   /** `POST`: el nodo se registra con un mensaje firmado por su llave del directorio. */
   nodeRegistration: (nodeId: string) => `${NETWORK_API_PREFIX}/nodes/${nodeId}/registration`,
@@ -349,24 +349,38 @@ export const NetworkTrustAnchorSchema = z
   });
 export type NetworkTrustAnchor = z.infer<typeof NetworkTrustAnchorSchema>;
 
+/** Versión vigente del sobre de red: el encabezado externo nombra solo el nodo destino. */
+export const RELAY_ENVELOPE_VERSION = 2;
+
+/**
+ * Mensaje fijo con que el enrutador (y el paso del mismo origen) rechazan un sobre v1, cuyo
+ * encabezado externo nombraba la autoridad destino.
+ */
+export const RELAY_V1_REJECTION_MESSAGE =
+  'El sobre v1 ya no se admite: el sobre v2 nombra solo el nodo destino y lleva la autoridad cifrada. Actualiza la ventanilla.';
+
 export const RelayRequestSchema = z
   .object({
-    v: z.literal(1).meta({ description: 'Versión del formato.' }),
-    to: AuthorityIdSchema.meta({
-      description: 'Autoridad destino: lo único que lee el enrutador.',
+    v: z.literal(RELAY_ENVELOPE_VERSION).meta({ description: 'Versión del formato (2).' }),
+    node: NodeIdSchema.meta({
+      description:
+        'Nodo destino: lo único que lee el enrutador. La autoridad destino va dentro del sobre cifrado.',
     }),
     sealed: HpkeEnvelopeSchema.meta({
       description:
-        'Sobre HPKE hacia la llave del nodo de esa autoridad, con texto en claro rellenado a un tramo fijo.',
+        'Sobre HPKE hacia la llave de ese nodo, con texto en claro rellenado a un tramo fijo.',
     }),
   })
   .strict()
-  .meta({ description: 'Sobre de red: el enrutador solo ve el destino y el tramo de tamaño.' });
+  .meta({
+    description:
+      'Sobre de red v2: el enrutador solo ve el nodo destino y el tramo de tamaño; nunca la autoridad.',
+  });
 export type RelayRequest = z.infer<typeof RelayRequestSchema>;
 
 export const RelayResponseSchema = z
   .object({
-    v: z.literal(1).meta({ description: 'Versión del formato.' }),
+    v: z.literal(RELAY_ENVELOPE_VERSION).meta({ description: 'Versión del formato (2).' }),
     sealed: HpkeEnvelopeSchema.meta({
       description:
         'Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar, relleno indistinguible del mismo tamaño.',
@@ -413,9 +427,10 @@ export type RoutedBody = z.infer<typeof RoutedBodySchema>;
  */
 export const RoutedRequestSchema = z
   .object({
-    v: z.literal(1).meta({ description: 'Versión del formato.' }),
+    v: z.literal(RELAY_ENVELOPE_VERSION).meta({ description: 'Versión del formato (2).' }),
     to: AuthorityIdSchema.meta({
-      description: 'Autoridad destino; debe coincidir con la del encabezado externo.',
+      description:
+        'Autoridad destino dentro del nodo; solo la lee el nodo, que comprueba que la aloja y la entrega internamente.',
     }),
     operationId: z
       .enum(ROUTABLE_OPERATIONS)

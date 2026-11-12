@@ -353,12 +353,12 @@ const sealedForNode: HpkeEnvelope = {
 
 const transferRequest: TransferComplaintRequest = {
   toAuthorityId: 'authority.oic-iffe',
-  relay: { v: 1, to: 'authority.oic-iffe', sealed: sealedForNode },
+  relay: { v: 2, node: 'node.federal', sealed: sealedForNode },
   note: 'Los hechos son de un ente federal: la turnamos al Órgano Interno de Control competente.',
 };
 
 const transferResponse: TransferComplaintResponse = {
-  relay: { v: 1, sealed: { ...sealedForNode, keyId: 'e07d9c3b5a1f2846' } },
+  relay: { v: 2, sealed: { ...sealedForNode, keyId: 'e07d9c3b5a1f2846' } },
   transferId: '5b1e0c9d8a7f6e5d4c3b2a1908f7e6d5',
 };
 

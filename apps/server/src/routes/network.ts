@@ -11,11 +11,20 @@ import {
   NETWORK_ROUTES,
   NationalOpenDataSchema,
   POW_HEADER,
+  RELAY_V1_REJECTION_MESSAGE,
   RelayRequestSchema,
 } from '@sigilo/contracts';
-import { createNodeInboxHandler, responseToRoutedReply, routedRequestToFetch } from '@sigilo/red';
+import { toDayDate } from '@sigilo/core';
+import {
+  createNodeInboxHandler,
+  isAuthorityValidOn,
+  isLegacyRelayRequest,
+  responseToRoutedReply,
+  routedRequestToFetch,
+} from '@sigilo/red';
 import type { AppContext } from '../context.ts';
 import { errorResponse } from '../http/errors.ts';
+import { hostedAuthorities } from '../network/network-context.ts';
 
 /** Mayor sobre de red (tramo de 16 MiB en Base64 con su JSON), como el enrutador. */
 export const MAX_INBOX_BODY_BYTES = 23 * 1024 * 1024;
@@ -74,6 +83,15 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
           nodeBoxPrivateKey: network.nodeBoxPrivateKey,
           // Seguridad (H11): solo sobres que pasaron por el enrutador, con su etiqueta HMAC.
           relaySecret: network.relaySecret,
+          nodeId: network.nodeId,
+          // Seguridad: el sobre v2 no dice la autoridad al enrutador; el nodo solo entrega a una
+          // autoridad que el directorio verificado aloja aquí y que está vigente hoy.
+          hostsAuthority: (authorityId) =>
+            hostedAuthorities(network).some(
+              (authority) =>
+                authority.id === authorityId &&
+                isAuthorityValidOn(authority, toDayDate(ctx.deps.now())),
+            ),
           handle: async (routed) => {
             const request = routedRequestToFetch(routed);
             ROUTED_TARGETS.set(request, routed.to);
@@ -95,7 +113,8 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
     network === undefined ? errorResponse(c, 'not_found') : c.json(network.signedDirectory),
   );
 
-  // Paso al enrutador ciego: el nodo de origen solo ve el destino y el tramo, como el enrutador.
+  // Paso al enrutador ciego: el nodo de origen solo ve el nodo destino y el tramo, como el
+  // enrutador.
   app.post(
     NETWORK_ROUTES.relay,
     bodyLimit({
@@ -106,7 +125,11 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
       if (network === undefined || network.routerUrl === null) {
         return errorResponse(c, 'not_found');
       }
-      const parsed = RelayRequestSchema.safeParse(await readJsonBody(c));
+      const raw = await readJsonBody(c);
+      if (isLegacyRelayRequest(raw)) {
+        return c.json({ error: { code: 'bad_request', message: RELAY_V1_REJECTION_MESSAGE } }, 400);
+      }
+      const parsed = RelayRequestSchema.safeParse(raw);
       if (!parsed.success) return errorResponse(c, 'bad_request');
       try {
         const response = await network.fetch(`${network.routerUrl}${NETWORK_ROUTES.relay}`, {

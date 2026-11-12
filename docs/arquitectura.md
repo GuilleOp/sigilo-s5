@@ -242,7 +242,7 @@ sin cambiar la API v1 del nodo:
 ```mermaid
 flowchart LR
   N[Navegador] -- 1. directorio firmado --> R[Enrutador ciego]
-  N -- 2. sobre HPKE al nodo, solo con la autoridad destino --> R
+  N -- 2. sobre HPKE v2 al nodo, solo con el nodo destino --> R
   R -- 3. mismo sobre, sin cabeceras de la persona --> Q[Nodo Querétaro]
   R --> F[Nodo Federal / común]
   Q -- cabeza firmada --> R
@@ -274,9 +274,15 @@ flowchart LR
   misma llave que `keys.json` de su nodo y nunca se propone por competencia.
 - **Enrutador ciego.** El navegador cifra con HPKE hacia la llave del nodo una petición de la API
   v1 (`RoutedRequest`) rellenada a un tramo fijo (4 KiB, 64 KiB, 1 MiB o 16 MiB) e incluye una
-  llave efímera para la respuesta. El encabezado externo solo dice la autoridad destino. El
-  enrutador no guarda el sobre, no lee la IP ni reenvía cabeceras, y responde con la misma forma
-  para cualquier destino (relleno si no pudo entregar). Qué ve y qué no: `apps/enrutador/README.md`.
+  llave efímera para la respuesta. **Sobre v2:** el encabezado externo solo dice el **nodo**
+  destino (`{ v: 2, node, sealed }`); la autoridad (`RoutedRequest.to`) va cifrada adentro y el
+  AAD (`sigilo/red/relay/request/v2:` + nodo) liga el sobre a ese nodo. Así la operación de la
+  ventanilla no puede contar denuncias por OIC: a lo más, por nodo (estado). El nodo abre el sobre,
+  comprueba que la autoridad esté alojada en él y vigente en el directorio verificado, y la
+  entrega internamente; si no, responde como a un sobre que no abre. Un sobre v1 (con `to` a la
+  vista) se rechaza con `400` y un mensaje fijo que pide actualizar la ventanilla. El enrutador no
+  guarda el sobre, no lee la IP ni reenvía cabeceras, y responde con la misma forma para cualquier
+  destino (relleno si no pudo entregar). Qué ve y qué no: `apps/enrutador/README.md`.
 - **Bitácora nacional.** Entradas encadenadas por hash con cada cabeza firmada de nodo y cada
   versión del directorio. El enrutador recoge las cabezas en `GET /api/v1/ledger/head` de cada
   nodo (o el nodo las publica) y rechaza las que retroceden o se bifurcan. La cabeza nacional la

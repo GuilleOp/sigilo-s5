@@ -26,19 +26,25 @@ export function errorResponse(c: Context, code: ApiErrorCode): Response {
 }
 
 /**
+ * Lee el cuerpo como JSON sin validarlo. Lanza `unsupported_media_type` si no es JSON y
+ * `bad_request` si no se puede leer.
+ */
+export async function readRawJson(c: Context): Promise<unknown> {
+  const mediaType = (c.req.header('Content-Type') ?? '').split(';')[0]?.trim().toLowerCase();
+  if (mediaType !== 'application/json') throw new ApiFailure('unsupported_media_type');
+  try {
+    return (await c.req.json()) as unknown;
+  } catch {
+    throw new ApiFailure('bad_request');
+  }
+}
+
+/**
  * Lee el cuerpo como JSON y lo valida. Lanza `unsupported_media_type` si no es JSON y
  * `bad_request` si no es válido, sin propagar los detalles de zod.
  */
 export async function readJson<T extends z.ZodType>(c: Context, schema: T): Promise<z.output<T>> {
-  const mediaType = (c.req.header('Content-Type') ?? '').split(';')[0]?.trim().toLowerCase();
-  if (mediaType !== 'application/json') throw new ApiFailure('unsupported_media_type');
-  let raw: unknown;
-  try {
-    raw = await c.req.json();
-  } catch {
-    throw new ApiFailure('bad_request');
-  }
-  const parsed = schema.safeParse(raw);
+  const parsed = schema.safeParse(await readRawJson(c));
   if (!parsed.success) throw new ApiFailure('bad_request');
   return parsed.data;
 }

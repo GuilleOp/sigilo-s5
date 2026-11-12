@@ -118,7 +118,11 @@ describe('buzón de red del nodo', () => {
       }),
     );
     expect(response.status).toBe(200);
-    const reply = await openRoutedReply(await response.json(), replyPrivateKey, relay.to);
+    const reply = await openRoutedReply(
+      await response.json(),
+      replyPrivateKey,
+      'authority.comptroller-queretaro',
+    );
     expect(reply).toEqual({ v: 1, status: 201, body: { kind: 'json', value: { ok: true } } });
     const [request] = seen;
     expect(new URL(request?.url ?? '').pathname).toBe(ROUTES.complaints);
@@ -160,14 +164,77 @@ describe('buzón de red del nodo', () => {
         body: JSON.stringify(relay),
       }),
     );
-    const reply = await openRoutedReply(await response.json(), replyPrivateKey, relay.to);
+    const reply = await openRoutedReply(
+      await response.json(),
+      replyPrivateKey,
+      'authority.comptroller-queretaro',
+    );
     expect(reply.status).toBe(500);
     expect(JSON.stringify(reply)).not.toContain('falla interna');
   });
 
+  it('entrega solo a autoridades que aloja y solo sobres dirigidos a este nodo', async () => {
+    const delivered: string[] = [];
+    const inbox = createNodeInboxHandler({
+      nodeBoxPrivateKey: keys.nodes['node.queretaro'].box.privateKey,
+      nodeId: 'node.queretaro',
+      hostsAuthority: (id) => id === 'authority.comptroller-queretaro',
+      handle: async (routed) => {
+        delivered.push(routed.to);
+        return { v: 1, status: 200, body: { kind: 'none' } };
+      },
+    });
+    const send = async (to: string) => {
+      const { relay } = await sealRoutedRequest(
+        {
+          to,
+          operationId: 'getPowChallenge',
+          query: { purpose: 'complaint' },
+          proofOfWork: null,
+          body: { kind: 'none' },
+        },
+        queretaro,
+      );
+      return inbox(
+        new Request('http://nodo.invalid/x', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(relay),
+        }),
+      );
+    };
+    expect((await send('authority.comptroller-queretaro')).status).toBe(200);
+    // Una autoridad de otro nodo dentro de un sobre hacia este nodo no se entrega.
+    expect((await send('authority.oic-iffe')).status).toBe(400);
+    expect(delivered).toEqual(['authority.comptroller-queretaro']);
+    const other = createNodeInboxHandler({
+      nodeBoxPrivateKey: keys.nodes['node.queretaro'].box.privateKey,
+      nodeId: 'node.federal',
+      handle: async () => ({ v: 1, status: 200, body: { kind: 'none' } }),
+    });
+    const { relay } = await sealRoutedRequest(
+      {
+        to: 'authority.comptroller-queretaro',
+        operationId: 'getPowChallenge',
+        query: {},
+        proofOfWork: null,
+        body: { kind: 'none' },
+      },
+      queretaro,
+    );
+    const wrongNode = await other(
+      new Request('http://nodo.invalid/x', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(relay),
+      }),
+    );
+    expect(wrongNode.status).toBe(400);
+  });
+
   it('traduce cuerpos binarios y consultas', async () => {
     const request = routedRequestToFetch({
-      v: 1,
+      v: 2,
       to: 'authority.oic-iffe',
       operationId: 'uploadEvidence',
       query: { purpose: 'complaint' },

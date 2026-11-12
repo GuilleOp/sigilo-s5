@@ -1,7 +1,9 @@
 // Sobres del enrutador ciego, al estilo de Oblivious HTTP (RFC 9458) con el HPKE de SIGILO: el
 // navegador cifra la petición hacia la llave del nodo y el nodo responde hacia una llave efímera.
+// Formato v2: el encabezado externo nombra solo el nodo destino; la autoridad va cifrada adentro.
 import {
   HPKE_SUITE_V1,
+  RELAY_ENVELOPE_VERSION,
   RELAY_PLAINTEXT_BUCKETS,
   RelayRequestSchema,
   RelayResponseSchema,
@@ -31,7 +33,7 @@ import {
   utf8Encode,
 } from '@sigilo/core';
 
-const REQUEST_AAD_PREFIX = 'sigilo/red/relay/request/v1:';
+const REQUEST_AAD_PREFIX = 'sigilo/red/relay/request/v2:';
 const REPLY_AAD_PREFIX = 'sigilo/red/relay/reply/v1:';
 const LENGTH_PREFIX_BYTES = 4;
 const AEAD_TAG_LENGTH = 16;
@@ -55,8 +57,8 @@ function padJson(value: unknown): Uint8Array {
   return padToBlock(bytes, relayBucketFor(bytes.length));
 }
 
-function requestAad(to: string): Uint8Array {
-  return utf8Encode(`${REQUEST_AAD_PREFIX}${to}`);
+function requestAad(nodeId: string): Uint8Array {
+  return utf8Encode(`${REQUEST_AAD_PREFIX}${nodeId}`);
 }
 
 function replyAad(to: string): Uint8Array {
@@ -73,44 +75,67 @@ export interface SealedRelayRequest {
 }
 
 /**
- * Cifra la petición hacia la llave del nodo de la autoridad destino, rellenada al tramo más
- * pequeño en que cabe. El AAD liga el sobre a la autoridad: el enrutador no puede desviarlo a otra
- * autoridad del mismo nodo sin que el nodo lo note.
+ * Indica si el valor parece un sobre de red v1 (con `to` en el encabezado externo), para
+ * rechazarlo con `RELAY_V1_REJECTION_MESSAGE` en lugar de un error genérico.
+ */
+export function isLegacyRelayRequest(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'v' in value &&
+    (value as { v: unknown }).v === 1 &&
+    'to' in value
+  );
+}
+
+/**
+ * Cifra la petición hacia la llave del nodo que aloja a la autoridad destino, rellenada al tramo
+ * más pequeño en que cabe. El encabezado externo lleva solo el nodo; la autoridad va adentro.
+ * El AAD liga el sobre al nodo: el enrutador no puede desviarlo a otro nodo sin que lo note.
  * Lanza error si la petición no cumple su esquema o excede el tramo mayor.
  */
 export async function sealRoutedRequest(
   input: RoutedRequestInput,
-  node: Pick<DirectoryNode, 'boxKeyId' | 'boxPublicKey'>,
+  node: Pick<DirectoryNode, 'id' | 'boxKeyId' | 'boxPublicKey'>,
 ): Promise<SealedRelayRequest> {
   const reply = generateBoxKeyPair();
   const request = RoutedRequestSchema.parse({
     ...input,
-    v: 1,
+    v: RELAY_ENVELOPE_VERSION,
     replyPublicKey: toBase64Url(reply.publicKey),
   });
   const sealed = await sealToPublicKey(
     padJson(request),
     { keyId: node.boxKeyId, publicKey: fromBase64Url(node.boxPublicKey) },
-    requestAad(request.to),
+    requestAad(node.id),
   );
-  return { relay: { v: 1, to: request.to, sealed }, replyPrivateKey: reply.privateKey };
+  return {
+    relay: { v: RELAY_ENVELOPE_VERSION, node: node.id, sealed },
+    replyPrivateKey: reply.privateKey,
+  };
+}
+
+/** Opciones al abrir un sobre en el nodo. */
+export interface OpenRoutedRequestOptions {
+  /** Identificador de este nodo: un sobre con otro nodo en el encabezado no abre. */
+  nodeId?: string;
 }
 
 /**
- * Abre en el nodo un sobre de red. Lanza el mismo error genérico si el sobre no abre, si su
- * contenido no cumple el esquema o si la autoridad interna no es la del encabezado externo.
+ * Abre en el nodo un sobre de red. Lanza el mismo error genérico si el sobre no abre, si es de
+ * otro nodo, si es v1 o si su contenido no cumple el esquema.
  */
 export async function openRoutedRequest(
   relay: unknown,
   nodeBoxPrivateKey: Uint8Array,
+  options: OpenRoutedRequestOptions = {},
 ): Promise<RoutedRequest> {
   try {
     const outer = RelayRequestSchema.parse(relay);
+    if (options.nodeId !== undefined && outer.node !== options.nodeId) throw new Error('nodo');
     if (!hasRelayBucketSize(outer.sealed)) throw new Error('tramo');
-    const padded = await openEnvelope(outer.sealed, nodeBoxPrivateKey, requestAad(outer.to));
-    const request = RoutedRequestSchema.parse(JSON.parse(utf8Decode(unpad(padded))));
-    if (request.to !== outer.to) throw new Error('destino');
-    return request;
+    const padded = await openEnvelope(outer.sealed, nodeBoxPrivateKey, requestAad(outer.node));
+    return RoutedRequestSchema.parse(JSON.parse(utf8Decode(unpad(padded))));
   } catch {
     throw new Error('No se pudo abrir el sobre de red.');
   }
@@ -128,7 +153,7 @@ export async function sealRoutedReply(
     { keyId: keyIdFor(publicKey), publicKey },
     replyAad(request.to),
   );
-  return { v: 1, sealed };
+  return { v: RELAY_ENVELOPE_VERSION, sealed };
 }
 
 /**
@@ -157,7 +182,7 @@ export async function openRoutedReply(
 export function relayDecoyResponse(keyId: string): RelayResponse {
   const bucket = RELAY_PLAINTEXT_BUCKETS[0] ?? 4096;
   return {
-    v: 1,
+    v: RELAY_ENVELOPE_VERSION,
     sealed: {
       v: 1,
       suite: HPKE_SUITE_V1,

@@ -57,7 +57,8 @@ export async function transferComplaint(
   if (pendingTransferOf(ctx, folio) !== null) throw new ApiFailure('conflict');
   const target = directoryAuthority(network, request.toAuthorityId);
   const isElsewhere = target !== undefined && target.nodeId !== network.nodeId;
-  if (!isElsewhere || request.relay.to !== request.toAuthorityId) {
+  // El sobre v2 solo nombra el nodo; la autoridad va cifrada adentro hacia ese nodo.
+  if (!isElsewhere || request.relay.node !== target.nodeId) {
     throw new ApiFailure('bad_request');
   }
   const response = await network.fetch(`${network.routerUrl}${NETWORK_ROUTES.relay}`, {

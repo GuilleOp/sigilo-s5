@@ -2,7 +2,7 @@
 // responde igual para cualquier destino y no persiste el sobre (se inspecciona la base y su WAL).
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NETWORK_ROUTES } from '@sigilo/contracts';
+import { NETWORK_ROUTES, RELAY_V1_REJECTION_MESSAGE } from '@sigilo/contracts';
 import type { RelayRequest } from '@sigilo/contracts';
 import { createNodeNetworkClient, findNode, openRoutedReply, sealRoutedRequest } from '@sigilo/red';
 import type { DemoNodeId } from '@sigilo/red';
@@ -58,10 +58,17 @@ describe('enrutador ciego', () => {
       Cookie: 'sesion=abc',
     });
     expect(response.status).toBe(200);
-    const reply = await openRoutedReply(await response.json(), replyPrivateKey, relay.to);
+    const reply = await openRoutedReply(
+      await response.json(),
+      replyPrivateKey,
+      'authority.comptroller-queretaro',
+    );
     expect(reply).toEqual({ v: 1, status: 201, body: { kind: 'json', value: { recibido: true } } });
     const [forwarded] = router.captured;
     expect(forwarded?.url).toBe(`http://nodo-queretaro.invalid${NETWORK_ROUTES.nodeInbox}`);
+    // Sobre v2: lo que ve el enrutador (y reenvía) dice el nodo, nunca la autoridad.
+    expect(relay).toMatchObject({ v: 2, node: 'node.queretaro' });
+    expect(forwarded?.body).not.toContain('authority.');
     // Solo el tipo de contenido: nada de la persona llega al nodo.
     expect(Object.keys(forwarded?.headers ?? {})).toEqual(['content-type']);
     expect(JSON.parse(forwarded?.body ?? '{}')).toEqual(relay);
@@ -86,12 +93,12 @@ describe('enrutador ciego', () => {
     expect((await decoy.text()).length).toBe((await delivered.text()).length);
   });
 
-  it('rechaza destinos desconocidos, llaves de otro nodo y tamaños fuera de tramo', async () => {
+  it('rechaza nodos desconocidos, llaves de otro nodo y tamaños fuera de tramo', async () => {
     const router = createTestRouter();
     const { relay } = await seal(router, 'authority.oic-iffe', 'node.federal');
-    expect((await post(router, { ...relay, to: 'authority.no-existe' })).status).toBe(400);
-    const otherNode = await seal(router, 'authority.oic-iffe', 'node.queretaro');
-    expect((await post(router, otherNode.relay)).status).toBe(400);
+    expect((await post(router, { ...relay, node: 'node.no-existe' })).status).toBe(400);
+    // Sobre cifrado hacia la llave del nodo Federal pero con otro nodo en el encabezado.
+    expect((await post(router, { ...relay, node: 'node.queretaro' })).status).toBe(400);
     const truncated: RelayRequest = {
       ...relay,
       sealed: { ...relay.sealed, ct: relay.sealed.ct.slice(0, -8) },
@@ -102,6 +109,17 @@ describe('enrutador ciego', () => {
       body: JSON.stringify(relay),
     });
     expect(wrongType.status).toBe(415);
+    expect(router.captured).toEqual([]);
+  });
+
+  it('rechaza el sobre v1 (con la autoridad a la vista) con un mensaje claro', async () => {
+    const router = createTestRouter();
+    const { relay } = await seal(router, 'authority.oic-iffe', 'node.federal');
+    const response = await post(router, { v: 1, to: 'authority.oic-iffe', sealed: relay.sealed });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: { code: 'bad_request', message: RELAY_V1_REJECTION_MESSAGE },
+    });
     expect(router.captured).toEqual([]);
   });
 

@@ -88,7 +88,7 @@ export type NetworkComponentName = keyof typeof NETWORK_COMPONENTS;
 export const NETWORK_TAG = {
   name: 'Red',
   description:
-    'Red federada «un S5, muchas llaves»: directorio de autoridades firmado y cofirmado por testigos, enrutador ciego que solo ve el destino, registro de nodos y bitácora nacional cofirmada m de n. Las sirve el enrutador, salvo el buzón de red, que lo sirve cada nodo.',
+    'Red federada «un S5, muchas llaves»: directorio de autoridades firmado y cofirmado por testigos, enrutador ciego que solo ve el nodo destino, registro de nodos y bitácora nacional cofirmada m de n. Las sirve el enrutador, salvo el buzón de red, que lo sirve cada nodo.',
 } as const;
 
 const KEY_ID = '5d1c2a9e8b7f3c40';
@@ -171,13 +171,13 @@ const signedDirectory: SignedAuthorityDirectory = {
 };
 
 const relayRequest: RelayRequest = {
-  v: 1,
-  to: 'authority.comptroller-queretaro',
+  v: 2,
+  node: 'node.queretaro',
   sealed: { v: 1, suite: HPKE_SUITE_V1, keyId: KEY_ID_2, enc: ENC, ct: CT },
 };
 
 const relayResponse: RelayResponse = {
-  v: 1,
+  v: 2,
   sealed: { v: 1, suite: HPKE_SUITE_V1, keyId: 'e07d9c3b5a1f2846', enc: ENC, ct: CT },
 };
 
@@ -264,7 +264,7 @@ const inclusion: NationalInclusionProof = {
 };
 
 const routedRequest: RoutedRequest = {
-  v: 1,
+  v: 2,
   to: 'authority.comptroller-queretaro',
   operationId: 'getPowChallenge',
   query: { purpose: 'complaint' },
@@ -436,7 +436,7 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
     servedBy: 'router',
     summary: 'Enviar un sobre por el enrutador ciego',
     description:
-      'El enrutador lee solo la autoridad destino, comprueba que el sobre vaya a la llave de su nodo y que mida uno de los tramos fijos, y lo reenvía al buzón de red del nodo sin cabeceras de quien envía. No guarda el sobre, la dirección IP ni las cabeceras. Responde `200` con la misma forma y tamaño para cualquier destino; si no pudo entregar, el sobre de vuelta es relleno que el navegador no podrá abrir.',
+      'Sobre v2: el enrutador lee solo el nodo destino (la autoridad va cifrada dentro del sobre), comprueba que el sobre vaya a la llave de ese nodo y que mida uno de los tramos fijos, y lo reenvía al buzón de red del nodo sin cabeceras de quien envía. No guarda el sobre, la dirección IP ni las cabeceras. Responde `200` con la misma forma y tamaño para cualquier destino; si no pudo entregar, el sobre de vuelta es relleno que el navegador no podrá abrir. Un sobre v1 (con `to` en el encabezado) se rechaza con `400` y un mensaje que pide actualizar la ventanilla.',
     security: 'none',
     parameters: [],
     requestBody: { kind: 'json', component: 'RelayRequest', example: 'relay-envelope.request' },
@@ -703,7 +703,7 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
     servedBy: 'node',
     summary: 'Buzón de red del nodo',
     description:
-      'La sirve cada nodo, no el enrutador. Abre el sobre con la llave X25519 del nodo, comprueba que la autoridad interna sea la del encabezado, ejecuta la operación pedida (`RoutedRequest`) como si llegara a su ruta v1 y cifra la respuesta (`RoutedReply`) hacia la llave efímera. Un sobre que no abre responde `400` sin decir por qué.',
+      'La sirve cada nodo, no el enrutador. Abre el sobre con la llave X25519 del nodo (el AAD lo liga al nodo del encabezado), comprueba que la autoridad interna (`RoutedRequest.to`) esté alojada en el nodo y vigente, ejecuta la operación pedida como si llegara a su ruta v1 y cifra la respuesta (`RoutedReply`) hacia la llave efímera. Un sobre que no abre, de otro nodo o hacia una autoridad que el nodo no aloja responde `400` sin decir por qué.',
     security: 'none',
     parameters: [],
     requestBody: {

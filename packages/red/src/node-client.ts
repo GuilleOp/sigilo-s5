@@ -158,6 +158,13 @@ export interface NodeInboxOptions {
    * HMAC (`RELAY_AUTH_HEADER`): nadie puede entregarle sobres sin pasar por el enrutador.
    */
   relaySecret?: Uint8Array;
+  /** Identificador de este nodo: un sobre dirigido a otro nodo se rechaza. */
+  nodeId?: string;
+  /**
+   * Indica si la autoridad destino (que viaja cifrada dentro del sobre) está alojada y vigente en
+   * este nodo. Si se da y devuelve `false`, el sobre se rechaza como uno que no abre.
+   */
+  hostsAuthority?: (authorityId: string) => boolean;
 }
 
 const JSON_HEADERS = {
@@ -174,8 +181,9 @@ function inboxError(): Response {
 
 /**
  * Crea el manejador del buzón de red (`POST NETWORK_ROUTES.nodeInbox`) con la API Fetch estándar:
- * abre el sobre, entrega la operación a `handle` y cifra la respuesta hacia la llave efímera del
- * navegador. Un sobre que no abre responde `400 bad_request` sin decir por qué.
+ * abre el sobre, comprueba que la autoridad interna esté alojada en el nodo, entrega la operación
+ * a `handle` y cifra la respuesta hacia la llave efímera del navegador. Un sobre que no abre, de
+ * otro nodo o hacia una autoridad que el nodo no aloja responde `400 bad_request` sin decir por qué.
  * Seguridad: el nodo no recibe ninguna cabecera de la persona; si `handle` falla, la respuesta
  * cifrada es un `500 internal` sin detalles.
  */
@@ -195,7 +203,15 @@ export function createNodeInboxHandler(
       ) {
         return inboxError();
       }
-      routed = await openRoutedRequest(JSON.parse(text), options.nodeBoxPrivateKey);
+      routed = await openRoutedRequest(
+        JSON.parse(text),
+        options.nodeBoxPrivateKey,
+        options.nodeId === undefined ? {} : { nodeId: options.nodeId },
+      );
+      // Seguridad: el enrutador ya no ve la autoridad; el nodo la entrega solo si la aloja.
+      if (options.hostsAuthority !== undefined && !options.hostsAuthority(routed.to)) {
+        return inboxError();
+      }
     } catch {
       return inboxError();
     }

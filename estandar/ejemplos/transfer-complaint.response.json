@@ -1,6 +1,6 @@
 {
   "relay": {
-    "v": 1,
+    "v": 2,
     "sealed": {
       "v": 1,
       "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",

@@ -293,7 +293,7 @@ AppealResponse,filedOn,filedOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,Día de pr
 AppealResponse,openingId,openingId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador aleatorio de una apertura de identidad (16 bytes en hexadecimal).,,9c2f4e6a8b0d1f3e5a7c9e1b3d5f7a9c
 AppealResponse,resolutionDueOn,resolutionDueOn,cadena,,no,"Plazo de la Sala para resolver (30 días hábiles, LGRA art. 107).",,2027-01-27
 TransferComplaintRequest,toAuthorityId,toAuthorityId,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable de la autoridad.,,authority.oic-iffe
-TransferComplaintRequest,relay,relay,objeto (RelayRequest),,sí,Sobre de red: el enrutador solo ve el destino y el tramo de tamaño.,,
+TransferComplaintRequest,relay,relay,objeto (RelayRequest),,sí,Sobre de red v2: el enrutador solo ve el nodo destino y el tramo de tamaño; nunca la autoridad.,,
 TransferComplaintRequest,note,note,cadena,de 1 a 2000 caracteres,sí,Nota pública para la persona denunciante.,,Los hechos son de un ente federal: la turnamos …
 TransferComplaintResponse,relay,relay,objeto (RelayResponse),,sí,"Respuesta del enrutador: igual en estatus, cabeceras y tamaño sin importar el destino ni el resultado.",,
 TransferComplaintResponse,transferId,transferId,cadena,patrón ^[0-9a-f]{32}$,sí,Identificador aleatorio de una apertura de identidad (16 bytes en hexadecimal).,,5b1e0c9d8a7f6e5d4c3b2a1908f7e6d5
@@ -459,13 +459,13 @@ NetworkTrustAnchor,witnesses[].keyId,keyId,cadena,patrón ^[0-9a-f]{16}$,sí,Ide
 NetworkTrustAnchor,witnesses[].signingPublicKey,signingPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,Llave pública Ed25519 del testigo.,,TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f
 NetworkTrustAnchor,minDirectorySerial,minDirectorySerial,entero,mínimo 1,no,Serial mínimo del directorio que se acepta (H10): fijarlo al publicar una versión que revoca llaves impide volver a una anterior.,,
 NetworkTrustAnchor,maxDirectoryAgeDays,maxDirectoryAgeDays,entero,mínimo 1,no,Días máximos desde issuedOn para aceptar el directorio (H10); exige que quien verifica conozca el día.,,
-RelayRequest,v,v,número,valor fijo 1,sí,Versión del formato.,,1
-RelayRequest,to,to,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Autoridad destino: lo único que lee el enrutador.,,authority.oic-iffe
-RelayRequest,sealed,sealed,objeto (HpkeEnvelope),,sí,"Sobre HPKE hacia la llave del nodo de esa autoridad, con texto en claro rellenado a un tramo fijo.",,
-RelayResponse,v,v,número,valor fijo 1,sí,Versión del formato.,,1
+RelayRequest,v,v,número,valor fijo 2,sí,Versión del formato (2).,,2
+RelayRequest,node,node,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Nodo destino: lo único que lee el enrutador. La autoridad destino va dentro del sobre cifrado.,,node.federal
+RelayRequest,sealed,sealed,objeto (HpkeEnvelope),,sí,"Sobre HPKE hacia la llave de ese nodo, con texto en claro rellenado a un tramo fijo.",,
+RelayResponse,v,v,número,valor fijo 2,sí,Versión del formato (2).,,2
 RelayResponse,sealed,sealed,objeto (HpkeEnvelope),,sí,"Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar, relleno indistinguible del mismo tamaño.",,
-RoutedRequest,v,v,número,valor fijo 1,sí,Versión del formato.,,1
-RoutedRequest,to,to,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Autoridad destino; debe coincidir con la del encabezado externo.,,authority.comptroller-queretaro
+RoutedRequest,v,v,número,valor fijo 2,sí,Versión del formato (2).,,2
+RoutedRequest,to,to,cadena,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,"Autoridad destino dentro del nodo; solo la lee el nodo, que comprueba que la aloja y la entrega internamente.",,authority.comptroller-queretaro
 RoutedRequest,operationId,operationId,cadena,,sí,Operación del Estándar S5 que se pide al nodo.,getPowChallenge; uploadEvidence; submitComplaint; getTracking; sendReporterMessage; fileAppeal,getPowChallenge
 RoutedRequest,query,query,objeto,,sí,Parámetros de consulta de la operación.,,
 RoutedRequest,proofOfWork,proofOfWork,valor,,sí,"Valor de la cabecera de prueba de trabajo, o null.",,null
