@@ -36,14 +36,17 @@ import type {
 } from '@sigilo/contracts';
 import {
   deriveReceiptKeys,
+  encodeFileKey,
   formatPowHeader,
   fromBase64Url,
   generateBoxKeyPair,
+  generateFolio,
   generateReceiptPhrase,
   generateSigningKeyPair,
   identityContextFor,
   keyIdFor,
   sealEscalation,
+  sealEvidence,
   sealIdentity,
   sealMailboxMessage,
   sha256Hex,
@@ -51,7 +54,7 @@ import {
   toBase64Url,
 } from '@sigilo/core';
 import { templateQualificationText } from '@sigilo/auditor/eval';
-import type { ReceiptKeys } from '@sigilo/core';
+import type { EscalationEvidenceKey, ReceiptKeys } from '@sigilo/core';
 import { blindCorroboration, finalizeCorroboration, similarityDigest } from '@sigilo/corroboracion';
 import type { CorroborationIdentifier } from '@sigilo/corroboracion';
 import { DEMO_HONEST_DIRECTOR, DEMO_OCID, demoCase } from '@sigilo/corroboracion/demo';
@@ -229,6 +232,7 @@ async function buildRequest(
   spec: ComplaintSpec,
   keys: ReceiptKeys,
   evidence: EvidenceDescriptor[] = [],
+  evidenceKeys: EscalationEvidenceKey[] = [],
 ): Promise<SubmitComplaintRequest> {
   const request: SubmitComplaintRequest = {
     version: 1,
@@ -251,6 +255,7 @@ async function buildRequest(
       request,
       authorityKey(directory, spec.supervisor),
       { authVerifier: request.authVerifier, reporterKeys: request.reporterKeys },
+      evidenceKeys,
     );
   }
   if (spec.mode === 'sealed' && spec.identityAuthority !== undefined) {
@@ -276,6 +281,8 @@ async function viaRouter(
   operation: {
     operationId: 'getPowChallenge' | 'submitComplaint' | 'uploadEvidence' | 'fileAppeal';
     query?: Record<string, string>;
+    /** Folio que eligió el navegador (solo en `submitComplaint`). */
+    folio?: string;
   },
   body: unknown,
   proofOfWork: string | null,
@@ -295,6 +302,7 @@ async function viaRouter(
           : body instanceof Uint8Array
             ? { kind: 'binary', mediaType: 'image/jpeg', data: toBase64Url(body) }
             : { kind: 'json', value: body },
+      ...(operation.folio === undefined ? {} : { folio: operation.folio }),
     },
     node,
   );
@@ -351,18 +359,38 @@ async function submitViaRouter(
   const keys = deriveReceiptKeys(phrase.entropy);
   // El mismo reto sirve para las pruebas y la denuncia, como en el navegador.
   const proof = await routedChallenge(directory, to, 'complaint');
-  const evidence =
-    spec.photo === undefined
-      ? []
-      : [
-          EvidenceDescriptorSchema.parse(
-            replyValue(
-              await viaRouter(directory, to, { operationId: 'uploadEvidence' }, spec.photo, proof),
-            ),
-          ),
-        ];
-  const request = await buildRequest(directory, spec, keys, evidence);
-  const reply = await viaRouter(directory, to, { operationId: 'submitComplaint' }, request, proof);
+  // Como el navegador: el folio se elige antes de cifrar la prueba, que va cifrada hacia la
+  // autoridad destino con el folio y la autoridad en el AAD; el nodo solo guarda el contenedor.
+  const folio = generateFolio();
+  const evidence: EvidenceDescriptor[] = [];
+  const evidenceKeys: EscalationEvidenceKey[] = [];
+  if (spec.photo !== undefined) {
+    const sealed = await sealEvidence(spec.photo, authorityKey(directory, to), {
+      folio,
+      authorityId: to,
+      mediaType: 'image/jpeg',
+    });
+    const descriptor = EvidenceDescriptorSchema.parse(
+      replyValue(
+        await viaRouter(directory, to, { operationId: 'uploadEvidence' }, sealed.container, proof),
+      ),
+    );
+    if (descriptor.sha256 !== sealed.sha256)
+      throw new Error('El nodo no guardó la prueba cifrada.');
+    evidence.push(descriptor);
+    evidenceKeys.push({
+      evidenceId: descriptor.evidenceId,
+      fileKey: encodeFileKey(sealed.fileKey),
+    });
+  }
+  const request = await buildRequest(directory, spec, keys, evidence, evidenceKeys);
+  const reply = await viaRouter(
+    directory,
+    to,
+    { operationId: 'submitComplaint', folio },
+    request,
+    proof,
+  );
   const response: SubmitComplaintResponse = SubmitComplaintResponseSchema.parse(replyValue(reply));
   say(`- ${spec.key}: folio ${response.folio} (por la ventanilla única hacia ${to}).`);
   return { key: spec.key, folio: response.folio, words: phrase.words, keys };
