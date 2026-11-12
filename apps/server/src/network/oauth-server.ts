@@ -125,7 +125,10 @@ export interface NodeOAuthOptions {
   clock?: () => number;
   /** Llave HMAC de los tokens; por omisión, aleatoria por proceso. */
   signingKey?: Uint8Array;
-  /** Fallos permitidos por cliente antes de responder `429` (10 cada 15 minutos). */
+  /**
+   * Fallos del flujo `password` permitidos por cliente autenticado antes de responder `429` (10 cada
+   * 15 minutos). Los secretos de cliente equivocados nunca bloquean (H01).
+   */
   failuresPerClient?: RateLimitRule;
   accessTokenTtlSeconds?: number;
   refreshTokenTtlSeconds?: number;
@@ -328,21 +331,18 @@ export function createNodeOAuthServer(options: NodeOAuthOptions): NodeOAuthServe
       if (clientId === undefined || secret === undefined) {
         return failure('invalid_client', 401, basic !== null);
       }
-      const limiterKey = `client:${clientId.slice(0, 64)}`;
-      // Seguridad: con el cliente bloqueado no se compara nada: no hay oráculo de aciertos.
-      if (failures.isLimited(limiterKey)) {
-        return {
-          status: 429,
-          body: { error: 'invalid_client', error_description: RATE_LIMITED_DESCRIPTION },
-          basicChallenge: false,
-        };
-      }
+      // Seguridad (H01): el secreto del cliente es aleatorio de 32 bytes, así que adivinarlo es
+      // inviable y no hace falta un tope por identificador. Un tope aquí (antes de comparar) dejaba
+      // que cualquiera, con el `client_id` predecible, bloqueara a la SESNA con 10 fallos y cortara
+      // las entregas de la red. Siempre se compara, y un secreto equivocado solo recibe `401`.
       const client = clients.get(clientId);
       const isClient = secretMatches(secret, client?.clientSecretDigest ?? fillerDigest);
       if (client === undefined || !isClient) {
-        failures.consume(limiterKey);
         return failure('invalid_client', 401, basic !== null);
       }
+      // El tope de fallos queda solo para el flujo `password` (adivinable) y se indexa por un
+      // cliente ya autenticado: solo quien tiene el secreto del cliente puede llegar a bloquearlo.
+      const limiterKey = `password:${client.clientId}`;
       const grant = PdnGrantTypeSchema.safeParse(params.grant_type);
       if (!grant.success) {
         return failure(
@@ -362,6 +362,14 @@ export function createNodeOAuthServer(options: NodeOAuthOptions): NodeOAuthServe
           const { username, password } = params;
           if (user === undefined || username === undefined || password === undefined) {
             return failure('invalid_request');
+          }
+          // Con el usuario bloqueado no se compara la contraseña: no hay oráculo de aciertos.
+          if (failures.isLimited(limiterKey)) {
+            return {
+              status: 429,
+              body: { error: 'invalid_grant', error_description: RATE_LIMITED_DESCRIPTION },
+              basicChallenge: false,
+            };
           }
           const isUser = secretMatches(username, clientSecretDigest(user.username));
           const passwordHash = isUser ? user.passwordHash : decoyPassword(user.passwordHash);
@@ -386,7 +394,7 @@ export function createNodeOAuthServer(options: NodeOAuthOptions): NodeOAuthServe
             entry.clientId !== client.clientId ||
             entry.expiresAt <= clock()
           ) {
-            failures.consume(limiterKey);
+            // El token de renovación es aleatorio de 32 bytes: no se cuenta para el tope.
             return failure('invalid_grant');
           }
           const scopes = grantedScopes(params.scope, entry.scopes);
