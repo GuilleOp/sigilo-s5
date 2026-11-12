@@ -280,7 +280,7 @@ const DESCRIPTION = [
   '',
   'El grupo «Corroboración» describe la corroboración ciega con VOPRF (RFC 9497): el evaluador OPRF, que ve solo elementos cegados, y el índice de coincidencias, que ve solo etiquetas y cuenta fuentes independientes. Son dos servicios con operación separada.',
   '',
-  'Documento generado desde `packages/contracts` con `npm run standard:build`. Los esquemas son JSON Schema 2020-12. Las peticiones y respuestas no admiten campos que no estén en su esquema. El diccionario de datos y los ejemplos están en la misma carpeta.',
+  'Documento generado desde `packages/contracts` con `npm run standard:build`. Los esquemas son JSON Schema 2020-12. Las peticiones y respuestas no admiten campos que no estén en su esquema. El diccionario de datos, los catálogos y los ejemplos están en la misma carpeta; los cambios de cada versión, en `CHANGELOG.md`. El perfil de conexión con la PDN (solo lo que consume la SESNA) y un documento por grupo están en `oas/`, en OpenAPI 3.0.3.',
 ].join('\n');
 
 /** Documento OpenAPI 3.1 completo del Estándar S5. */

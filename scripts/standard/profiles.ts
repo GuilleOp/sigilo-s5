@@ -372,6 +372,12 @@ function paths30(paths: unknown): unknown {
 export function toOpenApi30(document: JsonObject): JsonObject {
   const info = { ...(document.info as JsonObject) };
   delete info.summary;
+  if (typeof info.description === 'string') {
+    info.description = info.description.replace(
+      'Los esquemas son JSON Schema 2020-12.',
+      'Los esquemas son el subconjunto de JSON Schema de OpenAPI 3.0.3, convertidos sin perder significado desde el documento en OpenAPI 3.1 (`openapi.yaml`), que es la referencia.',
+    );
+  }
   info.license = LICENSE;
   info.version = STANDARD_VERSION;
   const components = document.components as {
