@@ -1,12 +1,21 @@
 // Pantalla /verificar: descarga la bitácora, verifica la cadena y la cabeza con la llave fijada y,
 // si la persona pega uno o varios anclajes publicados, comprueba que la bitácora todavía los
-// contiene todos.
+// contiene todos. En la ventanilla única la persona elige el nodo; su bitácora llega por el paso del
+// mismo origen y se verifica con la llave de firma del nodo en el directorio verificado.
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { LedgerEvent } from '@sigilo/contracts';
+import type {
+  AuthorityDirectory,
+  LedgerEvent,
+  LedgerPage,
+  SignedLedgerHead,
+} from '@sigilo/contracts';
+import { fromBase64Url } from '@sigilo/core';
 import { PATHS } from '../../app/paths.ts';
 import { Alert } from '../../components/Alert.tsx';
 import { AnchorsField } from '../../components/AnchorsField.tsx';
+import { SelectField } from '../../components/Field.tsx';
+import { WEB_PROFILE } from '../../config/app-config.ts';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { compareWithAnchors, downloadAndVerifyLedger } from '../../crypto/ledger-verification.ts';
 import type {
@@ -18,6 +27,8 @@ import { announce } from '../../lib/announce.ts';
 import { formatDayDate } from '../../lib/format.ts';
 import { summarizeLedger } from '../../lib/ledger-summary.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
+import { useNetworkState } from '../../network/use-network-state.ts';
+import { createNodeLedgerApi } from '../../network/ventanilla-api.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 
@@ -201,9 +212,45 @@ function AnchorsResult({ comparison }: { comparison: AnchorsComparison }) {
   );
 }
 
+/** Bitácora que se verifica: de dónde se descarga y con qué llave se comprueba su firma. */
+interface LedgerSource {
+  fetchHead: () => Promise<SignedLedgerHead>;
+  fetchPage: (from: number, limit: number) => Promise<LedgerPage>;
+  serverPublicKey: Uint8Array;
+}
+
+/**
+ * Bitácora de este mismo nodo con la llave fijada o, en la ventanilla, la del nodo elegido con su
+ * llave del directorio verificado; `null` si en la ventanilla aún no hay nodo elegido.
+ */
+export function ledgerSource(
+  directory: AuthorityDirectory | null,
+  nodeId: string,
+): LedgerSource | null {
+  if (WEB_PROFILE !== 'ventanilla') {
+    return {
+      fetchHead: () => api.getLedgerHead(),
+      fetchPage: (from, limit) => api.getLedgerEvents(from, limit),
+      serverPublicKey: PINNED_KEYS.serverSigningPublicKey,
+    };
+  }
+  const node = directory?.nodes.find((item) => item.id === nodeId);
+  if (node === undefined) return null;
+  const nodeApi = createNodeLedgerApi(node.id);
+  return {
+    fetchHead: () => nodeApi.getLedgerHead(),
+    fetchPage: (from, limit) => nodeApi.getLedgerEvents(from, limit),
+    serverPublicKey: fromBase64Url(node.signingPublicKey),
+  };
+}
+
 /** Verificador de la bitácora pública. */
 export function VerifyPage() {
   useDocumentTitle('Registro público');
+  const network = useNetworkState();
+  const directory = network.kind === 'verified' ? network.directory : null;
+  const [nodeId, setNodeId] = useState('');
+  const selectedNode = nodeId || (directory?.nodes[0]?.id ?? '');
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<LedgerVerification | null>(null);
   const [anchorText, setAnchorText] = useState('');
@@ -215,12 +262,19 @@ export function VerifyPage() {
     setResult(null);
     setComparison(null);
     setError('');
+    const source = ledgerSource(directory, selectedNode);
+    if (source === null) {
+      const message = 'No pudimos cargar el directorio de nodos. Inténtalo de nuevo.';
+      setError(message);
+      announce(message);
+      return null;
+    }
     setProgress('Descargando la bitácora.');
     try {
       const outcome = await downloadAndVerifyLedger(
-        () => api.getLedgerHead(),
-        (from, limit) => api.getLedgerEvents(from, limit),
-        PINNED_KEYS.serverSigningPublicKey,
+        source.fetchHead,
+        source.fetchPage,
+        source.serverPublicKey,
         (count) => setProgress(`Registros descargados: ${count}.`),
       );
       setResult(outcome);
@@ -252,11 +306,9 @@ export function VerifyPage() {
         announce(resultSummary(outcome));
         return;
       }
-      const compared = compareWithAnchors(
-        outcome.events,
-        anchorText,
-        PINNED_KEYS.serverSigningPublicKey,
-      );
+      const source = ledgerSource(directory, selectedNode);
+      if (source === null) return;
+      const compared = compareWithAnchors(outcome.events, anchorText, source.serverPublicKey);
       setComparison(compared);
       announce(`${resultSummary(outcome)} ${anchorSummary(compared)}`);
     } finally {
@@ -277,6 +329,26 @@ export function VerifyPage() {
         Para no revelar a qué hora llega cada denuncia, el registro se publica una vez al día: lo de
         hoy se publica mañana.
       </p>
+      {WEB_PROFILE === 'ventanilla' && (
+        <SelectField
+          id="verify-node"
+          label="Nodo"
+          hint="Cada estado lleva su propio registro en su nodo. Lo comprobamos con la llave del nodo en el directorio firmado."
+          value={selectedNode}
+          onChange={(event) => {
+            setNodeId(event.target.value);
+            setResult(null);
+            setComparison(null);
+          }}
+          data-testid="verify-node"
+        >
+          {(directory?.nodes ?? []).map((node) => (
+            <option key={node.id} value={node.id}>
+              {node.name}
+            </option>
+          ))}
+        </SelectField>
+      )}
       {/* aria-disabled: mientras verifica, el botón conserva el foco. */}
       <button
         type="button"

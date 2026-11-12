@@ -1,6 +1,6 @@
-// Autoridades y cuentas sintéticas de la demostración (nodos Federal y Querétaro de
+// Autoridades y cuentas sintéticas de la demostración (nodos Federal, Querétaro y Estado Ejemplo de
 // docs/demo-escenario.md): arma el archivo local de cuentas con digestos scrypt y la lista de
-// credenciales para entrar.
+// credenciales para entrar. Cada nodo tiene solo las autoridades de su entidad: no hay nodo común.
 import type { AuthorityAccountsFile, AuthorityFunction } from '@sigilo/contracts';
 import { randomBytes, toBase64Url, toHex } from '@sigilo/core';
 import { DEFAULT_SCRYPT_LOG_N, hashPassword } from './passwords.ts';
@@ -49,10 +49,6 @@ const DEMO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
     authorityId: 'authority.prosecutor-anticorruption',
     name: 'Fiscalía Ficticia Especializada en Hechos de Corrupción',
   },
-  {
-    authorityId: 'authority.comptroller-ejemplo',
-    name: 'Contraloría Ficticia del Estado Ejemplo',
-  },
 ];
 
 /** Autoridades de la demostración que tienen varias cuentas. */
@@ -100,11 +96,6 @@ export const DEMO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
     authorityId: 'authority.prosecutor-anticorruption',
     functions: ['investigation'],
   },
-  {
-    username: 'contraloria-ejemplo',
-    authorityId: 'authority.comptroller-ejemplo',
-    functions: ['intake', 'investigation'],
-  },
 ];
 
 /** Buzón general del nodo Querétaro de la demostración. */
@@ -140,8 +131,73 @@ export const QUERETARO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
   },
 ];
 
+/** Buzón general del nodo Estado Ejemplo de la demostración. */
+export const DEMO_EJEMPLO_INBOX_AUTHORITY = 'authority.buzon-ejemplo';
+
+const EJEMPLO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
+  {
+    authorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
+    name: 'Buzón general ficticio del nodo Estado Ejemplo',
+  },
+  {
+    authorityId: 'authority.comptroller-ejemplo',
+    name: 'Contraloría Ficticia del Estado Ejemplo',
+  },
+];
+
+/**
+ * Usuarios del nodo Estado Ejemplo: el buzón general, la operación del nodo (la lleva su
+ * contraloría: la entidad no tiene CPC ni SESEA en el escenario) y la contraloría, que recibe e
+ * investiga.
+ */
+export const EJEMPLO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
+  {
+    username: 'buzon.ejemplo',
+    authorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
+    functions: ['intake'],
+  },
+  {
+    username: 'operacion.ejemplo',
+    authorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
+    functions: ['operation'],
+  },
+  {
+    username: 'contraloria-ejemplo',
+    authorityId: 'authority.comptroller-ejemplo',
+    functions: ['intake', 'investigation'],
+  },
+];
+
 /** Nodo de la demostración cuyas cuentas se arman. */
-export type DemoAccountsNode = 'federal' | 'queretaro';
+export type DemoAccountsNode = 'federal' | 'queretaro' | 'ejemplo';
+
+/** Buzón, autoridades y usuarios de cada nodo de la demostración. */
+const NODE_ACCOUNTS: Readonly<
+  Record<
+    DemoAccountsNode,
+    {
+      inboxAuthorityId: string;
+      authorities: AuthorityAccountsFile['authorities'];
+      users: readonly Omit<DemoCredential, 'password'>[];
+    }
+  >
+> = {
+  federal: {
+    inboxAuthorityId: DEMO_INBOX_AUTHORITY,
+    authorities: DEMO_AUTHORITIES,
+    users: DEMO_USERS,
+  },
+  queretaro: {
+    inboxAuthorityId: DEMO_QUERETARO_INBOX_AUTHORITY,
+    authorities: QUERETARO_AUTHORITIES,
+    users: QUERETARO_USERS,
+  },
+  ejemplo: {
+    inboxAuthorityId: DEMO_EJEMPLO_INBOX_AUTHORITY,
+    authorities: EJEMPLO_AUTHORITIES,
+    users: EJEMPLO_USERS,
+  },
+};
 
 /** Contraseña aleatoria de 24 caracteres (18 bytes). */
 export function randomDemoPassword(): string {
@@ -164,14 +220,16 @@ export function buildDemoAccounts(
 ): { file: AuthorityAccountsFile; credentials: DemoCredential[] } {
   const passwordFor = options.passwordFor ?? (() => randomDemoPassword());
   const logN = options.logN ?? DEFAULT_SCRYPT_LOG_N;
-  const isQueretaro = options.node === 'queretaro';
-  const users = isQueretaro ? QUERETARO_USERS : DEMO_USERS;
-  const credentials = users.map((user) => ({ ...user, password: passwordFor(user.username) }));
+  const node = NODE_ACCOUNTS[options.node ?? 'federal'];
+  const credentials = node.users.map((user) => ({
+    ...user,
+    password: passwordFor(user.username),
+  }));
   return {
     file: {
       version: 1,
-      inboxAuthorityId: isQueretaro ? DEMO_QUERETARO_INBOX_AUTHORITY : DEMO_INBOX_AUTHORITY,
-      authorities: isQueretaro ? QUERETARO_AUTHORITIES : DEMO_AUTHORITIES,
+      inboxAuthorityId: node.inboxAuthorityId,
+      authorities: node.authorities,
       accounts: credentials.map((credential) => ({
         accountId: `acct-${toHex(randomBytes(8))}`,
         username: credential.username,

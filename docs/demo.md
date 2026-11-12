@@ -87,9 +87,19 @@ Para el guion manual (sin Docker) necesitas además:
 
 ## Red federada con el escenario completo (Docker, un comando)
 
-La red de `docs/demo-escenario.md` (enrutador ciego, nodos Querétaro y Federal con su web,
-evaluador, índice y dos testigos) corre en Docker, toda en local y con datos sintéticos. Es la forma
-recomendada para replicar la demostración en un equipo limpio.
+La red de `docs/demo-escenario.md` corre en Docker, toda en local y con datos sintéticos. Es la forma
+recomendada para replicar la demostración en un equipo limpio. Sigue el modelo acordado con la
+SESNA: **una sola ventanilla nacional**, que sirve la SESNA junto con el enrutador ciego, y **un nodo
+por estado**, sin nodo común. Los nodos solo tienen el panel de autoridades.
+
+| Servicio                                  | Quién lo opera en la realidad             | Dirección                         |
+| ----------------------------------------- | ----------------------------------------- | --------------------------------- |
+| Ventanilla única y enrutador ciego        | SESNA (sin llaves: no lee denuncias)      | <http://127.0.0.1:8790/>          |
+| Nodo Querétaro (solo panel)               | SESEA de Querétaro                        | <http://127.0.0.1:8781/autoridad> |
+| Nodo Federal (solo autoridades federales) | Secretaría Anticorrupción y Buen Gobierno | <http://127.0.0.1:8782/autoridad> |
+| Nodo Estado Ejemplo (solo panel)          | Contraloría del Estado Ejemplo            | <http://127.0.0.1:8783/autoridad> |
+| Evaluador OPRF e índice de coincidencias  | Corroboración ciega                       | 127.0.0.1:8791 y 127.0.0.1:8792   |
+| Dos testigos                              | CPC de Querétaro y Universidad Ejemplo    | sin puerto publicado              |
 
 ### Requisitos
 
@@ -99,7 +109,7 @@ recomendada para replicar la demostración en un equipo limpio.
   llaves y siembra el escenario desde el equipo; los servicios corren en los contenedores.
 - Conexión a internet solo la primera vez, para descargar la imagen oficial `node:22-bookworm-slim`
   y los paquetes de npm al construir. Después todo funciona sin conexión.
-- Puertos libres en `127.0.0.1`: 8781, 8782, 8790, 8791 y 8792. Los puertos y el nombre del
+- Puertos libres en `127.0.0.1`: 8781, 8782, 8783, 8790, 8791 y 8792. Los puertos y el nombre del
   proyecto de Compose (`sigilo-red`, en `compose.yaml`) son fijos, así que solo puede correr una
   copia de la red a la vez en el mismo equipo: antes de levantarla desde otro clon, bájala en el
   primero (`npm run demo:apagar`).
@@ -120,10 +130,11 @@ npm run demo:apagar   # baja la red y borra .red-demo/
 2. Baja una red anterior de la demostración (`docker compose down`).
 3. Genera llaves, directorio firmado y cuentas sintéticas nuevas en `.red-demo/`
    (`npm run red:demo -- --force`).
-4. Construye las imágenes (`docker compose build`). La web de cada nodo se construye con sus llaves
-   públicas fijadas; ninguna llave privada entra a las imágenes.
+4. Construye las imágenes (`docker compose build`). La ventanilla (imagen del enrutador) se
+   construye en perfil «ventanilla» con la raíz de confianza de la red; el panel de cada nodo, en
+   perfil «panel» con sus llaves públicas fijadas. Ninguna llave privada entra a las imágenes.
 5. Levanta la red (`docker compose up -d --wait`) con tu UID y GID, espera a que el enrutador, los
-   dos nodos, el evaluador y el índice estén sanos y prueba cada dirección por HTTP.
+   tres nodos, el evaluador y el índice estén sanos y prueba cada dirección por HTTP.
 6. Siembra el escenario hasta el día 35 (`npm run demo:seed`).
 
 Es idempotente: cada ejecución parte de cero (llaves nuevas, bases vacías) y deja el mismo estado.
@@ -140,17 +151,17 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 
 ### Qué deja listo
 
-| Qué                        | Dónde                                                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Web del nodo Querétaro     | <http://127.0.0.1:8781/>                                                                                     |
-| Web del nodo Federal       | <http://127.0.0.1:8782/> (panel: <http://127.0.0.1:8782/autoridad>)                                          |
-| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                                 |
-| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                            |
-| Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)         |
-| Llave del buzón general    | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (solo las cuentas `buzon.federal` y `buzon.queretaro`) |
-| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso; `solicitudes`: alta pendiente y su huella)         |
-| Solicitud de alta          | <http://127.0.0.1:8782/solicitar-alta>; bandeja con `operacion.federal` en el panel (sin archivo de llave)   |
-| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                 |
+| Qué                        | Dónde                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Ventanilla única           | <http://127.0.0.1:8790/> (denunciar, Mi denuncia, registro público, observatorio, «¿Quién atiende?»)          |
+| Paneles de los nodos       | Querétaro <http://127.0.0.1:8781/autoridad>, Federal 8782 y Estado Ejemplo 8783 (misma ruta)                  |
+| Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                                  |
+| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                             |
+| Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)          |
+| Llave del buzón general    | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (solo las cuentas `buzon.*` de cada nodo)               |
+| Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso; `solicitudes`: alta pendiente y su huella)          |
+| Solicitud de alta          | <http://127.0.0.1:8790/solicitar-alta> (va al nodo de la entidad); bandeja con `operacion.<nodo>` en su panel |
+| Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                  |
 
 Cada autoridad abre el panel con **su propia llave**, la que corresponde a su entrada en el
 directorio firmado: es la llave con la que el navegador de quien denuncia sella la identidad y los
@@ -162,10 +173,10 @@ nunca la identidad sellada para una autoridad.
 
 `red:demo` deja en `.red-demo/` las llaves, el directorio firmado con la llave del evaluador, las
 cuentas de cada nodo y el reloj simulado común (`reloj/desfase`, que leen los nodos y el índice).
-`demo:seed` importa los 31 acuerdos con plantilla y los 5 de control, envía a Marta por la
-ventanilla única (con la copia limpia de su foto; el original con EXIF sintético queda en
+`demo:seed` importa los 31 acuerdos con plantilla y los 5 de control, envía por la ventanilla
+única a Marta (con la copia limpia de su foto; el original con EXIF sintético queda en
 `.red-demo/fixtures/` para mostrar la limpieza en la web), a la persona de Querétaro, las tres
-denuncias del atacante, a Luis por la entrada propia del nodo Federal y, los días 4 y 6, a las dos
+denuncias del atacante, a Luis (que elige él mismo el buzón general del nodo Federal) y, los días 4 y 6, a las dos
 personas ciudadanas de la ventanilla de licencias (`case.ventanilla-1` y `case.ventanilla-2`), que
 la Contraloría de Querétaro acepta. Después adelanta el reloj:
 el día 30 el OIC califica la falta grave como no grave con su plantilla y lo notifica por el buzón;
@@ -175,8 +186,8 @@ Marta se inconforma por la ventanilla única y abre su identidad solo para el re
 
 Lo que se ve, comprobado con la red en Docker:
 
-- Seguimiento de Marta (folio y 8 palabras de `semilla.json`, en la web de cualquiera de los dos
-  nodos): la calificación como falta no grave, el aviso del buzón y «Presentaste tu
+- Seguimiento de Marta (folio y 8 palabras de `semilla.json`, en «Mi denuncia» de la ventanilla
+  única, <http://127.0.0.1:8790/>): la calificación como falta no grave, el aviso del buzón y «Presentaste tu
   inconformidad…», con el plazo de la Sala.
 - Panel del nodo Federal con `oic-equipamiento.persona1`: en el detalle de Marta, prioridad alta
   (85 puntos), alerta de posible conflicto de interés con el procedimiento del art. 58,
@@ -214,7 +225,7 @@ duplica los casos y regresa el reloj al día 0: para repetir, usa `npm run demo:
   `open -a Docker` y espera a que `docker version` muestre el servidor. En Linux,
   `sudo systemctl start docker` y revisa que tu usuario pueda usarlo (grupo `docker`).
 - **«Los puertos … están ocupados».** Otro programa, u otra copia del repositorio con la red en
-  marcha, usa 8781, 8782, 8790, 8791 u 8792. `lsof -i :8790` lo muestra; en la otra copia,
+  marcha, usa 8781, 8782, 8783, 8790, 8791 u 8792. `lsof -i :8790` lo muestra; en la otra copia,
   `npm run demo:apagar -- --conservar-datos`.
 - **Linux: un nodo sale con `EACCES: permission denied` o con «El archivo del reloj de pruebas debe
   pertenecer al usuario del servidor».** Tu UID no es 1000 y los contenedores corren por omisión
@@ -258,7 +269,15 @@ duplica los casos y regresa el reloj al día 0: para repetir, usa `npm run demo:
 
 Para ver los registros: `docker compose logs -f nodo-federal` (o el servicio que falle). Para
 comprobar desde fuera del contenedor que la web no pide nada a terceros:
-`npm run validate -- http://127.0.0.1:8781 --modo pasivo --formulario /denunciar`.
+`npm run validate -- http://127.0.0.1:8790 --modo pasivo --formulario /denunciar` (la ventanilla).
+
+Lo que muestra cada perfil de la web: en la ventanilla (8790), el panel `/autoridad` enlista el
+panel de cada nodo; en un nodo (8781, 8782, 8783), toda ruta que no sea `/autoridad` dice «La
+ventanilla única está en http://127.0.0.1:8790». «¿Quién atiende tu denuncia en tu estado?»
+(`/quien-atiende` en la ventanilla) muestra la tabla de funciones de cada nodo y las 31 entidades
+que todavía no tienen nodo. En el panel, el detalle de cada denuncia dice quién sigue según la
+tabla: por ejemplo, para Marta, la resolución de falta no grave es del OIC y la de grave, del
+tribunal federal ficticio.
 
 Pendiente en esta versión: los cierres históricos con sanción declarada, la vista a la fiscalía y
 la resolución de la Sala (el nodo muestra su plazo, pero no la registra).

@@ -8,6 +8,7 @@ import { PATHS } from '../../app/paths.ts';
 import { Alert } from '../../components/Alert.tsx';
 import { TextField } from '../../components/Field.tsx';
 import { FilePicker } from '../../components/FilePicker.tsx';
+import { VENTANILLA_URL, WEB_PROFILE } from '../../config/app-config.ts';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import {
   assertAuthorityKeyFor,
@@ -171,9 +172,20 @@ export function AuthorityLogin({ onReady, onOperation }: AuthorityLoginProps) {
       <CreateAuthorityKeys />
       <p className="registration-link">
         ¿Tu institución todavía no está en la red?{' '}
-        <Link to={PATHS.registration} data-testid="registration-link">
-          Solicita su alta
-        </Link>
+        {/* En el nodo de un estado (perfil panel), la solicitud de alta está en la ventanilla. */}
+        {WEB_PROFILE === 'panel' && VENTANILLA_URL !== null ? (
+          <a
+            href={`${VENTANILLA_URL}${PATHS.registration}`}
+            rel="noreferrer"
+            data-testid="registration-link"
+          >
+            Solicita su alta en la ventanilla única
+          </a>
+        ) : (
+          <Link to={PATHS.registration} data-testid="registration-link">
+            Solicita su alta
+          </Link>
+        )}
       </p>
     </>
   );

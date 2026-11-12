@@ -1,7 +1,8 @@
-// Pantalla /solicitar-alta (paso 1 del alta de autoridades): la institución pide su alta en este
-// nodo con su competencia, quien solicita, las personas que tendrán cuenta y su candado. Las llaves
-// se crean aquí mismo; solo el candado viaja con la solicitud. Quien opera el nodo confirma la
-// huella por teléfono antes de aprobar (paso 3, bandeja de operación).
+// Pantalla /solicitar-alta (paso 1 del alta de autoridades): la institución pide su alta con su
+// competencia, quien solicita, las personas que tendrán cuenta y su candado. Las llaves se crean
+// aquí mismo; solo el candado viaja con la solicitud. Quien opera el nodo confirma la huella por
+// teléfono antes de aprobar (paso 3, bandeja de operación). En la ventanilla única la solicitud va
+// al nodo de la entidad de la institución, según su tabla de funciones; en un solo nodo, a este.
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { RegistrationRequestSchema, STATES } from '@sigilo/contracts';
@@ -13,11 +14,16 @@ import type {
 import { Alert } from '../../components/Alert.tsx';
 import { ErrorSummary } from '../../components/ErrorSummary.tsx';
 import { SelectField, TextField } from '../../components/Field.tsx';
+import { WEB_PROFILE } from '../../config/app-config.ts';
 import type { GeneratedAuthorityKeys } from '../../crypto/authority-keygen.ts';
 import { createProofProvider, sendWithProof, workerPowSolver } from '../../crypto/proof-of-work.ts';
 import { announce } from '../../lib/announce.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { useDocumentTitle } from '../../lib/use-document-title.ts';
+import { networkState } from '../../network/directory.ts';
+import { useNetworkState } from '../../network/use-network-state.ts';
+import { createNodeRegistrationApi, nodeForJurisdiction } from '../../network/ventanilla-api.ts';
+import type { NodeRegistrationApi } from '../../network/ventanilla-api.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import type { FieldErrors } from '../../state/report-validation.ts';
@@ -116,6 +122,33 @@ function validate(form: Form, keys: GeneratedAuthorityKeys | null): FieldErrors 
   return errors;
 }
 
+const NO_NODE =
+  'Tu entidad todavía no tiene nodo en la red. Primero tu estado debe montar su nodo y declarar su tabla de funciones (guía «Conecta tu estado»); después podrás pedir el alta aquí.';
+const NO_DIRECTORY =
+  'No pudimos comprobar el directorio firmado de la red, así que no sabemos a qué nodo enviar tu solicitud. Inténtalo más tarde.';
+
+/** Error con un motivo que se muestra tal cual. */
+class RegistrationTargetError extends Error {}
+
+/**
+ * Operaciones de alta: las de este mismo nodo o, en la ventanilla única, las del nodo de la entidad
+ * de la institución. Lanza `RegistrationTargetError` si la entidad no tiene nodo o el directorio no
+ * verifica.
+ */
+async function registrationTarget(request: RegistrationRequest): Promise<NodeRegistrationApi> {
+  if (WEB_PROFILE !== 'ventanilla') {
+    return {
+      getPowChallenge: () => api.getPowChallenge('registration'),
+      submitRegistration: (body, proof) => api.submitRegistration(body, proof),
+    };
+  }
+  const state = await networkState();
+  if (state.kind !== 'verified') throw new RegistrationTargetError(NO_DIRECTORY);
+  const node = nodeForJurisdiction(state.directory, request.stateCode);
+  if (node === null) throw new RegistrationTargetError(NO_NODE);
+  return createNodeRegistrationApi(node.id);
+}
+
 function toRequest(form: Form, keys: GeneratedAuthorityKeys): RegistrationRequest {
   return RegistrationRequestSchema.parse({
     institutionName: form.institutionName,
@@ -149,6 +182,14 @@ export function RegistrationPage() {
   const [status, setStatus] = useState('');
   const [isBusy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<RegistrationReceipt | null>(null);
+  const network = useNetworkState();
+  // Entidades sintéticas con nodo en la red (como el Estado Ejemplo), que no están en el catálogo.
+  const extraStates =
+    network.kind === 'verified'
+      ? (network.directory.functionTables ?? [])
+          .map((item) => item.table.stateCode)
+          .filter((code): code is string => code !== null && !STATES.some((s) => s.code === code))
+      : [];
 
   const update = (patch: Partial<Form>) => setForm((current) => ({ ...current, ...patch }));
   const updatePerson = (index: number, patch: Partial<Person>) =>
@@ -167,13 +208,20 @@ export function RegistrationPage() {
     setBusy(true);
     try {
       const request = toRequest(form, keys);
-      const proofs = createProofProvider(api, 'registration', workerPowSolver, setStatus);
-      const result = await sendWithProof(proofs, (proof) => api.submitRegistration(request, proof));
+      const target = await registrationTarget(request);
+      const proofs = createProofProvider(target, 'registration', workerPowSolver, setStatus);
+      const result = await sendWithProof(proofs, (proof) =>
+        target.submitRegistration(request, proof),
+      );
       setReceipt(result);
       announce('Solicitud enviada.');
       focusAfterRender('registration-done');
     } catch (error) {
-      setFailure(describeError(error, 'No pudimos enviar la solicitud. Inténtalo de nuevo.'));
+      setFailure(
+        error instanceof RegistrationTargetError
+          ? error.message
+          : describeError(error, 'No pudimos enviar la solicitud. Inténtalo de nuevo.'),
+      );
     } finally {
       setBusy(false);
       setStatus('');
@@ -195,8 +243,9 @@ export function RegistrationPage() {
           </p>
         </Alert>
         <p>
-          Quien opera este nodo revisará tu nombramiento y te llamará por teléfono. Lean juntos esta
-          huella; solo si coincide se aprueba la solicitud:
+          Quien opera {WEB_PROFILE === 'ventanilla' ? 'el nodo de tu estado' : 'este nodo'} revisará
+          tu nombramiento y te llamará por teléfono. Lean juntos esta huella; solo si coincide se
+          aprueba la solicitud:
         </p>
         <p className="registration__fingerprint">
           <strong className="mono" data-testid="registration-fingerprint">
@@ -270,6 +319,11 @@ export function RegistrationPage() {
               {STATES.map((state) => (
                 <option key={state.code} value={state.code}>
                   {state.name}
+                </option>
+              ))}
+              {extraStates.map((code) => (
+                <option key={code} value={code}>
+                  {code === 'state.ejemplo' ? 'Estado Ejemplo (ficticio)' : code}
                 </option>
               ))}
             </SelectField>

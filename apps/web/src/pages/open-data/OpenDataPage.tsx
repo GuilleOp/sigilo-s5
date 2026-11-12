@@ -1,4 +1,5 @@
-// Pantalla /datos-abiertos: tabla del CSV agregado y descarga, con supresión de celdas pequeñas.
+// Pantalla /datos-abiertos: tabla del CSV agregado y descarga, con supresión de celdas pequeñas. En
+// la ventanilla única el CSV es el corte nacional (la suma de los CSV públicos de los nodos).
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { PATHS } from '../../app/paths.ts';
@@ -12,6 +13,7 @@ import {
   ROUTES,
 } from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
+import { WEB_PROFILE } from '../../config/app-config.ts';
 import { OpenDatasets } from './OpenDatasets.tsx';
 import { parseOpenDataCsv } from '../../lib/csv.ts';
 import type { OpenDataTable } from '../../lib/csv.ts';
@@ -59,11 +61,19 @@ export function OpenDataPage() {
         Número de denuncias por estado, conducta, mes en que llegaron y estatus. No incluye folios,
         descripciones ni datos de personas.
       </p>
-      <p data-testid="open-data-scope">
-        <strong>Esta tabla es solo de este nodo:</strong> cuenta las denuncias que llegaron a las
-        autoridades que atiende este servidor. Cada nodo de la red publica la suya; la suma de{' '}
-        <strong>toda la red</strong> está en el <Link to={PATHS.observatory}>Observatorio</Link>.
-      </p>
+      {WEB_PROFILE === 'ventanilla' ? (
+        <p data-testid="open-data-scope">
+          <strong>Esta tabla es de toda la red:</strong> suma los datos abiertos que publica cada
+          nodo, con las mismas reglas. Cualquiera puede rehacer la suma con el CSV de cada nodo. La
+          gráfica por estado está en el <Link to={PATHS.observatory}>Observatorio</Link>.
+        </p>
+      ) : (
+        <p data-testid="open-data-scope">
+          <strong>Esta tabla es solo de este nodo:</strong> cuenta las denuncias que llegaron a las
+          autoridades que atiende este servidor. Cada nodo de la red publica la suya; la suma de{' '}
+          <strong>toda la red</strong> está en el <Link to={PATHS.observatory}>Observatorio</Link>.
+        </p>
+      )}
       <Alert tone="info" title="Cómo protegemos a quienes denuncian">
         <p>
           Los números están redondeados de {OPEN_DATA_ROUNDING} en {OPEN_DATA_ROUNDING}, a veces

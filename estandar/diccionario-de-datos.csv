@@ -414,10 +414,10 @@ AuthorityDirectory,authorities,authorities,arreglo de DirectoryAuthority,,sí,Au
 AuthorityDirectory,observers,observers,arreglo de DirectoryObserver,,sí,Observadores.,,
 AuthorityDirectory,witnessPolicy,witnessPolicy,objeto (WitnessPolicy),,sí,Política de testigos m de n.,,
 AuthorityDirectory,corroboration,corroboration,objeto (DirectoryCorroboration),,no,"Servicios de la corroboración ciega (ADR 0006) con la llave pública del evaluador OPRF; si falta, la red no ofrece corroboración.",,
+AuthorityDirectory,functionTables,functionTables,arreglo de SignedFunctionTable,hasta 40 elementos,no,"Tabla de funciones de cada nodo, firmada por el nodo: una por entidad y otra para el orden federal. Una entidad sin tabla no tiene nodo y no recibe denuncias estatales por la ventanilla.",,
 DirectoryNode,id,id,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable del nodo.,,node.queretaro
 DirectoryNode,name,name,cadena,de 1 a 200 caracteres,sí,Nombre del nodo.,,Nodo estatal Querétaro
 DirectoryNode,baseUrl,baseUrl,cadena,patrón ^https?:\/\/[^\s/?#]+$,sí,"Origen público del nodo (esquema, host y puerto, sin ruta).",,https://denuncias.queretaro.example
-DirectoryNode,isCommonNode,isCommonNode,booleano,,sí,Si aloja a autoridades de entidades sin nodo propio.,,false
 DirectoryNode,boxKeyId,boxKeyId,cadena,patrón ^[0-9a-f]{16}$,sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,,9a0be41c77d25f13
 DirectoryNode,boxPublicKey,boxPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,Llave pública X25519 del nodo: destinataria de los sobres de red.,,TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f
 DirectoryNode,signingKeyId,signingKeyId,cadena,patrón ^[0-9a-f]{16}$,sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,,c3f8e2a1b0d94756
@@ -444,6 +444,28 @@ DirectoryObserver,name,name,cadena,de 1 a 300 caracteres,sí,Nombre del observad
 DirectoryObserver,kind,kind,cadena,,sí,"Tipo de observador: CPC, entidad de fiscalización superior, organización de la sociedad civil o academia.",cpc; audit-institution; civil-society; academia,cpc
 DirectoryObserver,signingKeyId,signingKeyId,cadena,patrón ^[0-9a-f]{16}$,sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,,c3f8e2a1b0d94756
 DirectoryObserver,signingPublicKey,signingPublicKey,cadena,patrón ^[A-Za-z0-9_-]+$,sí,Llave pública Ed25519 con la que cofirma el directorio y la bitácora nacional.,,TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f
+SignedFunctionTable,table,table,objeto (FunctionTable),,sí,"Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente. Con ella la ventanilla propone a quién va cada denuncia.",,
+SignedFunctionTable,signature,signature,cadena,patrón ^[A-Za-z0-9_-]+$,sí,"Firma Ed25519 del nodo (su llave de firma del directorio) sobre ""sigilo/red/function-table/v1:"" + SHA-256 de la forma canónica de table.",,7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg…
+FunctionTable,format,format,número,valor fijo 1,sí,Versión del formato de la tabla de funciones.,,1
+FunctionTable,nodeId,nodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Nodo que declara la tabla y la firma.,,node.queretaro
+FunctionTable,stateCode,stateCode,valor,,sí,Entidad que cubre la tabla; null en la tabla del nodo federal (entes del orden federal).,,22
+FunctionTable,version,version,entero,mínimo 1,sí,Versión de la tabla; crece en uno con cada cambio.,,1
+FunctionTable,issuedOn,issuedOn,cadena,patrón ^\d{4}-\d{2}-\d{2}$,sí,Día en que el nodo firmó esta versión.,,2026-11-09
+FunctionTable,functions,functions,objeto,,sí,Reglas de cada función.,,
+FunctionTable,functions.intake,intake,arreglo de FunctionRule,hasta 200 elementos,sí,"Buzón general: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58).",,
+FunctionTable,functions.operation,operation,arreglo de FunctionRule,hasta 200 elementos,sí,Quién opera el nodo y da de alta a las autoridades.,,
+FunctionTable,functions.investigation,investigation,arreglo de FunctionRule,hasta 200 elementos,sí,"Autoridad investigadora y calificadora (LGRA, art. 3).",,
+FunctionTable,functions.substantiation,substantiation,arreglo de FunctionRule,hasta 200 elementos,sí,"Autoridad substanciadora (LGRA, art. 3).",,
+FunctionTable,functions.resolution,resolution,arreglo de FunctionRule,hasta 200 elementos,sí,"Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3).",,
+FunctionTable,functions.supervision,supervision,arreglo de FunctionRule,hasta 200 elementos,sí,Superior jerárquico que recibe los escalamientos (ADR 0007).,,
+FunctionTable,functions.prosecution,prosecution,arreglo de FunctionRule,hasta 200 elementos,sí,Vía penal: fiscalía de hechos de corrupción.,,
+FunctionTable,functions.observer,observer,arreglo de FunctionRule,hasta 200 elementos,sí,Observador ciudadano (CPC).,,
+FunctionRule,governmentLevels,governmentLevels,arreglo de cadena,,sí,Órdenes de gobierno de los entes a los que aplica la regla.,federal; estatal; municipal,
+FunctionRule,entityIds,entityIds,arreglo de cadena,hasta 1000 elementos; cada elemento: de 1 a 64 caracteres,sí,"Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «municipales sin OIC»). Una regla específica gana sobre una general.",,
+FunctionRule,severity,severity,cadena,,no,"Solo para faltas graves (serious) o no graves (non_serious); sin el campo, para ambas. Sirve, por ejemplo, para la resolución.",serious; non_serious,
+FunctionRule,holder,holder,valor (FunctionHolder),,sí,"Quién cumple la función: autoridad, observador o institución.",,
+FunctionRule,legalBasis,legalBasis,cadena,de 1 a 300 caracteres,no,"Fundamento corto, en lenguaje claro (ley y artículo).",,
+FunctionHolder,(valor),FunctionHolder,valor,,sí,"Quién cumple la función: autoridad, observador o institución.",,
 WitnessPolicy,threshold,threshold,entero,mínimo 1,sí,Número mínimo de cofirmas válidas de testigos distintos (m).,,1
 WitnessPolicy,witnessIds,witnessIds,arreglo de cadena,cada elemento: patrón ^(?:node|observer)\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Testigos (n): observadores o nodos del directorio.,,
 WitnessSignature,witnessId,witnessId,cadena,patrón ^(?:node|observer)\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Testigo: un observador o un nodo del directorio.,,observer.cpc-queretaro

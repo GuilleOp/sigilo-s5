@@ -10,6 +10,8 @@ const SCREENS = [
   { path: '/datos-abiertos', ready: 'suppressed-count' },
   { path: '/verificar', ready: 'verify-ledger' },
   { path: '/observatorio', ready: 'coverage-map' },
+  // Sin red (perfil completo de un solo nodo), la página de las tablas de funciones lo dice.
+  { path: '/quien-atiende', ready: 'who-handles-single-node' },
 ] as const;
 
 for (const screen of SCREENS) {

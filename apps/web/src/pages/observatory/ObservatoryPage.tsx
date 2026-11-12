@@ -416,6 +416,10 @@ export function ObservatoryPage() {
       <p className="observatory-more" data-testid="observatory-downloads">
         Todos estos datos se pueden descargar en <Link to={PATHS.openData}>Datos abiertos</Link>.
       </p>
+      <p className="observatory-more">
+        Quién recibe, investiga, substancia y resuelve en cada estado:{' '}
+        <Link to={PATHS.whoHandles}>¿Quién atiende tu denuncia en tu estado?</Link>
+      </p>
     </>
   );
 }

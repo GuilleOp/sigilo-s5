@@ -38,7 +38,10 @@ describe('propuesta de autoridad competente', () => {
       FIXTURE_DAY,
     );
     expect(proposal.proposed?.authority.id).toBe('authority.oic-iffe');
-    expect(proposal.reasons.join(' ')).toContain('atiende de forma específica a ese ente');
+    expect(proposal.reasons.join(' ')).toContain(
+      'Según la tabla de funciones que firmó el nodo federal',
+    );
+    expect(proposal.reasons.join(' ')).toContain('de ese ente de forma específica');
   });
 
   it('case.queretaro-routing: ente estatal en Querétaro va a la contraloría del nodo Querétaro', () => {
@@ -76,9 +79,9 @@ describe('propuesta de autoridad competente', () => {
       { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
       FIXTURE_DAY,
     );
-    // Solo la supervisora federal atiende a todo el orden federal: no se propone; va al buzón.
+    // La tabla federal no nombra un OIC para la Aduana: no se propone la supervisora; va al buzón.
     expect(proposal.status).toBe('inbox');
-    expect(proposal.proposed?.authority.role).toBe('inbox');
+    expect(proposal.proposed?.authority.id).toBe('authority.buzon-federal');
     const equivalent = proposeCompetentAuthority(
       directory,
       { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-52' },
@@ -97,10 +100,10 @@ describe('propuesta de autoridad competente', () => {
     expect(before.reasons.join(' ')).toContain('No se envía nada');
   });
 
-  it('sin autoridad competente va al buzón general del nodo estatal de la entidad', () => {
+  it('si la tabla no nombra quién investiga al ente, va al buzón general de la entidad', () => {
     const proposal = proposeCompetentAuthority(
       directory,
-      { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
+      { stateCode: '22', entityId: 'Ente sin catálogo', offenseCode: 'LGRA-54' },
       FIXTURE_DAY,
     );
     expect(proposal.status).toBe('inbox');
@@ -109,12 +112,12 @@ describe('propuesta de autoridad competente', () => {
     expect(proposal.proposed?.lawMatch).toBeNull();
     expect(proposal.alternatives).toEqual([]);
     expect(proposal.reasons.join(' ')).toContain(
-      'No encontramos en el directorio quién la investiga. La enviamos al buzón general ficticio del nodo Querétaro, donde una persona la turna a quien corresponda.',
+      'La tabla de funciones de Querétaro no nombra quién investiga a ese ente. La enviamos al buzón general ficticio del nodo Querétaro, donde una persona la turna a quien corresponda.',
     );
     expect(proposal.reasons.join(' ')).not.toContain('No se envía nada');
   });
 
-  it('sin autoridad competente ni nodo estatal va al buzón general del nodo común', () => {
+  it('un ente federal sin OIC en la tabla federal va al buzón federal desde cualquier entidad', () => {
     const proposal = proposeCompetentAuthority(
       directory,
       { stateCode: '09', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
@@ -122,9 +125,46 @@ describe('propuesta de autoridad competente', () => {
     );
     expect(proposal.status).toBe('inbox');
     expect(proposal.proposed?.authority.id).toBe('authority.buzon-federal');
-    expect(proposal.proposed?.node.isCommonNode).toBe(true);
+    expect(proposal.proposed?.node.id).toBe('node.federal');
+    expect(proposal.isStateWithoutNode).toBe(false);
     // El buzón del nodo Federal tiene supervisora: la segunda copia llega a ella.
     expect(proposal.reasons.join(' ')).toContain('Unidad Ficticia de Supervisión');
+  });
+
+  it('una entidad sin nodo no recibe denuncias estatales: no se envía nada y se dice por qué', () => {
+    const proposal = proposeCompetentAuthority(
+      directory,
+      { stateCode: '09', entityId: 'VE-SALUD', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    expect(proposal).toMatchObject({ status: 'none', proposed: null, isStateWithoutNode: true });
+    const text = proposal.reasons.join(' ');
+    expect(text).toContain('Ciudad de México todavía no tiene nodo en la red');
+    expect(text).toContain('No se envía nada');
+    // Nunca cae en el buzón de otro estado ni en el federal: no hay nodo común.
+    const unclassified = proposeCompetentAuthority(
+      directory,
+      { stateCode: '09', entityId: 'VE-OBRAS', offenseCode: 'SIN-CLASIFICAR' },
+      FIXTURE_DAY,
+    );
+    expect(unclassified).toMatchObject({ status: 'none', isStateWithoutNode: true });
+  });
+
+  it('sin tablas de funciones usa la competencia y nunca el buzón de otra entidad', () => {
+    const withoutTables: AuthorityDirectory = { ...directory, functionTables: [] };
+    const queretaro = proposeCompetentAuthority(
+      withoutTables,
+      { stateCode: '22', entityId: 'VE-FINANZAS', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    expect(queretaro.proposed?.authority.id).toBe('authority.comptroller-queretaro');
+    const elsewhere = proposeCompetentAuthority(
+      withoutTables,
+      { stateCode: '09', entityId: 'VE-SALUD', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    expect(elsewhere.status).toBe('none');
+    expect(elsewhere.isStateWithoutNode).toBe(false);
   });
 
   it('el buzón general nunca se propone por competencia', () => {
@@ -160,17 +200,20 @@ describe('propuesta de autoridad competente', () => {
     );
     expect(proposal.isFallback).toBe(true);
     expect(proposal.proposed?.authority.id).toBe('authority.comptroller-queretaro');
-    expect(proposal.reasons.join(' ')).toContain('órgano de control municipal');
+    expect(proposal.reasons.join(' ')).toContain('órgano de control propio');
   });
 
-  it('entidad sin nodo propio: el Estado Ejemplo va a su contraloría en el nodo común', () => {
+  it('el Estado Ejemplo tiene su propio nodo: va a su contraloría según su tabla', () => {
     const proposal = proposeCompetentAuthority(
       directory,
       { stateCode: 'state.ejemplo', entityId: 'VE-SALUD', offenseCode: 'LGRA-52' },
       FIXTURE_DAY,
     );
     expect(proposal.proposed?.authority.id).toBe('authority.comptroller-ejemplo');
-    expect(proposal.proposed?.node.isCommonNode).toBe(true);
+    expect(proposal.proposed?.node.id).toBe('node.ejemplo');
+    expect(proposal.reasons.join(' ')).toContain(
+      'Según la tabla de funciones que firmó el Estado Ejemplo',
+    );
   });
 
   it('«Ninguna se parece» va al buzón general, que la clasifica y la turna', () => {

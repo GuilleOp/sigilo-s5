@@ -63,7 +63,7 @@ describe('salud de los nodos', () => {
     // Antes de la primera consulta: sin consultar.
     const initial = await healthOf(router);
     expect(initial.checkedAt).toBeNull();
-    expect(initial.nodes.map((node) => node.status)).toEqual(['unknown', 'unknown']);
+    expect(initial.nodes.map((node) => node.status)).toEqual(['unknown', 'unknown', 'unknown']);
 
     await router.health.check();
     const first = await healthOf(router);
@@ -124,14 +124,14 @@ describe('salud de los nodos', () => {
       deliverable: false,
       warning: 'below-minimum-version',
     });
-    // Un aviso por nodo por debajo (los dos nodos de prueba tienen 1.0.1).
-    expect(router.warnings).toHaveLength(2);
+    // Un aviso por nodo por debajo (los tres nodos de prueba tienen 1.0.1).
+    expect(router.warnings).toHaveLength(3);
     const warning = router.warnings.find((item) => item.includes('node.queretaro')) ?? '';
     expect(warning).toContain('menor que la mínima 1.1.0');
     expect(warning).toContain('no le entrega sobres');
     // Una segunda vuelta no repite el aviso.
     await router.health.check();
-    expect(router.warnings).toHaveLength(2);
+    expect(router.warnings).toHaveLength(3);
 
     // Sin cola: relleno, como si no se pudiera entregar; el nodo no recibe nada.
     const captured = router.captured.length;

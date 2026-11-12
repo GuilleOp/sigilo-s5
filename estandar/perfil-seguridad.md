@@ -1,7 +1,7 @@
 # Perfil de seguridad del Estándar S5
 
 Requisitos de seguridad que debe cumplir cualquier componente del Estándar S5: **nodo** (servidor
-de una autoridad o nodo común), **enrutador** (reenvía sobres sin poder leerlos) y **ventanilla**
+de las autoridades de una entidad o del orden federal; no hay nodo común), **enrutador** (reenvía sobres sin poder leerlos) y **ventanilla**
 (la aplicación web donde la ciudadanía denuncia y da seguimiento). Los requisitos de privacidad de
 la persona denunciante están en el [perfil de privacidad](perfil-privacidad.md); las verificaciones
 automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).

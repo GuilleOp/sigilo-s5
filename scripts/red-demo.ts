@@ -1,12 +1,21 @@
-// Genera llaves sintéticas para toda la red de demostración (operación, nodos Querétaro y Federal,
-// seis autoridades más el buzón general de cada nodo, tres testigos y el evaluador OPRF), firma y
-// cofirma el directorio con la llave del evaluador, arma las cuentas individuales de cada nodo y
-// deja listo `docker compose`.
+// Genera llaves sintéticas para toda la red de demostración (operación, nodos Querétaro, Federal y
+// Estado Ejemplo, sus autoridades con el buzón general de cada nodo, tres testigos y el evaluador
+// OPRF), firma y cofirma el directorio (con la tabla de funciones de cada nodo, firmada por el nodo)
+// y la llave del evaluador, arma las cuentas individuales de cada nodo, la raíz de confianza de la
+// ventanilla única que sirve el enrutador y deja listo `docker compose`. No hay nodo común.
 // Todo se escribe en `.red-demo/`, que no se versiona. Uso: npm run red:demo [-- --force]
 import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import type { AuthorityDemoKey, KeysFile, SupervisorDemoKey } from '@sigilo/contracts';
-import { buildPublicKeySet, keyIdFor, randomBytes, toBase64Url, toDayDate } from '@sigilo/core';
+import {
+  buildPublicKeySet,
+  generateBoxKeyPair,
+  generateSigningKeyPair,
+  keyIdFor,
+  randomBytes,
+  toBase64Url,
+  toDayDate,
+} from '@sigilo/core';
 import type { KeyPair } from '@sigilo/core';
 import { buildEvaluatorKey, generateEvaluatorKeyPair } from '@sigilo/corroboracion';
 import {
@@ -26,6 +35,7 @@ import type { DemoAuthorityId, DemoNetworkKeys, DemoNodeId } from '@sigilo/red';
 import { ACCOUNTS_FILE_NAME } from '../apps/server/src/config.ts';
 import { createAuthorityRegistry } from '../apps/server/src/security/authority-registry.ts';
 import { buildDemoAccounts } from '../apps/server/src/security/demo-accounts.ts';
+import type { DemoAccountsNode } from '../apps/server/src/security/demo-accounts.ts';
 import {
   OAUTH_CLIENTS_FILE_NAME,
   clientSecretDigest,
@@ -45,22 +55,25 @@ const OUT = resolve(process.env.SIGILO_RED_DEMO_DIR || join(ROOT, '.red-demo'));
 const NODE_PUBLIC_URLS: Record<DemoNodeId, string> = {
   'node.queretaro': 'http://127.0.0.1:8781',
   'node.federal': 'http://127.0.0.1:8782',
+  'node.ejemplo': 'http://127.0.0.1:8783',
 };
 
 /** Orígenes públicos del evaluador y del índice (los que publica `compose.yaml`). */
 const EVALUATOR_PUBLIC_URL = 'http://127.0.0.1:8791';
 const INDEX_PUBLIC_URL = 'http://127.0.0.1:8792';
 
-/** Carpeta de cada nodo dentro de `.red-demo/nodos/`. */
-const NODE_DIRS: Record<DemoNodeId, string> = {
+/** Carpeta de cada nodo dentro de `.red-demo/nodos/` (también el nombre de sus cuentas). */
+const NODE_DIRS: Record<DemoNodeId, DemoAccountsNode> = {
   'node.queretaro': 'queretaro',
   'node.federal': 'federal',
+  'node.ejemplo': 'ejemplo',
 };
 
 /** Supervisora (segunda llave) de cada nodo, si tiene. */
 const NODE_SUPERVISOR: Record<DemoNodeId, DemoAuthorityId | null> = {
   'node.queretaro': null,
   'node.federal': 'authority.oversight-federal',
+  'node.ejemplo': null,
 };
 
 function writeFile(path: string, content: string, mode: number): void {
@@ -270,9 +283,7 @@ function main(): void {
     writeJson(join(dataDir, 'directory.json'), signed, 0o644);
     writeJson(join(dataDir, 'network-trust.json'), trust, 0o644);
     // Cuentas individuales del nodo (solo digestos) y sus credenciales sintéticas en claro.
-    const accounts = buildDemoAccounts({
-      node: nodeId === 'node.federal' ? 'federal' : 'queretaro',
-    });
+    const accounts = buildDemoAccounts({ node: NODE_DIRS[nodeId] });
     createAuthorityRegistry(accounts.file);
     writeJson(join(dataDir, ACCOUNTS_FILE_NAME), accounts.file);
     writeJson(join(nodeDir, 'credenciales.json'), {
@@ -295,6 +306,25 @@ function main(): void {
     Object.fromEntries(
       DEMO_NODE_IDS.map((nodeId) => [nodeId, join(OUT, 'nodos', NODE_DIRS[nodeId], 'data')]),
     ) as Record<DemoNodeId, string>,
+  );
+  // Ventanilla única (la sirve el enrutador): fija la raíz de confianza de la red. Sus llaves
+  // «fijadas» de un solo nodo son de relleno, sin parte privada en ningún lado: la ventanilla no
+  // guarda denuncias y siempre envía por la red; si algo intentara enviarle directo, no coincidiría.
+  const filler = generateBoxKeyPair();
+  const fillerSigning = generateSigningKeyPair();
+  writeJson(
+    join(OUT, 'ventanilla', 'web', 'pinned-keys.json'),
+    buildPublicKeySet({
+      serverSigningPublicKey: fillerSigning.publicKey,
+      authorityBoxPublicKey: filler.publicKey,
+      authoritySigningPublicKey: fillerSigning.publicKey,
+    }),
+    0o644,
+  );
+  writeJson(
+    join(OUT, 'ventanilla', 'web', 'network-trust.json'),
+    { ...trust, minDirectorySerial: directory.serial },
+    0o644,
   );
 
   for (const id of DEMO_AUTHORITY_IDS) {
@@ -336,8 +366,10 @@ function main(): void {
       `  Tu UID es ${uid}: levanta la red con SIGILO_UID=${uid} SIGILO_GID=${gid ?? uid} docker compose up -d (npm run demo:todo ya lo hace).`,
     );
   }
-  console.log('  Enrutador: http://127.0.0.1:8790/api/v1/red/directory');
-  console.log('  Nodo Querétaro: http://127.0.0.1:8781/  ·  Nodo Federal: http://127.0.0.1:8782/');
+  console.log('  Ventanilla única (SESNA, con el enrutador): http://127.0.0.1:8790/');
+  console.log(
+    '  Paneles: Querétaro http://127.0.0.1:8781/autoridad  ·  Federal http://127.0.0.1:8782/autoridad  ·  Estado Ejemplo http://127.0.0.1:8783/autoridad',
+  );
   console.log(
     `  Cuentas del panel de cada nodo: ${display(join(OUT, 'nodos', '<nodo>', 'credenciales.json'))}.`,
   );

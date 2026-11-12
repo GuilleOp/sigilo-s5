@@ -74,19 +74,19 @@ npm run demo:todo     # genera llaves y cuentas sintéticas, construye, levanta,
 npm run demo:apagar   # baja la red y borra .red-demo/
 ```
 
-Levanta la red federada completa (enrutador ciego, nodos Querétaro y Federal con su web, evaluador,
-índice y testigos) y siembra el escenario de [demo-escenario.md](docs/demo-escenario.md) hasta el
+Levanta la red federada completa (la ventanilla única con el enrutador ciego, un nodo por estado
+con su panel: Querétaro, Federal y Estado Ejemplo, sin nodo común; evaluador, índice y testigos) y siembra el escenario de [demo-escenario.md](docs/demo-escenario.md) hasta el
 día 35. Con caché tarda alrededor de un minuto; la primera vez descarga la imagen de Node y los
 paquetes de npm.
 
-| Qué                        | Dónde                                                               |
-| -------------------------- | ------------------------------------------------------------------- |
-| Web del nodo Querétaro     | <http://127.0.0.1:8781/>                                            |
-| Web del nodo Federal       | <http://127.0.0.1:8782/> (panel: <http://127.0.0.1:8782/autoridad>) |
-| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json`                          |
-| Folios y recibos sembrados | `.red-demo/semilla.json`                                            |
+| Qué                        | Dónde                                                                    |
+| -------------------------- | ------------------------------------------------------------------------ |
+| Ventanilla única (SESNA)   | <http://127.0.0.1:8790/>                                                 |
+| Paneles de los nodos       | <http://127.0.0.1:8781/autoridad>, `:8782/autoridad` y `:8783/autoridad` |
+| Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json`                               |
+| Folios y recibos sembrados | `.red-demo/semilla.json`                                                 |
 
-Usa los puertos 8781, 8782, 8790, 8791 y 8792 de `127.0.0.1`. Detalle, tiempos y problemas comunes
+Usa los puertos 8781, 8782, 8783, 8790, 8791 y 8792 de `127.0.0.1`. Detalle, tiempos y problemas comunes
 (incluido Linux con otro UID) en el
 [guion de la demostración](docs/demo.md#red-federada-con-el-escenario-completo-docker-un-comando).
 

@@ -28,34 +28,48 @@ solo a la **estructura** de esos sistemas, imitada con datos inventados.
 
 ## 2. Red
 
+Modelo acordado con la SESNA: **una sola ventanilla nacional** para ciudadanos y personas
+servidoras públicas, que monta la SESNA junto con el enrutador ciego. La SESNA no tiene llaves y no
+lee denuncias. **Cada estado monta su propio nodo** (lo opera su SESEA o su secretaría de buen
+gobierno o contraloría) y declara qué institución cumple cada función en su entidad. **No hay nodo
+común**: ningún estado vive en el nodo de otro. Los nodos no tienen ventanilla pública: solo el
+panel de autoridades y las rutas de API que necesita el enrutador. El nodo federal aloja solo
+autoridades federales y lo opera el lado federal que investiga, no la SESNA.
+
 ### 2.1 Servidores
 
-| Clave             | Descripción              | Papel                                                                                                                                                                                                 |
-| ----------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router.national` | Enrutador nacional       | Sirve la ventanilla única, publica el directorio firmado de autoridades y la bitácora nacional. Es ciego: de cada envío solo ve el nodo de destino.                                                   |
-| `node.queretaro`  | Nodo estatal «Querétaro» | Aloja a las autoridades estatales de Querétaro (clave INEGI `22`). Es uno de los testigos de la bitácora nacional.                                                                                    |
-| `node.federal`    | Nodo «Federal»           | Aloja a las autoridades federales. También funciona como **nodo común** para entidades sin nodo propio (aquí, `state.ejemplo`). Tiene su propia entrada, que usa Luis, además de la ventanilla única. |
+| Clave             | Quién lo opera                                                  | Dirección en la demo    | Papel                                                                                                                                                                                                                                                                                                       |
+| ----------------- | --------------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router.national` | SESNA                                                           | `http://127.0.0.1:8790` | Sirve la **ventanilla única** (la web pública: inicio, denunciar, Mi denuncia, registro público, observatorio, datos abiertos, cómo te cuidamos, solicitar alta y «¿Quién atiende?»), el directorio firmado, el enrutador ciego y la bitácora nacional. Es ciego: de cada envío solo ve el nodo de destino. |
+| `node.queretaro`  | SESEA de Querétaro                                              | `http://127.0.0.1:8781` | Nodo estatal de Querétaro (clave INEGI `22`). Solo panel. Es uno de los testigos de la bitácora nacional.                                                                                                                                                                                                   |
+| `node.federal`    | Secretaría Anticorrupción y Buen Gobierno (ficticia en la demo) | `http://127.0.0.1:8782` | Nodo federal: aloja solo autoridades federales y atiende los entes federales de cualquier entidad. Solo panel.                                                                                                                                                                                              |
+| `node.ejemplo`    | Contraloría del Estado Ejemplo (la entidad no tiene SESEA)      | `http://127.0.0.1:8783` | Nodo estatal del Estado Ejemplo (`state.ejemplo`), con su buzón, su operación y su contraloría. Solo panel.                                                                                                                                                                                                 |
+
+Una entidad sin nodo no recibe por la ventanilla denuncias sobre sus entes estatales o
+municipales: la ventanilla lo dice claramente y no envía nada (decisión 5 de la sección 10). Las
+denuncias sobre entes federales sí se envían, porque las atiende el nodo federal.
 
 ### 2.2 Autoridades
 
-| Clave                                 | Descripción                                                                       | Nodo                        | Papel en el escenario                                                                                                                                          |
-| ------------------------------------- | --------------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `authority.oic-iffe`                  | Órgano Interno de Control en el Instituto Federal Ficticio de Equipamiento        | `node.federal`              | Autoridad investigadora del caso de Marta. Tiene conflicto de interés, califica como no grave con su plantilla y declara sanciones que no se pueden comprobar. |
-| `authority.oversight-federal`         | Unidad Ficticia de Supervisión de Órganos Internos de Control                     | `node.federal`              | Autoridad supervisora (superior del OIC). Recibe el escalamiento y abre el expediente con su segunda llave.                                                    |
-| `authority.oic-dfps`                  | Órgano Interno de Control en la Delegación Federal Ficticia de Programas Sociales | `node.federal`              | Recibe las tres denuncias del atacante contra el director honesto.                                                                                             |
-| `authority.prosecutor-anticorruption` | Fiscalía Ficticia Especializada en Hechos de Corrupción                           | `node.federal`              | Recibe la vista por posibles delitos del Código Penal Federal.                                                                                                 |
-| `authority.comptroller-queretaro`     | Contraloría Estatal Ficticia de Querétaro                                         | `node.queretaro`            | Autoridad estatal de referencia: archiva poco, motiva sus acuerdos y sus sanciones aparecen en el S3 ficticio.                                                 |
-| `authority.comptroller-ejemplo`       | Contraloría Ficticia del Estado Ejemplo                                           | `node.federal` (nodo común) | Autoridad de una entidad sin CPC y sin S3 conectado: sus sanciones quedan «sin cobertura».                                                                     |
-| `authority.buzon-federal`             | Buzón general ficticio del nodo Federal                                           | `node.federal` (nodo común) | Buzón general (papel `inbox`): recibe lo que llega sin autoridad competente desde cualquier entidad sin nodo propio y lo turna. Su supervisora es la federal.  |
-| `authority.buzon-queretaro`           | Buzón general ficticio del nodo Querétaro                                         | `node.queretaro`            | Buzón general (papel `inbox`) de la entidad `22`: recibe lo que llega sin autoridad competente desde Querétaro y lo turna.                                     |
+| Clave                                 | Descripción                                                                       | Nodo             | Papel en el escenario                                                                                                                                                               |
+| ------------------------------------- | --------------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authority.oic-iffe`                  | Órgano Interno de Control en el Instituto Federal Ficticio de Equipamiento        | `node.federal`   | Autoridad investigadora del caso de Marta. Tiene conflicto de interés, califica como no grave con su plantilla y declara sanciones que no se pueden comprobar.                      |
+| `authority.oversight-federal`         | Unidad Ficticia de Supervisión de Órganos Internos de Control                     | `node.federal`   | Autoridad supervisora (superior del OIC). Recibe el escalamiento y abre el expediente con su segunda llave.                                                                         |
+| `authority.oic-dfps`                  | Órgano Interno de Control en la Delegación Federal Ficticia de Programas Sociales | `node.federal`   | Recibe las tres denuncias del atacante contra el director honesto.                                                                                                                  |
+| `authority.prosecutor-anticorruption` | Fiscalía Ficticia Especializada en Hechos de Corrupción                           | `node.federal`   | Recibe la vista por posibles delitos del Código Penal Federal.                                                                                                                      |
+| `authority.comptroller-queretaro`     | Contraloría Estatal Ficticia de Querétaro                                         | `node.queretaro` | Autoridad estatal de referencia: archiva poco, motiva sus acuerdos y sus sanciones aparecen en el S3 ficticio.                                                                      |
+| `authority.comptroller-ejemplo`       | Contraloría Ficticia del Estado Ejemplo                                           | `node.ejemplo`   | Autoridad de una entidad sin CPC y sin S3 conectado: sus sanciones quedan «sin cobertura».                                                                                          |
+| `authority.buzon-federal`             | Buzón general ficticio del nodo Federal                                           | `node.federal`   | Buzón general (papel `inbox`) de los entes federales: recibe lo que la tabla federal no asigna (un ente federal sin OIC en el directorio) y lo turna. Su supervisora es la federal. |
+| `authority.buzon-queretaro`           | Buzón general ficticio del nodo Querétaro                                         | `node.queretaro` | Buzón general (papel `inbox`) de la entidad `22`: recibe lo que la tabla de Querétaro no asigna y lo turna.                                                                         |
+| `authority.buzon-ejemplo`             | Buzón general ficticio del nodo Estado Ejemplo                                    | `node.ejemplo`   | Buzón general (papel `inbox`) del Estado Ejemplo.                                                                                                                                   |
 
-Los dos buzones generales están en el directorio con la llave de `keys.json` de su nodo. La
-ventanilla única nunca los propone por competencia: si no encuentra autoridad competente para la
-entidad, el ente y la conducta, propone el buzón del nodo estatal de la entidad (o, si no tiene, el
-del nodo común) con el motivo «No encontramos en el directorio quién la investiga. La enviamos al
-buzón general…, donde una persona la turna a quien corresponda.» Así funciona el canal único con
-turno (Bases de la PDN, arts. 56 y 58), igual que la bandeja general del S5. Las autoridades
-también pueden devolver una denuncia al buzón (`returned_to_inbox`).
+Los tres buzones generales están en el directorio con la llave de `keys.json` de su nodo. La
+ventanilla única nunca los propone por competencia: si la tabla de funciones de la entidad (sección
+2.5) no nombra a quién investiga al ente, propone el buzón de esa tabla con el motivo «La tabla de
+funciones de … no nombra quién investiga a ese ente. La enviamos al buzón general…, donde una
+persona la turna a quien corresponda.» Así funciona el canal único con turno (Bases de la PDN, arts.
+56 y 58), igual que la bandeja general del S5. Las autoridades también pueden devolver una denuncia
+al buzón (`returned_to_inbox`).
 
 Relaciones de supervisión (para el escalamiento):
 
@@ -67,6 +81,7 @@ Relaciones de supervisión (para el escalamiento):
 | `authority.comptroller-ejemplo`   | ninguna en la demo            |
 | `authority.buzon-federal`         | `authority.oversight-federal` |
 | `authority.buzon-queretaro`       | ninguna en la demo            |
+| `authority.buzon-ejemplo`         | ninguna en la demo            |
 
 Cuentas del panel (una por persona; `npm run accounts:generate` o `npm run red:demo` les da
 contraseña). La LGRA no obliga a separar la recepción de la investigación: en los OIC y las
@@ -77,28 +92,33 @@ avanza las etapas desde que se presenta el Informe de Presunta Responsabilidad A
 (`report_filed`) y nunca turna ni abre identidades. El buzón general solo recibe y turna, y nunca
 abre identidades.
 
-| Usuario                           | Autoridad                             | Funciones                   |
-| --------------------------------- | ------------------------------------- | --------------------------- |
-| `buzon.federal`                   | Buzón general del nodo Federal        | Recepción y turnado         |
-| `oic-equipamiento.persona1`       | `authority.oic-iffe`                  | Recepción e investigación   |
-| `oic-equipamiento.persona2`       | `authority.oic-iffe`                  | Recepción e investigación   |
-| `oic-equipamiento.titular`        | `authority.oic-iffe`                  | Supervisión                 |
-| `oic-equipamiento.substanciacion` | `authority.oic-iffe`                  | Substanciación y resolución |
-| `oic-programas`                   | `authority.oic-dfps`                  | Recepción e investigación   |
-| `supervision-oic`                 | `authority.oversight-federal`         | Supervisión                 |
-| `fiscalia`                        | `authority.prosecutor-anticorruption` | Investigación               |
-| `contraloria-ejemplo`             | `authority.comptroller-ejemplo`       | Recepción e investigación   |
-| `buzon.queretaro`                 | Buzón general del nodo Querétaro      | Recepción y turnado         |
-| `contraloria.queretaro`           | `authority.comptroller-queretaro`     | Recepción e investigación   |
-| `operacion.federal`               | Operación del nodo Federal            | Operación del nodo          |
-| `operacion.queretaro`             | Operación del nodo Querétaro          | Operación del nodo          |
+| Usuario                           | Nodo             | Autoridad                             | Funciones                   |
+| --------------------------------- | ---------------- | ------------------------------------- | --------------------------- |
+| `buzon.federal`                   | `node.federal`   | Buzón general del nodo Federal        | Recepción y turnado         |
+| `oic-equipamiento.persona1`       | `node.federal`   | `authority.oic-iffe`                  | Recepción e investigación   |
+| `oic-equipamiento.persona2`       | `node.federal`   | `authority.oic-iffe`                  | Recepción e investigación   |
+| `oic-equipamiento.titular`        | `node.federal`   | `authority.oic-iffe`                  | Supervisión                 |
+| `oic-equipamiento.substanciacion` | `node.federal`   | `authority.oic-iffe`                  | Substanciación y resolución |
+| `oic-programas`                   | `node.federal`   | `authority.oic-dfps`                  | Recepción e investigación   |
+| `supervision-oic`                 | `node.federal`   | `authority.oversight-federal`         | Supervisión                 |
+| `fiscalia`                        | `node.federal`   | `authority.prosecutor-anticorruption` | Investigación               |
+| `operacion.federal`               | `node.federal`   | Operación del nodo Federal            | Operación del nodo          |
+| `buzon.queretaro`                 | `node.queretaro` | Buzón general del nodo Querétaro      | Recepción y turnado         |
+| `contraloria.queretaro`           | `node.queretaro` | `authority.comptroller-queretaro`     | Recepción e investigación   |
+| `operacion.queretaro`             | `node.queretaro` | Operación del nodo Querétaro          | Operación del nodo          |
+| `buzon.ejemplo`                   | `node.ejemplo`   | Buzón general del nodo Estado Ejemplo | Recepción y turnado         |
+| `contraloria-ejemplo`             | `node.ejemplo`   | `authority.comptroller-ejemplo`       | Recepción e investigación   |
+| `operacion.ejemplo`               | `node.ejemplo`   | Operación del nodo Estado Ejemplo     | Operación del nodo          |
 
 Las dos personas del OIC IFFE permiten la apertura de identidad de 2 de N. Las cuentas de operación
-solo revisan las solicitudes de alta de autoridades (entran sin llave y no ven denuncias). La
-siembra deja en el nodo Federal una solicitud pendiente de la «Secretaría de la Contraloría
-Ficticia de Oaxaca» (estado 20, sin nodo propio) y una rechazada; la huella de la pendiente sale en
-la salida de `demo:seed` y en `.red-demo/semilla.json` (`solicitudes`), y su llave privada en
-`.red-demo/solicitudes/`.
+solo revisan las solicitudes de alta de autoridades (entran sin llave y no ven denuncias). Cada
+solicitud de alta va al nodo de la entidad de la institución, por los pasos de la ventanilla
+única. La siembra deja pendiente en el nodo del Estado Ejemplo la del «Órgano Interno de Control
+Ficticio de la Secretaría de Salud del Estado Ejemplo» y rechazada en el nodo Federal la del
+«Órgano Interno de Control Ficticio en la Oficina Federal de Aduanas». La huella de la pendiente sale
+en la salida de `demo:seed` y en `.red-demo/semilla.json` (`solicitudes`), y su llave privada en
+`.red-demo/solicitudes/`. Una institución de una entidad sin nodo (por ejemplo, Oaxaca) no puede
+pedir el alta: primero su estado monta su nodo.
 
 ### 2.3 Observadores y testigos
 
@@ -113,13 +133,46 @@ sigue firmada con los otros dos.
 
 ### 2.4 Entidad sin cobertura
 
-| Clave           | Descripción               | CPC | S1  | S2  | S3  | S6  | Nodo propio                             |
-| --------------- | ------------------------- | --- | --- | --- | --- | --- | --------------------------------------- |
-| `state.ejemplo` | Estado Ejemplo (ficticio) | No  | No  | No  | No  | No  | No (usa `node.federal` como nodo común) |
+| Clave           | Descripción               | CPC | S1  | S2  | S3  | S6  | Nodo propio                                  |
+| --------------- | ------------------------- | --- | --- | --- | --- | --- | -------------------------------------------- |
+| `state.ejemplo` | Estado Ejemplo (ficticio) | No  | No  | No  | No  | No  | Sí (`node.ejemplo`, lo opera su contraloría) |
 
 El Estado Ejemplo **no** tiene clave INEGI y **no** se agrega a `STATES`, que es el catálogo real.
-Aparece solo en el directorio, en la matriz de cobertura, en el observatorio y en el cierre
-sembrado de su contraloría. Ninguna denuncia ciudadana del recorrido usa esa entidad.
+Aparece solo en el directorio (su nodo, sus autoridades y su tabla de funciones), en la matriz de
+cobertura, en el observatorio, en «¿Quién atiende tu denuncia en tu estado?» y en la solicitud de
+alta sembrada en su nodo. Como el formulario de denuncia solo admite entidades del catálogo real,
+ninguna denuncia ciudadana del recorrido usa esa entidad; la propuesta de autoridad hacia su nodo
+se comprueba en las pruebas de `packages/red`.
+
+### 2.5 Tabla de funciones de cada nodo
+
+Cada nodo declara, para su entidad, qué institución cumple cada función. La tabla
+(`FunctionTable`, formato 1) la firma el nodo con su llave de firma del directorio y viaja dentro del
+directorio, que firma la operación y cofirman los testigos. Así la SESNA no puede cambiar la tabla
+de un estado sin la firma de ese estado, y los testigos ven cada versión. Cada regla dice a qué
+órdenes de gobierno aplica y, si hace falta, a qué entes específicos («ente X → su OIC») y a qué
+gravedad (la resolución de faltas graves es del tribunal). Gana la regla que nombra al ente sobre la
+de todo su orden. La ventanilla propone con la tabla de la entidad de los hechos (la federal, si el
+ente es federal); si la tabla no nombra a nadie, propone su buzón general. El panel muestra en el
+detalle quién sigue (substanciación, resolución, supervisión, vía penal y observador) y la página
+pública «¿Quién atiende tu denuncia en tu estado?» (`/quien-atiende`) muestra cada tabla.
+
+| Función                      | Querétaro (`node.queretaro`)                                                               | Federal (`node.federal`)                                                                        | Estado Ejemplo (`node.ejemplo`)                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Buzón general                | `authority.buzon-queretaro`                                                                | `authority.buzon-federal`                                                                       | `authority.buzon-ejemplo`                                                     |
+| Operación del nodo           | SESEA Ficticia de Querétaro                                                                | Secretaría Anticorrupción y Buen Gobierno Ficticia                                              | Secretaría de la Contraloría Ficticia del Estado Ejemplo                      |
+| Investigación y calificación | Entes estatales y municipales (los municipales sin OIC): `authority.comptroller-queretaro` | `VE-INSTITUTO`: `authority.oic-iffe`; `VE-PROGRAMAS`: `authority.oic-dfps`; los demás, al buzón | Entes estatales y municipales: `authority.comptroller-ejemplo`                |
+| Substanciación               | Dirección Ficticia de Responsabilidades de la Contraloría                                  | El área de responsabilidades de cada OIC                                                        | Dirección Ficticia de Responsabilidades de la Contraloría                     |
+| Resolución                   | No grave: la Contraloría; grave: Tribunal de Justicia Administrativa Ficticio              | No grave: cada OIC; grave: Tribunal Federal Ficticio de Justicia Administrativa                 | No grave: la Contraloría; grave: Tribunal de Justicia Administrativa Ficticio |
+| Supervisión                  | Titular de la Contraloría                                                                  | `authority.oversight-federal`                                                                   | Sin asignar                                                                   |
+| Vía penal                    | Fiscalía Anticorrupción Ficticia de Querétaro                                              | `authority.prosecutor-anticorruption`                                                           | Fiscalía Ficticia del Estado Ejemplo                                          |
+| Observador                   | `observer.cpc-queretaro`                                                                   | CPC Ficticio del Sistema Nacional                                                               | Sin asignar (no tiene CPC)                                                    |
+
+Reglas de coherencia que revisa el directorio (`functionTableProblems`): una tabla por nodo y por
+entidad; firma válida del nodo; una tabla estatal no cubre entes federales y la federal solo cubre
+federales; solo nombra autoridades de su propio nodo y de su entidad; el buzón y la investigación
+deben ser autoridades del directorio con el papel `inbox` e `investigating` (reciben sobres
+cifrados); las demás funciones pueden ser una institución sin llaves.
 
 ## 3. Entes y personas
 
@@ -245,8 +298,10 @@ Resultado esperado: prioridad **alta**, mayor que la de cualquier denuncia de `c
 
 ### 4.2 `case.luis`: corroboración desde el nodo Federal
 
-Luis entra el día 3 por la entrada propia de `node.federal` (no por la ventanilla única), en modo
-anónimo, sin pruebas adjuntas.
+Luis entra el día 3 por la ventanilla única, en modo anónimo, sin pruebas adjuntas. En lugar de la
+autoridad que le propone la tabla federal (el OIC del IFFE), elige él mismo el buzón general del
+nodo Federal; el buzón la turna al OIC, que la acepta. Los nodos ya no tienen entrada propia: todo
+llega por la ventanilla.
 
 | Campo            | Valor                                                                                                |
 | ---------------- | ---------------------------------------------------------------------------------------------------- |
@@ -264,8 +319,8 @@ Narración:
 
 Hallazgo esperado del revisor: solo `proper_name` (baja) en «Ficticio de Equipamiento».
 
-Señales de independencia frente a Marta: otra entrada a la red, otro día, texto distinto, sin
-pruebas compartidas. Resultado: el contrato cuenta con **2 personas independientes**. Son señales,
+Señales de independencia frente a Marta: otro destino en la red (el buzón y no la autoridad), otro
+día, texto distinto, sin pruebas compartidas. Resultado: el contrato cuenta con **2 personas independientes**. Son señales,
 no pruebas de identidad, y así se explica en la interfaz.
 
 ### 4.3 `case.attack-1`, `case.attack-2`, `case.attack-3`: campaña contra el director honesto
@@ -665,29 +720,29 @@ infractor. Para esas etapas hay alertas propias (`alert.expiry-warning` y `alert
 Fechas del calendario de referencia (día 0 = lunes 9 de noviembre de 2026). Las pruebas usan la
 columna «Regla del plazo», no las fechas.
 
-| Día | Fecha de referencia | Desfase del reloj (ms) | Quién                         | Qué ocurre                                                                                                                                                                                                                       | Regla del plazo y fundamento                                                                      |
-| --- | ------------------- | ---------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| 0   | lun 2026-11-09      | 0                      | Semilla                       | Red, directorio, datos PDN sintéticos, importación de los 31 acuerdos y cierres históricos.                                                                                                                                      |                                                                                                   |
-| 0   | lun 2026-11-09      | 0                      | Marta                         | Envía `case.marta` con Huella Cero (dos frases corregidas, foto limpia). Recibe folio y recibo.                                                                                                                                  | Inicia el plazo de 30 días naturales (falta grave)                                                |
-| 0   | lun 2026-11-09      | 0                      | `node.federal`                | Ficha de contexto y **alerta de conflicto** antes de turnar. **Turnado** a `authority.oic-iffe` con la alerta visible.                                                                                                           | LGRA, art. 58                                                                                     |
-| 1   | mar 2026-11-10      | 86 400 000             | `authority.oic-iffe`          | Acepta el turnado sin excusarse. Queda registrado; `escalation.conflict` se evalúa en su primer acto resolutivo.                                                                                                                 |                                                                                                   |
-| 1   | mar 2026-11-10      | 86 400 000             | Marta                         | En «Dar seguimiento» ve «Turnada: tu denuncia ya está con la autoridad que puede investigarla» y la explicación de qué significa.                                                                                                |                                                                                                   |
-| 1   | mar 2026-11-10      | 86 400 000             | Persona Denunciante Uno       | `case.queretaro-routing` llega a `node.queretaro`.                                                                                                                                                                               |                                                                                                   |
-| 2   | mié 2026-11-11      | 172 800 000            | Atacante                      | Envía `case.attack-1..3` en 40 minutos. El panel de `authority.oic-dfps` las agrupa como posible campaña; `case.attack-3` sale inconsistente con el S6.                                                                          |                                                                                                   |
-| 3   | jue 2026-11-12      | 259 200 000            | Luis                          | Envía `case.luis` por `node.federal`; el buzón la turna al OIC y el OIC la acepta, y el nodo la confirma ante el índice. Solo entonces el contrato pasa a «2 o más» personas independientes y sube la prioridad de `case.marta`. |                                                                                                   |
-| 30  | mié 2026-12-09      | 2 592 000 000          | `authority.oic-iffe`          | Inicia el procedimiento y el mismo día **califica** la falta grave (`LGRA-59`) como **no grave** con un acuerdo de plantilla (expediente `OIC-IFFE-INV-0032`).                                                                   | Último de los 30 días naturales (LGRA, art. 64, II); calificación (art. 100)                      |
-| 30  | mié 2026-12-09      | 2 592 000 000          | `authority.oic-iffe`          | **Notifica la calificación a Marta** por el buzón, con la forma de consultar el expediente. Desde aquí corren 5 días hábiles para inconformarse.                                                                                 | LGRA, arts. 102 y 103: límite día 37 (2026-12-16)                                                 |
-| 31  | jue 2026-12-10      | 2 678 400 000          | Auditor                       | **Señales**: `signal.template-closure` (AUD-01, coincide con los 31 acuerdos previos) y `signal.downgraded-qualification` (AUD-03), con evidencia.                                                                               | LGRA, art. 64, I                                                                                  |
-| 31  | jue 2026-12-10      | 2 678 400 000          | Reglas                        | **Escalamiento** automático a `authority.oversight-federal` por `escalation.conflict` y `escalation.downgrade-signals`. Los observadores ven el evento sin contenido.                                                            | LGRA, arts. 58, 64, I y 102                                                                       |
-| 32  | vie 2026-12-11      | 2 764 800 000          | `authority.oversight-federal` | Acepta el escalamiento y abre el expediente con su segunda llave.                                                                                                                                                                |                                                                                                   |
-| 35  | lun 2026-12-14      | 3 024 000 000          | Marta                         | Se **inconforma** en el 3.er día hábil de la ventana, ante la autoridad investigadora. Acepta abrir su identidad sellada **solo para el recurso**; la apertura queda en bitácora y ella la ve.                                   | LGRA, arts. 103, 104 y 109: nombre, domicilio y firma autógrafa                                   |
-| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oic-iffe`          | Corre traslado a la Sala Especializada con el expediente y un informe que justifique la calificación. Mientras se resuelve, no se inicia el procedimiento de responsabilidad.                                                    | LGRA, arts. 102 y 104                                                                             |
-| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oversight-federal` | Da vista a la fiscalía (re-cifrada en su navegador) por posibles delitos, como orientación: CPF, art. 217, fr. I, incisos B y D (adjudicaciones y adquisiciones ilícitas).                                                       | CPF, art. 217; el art. 220, fr. I, solo si se acredita beneficio a socios o sociedades vinculadas |
-| 79  | mié 2027-01-27      | 6 825 600 000          | Sala (fuera del sistema)      | Vence el plazo de la Sala para resolver la inconformidad. En la demo, la Sala la declara fundada: la conducta es grave.                                                                                                          | LGRA, art. 107: 30 días hábiles                                                                   |
-| 95  | vie 2027-02-12      | 8 208 000 000          | `authority.oversight-federal` | Registra la resolución con fundamento: «resuelto con sanción», expediente `TFF-SALA-0001`. Plazos comprimidos para la demo.                                                                                                      |                                                                                                   |
-| 96  | sáb 2027-02-13      | 8 294 400 000          | Sistema                       | Verificación contra `s3.federal`: **confirmado**. Marta ve el resultado en su seguimiento; el observatorio suma una sanción verificada.                                                                                          |                                                                                                   |
-| 151 | vie 2027-04-09      | 13 046 400 000         | Sistema (opcional)            | **Alerta de inactividad** a los 5 meses para `case.queretaro-dormant`, en investigación. No cita la caducidad.                                                                                                                   | Regla publicada del prototipo                                                                     |
-| 181 | dom 2027-05-09      | 15 638 400 000         | Sistema (opcional)            | **Alerta de inactividad** a los 6 meses para `case.queretaro-dormant`. Es una alerta, no una determinación legal: en la investigación no corre la caducidad de la instancia.                                                     | La caducidad (LGRA, art. 74) solo aplica después de admitido el informe                           |
+| Día | Fecha de referencia | Desfase del reloj (ms) | Quién                         | Qué ocurre                                                                                                                                                                                                                                                | Regla del plazo y fundamento                                                                      |
+| --- | ------------------- | ---------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 0   | lun 2026-11-09      | 0                      | Semilla                       | Red, directorio, datos PDN sintéticos, importación de los 31 acuerdos y cierres históricos.                                                                                                                                                               |                                                                                                   |
+| 0   | lun 2026-11-09      | 0                      | Marta                         | Envía `case.marta` con Huella Cero (dos frases corregidas, foto limpia). Recibe folio y recibo.                                                                                                                                                           | Inicia el plazo de 30 días naturales (falta grave)                                                |
+| 0   | lun 2026-11-09      | 0                      | `node.federal`                | Ficha de contexto y **alerta de conflicto** antes de turnar. **Turnado** a `authority.oic-iffe` con la alerta visible.                                                                                                                                    | LGRA, art. 58                                                                                     |
+| 1   | mar 2026-11-10      | 86 400 000             | `authority.oic-iffe`          | Acepta el turnado sin excusarse. Queda registrado; `escalation.conflict` se evalúa en su primer acto resolutivo.                                                                                                                                          |                                                                                                   |
+| 1   | mar 2026-11-10      | 86 400 000             | Marta                         | En «Dar seguimiento» ve «Turnada: tu denuncia ya está con la autoridad que puede investigarla» y la explicación de qué significa.                                                                                                                         |                                                                                                   |
+| 1   | mar 2026-11-10      | 86 400 000             | Persona Denunciante Uno       | `case.queretaro-routing` llega a `node.queretaro`.                                                                                                                                                                                                        |                                                                                                   |
+| 2   | mié 2026-11-11      | 172 800 000            | Atacante                      | Envía `case.attack-1..3` en 40 minutos. El panel de `authority.oic-dfps` las agrupa como posible campaña; `case.attack-3` sale inconsistente con el S6.                                                                                                   |                                                                                                   |
+| 3   | jue 2026-11-12      | 259 200 000            | Luis                          | Envía `case.luis` por la ventanilla al buzón del nodo Federal; el buzón la turna al OIC y el OIC la acepta, y el nodo la confirma ante el índice. Solo entonces el contrato pasa a «2 o más» personas independientes y sube la prioridad de `case.marta`. |                                                                                                   |
+| 30  | mié 2026-12-09      | 2 592 000 000          | `authority.oic-iffe`          | Inicia el procedimiento y el mismo día **califica** la falta grave (`LGRA-59`) como **no grave** con un acuerdo de plantilla (expediente `OIC-IFFE-INV-0032`).                                                                                            | Último de los 30 días naturales (LGRA, art. 64, II); calificación (art. 100)                      |
+| 30  | mié 2026-12-09      | 2 592 000 000          | `authority.oic-iffe`          | **Notifica la calificación a Marta** por el buzón, con la forma de consultar el expediente. Desde aquí corren 5 días hábiles para inconformarse.                                                                                                          | LGRA, arts. 102 y 103: límite día 37 (2026-12-16)                                                 |
+| 31  | jue 2026-12-10      | 2 678 400 000          | Auditor                       | **Señales**: `signal.template-closure` (AUD-01, coincide con los 31 acuerdos previos) y `signal.downgraded-qualification` (AUD-03), con evidencia.                                                                                                        | LGRA, art. 64, I                                                                                  |
+| 31  | jue 2026-12-10      | 2 678 400 000          | Reglas                        | **Escalamiento** automático a `authority.oversight-federal` por `escalation.conflict` y `escalation.downgrade-signals`. Los observadores ven el evento sin contenido.                                                                                     | LGRA, arts. 58, 64, I y 102                                                                       |
+| 32  | vie 2026-12-11      | 2 764 800 000          | `authority.oversight-federal` | Acepta el escalamiento y abre el expediente con su segunda llave.                                                                                                                                                                                         |                                                                                                   |
+| 35  | lun 2026-12-14      | 3 024 000 000          | Marta                         | Se **inconforma** en el 3.er día hábil de la ventana, ante la autoridad investigadora. Acepta abrir su identidad sellada **solo para el recurso**; la apertura queda en bitácora y ella la ve.                                                            | LGRA, arts. 103, 104 y 109: nombre, domicilio y firma autógrafa                                   |
+| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oic-iffe`          | Corre traslado a la Sala Especializada con el expediente y un informe que justifique la calificación. Mientras se resuelve, no se inicia el procedimiento de responsabilidad.                                                                             | LGRA, arts. 102 y 104                                                                             |
+| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oversight-federal` | Da vista a la fiscalía (re-cifrada en su navegador) por posibles delitos, como orientación: CPF, art. 217, fr. I, incisos B y D (adjudicaciones y adquisiciones ilícitas).                                                                                | CPF, art. 217; el art. 220, fr. I, solo si se acredita beneficio a socios o sociedades vinculadas |
+| 79  | mié 2027-01-27      | 6 825 600 000          | Sala (fuera del sistema)      | Vence el plazo de la Sala para resolver la inconformidad. En la demo, la Sala la declara fundada: la conducta es grave.                                                                                                                                   | LGRA, art. 107: 30 días hábiles                                                                   |
+| 95  | vie 2027-02-12      | 8 208 000 000          | `authority.oversight-federal` | Registra la resolución con fundamento: «resuelto con sanción», expediente `TFF-SALA-0001`. Plazos comprimidos para la demo.                                                                                                                               |                                                                                                   |
+| 96  | sáb 2027-02-13      | 8 294 400 000          | Sistema                       | Verificación contra `s3.federal`: **confirmado**. Marta ve el resultado en su seguimiento; el observatorio suma una sanción verificada.                                                                                                                   |                                                                                                   |
+| 151 | vie 2027-04-09      | 13 046 400 000         | Sistema (opcional)            | **Alerta de inactividad** a los 5 meses para `case.queretaro-dormant`, en investigación. No cita la caducidad.                                                                                                                                            | Regla publicada del prototipo                                                                     |
+| 181 | dom 2027-05-09      | 15 638 400 000         | Sistema (opcional)            | **Alerta de inactividad** a los 6 meses para `case.queretaro-dormant`. Es una alerta, no una determinación legal: en la investigación no corre la caducidad de la instancia.                                                                              | La caducidad (LGRA, art. 74) solo aplica después de admitido el informe                           |
 
 Además, la alerta de prescripción de `case.marta` muestra que la falta grave prescribe a los 7 años
 contados desde marzo de 2026, y que la calificación interrumpe el plazo (LGRA, art. 74). Como el
@@ -749,14 +804,14 @@ del prototipo:
 | ---------------- | ----------------------------- | --- | --- | --- | -------------------- | ---------------- |
 | Federal          | no aplica                     | Sí  | Sí  | Sí  | Sí                   | `node.federal`   |
 | Querétaro (`22`) | Sí (`observer.cpc-queretaro`) | Sí  | Sí  | Sí  | No (S6 solo federal) | `node.queretaro` |
-| Estado Ejemplo   | **No**                        | No  | No  | No  | No                   | Nodo común       |
+| Estado Ejemplo   | **No**                        | No  | No  | No  | No                   | `node.ejemplo`   |
 
 El mapa del observatorio es un coroplético de las 32 entidades con el contorno del INEGI (Marco
 Geoestadístico, diciembre de 2025; proyectado y simplificado por `scripts/mapa-entidades.ts`, ver
 `datos/mapa-entidades/metodologia.md`), servido desde el mismo origen y sin servicios de terceros.
 Nunca baja a nivel municipal ni muestra coordenadas. Es un mapa del S5, no de la PDN completa (la
 cobertura de todos los sistemas la publica la SESNA en su página de cobertura, enlazada desde la
-tabla): tres capas, **conexión al S5** (Querétaro con nodo propio; las demás, nodo común),
+tabla): tres capas, **conexión al S5** (Querétaro con nodo propio; las demás, sin nodo todavía),
 **denuncias por 100 000 habitantes** (corte nacional: meses cerrados y celdas de 5 o más, con la
 población del mismo Marco Geoestadístico) y **protección del anonimato** (porcentaje de personas
 cuya área tiene k ≥ 10, de `datos/abiertos/grupos-anonimato/resumen.csv`). Lo federal y el Estado
@@ -783,28 +838,28 @@ contradichas y las sin cobertura. Al día 96, `case.marta` pasa por «calificada
 
 ## 9. Relación con el reto
 
-| Elemento del escenario                                            | Criterio (bases)                  | Frase del reto o del taller que demuestra                                                   |
-| ----------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
-| Enrutador ciego y nodos (`router.national`, `node.*`)             | 1 confidencialidad, 6 innovación  | «Confidencialidad y anonimato en recepción, trámite y seguimiento»                          |
-| Ventanilla única y entrada propia del nodo Federal (Marta y Luis) | 3 funcionalidad                   | Bases de la PDN, art. 57: ventanilla única                                                  |
-| Frases `phrase.unique` y `phrase.moment`, grupo de 5 personas     | 1 confidencialidad, 5 UX          | «El anonimato no se reduce a una casilla» (el relato identifica)                            |
-| Foto con EXIF de `Marta Ejemplo` y su limpieza                    | 1 confidencialidad                | «El anonimato no se reduce a una casilla» (las pruebas identifican)                         |
-| Ubicación sin municipio ni coordenadas                            | 1 confidencialidad, 5 UX          | «Mapbox impreciso»; «corregir ubicación sugerida»                                           |
-| Alerta de conflicto (S1 ficticio)                                 | 2 valor público, 4 datos PDN      | «Explotar datos de la PDN»; LGRA, art. 58                                                   |
-| Ficha de contexto y prioridad (S6, 69-B, corroboración)           | 2 valor público (priorización), 4 | «Análisis, detección, priorización»                                                         |
-| Corroboración ciega de Luis                                       | 1, 2, 6                           | Una persona = una corroboración, sin revelar quién corrobora                                |
-| Campaña del atacante, sin etiqueta «falsa»                        | 2 valor público (detección)       | Presunción de buena fe: nunca «falsa», solo «inconsistente con registros públicos»          |
-| Texto «Turnada: …» del día 1                                      | 5 UX                              | «Explicar qué significa "turnada"»; «certeza sobre el estatus»                              |
-| 31 acuerdos con plantilla y el detector                           | 2 valor público (detección)       | «Identificar y atender áreas de oportunidad»; que la denuncia no se entierre                |
-| Escalamiento con segunda llave de la supervisora                  | 1, 3, 6                           | «Son dos experiencias conectadas: la ciudadana y la institucional»                          |
-| Aviso a Marta y ventana de inconformidad                          | 3 funcionalidad, 5 UX             | Certeza sobre el estatus; LGRA, arts. 100-110                                               |
-| Apertura de identidad solo para el recurso                        | 1 confidencialidad                | «Los permisos no equivalen a garantía absoluta de privacidad»: la apertura queda registrada |
-| Verificación S3 con tres resultados                               | 4 datos PDN, 2                    | «La ausencia nunca es evidencia»; sanciones verificables                                    |
-| Estado Ejemplo sin CPC ni S3                                      | 4 datos PDN, 8 replicable         | Cobertura real desigual de la PDN; «qué información agregada aprovechar»                    |
-| Observatorio por autoridad y casos resueltos                      | 4 datos abiertos, 2               | «Qué información agregada aprovechar sin revelar identidades»; Bases, arts. 60 y 61         |
-| Testigos 2 de 3 y un testigo apagado                              | 1, 6                              | Integridad, trazabilidad y no repudio (Bases, «Seguridad de la Información»)                |
-| Todo en local, con reloj simulado y semillas reproducibles        | 8 documentación replicable        | «Evaluarán replicando en local»                                                             |
-| Recorrido completo del día 0 al 96 en el guion                    | 7 presentación                    | «La calidad técnica no sustituye la claridad ni la utilidad para la ciudadanía»             |
+| Elemento del escenario                                        | Criterio (bases)                  | Frase del reto o del taller que demuestra                                                   |
+| ------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
+| Enrutador ciego y nodos (`router.national`, `node.*`)         | 1 confidencialidad, 6 innovación  | «Confidencialidad y anonimato en recepción, trámite y seguimiento»                          |
+| Ventanilla única (Marta y Luis, que elige el buzón federal)   | 3 funcionalidad                   | Bases de la PDN, art. 57: ventanilla única                                                  |
+| Frases `phrase.unique` y `phrase.moment`, grupo de 5 personas | 1 confidencialidad, 5 UX          | «El anonimato no se reduce a una casilla» (el relato identifica)                            |
+| Foto con EXIF de `Marta Ejemplo` y su limpieza                | 1 confidencialidad                | «El anonimato no se reduce a una casilla» (las pruebas identifican)                         |
+| Ubicación sin municipio ni coordenadas                        | 1 confidencialidad, 5 UX          | «Mapbox impreciso»; «corregir ubicación sugerida»                                           |
+| Alerta de conflicto (S1 ficticio)                             | 2 valor público, 4 datos PDN      | «Explotar datos de la PDN»; LGRA, art. 58                                                   |
+| Ficha de contexto y prioridad (S6, 69-B, corroboración)       | 2 valor público (priorización), 4 | «Análisis, detección, priorización»                                                         |
+| Corroboración ciega de Luis                                   | 1, 2, 6                           | Una persona = una corroboración, sin revelar quién corrobora                                |
+| Campaña del atacante, sin etiqueta «falsa»                    | 2 valor público (detección)       | Presunción de buena fe: nunca «falsa», solo «inconsistente con registros públicos»          |
+| Texto «Turnada: …» del día 1                                  | 5 UX                              | «Explicar qué significa "turnada"»; «certeza sobre el estatus»                              |
+| 31 acuerdos con plantilla y el detector                       | 2 valor público (detección)       | «Identificar y atender áreas de oportunidad»; que la denuncia no se entierre                |
+| Escalamiento con segunda llave de la supervisora              | 1, 3, 6                           | «Son dos experiencias conectadas: la ciudadana y la institucional»                          |
+| Aviso a Marta y ventana de inconformidad                      | 3 funcionalidad, 5 UX             | Certeza sobre el estatus; LGRA, arts. 100-110                                               |
+| Apertura de identidad solo para el recurso                    | 1 confidencialidad                | «Los permisos no equivalen a garantía absoluta de privacidad»: la apertura queda registrada |
+| Verificación S3 con tres resultados                           | 4 datos PDN, 2                    | «La ausencia nunca es evidencia»; sanciones verificables                                    |
+| Estado Ejemplo sin CPC ni S3                                  | 4 datos PDN, 8 replicable         | Cobertura real desigual de la PDN; «qué información agregada aprovechar»                    |
+| Observatorio por autoridad y casos resueltos                  | 4 datos abiertos, 2               | «Qué información agregada aprovechar sin revelar identidades»; Bases, arts. 60 y 61         |
+| Testigos 2 de 3 y un testigo apagado                          | 1, 6                              | Integridad, trazabilidad y no repudio (Bases, «Seguridad de la Información»)                |
+| Todo en local, con reloj simulado y semillas reproducibles    | 8 documentación replicable        | «Evaluarán replicando en local»                                                             |
+| Recorrido completo del día 0 al 96 en el guion                | 7 presentación                    | «La calidad técnica no sustituye la claridad ni la utilidad para la ciudadanía»             |
 
 ## 10. Decisiones y pendientes
 
@@ -822,8 +877,12 @@ Decisiones tomadas en esta especificación:
 4. **Marta se califica como no grave, no se archiva**, porque contra un archivo no procede la
    inconformidad (LGRA, art. 102). «Posible nuevo indicio» (art. 100) se conserva para los
    archivos.
-5. **El nodo Federal es también nodo común** para entidades sin nodo propio (Estado Ejemplo), y así
-   bastan tres servidores en el `docker compose`.
+5. **No hay nodo común.** Cada estado monta su nodo y el federal aloja solo autoridades federales.
+   Si una entidad no tiene nodo (no hay tabla de funciones que la cubra), la ventanilla no envía sus
+   denuncias sobre entes estatales o municipales y lo dice: «… todavía no tiene nodo en la red…».
+   No hay buzón nacional de respaldo: un buzón en otro nodo leería denuncias de un estado que no
+   lo eligió. Las denuncias sobre entes federales sí se envían, al nodo federal. Por eso el Estado
+   Ejemplo tiene su propio nodo en el `docker compose` (tres nodos y el enrutador).
 6. **Fechas relativas al día 0** en todas las semillas, porque el reloj de demostración solo suma un
    desfase al reloj real.
 7. **Los 31 acuerdos se importan** como registros históricos con un solo evento de bitácora, porque

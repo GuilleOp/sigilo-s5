@@ -1,5 +1,6 @@
 // Ruteo de entes REALES del directorio de la PDN con el directorio ficticio de la demostración: se
-// rutean por orden de gobierno y entidad (nunca por ente específico) o van al buzón general. El
+// rutean por la tabla de funciones de su entidad, por orden de gobierno (nunca por un ente
+// ficticio), van al buzón general o, si la entidad no tiene nodo, no se envían. El
 // catálogo completo se registra como en el servidor; en la web, con el fragmento descargado.
 import { describe, expect, it } from 'vitest';
 import '@sigilo/contracts/entes';
@@ -46,14 +47,14 @@ describe('propuesta de autoridad para entes reales', () => {
     expect(proposal.reasons.join(' ')).toContain('Instituto Mexicano del Seguro Social');
   });
 
-  it('un ente estatal real sin autoridad en el directorio va al buzón general', () => {
+  it('un ente estatal real de una entidad sin nodo no se envía: no hay nodo común', () => {
     const proposal = proposeCompetentAuthority(
       directory,
       { stateCode: '31', entityId: 'PDN-31-10135', offenseCode: 'LGRA-52' },
       FIXTURE_DAY,
     );
-    expect(proposal.status).toBe('inbox');
-    expect(proposal.proposed?.authority.id).toBe('authority.buzon-federal');
+    expect(proposal).toMatchObject({ status: 'none', isStateWithoutNode: true });
     expect(proposal.reasons.join(' ')).toContain('ente del orden estatal');
+    expect(proposal.reasons.join(' ')).toContain('Yucatán todavía no tiene nodo en la red');
   });
 });

@@ -34,6 +34,8 @@ import type { NodeStatisticsAggregator } from './node-statistics.ts';
 import type { QueuePow } from './queue-pow.ts';
 import type { RelayQueue } from './relay-queue.ts';
 import type { RelayService } from './relay-service.ts';
+import { registerVentanilla } from './web.ts';
+import type { VentanillaDeps } from './web.ts';
 
 /** Dependencias de la aplicación. */
 export interface RouterAppDeps {
@@ -55,6 +57,8 @@ export interface RouterAppDeps {
   hstsMaxAgeSeconds?: number | null;
   /** Reenvíos simultáneos permitidos; los que excedan reciben `429`. */
   maxConcurrentRelays?: number;
+  /** Ventanilla única en el mismo origen (`web.ts`); sin ella, el enrutador no sirve web. */
+  ventanilla?: VentanillaDeps;
 }
 
 /** Cuerpo máximo de un sobre de red: el tramo mayor en Base64URL más el encabezado. */
@@ -84,6 +88,7 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
   const maxRelays = deps.maxConcurrentRelays ?? DEFAULT_MAX_CONCURRENT_RELAYS;
   let inFlight = 0;
 
+  registerVentanilla(app, deps.ventanilla);
   app.use('*', securityHeaders(deps.hstsMaxAgeSeconds ?? null));
 
   app.get(NETWORK_ROUTES.directory, (c) => c.json(deps.directory.signed()));

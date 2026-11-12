@@ -1,6 +1,6 @@
 // Detalle de una denuncia en el panel: hechos, ficha de contexto con prioridad explicable, alerta
-// de conflicto, corroboración, señales del auditor, pruebas, trámite, turnado entre nodos, identidad
-// y buzón.
+// de conflicto, corroboración, señales del auditor, pruebas, trámite, quién sigue según la tabla de
+// funciones, turnado entre nodos, identidad y buzón.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { findMunicipality, findOffense, findState } from '@sigilo/contracts';
 import type { ComplaintDetail } from '@sigilo/contracts';
@@ -22,6 +22,7 @@ import { LocalLawReferences } from './LocalLawReferences.tsx';
 import { ContextSheetPanel } from './ContextSheetPanel.tsx';
 import { CorroborationPanel } from './CorroborationPanel.tsx';
 import { TransferPanel } from './TransferPanel.tsx';
+import { NextFunctionsPanel } from './NextFunctionsPanel.tsx';
 import { useNetworkState } from '../../network/use-network-state.ts';
 import { TurnSemaphore } from './TurnSemaphore.tsx';
 
@@ -197,6 +198,9 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         detail={detail}
         onChanged={reload}
       />
+      {network.kind === 'verified' && (
+        <NextFunctionsPanel detail={detail} directory={network.directory} />
+      )}
       {network.kind === 'verified' && (
         <TransferPanel session={session} detail={detail} directory={network.directory} />
       )}

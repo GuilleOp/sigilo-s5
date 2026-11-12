@@ -10,7 +10,7 @@ import { ProfileBadge } from '../components/ProfileBadge.tsx';
 import { QuickExitButton } from '../components/QuickExitButton.tsx';
 import { AccessibilityControls, AccessibilityPanels } from '../components/AccessibilityTools.tsx';
 import { KioskBar } from '../components/UsageModesPanel.tsx';
-import { SHOW_DEMO_NOTICE } from '../config/app-config.ts';
+import { SHOW_DEMO_NOTICE, VENTANILLA_URL, WEB_PROFILE } from '../config/app-config.ts';
 import { ANNOUNCER_ID } from '../lib/announce.ts';
 import { focusAfterRender, focusElement } from '../lib/focus.ts';
 import { navigationWarning } from '../lib/navigation-guard.ts';
@@ -28,6 +28,7 @@ const NAV_ITEMS = [
 /** Enlaces secundarios, en el pie. */
 const FOOTER_ITEMS = [
   { to: PATHS.protection, label: 'Cómo te cuidamos' },
+  { to: PATHS.whoHandles, label: '¿Quién atiende tu denuncia?' },
   { to: PATHS.verify, label: 'Registro público' },
   { to: PATHS.authority, label: 'Panel de autoridad' },
 ] as const;
@@ -89,9 +90,13 @@ export function Layout() {
   // la solicitud de alta de una institución.
   const isAuthorityArea =
     location.pathname === PATHS.authority || location.pathname === PATHS.registration;
-  const footerItems = isAuthorityArea
-    ? FOOTER_ITEMS.filter((item) => item.to !== PATHS.authority)
-    : FOOTER_ITEMS;
+  // Perfil panel (nodo de un estado): solo el panel; lo público está en la ventanilla única.
+  const isPanelProfile = WEB_PROFILE === 'panel';
+  const footerItems = isPanelProfile
+    ? []
+    : isAuthorityArea
+      ? FOOTER_ITEMS.filter((item) => item.to !== PATHS.authority)
+      : FOOTER_ITEMS;
 
   const isWide =
     location.pathname === PATHS.home ||
@@ -126,7 +131,22 @@ export function Layout() {
         </aside>
       )}
       {/* El panel es de otro público: no muestra la navegación de quien denuncia. */}
-      {location.pathname === PATHS.authority ? (
+      {isPanelProfile ? (
+        <nav className="site-nav site-nav--panel no-print" aria-label="Principal">
+          <ul>
+            <li>
+              <NavLink to={PATHS.authority}>Panel de autoridad</NavLink>
+            </li>
+            {VENTANILLA_URL !== null && (
+              <li>
+                <a href={VENTANILLA_URL} rel="noreferrer">
+                  Ir a la ventanilla única ↗
+                </a>
+              </li>
+            )}
+          </ul>
+        </nav>
+      ) : location.pathname === PATHS.authority ? (
         <nav className="site-nav site-nav--panel no-print" aria-label="Principal">
           <ul>
             <li>
@@ -152,9 +172,11 @@ export function Layout() {
       <AccessibilityPanels />
       <GuidedTour />
       <footer className="site-footer no-print">
-        <nav aria-label="Otros enlaces">
-          <ul>{footerItems.map(navLink)}</ul>
-        </nav>
+        {footerItems.length > 0 && (
+          <nav aria-label="Otros enlaces">
+            <ul>{footerItems.map(navLink)}</ul>
+          </nav>
+        )}
         <p>
           SIGILO no usa cookies. Lo único que recuerda tu navegador son los colores y el tamaño del
           texto que elijas en «Accesibilidad» (salvo en un equipo compartido). Todo lo que escribes

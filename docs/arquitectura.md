@@ -230,23 +230,38 @@ Ver [criptografia.md](criptografia.md).
 
 ## Red federada
 
-La red «un S5, muchas llaves» ([ADR 0005](adr/0005-estandar-s5-federado.md)) agrega tres piezas
-sin cambiar la API v1 del nodo:
+La red «un S5, muchas llaves» ([ADR 0005](adr/0005-estandar-s5-federado.md)) sigue el modelo
+acordado con la SESNA:
 
-| Pieza                 | Ubicación                    | Responsabilidad                                                                                         |
-| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Red (funciones puras) | `packages/red`               | Directorio firmado y cofirmado, autoridad competente, sobres de red, bitácora nacional, cliente de nodo |
-| Enrutador ciego       | `apps/enrutador`             | Publica el directorio, reenvía sobres opacos, lleva la bitácora nacional y el corte de datos abiertos   |
-| Testigos              | `apps/enrutador/src/witness` | Verifican que la bitácora nacional solo creció y cofirman su cabeza (m de n)                            |
+- **Una sola ventanilla nacional** para ciudadanos y personas servidoras públicas. La monta la SESNA
+  junto con el enrutador ciego, en el mismo origen. La SESNA no tiene llaves y no lee denuncias.
+- **Cada estado monta su propio nodo** (lo opera su SESEA o su secretaría de buen gobierno o
+  contraloría). **No hay nodo común**: ningún estado vive en el nodo de otro. Los nodos no tienen
+  ventanilla pública: solo el panel de autoridades y las rutas de API que necesita el enrutador.
+- **El nodo federal** aloja solo autoridades federales y lo opera el lado federal que investiga (la
+  Secretaría Anticorrupción y Buen Gobierno), no la SESNA.
+- **Cada nodo declara su tabla de funciones**: qué institución cumple cada función en su entidad
+  (buzón general, operación del nodo, investigación y calificación, substanciación, resolución,
+  supervisión, vía penal y observador). La ventanilla turna con esa tabla.
+
+Agrega tres piezas sin cambiar la API v1 del nodo:
+
+| Pieza                 | Ubicación                    | Responsabilidad                                                                                                                                 |
+| --------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Red (funciones puras) | `packages/red`               | Directorio firmado y cofirmado, autoridad competente, sobres de red, bitácora nacional, cliente de nodo                                         |
+| Enrutador ciego       | `apps/enrutador`             | Publica el directorio, reenvía sobres opacos, lleva la bitácora nacional y el corte de datos abiertos; sirve la ventanilla única (`src/web.ts`) |
+| Testigos              | `apps/enrutador/src/witness` | Verifican que la bitácora nacional solo creció y cofirman su cabeza (m de n)                                                                    |
 
 ```mermaid
 flowchart LR
-  N[Navegador] -- 1. directorio firmado --> R[Enrutador ciego]
+  N[Navegador en la ventanilla] -- 1. web y directorio firmado --> R[SESNA: ventanilla y enrutador ciego]
   N -- 2. sobre HPKE v2 al nodo, solo con el nodo destino --> R
   R -- 3. mismo sobre, sin cabeceras de la persona --> Q[Nodo Querétaro]
-  R --> F[Nodo Federal / común]
+  R --> F[Nodo Federal]
+  R --> X[Nodo Estado Ejemplo]
   Q -- cabeza firmada --> R
   F -- cabeza firmada --> R
+  X -- cabeza firmada --> R
   T1[Testigo CPC] -- cofirma --> R
   T2[Testigo academia] -- cofirma --> R
   Q -- cofirma como testigo --> R
@@ -256,22 +271,57 @@ flowchart LR
 
 - **Directorio.** Documento canónico versionado (`AuthorityDirectory`) con nodos, autoridades
   (entidad, orden de gobierno, competencia por órdenes, entidades, entes y leyes, llaves X25519 y
-  Ed25519, vigencia y supervisora) y observadores. Lo firma la operación sobre su digesto
+  Ed25519, vigencia y supervisora), observadores y la tabla de funciones de cada nodo. Lo firma la operación sobre su digesto
   (`sigilo/red/directory/operator/v1:`) y lo cofirman los testigos (`.../witness/v1:`). El
   navegador fija solo la llave de la operación y las de los testigos (`NetworkTrustAnchor`) y exige
   m cofirmas válidas de testigos fijados distintos. Una versión nueva debe encadenar el digesto
   anterior y llevar m cofirmas de los testigos de la anterior.
+- **Tabla de funciones.** Cada nodo declara, en una `FunctionTable` (formato 1), qué institución
+  cumple cada función para los entes de su entidad (la del nodo federal, para los entes federales).
+  Cada regla dice a qué órdenes de gobierno aplica y, si hace falta, a qué entes específicos y a qué
+  gravedad: «entes estatales → Contraloría; municipales sin OIC → Contraloría; ente X → su OIC;
+  resolución de falta grave → tribunal». La regla que nombra al ente gana sobre la de todo su orden.
+  - **Dónde se publica y por qué.** Dentro del directorio (`functionTables`), **firmada por el nodo**
+    con su llave de firma del directorio (`sigilo/red/function-table/v1:` + digesto). Así hay dos
+    firmas: la del estado, que declara su tabla, y la del directorio, que firma la operación y
+    cofirman m de n testigos. La SESNA no puede cambiar la tabla de un estado sin su firma; los
+    testigos (por ejemplo, el CPC) ven cada versión y la bitácora nacional registra cada versión del
+    directorio. El navegador verifica todo con la misma raíz fijada, sin descargar nada más. Una
+    tabla suelta firmada por el nodo obligaría a una segunda descarga y a otro canal de frescura; y
+    como la tabla nombra autoridades del directorio, cambiarla casi siempre exige reemitirlo.
+  - **Qué revisa el directorio** (`functionTableProblems`): una tabla por nodo y por entidad, firma
+    válida del nodo, una tabla estatal no cubre entes federales (ni la federal, estatales), solo
+    nombra autoridades de su propio nodo y entidad (ningún estado vive en el nodo de otro), y el
+    buzón y la investigación son autoridades con el papel `inbox` e `investigating`, porque reciben
+    sobres cifrados. Las demás funciones pueden ser una institución sin llaves (el tribunal, la
+    fiscalía estatal, quien opera el nodo).
 - **Autoridad competente.** `proposeCompetentAuthority` corre en el navegador: la conducta define
-  la ley (LGRA o CPF), el ente el orden de gobierno, y gana quien atiende al ente por nombre sobre
-  quien atiende a todo su orden en la entidad. Devuelve el razonamiento en lenguaje claro. Las
-  supervisoras nunca se proponen; un ente municipal sin órgano municipal cae en la contraloría
-  estatal, marcado como respaldo. Si ninguna autoridad es competente, la propuesta es el **buzón
-  general** del nodo (papel `inbox` en el directorio, estado `inbox` de la propuesta): el del nodo
-  estatal si la entidad tiene uno y, si no, el del nodo común. Ahí una persona la turna a quien
-  corresponda, como en la bandeja general del S5: la ventanilla es un canal único (Bases de la
-  PDN, art. 56) con protocolos de recepción y turno a la autoridad competente (art. 58). Solo si el
-  directorio no tiene un buzón vigente no se envía nada. El buzón figura en el directorio con la
-  misma llave que `keys.json` de su nodo y nunca se propone por competencia.
+  la ley (LGRA → investigación; CPF → vía penal) y el ente el orden de gobierno. Si el ente es
+  federal manda la tabla del nodo federal; si no, la de la entidad de los hechos. Si la tabla no
+  nombra a una autoridad para el ente, se prueba la ley de una conducta equivalente y, si tampoco,
+  la propuesta es el **buzón general** de esa tabla (papel `inbox`, estado `inbox` de la
+  propuesta). Ahí una persona la turna a quien corresponda, como en la bandeja general del S5: la
+  ventanilla es un canal único (Bases de la PDN, art. 56) con protocolos de recepción y turno a la
+  autoridad competente (art. 58). Devuelve el razonamiento en lenguaje claro y, como alternativas,
+  las demás autoridades cuya competencia declarada atiende al ente. Las supervisoras nunca se
+  proponen. Si **la entidad no tiene nodo** (no hay tabla que la cubra) y el ente no es federal,
+  no se envía nada y se dice claramente (`isStateWithoutNode`). No hay buzón nacional de respaldo:
+  un buzón en otro nodo leería las denuncias de un estado que no lo eligió. Con un directorio sin
+  tablas se usa la competencia declarada, como antes, pero nunca el buzón de otra entidad.
+- **Ventanilla única y perfiles de la web.** La web se compila con `VITE_SIGILO_PERFIL`:
+  - `ventanilla`: la sirve el enrutador (`SIGILO_ROUTER_WEB_DIST`, `apps/enrutador/src/web.ts`) en
+    su mismo origen, con su propia CSP. Tiene todas las pantallas públicas y «¿Quién atiende tu
+    denuncia en tu estado?» (`/quien-atiende`), que muestra cada tabla. Usa el directorio, el
+    relevo y el corte nacional del enrutador, y pasos mínimos a rutas públicas (`VENTANILLA_ROUTES`,
+    que no son parte del Estándar S5): el evaluador OPRF, la bitácora pública de cada nodo (el
+    registro público elige el nodo y verifica con su llave del directorio) y la solicitud de alta,
+    que va al nodo de la entidad de la institución según su tabla. «Datos abiertos» muestra el corte
+    nacional. En `/autoridad` dice que cada autoridad entra por el nodo de su estado.
+  - `panel`: la web de cada nodo, solo con `/autoridad`; las demás rutas dicen «La ventanilla
+    única está en …» (`VITE_SIGILO_VENTANILLA_URL`). En el detalle de una denuncia, el panel
+    muestra quién sigue según la tabla (substanciación, resolución, supervisión, vía penal y
+    observador).
+  - `completo` (por omisión): un solo nodo con todas las pantallas, sin red, para pruebas y E2E.
 - **Enrutador ciego.** El navegador cifra con HPKE hacia la llave del nodo una petición de la API
   v1 (`RoutedRequest`) rellenada a un tramo fijo (4 KiB, 64 KiB, 1 MiB o 16 MiB) e incluye una
   llave efímera para la respuesta. **Sobre v2:** el encabezado externo solo dice el **nodo**
@@ -368,13 +418,14 @@ flowchart LR
   públicas, entre ellas `escalation.conflict` (resolver con conflicto sin excusa, LGRA art. 58) y
   `escalation.archive-signals` (archivo con dos o más señales AUD-01 y AUD-02). Las fuentes son
   sintéticas en la demostración o las bases SQLite descargadas; ninguna consulta sale del nodo.
-- **Despliegue local.** `npm run red:demo` genera llaves y cuentas sintéticas en `.red-demo/` y
-  `docker compose up` levanta el enrutador, los nodos Querétaro y Federal (el servidor de
-  referencia tal cual, con su web en el mismo origen), el evaluador, el índice y dos testigos
-  observadores. `npm run demo:seed` siembra el escenario. Guía:
-  [conecta tu estado](guia-conecta-tu-estado.md).
-- **Pendiente.** La web sigue en el perfil de nodo único (ventanilla única, panel con la ficha y
-  turnado re-cifrado en el navegador) y la guarda de custodias de la corroboración (nivel B).
+- **Despliegue local.** `npm run red:demo` genera llaves, tablas de funciones y cuentas sintéticas
+  en `.red-demo/` y `docker compose up` levanta el enrutador con la ventanilla única
+  (`127.0.0.1:8790`), los nodos Querétaro (8781), Federal (8782) y Estado Ejemplo (8783) con la web
+  en perfil panel, el evaluador, el índice y dos testigos observadores. `npm run demo:seed` siembra
+  el escenario. Guía: [conecta tu estado](guia-conecta-tu-estado.md).
+- **Pendiente.** La guarda de custodias de la corroboración (nivel B) y cerrar en el servidor las
+  rutas públicas de denuncia directa en un nodo en perfil panel (hoy solo la web deja de ofrecerlas;
+  la API del Estándar S5 sigue respondiendo).
 
 ## Despliegue
 

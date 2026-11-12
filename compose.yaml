@@ -1,8 +1,10 @@
-# Red federada de demostración de SIGILO, toda en local y con datos sintéticos:
-#   enrutador        enrutador ciego, directorio firmado, bitácora nacional    127.0.0.1:8790
-#                    y corte nacional de datos abiertos
-#   nodo-queretaro   servidor de referencia como nodo estatal, con su web      127.0.0.1:8781
-#   nodo-federal     servidor de referencia como nodo Federal y común          127.0.0.1:8782
+# Red federada de demostración de SIGILO, toda en local y con datos sintéticos. No hay nodo común:
+# cada estado monta su nodo y el federal aloja solo autoridades federales.
+#   enrutador        SESNA: ventanilla única (la web pública), enrutador ciego, 127.0.0.1:8790
+#                    directorio firmado, bitácora nacional y corte de datos abiertos
+#   nodo-queretaro   nodo estatal de Querétaro (lo opera su SESEA), solo panel 127.0.0.1:8781
+#   nodo-federal     nodo federal (Secretaría Anticorrupción), solo panel      127.0.0.1:8782
+#   nodo-ejemplo     nodo del Estado Ejemplo (lo opera su contraloría), panel  127.0.0.1:8783
 #   evaluador        evaluador OPRF de la corroboración ciega                  127.0.0.1:8791
 #   indice           índice de coincidencias de la corroboración ciega         127.0.0.1:8792
 #   testigo-*        dos observadores que, con el nodo Querétaro, cofirman la bitácora nacional (2 de 3)
@@ -34,6 +36,10 @@ x-node-build: &node-build
   context: .
   dockerfile: docker/Dockerfile
   target: nodo
+  # Los nodos sirven la web en perfil «panel»: solo /autoridad; lo público remite a la ventanilla.
+  args:
+    SIGILO_WEB_PROFILE: panel
+    SIGILO_VENTANILLA_URL: http://127.0.0.1:8790
 
 x-witness: &witness
   <<: *hardening
@@ -47,7 +53,7 @@ x-witness: &witness
     SIGILO_WITNESS_INTERVAL_SECONDS: '30'
     # H4: el testigo descarga la bitácora de cada nodo para comprobar que su cabeza nueva extiende
     # la anterior.
-    SIGILO_WITNESS_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080
+    SIGILO_WITNESS_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080,node.ejemplo=http://nodo-ejemplo:8080
   networks:
     - interna
   depends_on:
@@ -61,10 +67,17 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: enrutador
+      # La ventanilla única (perfil «ventanilla» de la web) fija solo la raíz de confianza de la red.
+      args:
+        SIGILO_WEB_PROFILE: ventanilla
+      additional_contexts:
+        node-keys: ./.red-demo/ventanilla/web
     image: sigilo/enrutador:local
     environment:
       # Direcciones internas de los nodos en la red de compose (las públicas están en el directorio).
-      SIGILO_ROUTER_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080
+      SIGILO_ROUTER_NODE_URLS: node.queretaro=http://nodo-queretaro:8080,node.federal=http://nodo-federal:8080,node.ejemplo=http://nodo-ejemplo:8080
+      # Paso de la ventanilla al evaluador OPRF por la red interna (la web no habla con otro origen).
+      SIGILO_ROUTER_EVALUATOR_URL: http://evaluador:8791
       # Cada vuelta recoge las cabezas de los nodos y rehace el corte nacional de datos abiertos.
       SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS: '60'
       # El corte usa el reloj simulado de los nodos para saber qué meses están cerrados (solo en la
@@ -79,6 +92,8 @@ services:
       nodo-queretaro:
         condition: service_healthy
       nodo-federal:
+        condition: service_healthy
+      nodo-ejemplo:
         condition: service_healthy
     ports:
       - '127.0.0.1:8790:8790'
@@ -154,6 +169,24 @@ services:
       - ./.red-demo/reloj:/reloj:ro
     ports:
       - '127.0.0.1:8782:8080'
+    networks:
+      - interna
+      - publica
+
+  nodo-ejemplo:
+    <<: *hardening
+    build:
+      <<: *node-build
+      additional_contexts:
+        node-keys: ./.red-demo/nodos/ejemplo/web
+    image: sigilo/nodo-ejemplo:local
+    env_file:
+      - ./.red-demo/nodos/ejemplo/node.env
+    volumes:
+      - ./.red-demo/nodos/ejemplo/data:/data
+      - ./.red-demo/reloj:/reloj:ro
+    ports:
+      - '127.0.0.1:8783:8080'
     networks:
       - interna
       - publica

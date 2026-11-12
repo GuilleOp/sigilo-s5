@@ -14,7 +14,6 @@
         "id": "node.queretaro",
         "name": "Nodo estatal Querétaro",
         "baseUrl": "https://denuncias.queretaro.example",
-        "isCommonNode": false,
         "boxKeyId": "9a0be41c77d25f13",
         "boxPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f",
         "signingKeyId": "c3f8e2a1b0d94756",
@@ -52,7 +51,67 @@
         "signingPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f"
       }
     ],
-    "witnessPolicy": { "threshold": 1, "witnessIds": ["observer.cpc-queretaro", "node.queretaro"] }
+    "witnessPolicy": { "threshold": 1, "witnessIds": ["observer.cpc-queretaro", "node.queretaro"] },
+    "functionTables": [
+      {
+        "table": {
+          "format": 1,
+          "nodeId": "node.queretaro",
+          "stateCode": "22",
+          "version": 1,
+          "issuedOn": "2026-11-09",
+          "functions": {
+            "intake": [
+              {
+                "governmentLevels": ["estatal", "municipal"],
+                "entityIds": [],
+                "holder": { "kind": "authority", "authorityId": "authority.buzon-queretaro" }
+              }
+            ],
+            "operation": [
+              {
+                "governmentLevels": ["estatal", "municipal"],
+                "entityIds": [],
+                "holder": {
+                  "kind": "institution",
+                  "name": "Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro"
+                }
+              }
+            ],
+            "investigation": [
+              {
+                "governmentLevels": ["estatal", "municipal"],
+                "entityIds": [],
+                "holder": { "kind": "authority", "authorityId": "authority.comptroller-queretaro" },
+                "legalBasis": "LGRA, arts. 3, fr. II, y 10"
+              }
+            ],
+            "substantiation": [],
+            "resolution": [
+              {
+                "governmentLevels": ["estatal", "municipal"],
+                "entityIds": [],
+                "severity": "serious",
+                "holder": {
+                  "kind": "institution",
+                  "name": "Tribunal de Justicia Administrativa Ficticio de Querétaro"
+                }
+              }
+            ],
+            "supervision": [],
+            "prosecution": [],
+            "observer": [
+              {
+                "governmentLevels": ["estatal", "municipal"],
+                "entityIds": [],
+                "holder": { "kind": "observer", "observerId": "observer.cpc-queretaro" }
+              }
+            ]
+          }
+        },
+        "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+      }
+    ]
   },
   "digest": "3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9f0a2b4c6d8e0f1a2b",
   "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",

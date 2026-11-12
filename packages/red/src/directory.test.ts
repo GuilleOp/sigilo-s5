@@ -46,7 +46,7 @@ describe('directorio firmado', () => {
     const tampered = clone(signed);
     const authority = tampered.directory.authorities[0];
     if (authority === undefined) throw new Error('sin autoridades');
-    authority.nodeId = 'node.queretaro';
+    authority.name = 'Autoridad sustituida';
     expect(verifySignedDirectory(tampered, trust)).toEqual({ valid: false, reason: 'digest' });
     tampered.digest = directoryDigest(tampered.directory);
     expect(verifySignedDirectory(tampered, trust)).toEqual({ valid: false, reason: 'operator' });
@@ -191,7 +191,7 @@ describe('directorio firmado', () => {
     expect(directory.previousDigest).toBe(DIRECTORY_GENESIS_DIGEST);
     const authority = findAuthority(directory, 'authority.comptroller-queretaro');
     expect(authority?.nodeId).toBe('node.queretaro');
-    expect(findNode(directory, 'node.federal')?.isCommonNode).toBe(true);
+    expect(findNode(directory, 'node.ejemplo')?.name).toBe('Nodo estatal Estado Ejemplo');
     expect(authority && isAuthorityValidOn(authority, FIXTURE_DAY)).toBe(true);
     expect(authority && isAuthorityValidOn(authority, '2026-11-08')).toBe(false);
     expect(witnessKeyOf(directory, 'node.queretaro')?.keyId).toBe(
