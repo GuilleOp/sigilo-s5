@@ -5,4 +5,6 @@ export type { RunOptions } from './run.ts';
 export { renderHtmlReport } from './report/html-report.ts';
 export { renderJsonReport, writeReports, REPORT_SCHEMA_PATH } from './report/json-report.ts';
 export type * from './types.ts';
+export { PDN_CASES, runPdnProfile } from './pdn/pdn-profile.ts';
+export type * from './pdn/pdn-profile.ts';
 export { TOOL_NAME, TOOL_VERSION, USER_AGENT } from './version.ts';

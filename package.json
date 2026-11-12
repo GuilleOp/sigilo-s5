@@ -45,6 +45,7 @@
     "demo:reset": "node scripts/demo-reset.ts",
     "standard:build": "node scripts/build-standard.ts",
     "validate": "node tools/validador/src/cli.ts",
+    "validate:pdn": "node tools/validador/src/pdn/cli.ts",
     "red:demo": "node scripts/red-demo.ts",
     "demo:seed": "node scripts/demo-seed.ts",
     "demo:todo": "node scripts/demo-todo.ts",
