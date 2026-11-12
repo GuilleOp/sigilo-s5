@@ -28,6 +28,7 @@ import {
   generateSigningKeyPair,
   identityContextFor,
   keyIdFor,
+  randomBytes,
   sealEscalation,
   sealIdentity,
   toBase64Url,
@@ -269,6 +270,8 @@ export function createTestServer(overrides: Partial<AppDeps> = {}): TestServer {
     evidenceStore,
     authorities: testAuthorityRegistry(),
     sessions,
+    // Segundo factor opcional, como en desarrollo; códigos de recuperación baratos (2^10).
+    mfa: { policy: 'opcional', key: randomBytes(32), recoveryLogN: 10 },
     now: () => now,
     sleep: async (ms) => {
       sleeps.push(ms);

@@ -1,5 +1,5 @@
 // Registro de seguridad de las cuentas de la autoridad (ASVS V7.1.3, V7.2.1): inicios de sesión,
-// fallos, cierres, accesos denegados por función y entregas de sobres. Nunca guarda IP, agente de
+// fallos, cierres, accesos denegados por función, entregas de sobres y el segundo factor. Nunca guarda IP, agente de
 // usuario, contraseñas ni el usuario tecleado: solo el seudónimo de la cuenta cuando existe.
 import type { DatabaseSync } from 'node:sqlite';
 import { randomBytes, toHex } from '@sigilo/core';
@@ -16,6 +16,14 @@ export const SECURITY_EVENT_KINDS = [
   'function_denied',
   'identity_envelope_released',
   'escalation_envelope_released',
+  /** Contraseña correcta de una cuenta que debe inscribir el segundo factor antes de entrar. */
+  'mfa_enrollment_required',
+  'mfa_enrolled',
+  /** Código del segundo factor equivocado o ya usado (también al confirmar la inscripción). */
+  'mfa_failed',
+  'mfa_recovery_used',
+  /** Reinicio del segundo factor por la operación del nodo (`./sigilo cuenta reiniciar-mfa`). */
+  'mfa_reset',
 ] as const;
 
 /** Tipo de evento de seguridad. */

@@ -859,6 +859,23 @@ BEGIN
 END;
 `;
 
+/**
+ * Migración 17: segundo factor del panel (TOTP, RFC 6238). Una fila por cuenta inscrita: el secreto
+ * cifrado con la llave del nodo (`mfa-key`, AES-256-GCM con la cuenta en los datos asociados), el
+ * último paso aceptado (cada código sirve una sola vez) y los digestos scrypt de los códigos de
+ * recuperación. Reiniciar el segundo factor (`./sigilo cuenta reiniciar-mfa`) borra la fila y lo
+ * deja en el registro de seguridad.
+ */
+const AUTHORITY_MFA = `
+CREATE TABLE authority_mfa (
+  account_id TEXT PRIMARY KEY,
+  secret_sealed TEXT NOT NULL,
+  last_step INTEGER NOT NULL,
+  recovery_json TEXT NOT NULL,
+  enrolled_at TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -877,6 +894,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 14, sql: AUTHORITY_REGISTRATIONS },
   { version: 15, sql: PDN_STATISTICS },
   { version: 16, sql: ENCRYPTED_EVIDENCE },
+  { version: 17, sql: AUTHORITY_MFA },
 ];
 
 /** Versión más reciente del esquema. */

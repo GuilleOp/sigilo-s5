@@ -20,7 +20,12 @@ import type {
   EscalationDelivery,
   EscalationSummary,
   IdentityOpeningRequestView,
+  LoginCodeRequest,
   LoginRequest,
+  LoginResponse,
+  LoginSessionStep,
+  MfaConfirmResponse,
+  MfaEnrollment,
   ProcedureActionRequest,
   ProcedureState,
   ProcedureView,
@@ -262,6 +267,46 @@ const authoritySession: AuthoritySession = {
   idleTimeoutSeconds: 900,
   absoluteTimeoutSeconds: 28800,
   account: sessionAccount,
+};
+
+const loginCodeStep: LoginResponse = {
+  step: 'code',
+  challenge: 'r4Vt8bQ1mZ0xK7pL2sN9wE5yH3cJ6dF0gA1uOiTkMnB',
+  expiresInSeconds: 300,
+};
+
+const loginCodeRequest: LoginCodeRequest = {
+  challenge: 'r4Vt8bQ1mZ0xK7pL2sN9wE5yH3cJ6dF0gA1uOiTkMnB',
+  code: '492039',
+};
+
+const loginSessionStep: LoginSessionStep = { step: 'session', ...authoritySession };
+
+const mfaEnrollment: MfaEnrollment = {
+  secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+  otpauthUri:
+    'otpauth://totp/SIGILO%20node.federal:oic-equipamiento.persona1?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=SIGILO%20node.federal&algorithm=SHA1&digits=6&period=30',
+  digits: 6,
+  periodSeconds: 30,
+};
+
+const mfaConfirmResponse: MfaConfirmResponse = {
+  recoveryCodes: [
+    'KQ7ZM-3TR5A',
+    'B2XWE-7HJLN',
+    'PD4QF-YV6GU',
+    'MZ3RA-KC5TS',
+    'WN7EB-2QXJH',
+    'T5LGV-RD3MY',
+    'HC6PU-ZW4KQ',
+    'FJ2NX-S7BEA',
+    'UY5DK-MP3RV',
+    'EG4TW-QL6ZC',
+  ],
+  session: {
+    ...loginSessionStep,
+    token: 'Qw8eR2tY6uI0oP4aS1dF5gH9jK3lZ7xC2vB6nM0q1Wz',
+  },
 };
 
 const sessionInfo: AuthoritySessionInfo = {
@@ -640,7 +685,12 @@ export const STANDARD_EXAMPLES = {
   'list-authority-complaints.response': [inboxSummary, summary, anonymousSummary],
   'get-authority-complaint.response': complaintDetail,
   'login.request': loginRequest,
-  'login.response': authoritySession,
+  'login.response': loginCodeStep,
+  'login-code.request': loginCodeRequest,
+  'login-code.response': loginSessionStep,
+  'enroll-mfa.response': mfaEnrollment,
+  'confirm-mfa.request': { code: '781104' },
+  'confirm-mfa.response': mfaConfirmResponse,
   'get-session.response': sessionInfo,
   'list-authorities.response': [
     authorityProfile,

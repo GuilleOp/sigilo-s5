@@ -1,0 +1,25 @@
+{
+  "recoveryCodes": [
+    "KQ7ZM-3TR5A",
+    "B2XWE-7HJLN",
+    "PD4QF-YV6GU",
+    "MZ3RA-KC5TS",
+    "WN7EB-2QXJH",
+    "T5LGV-RD3MY",
+    "HC6PU-ZW4KQ",
+    "FJ2NX-S7BEA",
+    "UY5DK-MP3RV",
+    "EG4TW-QL6ZC"
+  ],
+  "session": {
+    "step": "session",
+    "token": "Qw8eR2tY6uI0oP4aS1dF5gH9jK3lZ7xC2vB6nM0q1Wz",
+    "idleTimeoutSeconds": 900,
+    "absoluteTimeoutSeconds": 28800,
+    "account": {
+      "accountId": "acct-5f0c2a9d1e7b3c44",
+      "authorityId": "authority.oic-iffe",
+      "functions": ["intake", "investigation"]
+    }
+  }
+}

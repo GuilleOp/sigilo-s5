@@ -45,8 +45,24 @@ describe('loadConfig', () => {
       allowLegacyRelayAuth: true,
       webConfigFile: join(DEFAULT_DATA_DIR, 'web-config.json'),
       restDaysFile: join(DEFAULT_DATA_DIR, 'dias-inhabiles.json'),
+      mfaPolicy: 'opcional',
       warnings: [],
     });
+  });
+
+  it('exige el segundo factor en producción y en el perfil nodo, y opcional solo con aviso', () => {
+    expect(loadConfig({}).mfaPolicy).toBe('opcional');
+    expect(loadConfig({ SIGILO_E2E: '1' }).mfaPolicy).toBe('opcional');
+    expect(loadConfig({ NODE_ENV: 'production' }).mfaPolicy).toBe('requerido');
+    expect(loadConfig({ SIGILO_NODE_PROFILE: 'nodo' }).mfaPolicy).toBe('requerido');
+    expect(loadConfig({ SIGILO_MFA: 'requerido' }).mfaPolicy).toBe('requerido');
+    expect(loadConfig({ SIGILO_NODE_PROFILE: 'nodo', SIGILO_MFA: 'opcional' }).warnings).toEqual(
+      [],
+    );
+    const relaxed = loadConfig({ NODE_ENV: 'production', SIGILO_MFA: 'opcional' });
+    expect(relaxed.mfaPolicy).toBe('opcional');
+    expect(relaxed.warnings.join(' ')).toMatch(/SIGILO_MFA=opcional/u);
+    expect(() => loadConfig({ SIGILO_MFA: 'no' })).toThrow(/SIGILO_MFA/u);
   });
 
   it('separa la demostración de producción: SIGILO_E2E no arranca y SIGILO_DEMO avisa', () => {

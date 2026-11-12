@@ -8,6 +8,8 @@ import type { RequestLogMode } from './http/request-log.ts';
 import { REQUEST_LOG_MODES } from './http/request-log.ts';
 import { parseKeysFile } from './keys-file.ts';
 import type { ServerKeys } from './keys-file.ts';
+import { MFA_POLICIES } from './security/mfa-policy.ts';
+import type { MfaPolicy } from './security/mfa-policy.ts';
 import { DEFAULT_POW_MAX_BITS } from './security/proof-of-work.ts';
 import {
   DEFAULT_EVIDENCE_QUOTA_BYTES,
@@ -89,6 +91,11 @@ export interface ServerConfig {
    * el directorio de datos).
    */
   restDaysFile: string;
+  /**
+   * Segundo factor del panel (`SIGILO_MFA`): `requerido` (por omisión con `NODE_ENV=production` o
+   * en el perfil `nodo`) u `opcional` (por omisión en desarrollo, pruebas y E2E).
+   */
+  mfaPolicy: MfaPolicy;
   /** Avisos de arranque (por ejemplo, variables de demostración en producción). */
   warnings: string[];
 }
@@ -201,6 +208,28 @@ function parseProfile(env: NodeJS.ProcessEnv): { profile: NodeProfile; fronts: S
   const fronts = new Set<NodeFront>(profile === 'completo' ? ALL_FRONTS : NODE_PROFILE_FRONTS);
   if (intake === '1') fronts.add('ventanilla');
   return { profile, fronts };
+}
+
+/**
+ * Política del segundo factor. Lanza error si `SIGILO_MFA` no es `requerido` ni `opcional`.
+ * Con `opcional` en producción deja un aviso: solo sirve para la demostración publicada.
+ */
+function parseMfaPolicy(
+  env: NodeJS.ProcessEnv,
+  profile: NodeProfile,
+  warnings: string[],
+): MfaPolicy {
+  const value = env.SIGILO_MFA ?? '';
+  const fallback: MfaPolicy =
+    env.NODE_ENV === 'production' || profile === 'nodo' ? 'requerido' : 'opcional';
+  const policy = value === '' ? fallback : MFA_POLICIES.find((candidate) => candidate === value);
+  if (policy === undefined) throw new Error(`SIGILO_MFA debe ser ${MFA_POLICIES.join(' u ')}.`);
+  if (policy === 'opcional' && env.NODE_ENV === 'production') {
+    warnings.push(
+      'Atención: SIGILO_MFA=opcional con NODE_ENV=production. Un nodo real exige el segundo factor (quítala de config/nodo.env).',
+    );
+  }
+  return policy;
 }
 
 function parsePanelPort(env: NodeJS.ProcessEnv, port: number): number | null {
@@ -435,6 +464,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
   const dataDir = resolve(env.SIGILO_DATA_DIR || DEFAULT_DATA_DIR);
   const port = parsePort(env.SIGILO_PORT);
   const legacy = env.SIGILO_RELAY_AUTH_LEGACY ?? '';
+  const profile = parseProfile(env);
   if (legacy !== '' && legacy !== '0' && legacy !== '1') {
     throw new Error('SIGILO_RELAY_AUTH_LEGACY debe ser 0 o 1.');
   }
@@ -462,7 +492,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
       env.SIGILO_CORROBORATION_INDEX_URL,
     ),
     isAuditEnabled: env.SIGILO_AUDIT !== '0',
-    ...parseProfile(env),
+    ...profile,
+    mfaPolicy: parseMfaPolicy(env, profile.profile, warnings),
     panelPort: parsePanelPort(env, port),
     allowLegacyRelayAuth: legacy !== '0',
     webConfigFile: resolve(env.SIGILO_WEB_CONFIG_FILE || join(dataDir, WEB_CONFIG_FILE_NAME)),

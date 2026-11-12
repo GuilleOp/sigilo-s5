@@ -313,16 +313,73 @@ Inicio de sesión de una persona de la autoridad con su cuenta propia.
 | `/LoginRequest` | `username` | Sí          | Alfanumérico | String       | No      | Nombre de usuario de la cuenta (minúsculas, dígitos, punto y guiones). | patrón `^[a-z0-9._-]+$`; de 3 a 64 caracteres |                               | `oic-equipamiento.persona1`       |
 | `/LoginRequest` | `password` | Sí          | Alfanumérico | String       | No      | Contraseña de la cuenta, de 12 a 256 caracteres.                       | de 12 a 256 caracteres                        |                               | `contraseña-sintética-de-ejemplo` |
 
+### LoginResponse
+
+Resultado del primer paso (usuario y contraseña). `code` se responde igual si la contraseña no coincide, para no revelarla antes del segundo factor.
+
+| Path             | Variable | Obligatorio | Formato | Tipo de dato | Público | Descripción                                                                                                                                          | Restricciones | Valores permitidos o catálogo | Ejemplo |
+| ---------------- | -------- | ----------- | ------- | ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ----------------------------- | ------- |
+| `/LoginResponse` | (valor)  | Sí          | Objeto  | Object       | No      | Resultado del primer paso (usuario y contraseña). `code` se responde igual si la contraseña no coincide, para no revelarla antes del segundo factor. |               |                               |         |
+
+### LoginCodeRequest
+
+Código del segundo factor para terminar de iniciar sesión.
+
+| Path                | Variable    | Obligatorio | Formato      | Tipo de dato | Público | Descripción                                                                                                              | Restricciones                                   | Valores permitidos o catálogo | Ejemplo                                       |
+| ------------------- | ----------- | ----------- | ------------ | ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------- | --------------------------------------------- |
+| `/LoginCodeRequest` | `challenge` | Sí          | Alfanumérico | String       | No      | Reto de `POST authLogin`.                                                                                                | patrón `^[A-Za-z0-9_-]+$`; hasta 64 caracteres  |                               | `r4Vt8bQ1mZ0xK7pL2sN9wE5yH3cJ6dF0gA1uOiTkMnB` |
+| `/LoginCodeRequest` | `code`      | Sí          | Alfanumérico | String       | No      | Código de 6 dígitos de la app de autenticación (TOTP, RFC 6238) o código de recuperación de un solo uso (`XXXXX-XXXXX`). | patrón `^[A-Za-z0-9 -]+$`; de 6 a 16 caracteres |                               | `492039`                                      |
+
+### LoginSession
+
+Sesión abierta: la cuenta no tiene segundo factor y el nodo no lo exige (`SIGILO_MFA=opcional`), o ya se comprobó el código.
+
+| Path            | Variable                 | Obligatorio | Formato      | Tipo de dato                  | Público | Descripción                                                                                                               | Restricciones             | Valores permitidos o catálogo | Ejemplo                                       |
+| --------------- | ------------------------ | ----------- | ------------ | ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------- | --------------------------------------------- |
+| `/LoginSession` | `token`                  | Sí          | Alfanumérico | String                        | No      | Token de sesión opaco para `Authorization: Bearer`. Vence por inactividad y por duración, y se invalida al cerrar sesión. | patrón `^[A-Za-z0-9_-]+$` |                               | `Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq` |
+| `/LoginSession` | `idleTimeoutSeconds`     | Sí          | Numérico     | Number                        | No      | Segundos de inactividad tras los que vence la sesión.                                                                     |                           |                               | `900`                                         |
+| `/LoginSession` | `absoluteTimeoutSeconds` | Sí          | Numérico     | Number                        | No      | Segundos tras los que vence la sesión aunque haya actividad.                                                              |                           |                               | `28800`                                       |
+| `/LoginSession` | `account`                | Sí          | Objeto       | Object (AuthorityAccountView) | No      | Cuenta de la sesión: seudónimo, autoridad y funciones.                                                                    |                           |                               |                                               |
+| `/LoginSession` | `step`                   | Sí          | Alfanumérico | String (enum)                 | No      | La sesión quedó abierta.                                                                                                  | valor fijo `session`      |                               | `session`                                     |
+
+### MfaEnrollment
+
+Secreto del segundo factor por confirmar.
+
+| Path             | Variable        | Obligatorio | Formato      | Tipo de dato | Público | Descripción                                                                                                                           | Restricciones                                        | Valores permitidos o catálogo | Ejemplo                                            |
+| ---------------- | --------------- | ----------- | ------------ | ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------- | -------------------------------------------------- |
+| `/MfaEnrollment` | `secret`        | Sí          | Alfanumérico | String       | No      | Secreto en Base32 (RFC 4648) para escribirlo a mano en la app. Se muestra una sola vez y no queda inscrito hasta confirmar un código. | patrón `^[A-Z2-7]{16,64}$`                           |                               | `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`                 |
+| `/MfaEnrollment` | `otpauthUri`    | Sí          | Alfanumérico | String       | No      | URI `otpauth://` para el código QR (SHA-1, 6 dígitos, 30 s).                                                                          | patrón `^otpauth:\/\/totp\/.*`; hasta 512 caracteres |                               | `otpauth://totp/SIGILO%20node.federal:oic-equipa…` |
+| `/MfaEnrollment` | `digits`        | Sí          | Numérico     | Number       | No      | Dígitos del código.                                                                                                                   | valor fijo `6`                                       |                               | `6`                                                |
+| `/MfaEnrollment` | `periodSeconds` | Sí          | Numérico     | Number       | No      | Segundos de cada código.                                                                                                              | valor fijo `30`                                      |                               | `30`                                               |
+
+### MfaConfirmRequest
+
+Primer código de la app, para confirmar la inscripción.
+
+| Path                 | Variable | Obligatorio | Formato      | Tipo de dato | Público | Descripción                                                  | Restricciones    | Valores permitidos o catálogo | Ejemplo  |
+| -------------------- | -------- | ----------- | ------------ | ------------ | ------- | ------------------------------------------------------------ | ---------------- | ----------------------------- | -------- |
+| `/MfaConfirmRequest` | `code`   | Sí          | Alfanumérico | String       | No      | Código de 6 dígitos que muestra la app con el secreto nuevo. | patrón `^\d{6}$` |                               | `781104` |
+
+### MfaConfirmResponse
+
+Segundo factor inscrito y sesión completa (con token nuevo).
+
+| Path                  | Variable        | Obligatorio | Formato | Tipo de dato          | Público | Descripción                                                                                                                  | Restricciones                                                         | Valores permitidos o catálogo | Ejemplo |
+| --------------------- | --------------- | ----------- | ------- | --------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------- | ------- |
+| `/MfaConfirmResponse` | `recoveryCodes` | Sí          | Arreglo | Array of String       | No      | Diez códigos de recuperación de un solo uso. Se muestran solo esta vez; el nodo guarda sus digestos scrypt.                  | hasta 10 elementos; cada elemento: patrón `^[A-Z2-7]{5}-[A-Z2-7]{5}$` |                               |         |
+| `/MfaConfirmResponse` | `session`       | Sí          | Objeto  | Object (LoginSession) | No      | Sesión abierta: la cuenta no tiene segundo factor y el nodo no lo exige (`SIGILO_MFA=opcional`), o ya se comprobó el código. |                                                                       |                               |         |
+
 ### AuthoritySession
 
 Sesión iniciada: token, vencimientos y cuenta.
 
-| Path                | Variable                 | Obligatorio | Formato      | Tipo de dato                  | Público | Descripción                                                                                                               | Restricciones             | Valores permitidos o catálogo | Ejemplo                                       |
-| ------------------- | ------------------------ | ----------- | ------------ | ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------- | --------------------------------------------- |
-| `/AuthoritySession` | `token`                  | Sí          | Alfanumérico | String                        | No      | Token de sesión opaco para `Authorization: Bearer`. Vence por inactividad y por duración, y se invalida al cerrar sesión. | patrón `^[A-Za-z0-9_-]+$` |                               | `Yk3m9Q0bVZ2r7f8Lw1xT5cN4pH6aJdS0uEoRiGkMnBq` |
-| `/AuthoritySession` | `idleTimeoutSeconds`     | Sí          | Numérico     | Number                        | No      | Segundos de inactividad tras los que vence la sesión.                                                                     |                           |                               | `900`                                         |
-| `/AuthoritySession` | `absoluteTimeoutSeconds` | Sí          | Numérico     | Number                        | No      | Segundos tras los que vence la sesión aunque haya actividad.                                                              |                           |                               | `28800`                                       |
-| `/AuthoritySession` | `account`                | Sí          | Objeto       | Object (AuthorityAccountView) | No      | Cuenta de la sesión: seudónimo, autoridad y funciones.                                                                    |                           |                               |                                               |
+| Path                | Variable                 | Obligatorio | Formato      | Tipo de dato                  | Público | Descripción                                                                                                               | Restricciones             | Valores permitidos o catálogo | Ejemplo |
+| ------------------- | ------------------------ | ----------- | ------------ | ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------- | ------- |
+| `/AuthoritySession` | `token`                  | Sí          | Alfanumérico | String                        | No      | Token de sesión opaco para `Authorization: Bearer`. Vence por inactividad y por duración, y se invalida al cerrar sesión. | patrón `^[A-Za-z0-9_-]+$` |                               |         |
+| `/AuthoritySession` | `idleTimeoutSeconds`     | Sí          | Numérico     | Number                        | No      | Segundos de inactividad tras los que vence la sesión.                                                                     |                           |                               |         |
+| `/AuthoritySession` | `absoluteTimeoutSeconds` | Sí          | Numérico     | Number                        | No      | Segundos tras los que vence la sesión aunque haya actividad.                                                              |                           |                               |         |
+| `/AuthoritySession` | `account`                | Sí          | Objeto       | Object (AuthorityAccountView) | No      | Cuenta de la sesión: seudónimo, autoridad y funciones.                                                                    |                           |                               |         |
 
 ### AuthoritySessionInfo
 
