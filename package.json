@@ -46,6 +46,7 @@
     "ledger:anchor": "node scripts/ledger-anchor.ts",
     "demo:reset": "node scripts/demo-reset.ts",
     "standard:build": "node scripts/build-standard.ts",
+    "marca:render": "node scripts/marca/render.ts",
     "validate": "node tools/validador/src/cli.ts",
     "validate:pdn": "node tools/validador/src/pdn/cli.ts",
     "sigilo": "node tools/sigilo/src/cli.ts",
