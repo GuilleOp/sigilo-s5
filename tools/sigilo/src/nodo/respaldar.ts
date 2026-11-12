@@ -192,12 +192,23 @@ export function openBackup(
   const magic = Buffer.from(MAGIC, 'utf8');
   if (!bytes.subarray(0, magic.length).equals(magic))
     throw new CliError('No es un respaldo de SIGILO.');
+  const damaged = new CliError('El respaldo está dañado o incompleto.');
   const end = bytes.indexOf(0x0a, magic.length);
+  if (end < 0) throw damaged;
   const headerText = bytes.subarray(magic.length, end).toString('utf8');
-  const header = HeaderSchema.parse(JSON.parse(headerText));
+  let header: z.infer<typeof HeaderSchema>;
+  try {
+    header = HeaderSchema.parse(JSON.parse(headerText));
+  } catch {
+    throw damaged;
+  }
   const body = bytes.subarray(end + 1);
+  // Al menos un byte cifrado y la etiqueta completa de 16 bytes.
+  if (body.length <= 16) throw damaged;
   const key = deriveKey(phrase, Buffer.from(header.kdf.salt, 'base64'), header.kdf.logN);
-  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(header.iv, 'base64'));
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(header.iv, 'base64'), {
+    authTagLength: 16,
+  });
   decipher.setAAD(Buffer.from(headerText, 'utf8'));
   decipher.setAuthTag(body.subarray(body.length - 16));
   let plain: Buffer;
@@ -248,11 +259,14 @@ export function restore(ctx: Context, path: string): number {
     ? ctx.base
     : join(nodePaths(ctx).output, `restauracion-${todayOf(ctx)}`);
   const root = resolve(target);
-  for (const file of opened.files) {
-    const destination = resolve(root, file.ruta);
-    // Seguridad: ninguna ruta del respaldo sale de la carpeta de destino.
-    if (!destination.startsWith(`${root}${sep}`))
-      throw new CliError('Ruta inválida en el respaldo.');
+  const destinations = opened.files.map((file) => resolve(root, file.ruta));
+  // Seguridad: ninguna ruta del respaldo sale de la carpeta de destino. Se revisan todas antes de
+  // escribir: con `--sobrescribir`, una ruta inválida a la mitad dejaba la instalación a medias.
+  if (destinations.some((destination) => !destination.startsWith(`${root}${sep}`))) {
+    throw new CliError('Ruta inválida en el respaldo.');
+  }
+  for (const [index, file] of opened.files.entries()) {
+    const destination = destinations[index] ?? '';
     mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
     writeText(destination, file.datos, file.modo & 0o700);
   }
