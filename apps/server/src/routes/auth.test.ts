@@ -8,6 +8,7 @@ import {
   getAsAuthority,
   postJson,
   TEST_ACCOUNTS,
+  TEST_START,
   testPassword,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
@@ -70,11 +71,18 @@ describe('inicio de sesión', () => {
       expect((await login(server, username, 'contraseña-equivocada')).status).toBe(401);
     }
     // Ya limitado, otro fallo responde 429 (con el mismo costo) y no se cuenta como acierto.
-    expect((await login(server, username, 'contraseña-equivocada')).status).toBe(429);
-    // Regresión (H8): fallar a propósito no bloquea a la dueña: la contraseña correcta pasa.
-    expect((await login(server, username, testPassword('inboxIntake'))).status).toBe(200);
+    const limited = await login(server, username, 'contraseña-equivocada');
+    expect(limited.status).toBe(429);
+    // H05: durante la ventana también la contraseña correcta recibe 429, con la misma respuesta:
+    // el tope frena la adivinanza y no revela si se acertó.
+    const correct = await login(server, username, testPassword('inboxIntake'));
+    expect(correct.status).toBe(429);
+    expect(await correct.text()).toBe(await limited.text());
     const other = TEST_ACCOUNTS.oicIntake;
     expect((await login(server, other.username, testPassword('oicIntake'))).status).toBe(200);
+    // Al vencer la ventana, la contraseña correcta vuelve a abrir la sesión.
+    server.setNow(new Date(TEST_START.getTime() + 16 * 60 * 1000));
+    expect((await login(server, username, testPassword('inboxIntake'))).status).toBe(200);
     const kinds = server.ctx.securityLog
       .listByAccount(TEST_ACCOUNTS.inboxIntake.accountId)
       .map((event) => event.kind);

@@ -604,7 +604,7 @@ NetworkHealthNode,lastContactAt,lastContactAt,valor,,sí,"Última vez que respon
 NetworkHealthNode,registered,registered,booleano,,sí,Si se registró ante el enrutador y acepta sobres.,,true
 NetworkHealthNode,deliverable,deliverable,booleano,,sí,"Si el enrutador le entrega sobres ahora: registrado y, si hay versión mínima, con versión conocida y no menor.",,true
 NetworkHealthNode,warning,warning,valor,,sí,"unreachable (no respondió), not-registered, below-minimum-version (no se le entrega: actualizar el nodo), unknown-version (hay mínima y aún no se conoce su versión); null si todo bien.",,null
-NetworkHealthNode,queued,queued,entero,mínimo 0,sí,Sobres cerrados que esperan en la cola de entrega para este nodo.,,0
+NetworkHealthNode,queued,queued,valor,,sí,"Sobres cerrados que esperan en la cola de entrega para este nodo; null en la vista pública (solo la operación, con su token, ve el conteo).",,0
 PdnTokenRequest,grant_type,grant_type,cadena,,sí,"Flujo: password (el de las APIs de la PDN; desaconsejado en OAuth 2.1), client_credentials (recomendado) o refresh_token.",password; client_credentials; refresh_token,password
 PdnTokenRequest,client_id,client_id,cadena,de 1 a 256 caracteres,no,"Identificador del cliente, si no va en la cabecera Authorization: Basic (client_secret_post, como en la PDN).",,
 PdnTokenRequest,client_secret,client_secret,cadena,de 1 a 256 caracteres,no,"Secreto del cliente, si no va en la cabecera Authorization: Basic.",,

@@ -8,14 +8,7 @@ import {
   POW_HEADER,
 } from '@sigilo/contracts';
 import type { EvaluatorService } from './evaluator-service.ts';
-import {
-  ApiFailure,
-  errorResponse,
-  evaluatorCors,
-  limitBody,
-  readJson,
-  securityHeaders,
-} from './http.ts';
+import { ApiFailure, errorResponse, limitBody, readJson, securityHeaders } from './http.ts';
 
 const MAX_EVALUATION_BODY_BYTES = 1024;
 
@@ -25,8 +18,8 @@ export function createEvaluatorApp(deps: {
   hstsMaxAgeSeconds?: number | null;
 }): Hono {
   const app = new Hono();
+  // Seguridad (H22): sin CORS; la web usa el paso del mismo origen de la ventanilla o del nodo.
   app.use('*', securityHeaders(deps.hstsMaxAgeSeconds ?? null));
-  app.use('*', evaluatorCors());
 
   app.get(CORROBORATION_ROUTES.evaluatorKey, (c) => c.json(deps.evaluator.key()));
   app.get(CORROBORATION_ROUTES.evaluatorChallenge, (c) => c.json(deps.evaluator.challenge()));

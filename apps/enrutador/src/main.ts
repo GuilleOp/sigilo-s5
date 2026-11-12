@@ -5,10 +5,21 @@ import { serve } from '@hono/node-server';
 import { PDN_SCOPES } from '@sigilo/contracts';
 import type { DirectoryNode } from '@sigilo/contracts';
 import { keyIdFor, toDayDate, toHourDate } from '@sigilo/core';
-import { checkNodeHistory, signingPublicKeyOf } from '@sigilo/red';
+import {
+  HTTP_SERVER_OPTIONS,
+  checkNodeHistory,
+  signingPublicKeyOf,
+  withOutboundDefaults,
+} from '@sigilo/red';
 import { createRouterApp } from './app.ts';
 import { collectNodeHeads } from './collector.ts';
-import { loadRelaySecrets, loadRouterConfig, loadRouterFiles, openDataClock } from './config.ts';
+import {
+  assertSecureNodeUrls,
+  loadRelaySecrets,
+  loadRouterConfig,
+  loadRouterFiles,
+  openDataClock,
+} from './config.ts';
 import { openRouterDatabase } from './database.ts';
 import { loadDirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
@@ -23,13 +34,19 @@ import { createRelayService } from './relay-service.ts';
 import { loadVentanillaConfig } from './web.ts';
 
 function start(): void {
+  // Seguridad (H18): bases, WAL y llaves se crean 0600 aunque el umask del sistema sea 022.
+  process.umask(0o077);
   const config = loadRouterConfig(process.env);
   const files = loadRouterFiles(config.dataDir);
   const now = (): Date => new Date();
   const today = (): string => toDayDate(now());
   const db = openRouterDatabase(join(config.dataDir, 'enrutador.db'));
   const nodeUrl = (node: DirectoryNode): string => config.nodeUrls[node.id] ?? node.baseUrl;
-  const doFetch = (input: string | Request, init?: RequestInit) => fetch(input, init);
+  assertSecureNodeUrls(config, files.directory.directory.nodes.map(nodeUrl));
+  // Seguridad (H12): toda petición saliente lleva tiempo límite y no sigue redirecciones.
+  const doFetch = withOutboundDefaults((input: string | Request, init?: RequestInit) =>
+    fetch(input, init),
+  );
   const national = createNationalLedgerService({
     db,
     operatorPrivateKey: files.operatorPrivateKey,
@@ -54,6 +71,7 @@ function start(): void {
     meetsMinimumVersion: (node) => health.meetsMinimumVersion(node),
     authorization: (node) => tokens.token(node, PDN_SCOPES.deliveries),
     onUnauthorized: (node) => tokens.invalidate(node, PDN_SCOPES.deliveries),
+    relayAuthVersion: config.relayAuthVersion,
   });
   // Cola de entrega: sobres cerrados para nodos que no responden, con el reto propio del enrutador.
   const queueStore = createRelayQueue({
@@ -67,9 +85,15 @@ function start(): void {
       ttlDays: config.queue.ttlDays,
       maxPerNode: config.queue.maxPerNode,
       maxBytesPerNode: config.queue.maxBytesPerNode,
+      maxTotalBytes: config.queue.maxTotalBytes,
     },
   });
-  const queuePow = createQueuePow({ bits: config.queue.powBits, now });
+  // H07: el reto de la cola sube con su ocupación y con la carga reciente.
+  const queuePow = createQueuePow({
+    bits: config.queue.powBits,
+    now,
+    occupancy: () => queueStore.occupancy(),
+  });
   // Salud de los nodos y versión mínima: arriba o abajo, versiones, último contacto y cola.
   const health = createNodeHealthMonitor({
     directory: directory.directory,
@@ -106,6 +130,9 @@ function start(): void {
     statistics,
     now,
     hstsMaxAgeSeconds: config.hstsMaxAgeSeconds,
+    maxConcurrentRelays: config.relay.maxConcurrent,
+    maxRelayBytesInFlight: config.relay.maxBytesInFlight,
+    operationTokenDigest: config.operationTokenDigest,
     ...(ventanilla === null
       ? {}
       : {
@@ -176,9 +203,17 @@ function start(): void {
     });
   }, config.queue.intervalSeconds * 1000);
 
-  const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
-    process.stdout.write(`Enrutador SIGILO escuchando en http://${config.host}:${info.port}\n`);
-  });
+  const server = serve(
+    {
+      fetch: app.fetch,
+      hostname: config.host,
+      port: config.port,
+      serverOptions: HTTP_SERVER_OPTIONS,
+    },
+    (info) => {
+      process.stdout.write(`Enrutador SIGILO escuchando en http://${config.host}:${info.port}\n`);
+    },
+  );
   const shutdown = (): void => {
     clearInterval(timer);
     clearInterval(queueTimer);

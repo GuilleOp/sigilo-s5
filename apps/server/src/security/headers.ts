@@ -1,16 +1,15 @@
 // Cabeceras de seguridad de toda respuesta: unas para la API (incluidos los errores) y otras para
 // la web cuando el servidor la sirve en el mismo origen.
 import type { MiddlewareHandler } from 'hono';
-import { API_PREFIX, PDN_ROUTES } from '@sigilo/contracts';
+import {
+  API_PREFIX,
+  CROSS_ORIGIN_ISOLATION_HEADERS,
+  PDN_ROUTES,
+  PERMISSIONS_POLICY,
+} from '@sigilo/contracts';
 
-/** Funciones del navegador que ninguna página del sistema necesita. */
-export const PERMISSIONS_POLICY = [
-  'geolocation=()',
-  'microphone=()',
-  'camera=()',
-  'payment=()',
-  'usb=()',
-].join(', ');
+/** Funciones del navegador que ninguna página del sistema necesita (la lista común, H11). */
+export { PERMISSIONS_POLICY };
 
 const COMMON_HEADERS: Readonly<Record<string, string>> = {
   'Referrer-Policy': 'no-referrer',
@@ -18,7 +17,9 @@ const COMMON_HEADERS: Readonly<Record<string, string>> = {
   'X-Frame-Options': 'DENY',
   // Seguridad: nada se guarda en cachés intermedias ni del navegador.
   'Cache-Control': 'no-store',
-  'Cross-Origin-Opener-Policy': 'same-origin',
+  // Seguridad (H11): COOP, CORP y COEP aíslan el proceso del panel (la llave de la autoridad vive
+  // en su memoria) y ningún otro origen puede incrustar las respuestas del nodo.
+  ...CROSS_ORIGIN_ISOLATION_HEADERS,
   // Seguridad: ninguna página pide ubicación, micrófono ni cámara; el mapa es por entidad y municipio
   // y no hay dictado remoto (PRV-06 del perfil de privacidad).
   'Permissions-Policy': PERMISSIONS_POLICY,

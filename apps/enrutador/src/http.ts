@@ -3,7 +3,12 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { z } from 'zod';
-import { API_ERROR_HTTP_STATUS, API_ERROR_MESSAGES } from '@sigilo/contracts';
+import {
+  API_ERROR_HTTP_STATUS,
+  API_ERROR_MESSAGES,
+  CROSS_ORIGIN_ISOLATION_HEADERS,
+  PERMISSIONS_POLICY,
+} from '@sigilo/contracts';
 import type { ApiErrorCode } from '@sigilo/contracts';
 
 /** Error de la API que se traduce a una respuesta con su código y estatus. */
@@ -55,9 +60,9 @@ const HEADERS: Readonly<Record<string, string>> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Cache-Control': 'no-store',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Resource-Policy': 'same-origin',
-  'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+  // Seguridad (H11): la lista común de COOP, CORP y COEP y de funciones apagadas.
+  ...CROSS_ORIGIN_ISOLATION_HEADERS,
+  'Permissions-Policy': PERMISSIONS_POLICY,
 };
 
 /**

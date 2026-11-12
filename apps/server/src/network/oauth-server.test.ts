@@ -1,6 +1,7 @@
 // Pruebas del servidor de autorización OAuth 2.0 del nodo: emisión con client_credentials, password
 // y refresh_token, y validación del token (vencido, otro emisor, permiso faltante, firma inválida),
-// clientes desconocidos y secretos incorrectos comparados en tiempo constante, y bloqueo por fallos.
+// clientes desconocidos y secretos incorrectos comparados en tiempo constante, y bloqueo por fallos
+// solo del flujo password (los secretos de cliente equivocados nunca bloquean, H01).
 import * as crypto from 'node:crypto';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -183,25 +184,68 @@ describe('autenticación del cliente', () => {
     }
   });
 
-  it('tras 10 fallos de un cliente responde 429 sin comparar, aun con el secreto correcto', async () => {
-    const { server, advance } = setup();
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      await server.token({
+  it('H01: los secretos equivocados nunca bloquean al cliente legítimo', async () => {
+    const { server } = setup();
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const wrong = await server.token({
         authorization: basic('sesna', `equivocado-${attempt}`),
         params: { grant_type: 'client_credentials' },
       });
+      expect(wrong.status).toBe(401);
     }
-    vi.mocked(crypto.timingSafeEqual).mockClear();
-    const blocked = await server.token({
+    const legit = await server.token({
       authorization: basic('sesna', SECRET),
       params: { grant_type: 'client_credentials' },
     });
+    expect(legit.status).toBe(200);
+    // Tampoco el flujo password: sin el secreto del cliente no se llega a contar nada.
+    const password = await server.token({
+      authorization: basic('sesna', SECRET),
+      params: { grant_type: 'password', username: 'sesna.pdn', password: PASSWORD },
+    });
+    expect(password.status).toBe(200);
+  });
+
+  it('H01: un refresh_token inventado no cuenta para el tope', async () => {
+    const { server } = setup();
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const outcome = await server.token({
+        authorization: basic('sesna', SECRET),
+        params: { grant_type: 'refresh_token', refresh_token: `inventado-${attempt}` },
+      });
+      expect(outcome.status).toBe(400);
+    }
+    const legit = await server.token({
+      authorization: basic('sesna', SECRET),
+      params: { grant_type: 'password', username: 'sesna.pdn', password: PASSWORD },
+    });
+    expect(legit.status).toBe(200);
+  });
+
+  it('password: tras 10 fallos del cliente autenticado responde 429 sin correr scrypt', async () => {
+    const { server, advance } = setup();
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const wrong = await server.token({
+        authorization: basic('sesna', SECRET),
+        params: { grant_type: 'password', username: 'sesna.pdn', password: `mala-${attempt}` },
+      });
+      expect(wrong.status).toBe(400);
+    }
+    const blocked = await server.token({
+      authorization: basic('sesna', SECRET),
+      params: { grant_type: 'password', username: 'sesna.pdn', password: PASSWORD },
+    });
     expect(blocked.status).toBe(429);
-    expect(vi.mocked(crypto.timingSafeEqual)).not.toHaveBeenCalled();
+    // client_credentials sigue funcionando con el flujo password bloqueado.
+    const credentials = await server.token({
+      authorization: basic('sesna', SECRET),
+      params: { grant_type: 'client_credentials' },
+    });
+    expect(credentials.status).toBe(200);
     advance(15 * 60 * 1000);
     const again = await server.token({
       authorization: basic('sesna', SECRET),
-      params: { grant_type: 'client_credentials' },
+      params: { grant_type: 'password', username: 'sesna.pdn', password: PASSWORD },
     });
     expect(again.status).toBe(200);
   });

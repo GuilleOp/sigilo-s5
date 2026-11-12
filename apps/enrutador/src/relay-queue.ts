@@ -24,6 +24,11 @@ export interface RelayQueueLimits {
   maxPerNode: number;
   /** Bytes en cola por nodo (cuerpo JSON del sobre). */
   maxBytesPerNode: number;
+  /**
+   * Bytes en cola entre todos los nodos. Seguridad (H07): con 32 nodos caídos a la vez, el tope por
+   * nodo solo no acota el disco del enrutador.
+   */
+  maxTotalBytes: number;
   /** Primera espera entre intentos; se duplica en cada intento fallido. */
   baseRetryMs: number;
   /** Espera máxima entre intentos. */
@@ -36,6 +41,7 @@ export const DEFAULT_RELAY_QUEUE_LIMITS: RelayQueueLimits = {
   ttlDays: RELAY_QUEUE_TTL_DAYS,
   maxPerNode: 500,
   maxBytesPerNode: 64 * 1024 * 1024,
+  maxTotalBytes: 256 * 1024 * 1024,
   baseRetryMs: 30_000,
   maxRetryMs: 60 * 60 * 1000,
   batchSize: 50,
@@ -66,6 +72,11 @@ export interface RelayQueue {
   deliverDue(): Promise<RelayQueueRound>;
   /** Sobres en cola de un nodo. */
   stats(nodeId: string): RelayQueueStats;
+  /**
+   * Ocupación de la cola entre 0 y 1: la mayor fracción usada de cualquier tope (sobres o bytes de
+   * algún nodo, o bytes en total). Mueve la dificultad del reto de la cola.
+   */
+  occupancy(): number;
   /** Devuelve y vacía los contadores agregados. */
   drainCounters(): RelayQueueCounters;
 }
@@ -119,17 +130,45 @@ export function createRelayQueue(deps: RelayQueueDeps): RelayQueue {
       : { count: readInteger(row, 'count'), bytes: readInteger(row, 'bytes') };
   };
 
+  const totalBytes = (): number => {
+    const row = deps.db
+      .prepare('SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM relay_queue')
+      .get();
+    return row === undefined ? 0 : readInteger(row, 'bytes');
+  };
+
+  const occupancy = (): number => {
+    let fill = limits.maxTotalBytes <= 0 ? 1 : totalBytes() / limits.maxTotalBytes;
+    const rows = deps.db
+      .prepare(
+        'SELECT COUNT(*) AS count, COALESCE(SUM(size_bytes), 0) AS bytes FROM relay_queue GROUP BY node_id',
+      )
+      .all();
+    for (const row of rows) {
+      const count = limits.maxPerNode <= 0 ? 1 : readInteger(row, 'count') / limits.maxPerNode;
+      const bytes =
+        limits.maxBytesPerNode <= 0 ? 1 : readInteger(row, 'bytes') / limits.maxBytesPerNode;
+      fill = Math.max(fill, count, bytes);
+    }
+    return Math.min(1, fill);
+  };
+
   const remove = (queueId: string): void => {
     deps.db.prepare('DELETE FROM relay_queue WHERE queue_id = ?').run(queueId);
   };
 
   return {
     stats,
+    occupancy,
     enqueue(node, relay) {
       const envelope = JSON.stringify(relay);
       const size = envelope.length;
       const current = stats(node.id);
-      if (current.count >= limits.maxPerNode || current.bytes + size > limits.maxBytesPerNode) {
+      if (
+        current.count >= limits.maxPerNode ||
+        current.bytes + size > limits.maxBytesPerNode ||
+        totalBytes() + size > limits.maxTotalBytes
+      ) {
         return null;
       }
       const now = deps.now();
@@ -174,9 +213,12 @@ export function createRelayQueue(deps: RelayQueueDeps): RelayQueue {
         const time = deps.now().getTime();
         const expired = deps.db.prepare('DELETE FROM relay_queue WHERE expires_at <= ?').run(time);
         round.expired = Number(expired.changes);
+        // Seguridad (H07): reparto por turnos entre nodos. Primero el sobre más viejo de cada nodo,
+        // luego el segundo de cada uno, etc.: la cola llena de un nodo no frena las entregas a los
+        // demás.
         const rows = deps.db
           .prepare(
-            'SELECT queue_id, node_id, envelope, attempts FROM relay_queue WHERE next_attempt_at <= ? ORDER BY next_attempt_at LIMIT ?',
+            'SELECT queue_id, node_id, envelope, attempts FROM (SELECT queue_id, node_id, envelope, attempts, next_attempt_at, ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY next_attempt_at) AS turn FROM relay_queue WHERE next_attempt_at <= ?) ORDER BY turn, next_attempt_at LIMIT ?',
           )
           .all(time, limits.batchSize);
         for (const row of rows) {

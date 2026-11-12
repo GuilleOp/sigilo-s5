@@ -1,5 +1,6 @@
 // Configuración del enrutador desde el entorno y lectura de sus archivos (directorio firmado, raíz
 // de confianza y llave de la operación) en el directorio de datos.
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
@@ -30,14 +31,31 @@ export interface RouterConfig {
   healthIntervalSeconds: number;
   /** Versión mínima del software de los nodos (`mayor.menor.parche`), o `null`. */
   minimumNodeVersion: string | null;
-  /** Cola de entrega: reto propio, cada cuánto se reintenta y sus límites por nodo. */
+  /** Cola de entrega: reto propio, cada cuánto se reintenta y sus límites por nodo y en total. */
   queue: {
     powBits: number;
     intervalSeconds: number;
     ttlDays: number;
     maxPerNode: number;
     maxBytesPerNode: number;
+    maxTotalBytes: number;
   };
+  /** Relevo: reenvíos simultáneos y bytes de cuerpos en vuelo (H02). */
+  relay: { maxConcurrent: number; maxBytesInFlight: number };
+  /**
+   * SHA-256 del token de la operación (`SIGILO_ROUTER_OPERATION_TOKEN`), con el que la salud
+   * incluye la cola por nodo (H08), o `null`.
+   */
+  operationTokenDigest: Uint8Array | null;
+  /** Versión de la etiqueta HMAC hacia los buzones (`SIGILO_ROUTER_RELAY_AUTH`, v2 por omisión). */
+  relayAuthVersion: 1 | 2;
+  /**
+   * Si se admiten direcciones `http://` de nodos fuera de una demostración o del desarrollo
+   * (`SIGILO_ROUTER_ALLOW_HTTP_NODES=1`, solo para redes privadas con su propio cifrado).
+   */
+  allowHttpNodes: boolean;
+  /** Si el enrutador corre en producción (`NODE_ENV=production` sin `SIGILO_DEMO=1`). */
+  isProduction: boolean;
 }
 
 const DEFAULT_PORT = 8790;
@@ -49,6 +67,12 @@ const DEFAULT_QUEUE_POW_BITS = 18;
 const DEFAULT_QUEUE_TTL_DAYS = 7;
 const DEFAULT_QUEUE_MAX_PER_NODE = 500;
 const DEFAULT_QUEUE_MAX_MB_PER_NODE = 64;
+const DEFAULT_QUEUE_MAX_TOTAL_MB = 256;
+const DEFAULT_MAX_RELAYS = 64;
+const DEFAULT_RELAY_MAX_MB_IN_FLIGHT = 256;
+const MIN_OPERATION_TOKEN_LENGTH = 32;
+/** `max-age` mínimo de HSTS: un año, como en el nodo (H20). */
+export const MIN_ROUTER_HSTS_MAX_AGE_SECONDS = 31_536_000;
 const INTEGER_PATTERN = /^\d{1,9}$/u;
 const URL_PATTERN = /^https?:\/\/[^\s/?#]+$/u;
 
@@ -147,6 +171,53 @@ export function loadRouterConfig(env: NodeJS.ProcessEnv): RouterConfig {
   if (healthIntervalSeconds < 1) {
     throw new Error('SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS debe ser mayor que 0.');
   }
+  const maxTotalMb = parseInteger(
+    'SIGILO_ROUTER_QUEUE_MAX_TOTAL_MB',
+    env.SIGILO_ROUTER_QUEUE_MAX_TOTAL_MB,
+    DEFAULT_QUEUE_MAX_TOTAL_MB,
+  );
+  const relay = {
+    maxConcurrent: parseInteger(
+      'SIGILO_ROUTER_MAX_RELAYS',
+      env.SIGILO_ROUTER_MAX_RELAYS,
+      DEFAULT_MAX_RELAYS,
+    ),
+    maxBytesInFlight:
+      parseInteger(
+        'SIGILO_ROUTER_RELAY_MAX_MB_IN_FLIGHT',
+        env.SIGILO_ROUTER_RELAY_MAX_MB_IN_FLIGHT,
+        DEFAULT_RELAY_MAX_MB_IN_FLIGHT,
+      ) *
+      1024 *
+      1024,
+  };
+  if (relay.maxConcurrent < 1 || relay.maxBytesInFlight < 32 * 1024 * 1024) {
+    throw new Error(
+      'El relevo necesita SIGILO_ROUTER_MAX_RELAYS ≥ 1 y SIGILO_ROUTER_RELAY_MAX_MB_IN_FLIGHT ≥ 32 (un sobre del tramo mayor).',
+    );
+  }
+  const token = env.SIGILO_ROUTER_OPERATION_TOKEN ?? '';
+  if (
+    token !== '' &&
+    (token.length < MIN_OPERATION_TOKEN_LENGTH || !/^[\x21-\x7e]+$/u.test(token))
+  ) {
+    throw new Error(
+      `SIGILO_ROUTER_OPERATION_TOKEN debe tener al menos ${MIN_OPERATION_TOKEN_LENGTH} caracteres visibles.`,
+    );
+  }
+  const relayAuth = env.SIGILO_ROUTER_RELAY_AUTH ?? '';
+  if (relayAuth !== '' && relayAuth !== 'v1' && relayAuth !== 'v2') {
+    throw new Error('SIGILO_ROUTER_RELAY_AUTH debe ser v1 o v2.');
+  }
+  const isProduction = env.NODE_ENV === 'production' && env.SIGILO_DEMO !== '1';
+  if (hsts !== '') {
+    const seconds = parseInteger('SIGILO_ROUTER_HSTS_MAX_AGE', hsts, 0);
+    if (seconds < MIN_ROUTER_HSTS_MAX_AGE_SECONDS) {
+      throw new Error(
+        `SIGILO_ROUTER_HSTS_MAX_AGE debe ser de al menos ${MIN_ROUTER_HSTS_MAX_AGE_SECONDS} segundos (un año).`,
+      );
+    }
+  }
   const minimum = env.SIGILO_ROUTER_MIN_NODE_VERSION ?? '';
   if (minimum !== '' && !VERSION_PATTERN.test(minimum)) {
     throw new Error('SIGILO_ROUTER_MIN_NODE_VERSION debe tener la forma mayor.menor.parche.');
@@ -160,8 +231,34 @@ export function loadRouterConfig(env: NodeJS.ProcessEnv): RouterConfig {
     hstsMaxAgeSeconds: hsts === '' ? null : parseInteger('SIGILO_ROUTER_HSTS_MAX_AGE', hsts, 0),
     healthIntervalSeconds,
     minimumNodeVersion: minimum === '' ? null : minimum,
-    queue,
+    queue: { ...queue, maxTotalBytes: maxTotalMb * 1024 * 1024 },
+    relay,
+    operationTokenDigest:
+      token === '' ? null : new Uint8Array(createHash('sha256').update(token, 'utf8').digest()),
+    relayAuthVersion: relayAuth === 'v1' ? 1 : 2,
+    allowHttpNodes: env.SIGILO_ROUTER_ALLOW_HTTP_NODES === '1',
+    isProduction,
   };
+}
+
+/**
+ * Comprueba que, en producción, toda dirección por la que el enrutador habla con un nodo (la
+ * interna configurada o la `baseUrl` del directorio) use `https:`. Lanza error con la primera que no.
+ * Seguridad (H13): por `http://` el token OAuth y el sobre viajan sin TLS. Solo se admite con
+ * `SIGILO_ROUTER_ALLOW_HTTP_NODES=1` (red privada con su propio cifrado, p. ej. una VPN).
+ */
+export function assertSecureNodeUrls(
+  config: Pick<RouterConfig, 'isProduction' | 'allowHttpNodes'>,
+  urls: readonly string[],
+): void {
+  if (!config.isProduction || config.allowHttpNodes) return;
+  for (const url of urls) {
+    if (!url.startsWith('https://')) {
+      throw new Error(
+        'En producción el enrutador solo habla con los nodos por https:// (o SIGILO_ROUTER_ALLOW_HTTP_NODES=1 en una red privada cifrada).',
+      );
+    }
+  }
 }
 
 const OFFSET_PATTERN = /^\d{1,15}$/u;

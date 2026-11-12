@@ -5,12 +5,15 @@
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fromBase64Url, randomBytes, toBase64Url } from '@sigilo/core';
+import { HTTP_SERVER_OPTIONS, withOutboundDefaults } from '@sigilo/red';
 import { serve } from '@hono/node-server';
 import { createAppFromContext } from './app.ts';
 import type { RequestLogLine } from './app.ts';
 import { createOffsetClock, loadConfig, loadServerKeys } from './config.ts';
 import { createContext } from './context.ts';
 import { openDatabase } from './db/database.ts';
+import { restrictToFronts } from './http/exposure.ts';
+import type { NodeFront } from './http/exposure.ts';
 import { createRequestLog } from './http/request-log.ts';
 import { loadNodeNetwork } from './network/network-context.ts';
 import { createNetworkTasks } from './network/network-tasks.ts';
@@ -29,6 +32,9 @@ import {
 import { freezeClosedMonths } from './services/open-data.ts';
 import { runEscalationRules } from './services/rules-engine.ts';
 import { createFileEvidenceStore } from './storage/evidence-store.ts';
+
+/** Frentes del puerto propio del panel (`SIGILO_PANEL_PORT`): el panel y las lecturas públicas. */
+const PANEL_LISTENER_FRONTS: readonly NodeFront[] = ['panel', 'publico'];
 
 /** Cada cuánto se cierran los días de la bitácora, se congelan los meses y se vacía el registro. */
 const DAILY_TASKS_INTERVAL_MS = 10 * 60 * 1000;
@@ -68,6 +74,9 @@ function corroborationSecret(dataDir: string): Uint8Array {
 }
 
 function start(): void {
+  // Seguridad (H18): bases, WAL, secretos y pruebas se crean 0600 (y carpetas 0700) aunque el
+  // umask del sistema sea 022.
+  process.umask(0o077);
   const config = loadConfig(process.env);
   const keys = loadServerKeys(config.dataDir);
   const authorities = loadAuthorityRegistry(config.accountsFile);
@@ -82,8 +91,10 @@ function start(): void {
     console.warn('Atención: reloj de pruebas activo (SIGILO_TEST_CLOCK_FILE).');
   }
   const requestLog = createRequestLog({ mode: config.requestLogMode, now, write: writeLog });
-  const platformFetch = (input: string | Request, init?: RequestInit): Promise<Response> =>
-    fetch(input, init);
+  // Seguridad (H12): toda petición saliente del nodo lleva tiempo límite y no sigue redirecciones.
+  const platformFetch = withOutboundDefaults(
+    (input: string | Request, init?: RequestInit): Promise<Response> => fetch(input, init),
+  );
   const network =
     config.network === null ? undefined : loadNodeNetwork(config.network, platformFetch);
   const pdn = openPdnSources(config.pdn);
@@ -121,6 +132,8 @@ function start(): void {
     ...(corroboration === undefined ? {} : { corroboration }),
     isAuditEnabled: config.isAuditEnabled,
     oauth,
+    exposedFronts: config.fronts,
+    allowLegacyRelayAuth: config.allowLegacyRelayAuth,
   });
   const networkTasks =
     network === undefined
@@ -185,13 +198,38 @@ function start(): void {
     () => void runDailyTasks(),
   );
   const app = createAppFromContext(ctx);
-  const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
-    process.stdout.write(`SIGILO escuchando en http://${config.host}:${info.port}\n`);
-  });
+  // Frentes de cada escucha (H03): con SIGILO_PANEL_PORT, el panel sale por su propio puerto y el
+  // principal queda para la red de la SESNA y las lecturas públicas.
+  const mainFronts = new Set<NodeFront>(config.fronts);
+  if (config.panelPort !== null) mainFronts.delete('panel');
+  const listen = (port: number, fronts: ReadonlySet<NodeFront>, label: string) =>
+    serve(
+      {
+        fetch: restrictToFronts(app.fetch, fronts),
+        hostname: config.host,
+        port,
+        serverOptions: HTTP_SERVER_OPTIONS,
+      },
+      (info) => {
+        process.stdout.write(
+          `SIGILO (${label}: ${[...fronts].join(', ')}) escuchando en http://${config.host}:${info.port}\n`,
+        );
+      },
+    );
+  const server = listen(config.port, mainFronts, `perfil ${config.profile}`);
+  const panelServer =
+    config.panelPort === null
+      ? null
+      : listen(
+          config.panelPort,
+          new Set(PANEL_LISTENER_FRONTS.filter((front) => config.fronts.has(front))),
+          'panel',
+        );
   const shutdown = (): void => {
     stopPurge();
     stopDailyTasks();
     requestLog.flush();
+    panelServer?.close();
     server.close(() => {
       db.close();
       pdn.close();

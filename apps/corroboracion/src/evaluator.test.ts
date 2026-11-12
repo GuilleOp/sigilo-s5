@@ -30,12 +30,17 @@ describe('evaluador OPRF', () => {
     );
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(response.headers.get('Referrer-Policy')).toBe('no-referrer');
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(response.headers.get('Cross-Origin-Embedder-Policy')).toBe('require-corp');
+    // H22: sin CORS. La web llega al evaluador por el paso del mismo origen (ventanilla o nodo);
+    // otro origen no puede usarlo directo desde el navegador, así el evaluador no ve la IP de quien
+    // denuncia.
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
     const preflight = await services.evaluatorApp.request(CORROBORATION_ROUTES.evaluations, {
       method: 'OPTIONS',
+      headers: { Origin: 'https://otro.example', 'Access-Control-Request-Method': 'POST' },
     });
-    expect(preflight.status).toBe(204);
-    expect(preflight.headers.get('Access-Control-Allow-Headers')).toContain(POW_HEADER);
+    expect(preflight.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    expect(preflight.headers.get('Access-Control-Allow-Headers')).toBeNull();
   });
 
   it('evalúa con prueba de trabajo y la respuesta verifica contra la llave del directorio', async () => {

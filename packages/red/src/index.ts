@@ -11,4 +11,5 @@ export * from './node-history.ts';
 export * from './registration.ts';
 export * from './node-client.ts';
 export * from './relay-auth.ts';
+export * from './http-defaults.ts';
 export * from './demo-network.ts';

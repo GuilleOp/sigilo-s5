@@ -5,8 +5,8 @@
 #   nodo-queretaro   nodo estatal de Querétaro (lo opera su SESEA), solo panel 127.0.0.1:8781
 #   nodo-federal     nodo federal (Secretaría Anticorrupción), solo panel      127.0.0.1:8782
 #   nodo-oaxaca      nodo estatal de Oaxaca (lo opera su contraloría), panel   127.0.0.1:8783
-#   evaluador        evaluador OPRF de la corroboración ciega                  127.0.0.1:8791
-#   indice           índice de coincidencias de la corroboración ciega         127.0.0.1:8792
+#   evaluador        evaluador OPRF de la corroboración ciega       solo red interna (por el paso)
+#   indice           índice de coincidencias de la corroboración ciega        solo red interna
 #   testigo-*        dos observadores que, con el nodo Querétaro, cofirman la bitácora nacional (2 de 3)
 # Todo en un comando: npm run demo:todo (y npm run demo:apagar para bajarla y limpiar).
 # A mano: npm run red:demo (genera las llaves en .red-demo/, que no se versiona), después
@@ -21,16 +21,33 @@
 name: sigilo-red
 
 # Mismo UID que el dueño de .red-demo/ (ver arriba); por omisión, el usuario `node` de la imagen.
+# Límites de recursos (H10): memoria, procesos, CPU y descriptores por servicio, para que un abuso
+# (p. ej. muchos sobres grandes a la vez) no tumbe el equipo. Seccomp: el perfil por omisión de
+# Docker (nunca unconfined).
 x-hardening: &hardening
   user: '${SIGILO_UID:-1000}:${SIGILO_GID:-1000}'
   read_only: true
   tmpfs:
-    - /tmp
+    - /tmp:rw,noexec,nosuid,nodev,size=64m
   cap_drop:
     - ALL
   security_opt:
     - no-new-privileges:true
+  init: true
+  mem_limit: 512m
+  pids_limit: 128
+  cpus: 1.0
+  ulimits:
+    nofile:
+      soft: 4096
+      hard: 4096
   restart: unless-stopped
+
+# Nodos en perfil «nodo» (H03): sin recepción directa de denuncias ni paso del relevo; solo la red
+# de la SESNA (buzón, /oauth/token, estadística, salud), las lecturas públicas y el panel. Las
+# denuncias llegan cerradas por la ventanilla única del enrutador.
+x-node-environment: &node-environment
+  SIGILO_NODE_PROFILE: nodo
 
 x-node-build: &node-build
   context: .
@@ -43,6 +60,9 @@ x-node-build: &node-build
 
 x-witness: &witness
   <<: *hardening
+  mem_limit: 256m
+  pids_limit: 64
+  cpus: 0.5
   build:
     context: .
     dockerfile: docker/Dockerfile
@@ -63,6 +83,11 @@ x-witness: &witness
 services:
   enrutador:
     <<: *hardening
+    # El relevo admite hasta 256 MiB de sobres en vuelo (SIGILO_ROUTER_RELAY_MAX_MB_IN_FLIGHT),
+    # con unas tres copias en memoria cada uno.
+    mem_limit: 1536m
+    pids_limit: 256
+    cpus: 2.0
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -108,13 +133,14 @@ services:
       dockerfile: docker/Dockerfile
       target: evaluador
     image: sigilo/evaluador:local
+    mem_limit: 256m
+    cpus: 0.5
     volumes:
       - ./.red-demo/evaluador:/data
-    ports:
-      - '127.0.0.1:8791:8791'
+    # Sin puerto en el equipo (H16): la web y demo:seed llegan por el paso de la ventanilla
+    # (SIGILO_ROUTER_EVALUATOR_URL) y los nodos por la red interna. Sin salida a internet (H17).
     networks:
       - interna
-      - publica
 
   indice:
     <<: *hardening
@@ -128,14 +154,14 @@ services:
       NODE_ENV: development
       SIGILO_DEMO: '1'
       SIGILO_INDEX_CLOCK_FILE: /reloj/desfase
+    mem_limit: 256m
+    cpus: 0.5
     volumes:
       - ./.red-demo/indice:/data
       - ./.red-demo/reloj:/reloj:ro
-    ports:
-      - '127.0.0.1:8792:8792'
+    # Sin puerto en el equipo ni salida a internet (H16, H17): solo lo usan los nodos.
     networks:
       - interna
-      - publica
 
   nodo-queretaro:
     <<: *hardening
@@ -146,6 +172,9 @@ services:
     image: sigilo/nodo-queretaro:local
     env_file:
       - ./.red-demo/nodos/queretaro/node.env
+    environment:
+      <<: *node-environment
+    mem_limit: 1g
     volumes:
       - ./.red-demo/nodos/queretaro/data:/data
       - ./.red-demo/reloj:/reloj:ro
@@ -164,6 +193,9 @@ services:
     image: sigilo/nodo-federal:local
     env_file:
       - ./.red-demo/nodos/federal/node.env
+    environment:
+      <<: *node-environment
+    mem_limit: 1g
     volumes:
       - ./.red-demo/nodos/federal/data:/data
       - ./.red-demo/reloj:/reloj:ro
@@ -182,6 +214,9 @@ services:
     image: sigilo/nodo-oaxaca:local
     env_file:
       - ./.red-demo/nodos/oaxaca/node.env
+    environment:
+      <<: *node-environment
+    mem_limit: 1g
     volumes:
       - ./.red-demo/nodos/oaxaca/data:/data
       - ./.red-demo/reloj:/reloj:ro

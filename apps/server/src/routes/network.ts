@@ -12,6 +12,7 @@ import {
   NationalOpenDataSchema,
   PDN_SCOPES,
   POW_HEADER,
+  RELAY_MAX_BODY_BYTES,
   RELAY_V1_REJECTION_MESSAGE,
   RelayRequestSchema,
 } from '@sigilo/contracts';
@@ -32,8 +33,11 @@ import { hostedAuthorities } from '../network/network-context.ts';
 import { requireBearer } from '../network/oauth-guard.ts';
 import { createSlidingCounter } from '../security/proof-of-work.ts';
 
-/** Mayor sobre de red (tramo de 16 MiB en Base64 con su JSON), como el enrutador. */
-export const MAX_INBOX_BODY_BYTES = 23 * 1024 * 1024;
+/**
+ * Mayor sobre de red: el mismo tope que el enrutador, derivado del tramo mayor (H02). Antes eran
+ * 23 MiB fijos, algo más que lo que el enrutador deja pasar.
+ */
+export const MAX_INBOX_BODY_BYTES = RELAY_MAX_BODY_BYTES;
 
 /** Mayor petición de evaluación OPRF que se pasa al evaluador. */
 const MAX_EVALUATION_BODY_BYTES = 1024;
@@ -115,6 +119,10 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
           // Seguridad (H11): solo sobres que pasaron por el enrutador, con su etiqueta HMAC.
           relaySecret: network.relaySecret,
           nodeId: network.nodeId,
+          // Seguridad (H13): la etiqueta v2 lleva marca de tiempo y nonce; la v1 se acepta solo
+          // durante la transición (`SIGILO_RELAY_AUTH_LEGACY=0` la rechaza).
+          allowLegacyRelayAuth: ctx.deps.allowLegacyRelayAuth ?? true,
+          now: () => Date.now(),
           // Seguridad: el sobre v2 no dice la autoridad al enrutador; el nodo solo entrega a una
           // autoridad que el directorio verificado aloja aquí y que está vigente hoy.
           hostsAuthority: (authorityId) =>

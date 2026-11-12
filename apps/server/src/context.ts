@@ -36,6 +36,7 @@ import type { AuthorityRegistry } from './security/authority-registry.ts';
 import { createSessionStore, DEFAULT_SESSION_TIMEOUTS } from './security/sessions.ts';
 import type { SessionStore, SessionTimeouts } from './security/sessions.ts';
 import type { PowPurpose } from '@sigilo/contracts';
+import type { NodeFront } from './http/exposure.ts';
 import type { RequestLog } from './http/request-log.ts';
 import type { ServerKeys } from './keys-file.ts';
 import { createLedgerService } from './ledger-service.ts';
@@ -51,7 +52,12 @@ import { createPowGuard } from './security/proof-of-work.ts';
 import type { PowGuard } from './security/proof-of-work.ts';
 import { createReporterAuthenticator } from './security/reporter-auth.ts';
 import type { ReporterAuthenticator } from './security/reporter-auth.ts';
-import { createChallengeUploads } from './services/evidence-service.ts';
+import {
+  DEFAULT_EVIDENCE_QUOTA_BYTES,
+  createChallengeUploads,
+  evidenceBudget,
+} from './services/evidence-service.ts';
+import { MAX_EVIDENCE_BYTES, MAX_EVIDENCE_ITEMS } from '@sigilo/contracts';
 import type { ChallengeUploads } from './services/evidence-service.ts';
 import type { NoiseUnit } from './services/open-data.ts';
 import type { EvidenceStore } from './storage/evidence-store.ts';
@@ -143,6 +149,15 @@ export interface AppDeps {
    * hay clientes: no emite tokens y sus recursos protegidos responden `401`.
    */
   oauth?: NodeOAuthServer;
+  /**
+   * Frentes que publica la aplicación (H03, `http/exposure.ts`); ausente, todos (perfil
+   * `completo`). Las peticiones que despacha el buzón de red siempre pasan.
+   */
+  exposedFronts?: ReadonlySet<NodeFront>;
+  /**
+   * Si el buzón acepta todavía la etiqueta HMAC v1 sin frescura (sí por omisión; H13).
+   */
+  allowLegacyRelayAuth?: boolean;
 }
 
 /** Limitadores compartidos por las rutas. */
@@ -197,6 +212,15 @@ export const DEFAULT_RATE_LIMITS: RateLimitConfig = {
   loginFailuresPerUser: { limit: 10, windowMs: 15 * MINUTE_MS },
   loginFailuresGlobal: { limit: 100, windowMs: MINUTE_MS, stepMs: 20, maxDelayMs: 2000 },
 };
+
+/**
+ * Tope de subidas en retos abiertos (H06): las pruebas de tamaño máximo que caben en la parte de
+ * pendientes de la cuota, y nunca menos que cuatro denuncias con todas sus pruebas.
+ */
+function maxOpenEvidenceUses(quotaBytes: number | undefined): number {
+  const pending = evidenceBudget(quotaBytes ?? DEFAULT_EVIDENCE_QUOTA_BYTES).pendingMax;
+  return Math.max(4 * MAX_EVIDENCE_ITEMS, Math.floor(pending / MAX_EVIDENCE_BYTES));
+}
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -253,6 +277,7 @@ export function createContext(deps: AppDeps): AppContext {
       ...(deps.powMaxBits === undefined ? {} : { maxBits: deps.powMaxBits }),
       ...(deps.powLoadThresholds === undefined ? {} : { loadThresholds: deps.powLoadThresholds }),
       ...(deps.powSecret === undefined ? {} : { secret: deps.powSecret }),
+      maxOpenEvidenceUses: maxOpenEvidenceUses(deps.evidenceQuotaBytes),
     }),
     challengeUploads: createChallengeUploads(),
     oauth:

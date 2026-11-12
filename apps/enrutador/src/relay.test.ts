@@ -2,10 +2,16 @@
 // responde igual para cualquier destino y no persiste el sobre (se inspecciona la base y su WAL).
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NETWORK_ROUTES, RELAY_V1_REJECTION_MESSAGE } from '@sigilo/contracts';
+import {
+  NETWORK_ROUTES,
+  RELAY_MAX_BODY_BYTES,
+  RELAY_PLAINTEXT_BUCKETS,
+  RELAY_V1_REJECTION_MESSAGE,
+} from '@sigilo/contracts';
 import type { RelayRequest } from '@sigilo/contracts';
 import { createNodeNetworkClient, findNode, openRoutedReply, sealRoutedRequest } from '@sigilo/red';
 import type { DemoNodeId } from '@sigilo/red';
+import { MAX_RELAY_BODY_BYTES } from './app.ts';
 import { createTestRouter } from './test-support.ts';
 import type { TestRouter } from './test-support.ts';
 
@@ -178,6 +184,85 @@ describe('enrutador ciego', () => {
       outdated: 0,
       failed: 0,
     });
+  });
+});
+
+describe('topes del relevo antes de leer el cuerpo (H02)', () => {
+  /** Cuerpo en flujo que anota si alguien lo empezó a leer. */
+  function trackedBody(text: string) {
+    const state = { pulled: false };
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          state.pulled = true;
+          controller.enqueue(new TextEncoder().encode(text));
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    return { stream, state };
+  }
+
+  function postStream(router: TestRouter, body: ReadableStream<Uint8Array>, length?: number) {
+    return router.app.request(NETWORK_ROUTES.relay, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(length === undefined ? {} : { 'Content-Length': String(length) }),
+      },
+      body,
+      duplex: 'half',
+    } as RequestInit);
+  }
+
+  it('rechaza un Content-Length mayor que el tope sin leer el cuerpo', async () => {
+    const router = createTestRouter();
+    const { stream, state } = trackedBody('{}');
+    const response = await postStream(router, stream, MAX_RELAY_BODY_BYTES + 1);
+    expect(response.status).toBe(413);
+    expect(state.pulled).toBe(false);
+  });
+
+  it('sin cupo de bytes en vuelo responde 429 sin leer el cuerpo', async () => {
+    const router = createTestRouter({ relayLimits: { maxRelayBytesInFlight: 1000 } });
+    const declared = trackedBody('{}');
+    expect((await postStream(router, declared.stream, 5000)).status).toBe(429);
+    expect(declared.state.pulled).toBe(false);
+    // Sin Content-Length se reserva el tope completo: tampoco cabe.
+    const chunked = trackedBody('{}');
+    expect((await postStream(router, chunked.stream)).status).toBe(429);
+    expect(chunked.state.pulled).toBe(false);
+    // Uno que sí cabe se procesa normalmente.
+    await register(router, 'node.queretaro');
+    const { relay } = await seal(router, 'authority.comptroller-queretaro', 'node.queretaro');
+    const body = JSON.stringify(relay);
+    const small = createTestRouter({
+      relayLimits: { maxRelayBytesInFlight: body.length + 10 },
+    });
+    await register(small, 'node.queretaro');
+    const { relay: smallRelay } = await seal(
+      small,
+      'authority.comptroller-queretaro',
+      'node.queretaro',
+    );
+    const text = JSON.stringify(smallRelay);
+    const ok = trackedBody(text);
+    expect((await postStream(small, ok.stream, text.length)).status).toBe(200);
+  });
+
+  it('sin cupo de reenvíos simultáneos responde 429 sin leer el cuerpo', async () => {
+    const router = createTestRouter({ relayLimits: { maxConcurrentRelays: 0 } });
+    const { stream, state } = trackedBody('{}');
+    expect((await postStream(router, stream, 2)).status).toBe(429);
+    expect(state.pulled).toBe(false);
+  });
+
+  it('el tope de cuerpo cubre el tramo mayor y es el mismo en el nodo', () => {
+    const largest = Math.max(...RELAY_PLAINTEXT_BUCKETS);
+    expect(MAX_RELAY_BODY_BYTES).toBe(RELAY_MAX_BODY_BYTES);
+    expect(MAX_RELAY_BODY_BYTES).toBeGreaterThan(Math.ceil(((largest + 16) * 4) / 3));
+    expect(MAX_RELAY_BODY_BYTES).toBeLessThan(23 * 1024 * 1024);
   });
 });
 

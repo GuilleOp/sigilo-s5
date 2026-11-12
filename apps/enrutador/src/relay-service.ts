@@ -13,6 +13,7 @@ import { randomBytes, toHex } from '@sigilo/core';
 import {
   RELAY_AUTH_HEADER,
   hasRelayBucketSize,
+  relayAuthHeaderV2,
   relayAuthTag,
   relayDecoyResponse,
 } from '@sigilo/red';
@@ -85,6 +86,13 @@ export interface RelayDeps {
    * opción, no se revisa la versión.
    */
   meetsMinimumVersion?: (node: DirectoryNode) => boolean;
+  /**
+   * Versión de la etiqueta HMAC: 2 (por omisión, con marca de tiempo y nonce) o 1 (sin frescura,
+   * solo mientras algún nodo no se actualice; ver `SIGILO_ROUTER_RELAY_AUTH`).
+   */
+  relayAuthVersion?: 1 | 2;
+  /** Reloj en milisegundos de la etiqueta v2 (por omisión, el real). */
+  clock?: () => number;
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -116,7 +124,12 @@ export function createRelayService(deps: RelayDeps): RelayService {
       const secret = deps.relaySecret?.(node) ?? null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       // Seguridad: la etiqueta prueba al nodo que el sobre pasó por el enrutador.
-      if (secret !== null) headers[RELAY_AUTH_HEADER] = relayAuthTag(secret, body);
+      if (secret !== null) {
+        headers[RELAY_AUTH_HEADER] =
+          deps.relayAuthVersion === 1
+            ? relayAuthTag(secret, body)
+            : relayAuthHeaderV2(secret, body, (deps.clock ?? Date.now)());
+      }
       // Seguridad: OAuth 2.0 del nodo; el HMAC queda como defensa en profundidad.
       const token = (await deps.authorization?.(node)) ?? null;
       if (token !== null) headers.Authorization = `Bearer ${token}`;

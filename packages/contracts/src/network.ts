@@ -81,6 +81,20 @@ export const VENTANILLA_ROUTES = {
  */
 export const RELAY_PLAINTEXT_BUCKETS: readonly number[] = [4096, 65536, 1048576, 16777216];
 
+/**
+ * Cuerpo JSON máximo de una petición de relevo cuyo sobre es del tramo `bucket`: el texto cifrado
+ * (tramo más la etiqueta AEAD) en Base64URL más un margen fijo de 32 KiB para el encabezado, la
+ * llave efímera, el nodo y la marca de entrega diferida. Seguridad: el enrutador, el paso del nodo y
+ * su buzón usan este mismo tope (derivado del tramo mayor), así que si el tramo mayor baja, bajan
+ * todos juntos.
+ */
+export function relayBodyLimitFor(bucket: number): number {
+  return Math.ceil(((bucket + 64) * 4) / 3) + 32 * 1024;
+}
+
+/** Cuerpo máximo de cualquier petición de relevo o de buzón (tramo mayor, unos 22.4 MB). */
+export const RELAY_MAX_BODY_BYTES = relayBodyLimitFor(Math.max(...RELAY_PLAINTEXT_BUCKETS));
+
 /** Página máxima de la bitácora nacional y tramo máximo de una prueba de inclusión. */
 export const NATIONAL_LEDGER_MAX_PAGE = 500;
 export const NATIONAL_INCLUSION_MAX_CHAIN = 5000;
@@ -1020,8 +1034,9 @@ export const NetworkHealthNodeSchema = z
       description:
         'unreachable (no respondió), not-registered, below-minimum-version (no se le entrega: actualizar el nodo), unknown-version (hay mínima y aún no se conoce su versión); null si todo bien.',
     }),
-    queued: z.number().int().nonnegative().meta({
-      description: 'Sobres cerrados que esperan en la cola de entrega para este nodo.',
+    queued: z.number().int().nonnegative().nullable().meta({
+      description:
+        'Sobres cerrados que esperan en la cola de entrega para este nodo; null en la vista pública (solo la operación, con su token, ve el conteo).',
     }),
   })
   .strict()

@@ -2,6 +2,7 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
+import { HTTP_SERVER_OPTIONS } from '@sigilo/red';
 import { loadIndexConfig, loadVerifiedDirectory } from './config.ts';
 import { INDEX_SCHEMA, openDatabase } from './database.ts';
 import { createIndexApp } from './index-app.ts';
@@ -30,6 +31,8 @@ function indexClock(env: NodeJS.ProcessEnv): () => Date {
 }
 
 function start(): void {
+  // Seguridad (H18): bases, WAL y llaves se crean 0600 aunque el umask del sistema sea 022.
+  process.umask(0o077);
   const config = loadIndexConfig(process.env);
   const now = indexClock(process.env);
   const directory = loadVerifiedDirectory(config.dataDir);
@@ -37,11 +40,20 @@ function start(): void {
   const db = openDatabase(join(config.dataDir, 'indice.db'), INDEX_SCHEMA);
   const index = createIndexService({ db, directory: () => directory, now });
   const app = createIndexApp({ index, hstsMaxAgeSeconds: config.hstsMaxAgeSeconds });
-  const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
-    process.stdout.write(
-      `Índice de coincidencias de SIGILO en http://${config.host}:${info.port}\n`,
-    );
-  });
+  // H12: tiempos límite de cabeceras y peticiones, menores que los de Node.
+  const server = serve(
+    {
+      fetch: app.fetch,
+      hostname: config.host,
+      port: config.port,
+      serverOptions: HTTP_SERVER_OPTIONS,
+    },
+    (info) => {
+      process.stdout.write(
+        `Índice de coincidencias de SIGILO en http://${config.host}:${info.port}\n`,
+      );
+    },
+  );
   const shutdown = (): void => {
     server.close(() => {
       db.close();

@@ -4,7 +4,12 @@ import type { Context, MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { z } from 'zod';
-import { API_ERROR_HTTP_STATUS, API_ERROR_MESSAGES } from '@sigilo/contracts';
+import {
+  API_ERROR_HTTP_STATUS,
+  API_ERROR_MESSAGES,
+  CROSS_ORIGIN_ISOLATION_HEADERS,
+  PERMISSIONS_POLICY,
+} from '@sigilo/contracts';
 import type { ApiErrorCode } from '@sigilo/contracts';
 
 /** Error de la API que se traduce a una respuesta con su código y estatus. */
@@ -55,9 +60,9 @@ const HEADERS: Readonly<Record<string, string>> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Cache-Control': 'no-store',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Resource-Policy': 'same-origin',
-  'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+  // Seguridad (H11): la lista común de COOP, CORP y COEP y de funciones apagadas.
+  ...CROSS_ORIGIN_ISOLATION_HEADERS,
+  'Permissions-Policy': PERMISSIONS_POLICY,
 };
 
 /**
@@ -71,23 +76,5 @@ export function securityHeaders(hstsMaxAgeSeconds: number | null): MiddlewareHan
     await next();
     for (const [name, value] of Object.entries(HEADERS)) c.res.headers.set(name, value);
     if (hsts !== null) c.res.headers.set('Strict-Transport-Security', hsts);
-  };
-}
-
-/** Cabeceras CORS del evaluador, al que llama el navegador desde la web de cualquier nodo. */
-export function evaluatorCors(): MiddlewareHandler {
-  return async (c, next) => {
-    if (c.req.method === 'OPTIONS') {
-      return c.body(null, 204, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Sigilo-Pow',
-        'Access-Control-Max-Age': '600',
-      });
-    }
-    await next();
-    // Seguridad: sin credenciales ni cookies; el origen comodín no expone nada privado.
-    c.res.headers.set('Access-Control-Allow-Origin', '*');
-    return undefined;
   };
 }

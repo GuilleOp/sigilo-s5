@@ -1,6 +1,7 @@
 // Red completa en memoria para las pruebas de integración: enrutador ciego real, nodos Federal y
 // Querétaro con el servidor de referencia, evaluador e índice de corroboración, fuentes sintéticas
 // de la PDN y un reloj común. Todo con llaves nuevas y datos sintéticos del escenario de la demo.
+import type { NodeFront } from '../http/exposure.ts';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -242,6 +243,7 @@ function createNode(
   networkFetch: FetchLike,
   now: () => Date,
   relaySecret: Uint8Array,
+  exposedFronts?: ReadonlySet<NodeFront>,
 ): TestNode {
   const nodeKeys = services.network.nodes[nodeId];
   // El buzón general está en el directorio (papel `inbox`): `keys.json` lleva su llave publicada.
@@ -303,6 +305,7 @@ function createNode(
       fetch: networkFetch,
     },
     isAuditEnabled: true,
+    ...(exposedFronts === undefined ? {} : { exposedFronts }),
   });
   const witnessDir = mkdtempSync(join(tmpdir(), `sigilo-testigo-${nodeId}-`));
   return {
@@ -320,7 +323,12 @@ function createNode(
  * cofirmado por los tres testigos; enrutador con su base en un archivo temporal; y los dos nodos.
  * Los nodos aún no están registrados: la primera vuelta de sus tareas los registra.
  */
-export function createTestNetwork(): TestNetwork {
+export function createTestNetwork(
+  options: {
+    /** Frentes que publican los nodos (H03); por omisión, todos. */
+    nodeFronts?: ReadonlySet<NodeFront>;
+  } = {},
+): TestNetwork {
   // El índice exige la confirmación del nodo, como el servicio real (H3).
   const services = createTestCorroboration({ requireConfirmation: true });
   let signed = signDirectory(services.directory, services.network.operator.privateKey);
@@ -423,6 +431,7 @@ export function createTestNetwork(): TestNetwork {
     networkFetch,
     now,
     relaySecrets['node.federal'],
+    options.nodeFronts,
   );
   const queretaro = createNode(
     'node.queretaro',
@@ -432,6 +441,7 @@ export function createTestNetwork(): TestNetwork {
     networkFetch,
     now,
     relaySecrets['node.queretaro'],
+    options.nodeFronts,
   );
   apps.set(ROUTER_URL, routerApp);
   apps.set('http://indice.invalid', services.indexApp);

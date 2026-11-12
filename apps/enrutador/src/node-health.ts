@@ -1,7 +1,8 @@
 // Salud de los nodos: el enrutador consulta periódicamente `GET /api/v1/red/health` de cada nodo
 // del directorio y guarda en memoria si respondió, sus versiones y el último contacto. Con una
 // versión mínima configurada, no entrega sobres a un nodo con versión menor o desconocida.
-// Seguridad: solo nodos, versiones y conteos de la cola; ninguna denuncia, autoridad ni contenido.
+// Seguridad: solo nodos, versiones y (para la operación) conteos de la cola; ninguna denuncia,
+// autoridad ni contenido.
 import { NETWORK_ROUTES, NodeHealthReportSchema } from '@sigilo/contracts';
 import type {
   AuthorityDirectory,
@@ -49,8 +50,11 @@ interface NodeState {
 export interface NodeHealthMonitor {
   /** Consulta a todos los nodos del directorio a la vez y devuelve la salud. */
   check(): Promise<NetworkHealth>;
-  /** Salud con lo último que se sabe (sin consultar). */
-  snapshot(): NetworkHealth;
+  /**
+   * Salud con lo último que se sabe (sin consultar). Sin `includeQueue`, los conteos de la cola van
+   * como `null` (la vista pública, H08).
+   */
+  snapshot(options?: { includeQueue?: boolean }): NetworkHealth;
   /**
    * Si la versión del nodo permite entregarle sobres: sin mínima, siempre; con mínima, solo si su
    * versión conocida no es menor.
@@ -121,7 +125,7 @@ export function createNodeHealthMonitor(deps: NodeHealthDeps): NodeHealthMonitor
     }
   };
 
-  const nodeHealth = (node: DirectoryNode): NetworkHealthNode => {
+  const nodeHealth = (node: DirectoryNode, includeQueue: boolean): NetworkHealthNode => {
     const state = states.get(node.id);
     const registered = deps.isRegistered(node.id);
     const meets = meetsMinimumVersion(node);
@@ -143,15 +147,15 @@ export function createNodeHealthMonitor(deps: NodeHealthDeps): NodeHealthMonitor
       registered,
       deliverable: registered && meets,
       warning,
-      queued: deps.queued(node.id),
+      queued: includeQueue ? deps.queued(node.id) : null,
     };
   };
 
-  const snapshot = (): NetworkHealth => ({
+  const snapshot = (options: { includeQueue?: boolean } = {}): NetworkHealth => ({
     v: 1,
     checkedAt,
     minimumSoftwareVersion: deps.minimumVersion,
-    nodes: deps.directory().nodes.map(nodeHealth),
+    nodes: deps.directory().nodes.map((node) => nodeHealth(node, options.includeQueue === true)),
   });
 
   return {
@@ -179,7 +183,7 @@ export function createNodeHealthMonitor(deps: NodeHealthDeps): NodeHealthMonitor
           );
         } else if (!isBelow) warned.delete(node.id);
       }
-      return snapshot();
+      return snapshot({ includeQueue: true });
     },
   };
 }
@@ -219,7 +223,7 @@ export function networkHealthHtml(health: NetworkHealth): string {
         node.softwareVersion ?? '—',
         node.standardVersion ?? '—',
         node.lastContactAt ?? 'Nunca',
-        String(node.queued),
+        node.queued === null ? '—' : String(node.queued),
         node.deliverable ? 'Sí' : 'No',
         node.warning === null ? '—' : WARNING_LABELS[node.warning],
       ];

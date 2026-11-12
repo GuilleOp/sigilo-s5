@@ -1,4 +1,7 @@
 # Integración continua: formato, lint, tipos, pruebas y build de la web en cada push y pull request.
+# Seguridad (H15): las acciones se fijan por SHA del commit (el comentario dice su versión; Dependabot
+# las actualiza), se verifican las firmas del registro de npm y se publica el SBOM (CycloneDX) de las
+# dependencias de producción.
 name: ci
 
 on:
@@ -18,14 +21,25 @@ jobs:
       matrix:
         node-version: ['22.18', 'latest']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       # Seguridad: falla si una dependencia de producción tiene una vulnerabilidad alta o crítica.
       - run: npm audit --omit=dev --audit-level=high
+      # Seguridad: los paquetes instalados tienen firma y procedencia válidas del registro.
+      - run: npm audit signatures
+      - name: SBOM de las dependencias de producción
+        if: matrix.node-version == '22.18'
+        run: npm sbom --omit=dev --sbom-format cyclonedx > sbom.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: matrix.node-version == '22.18'
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          retention-days: 30
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
@@ -40,8 +54,8 @@ jobs:
     # Evita ejecuciones colgadas si la instalación de dependencias del sistema se atasca.
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -52,7 +66,7 @@ jobs:
       - run: npm run keys:generate -- --force
       - run: npx tsc -p e2e/tsconfig.json
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-report

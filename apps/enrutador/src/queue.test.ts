@@ -1,6 +1,7 @@
 // Pruebas de la cola de entrega: con el nodo caído el sobre cerrado queda en la cola con un acuse
 // firmado, se reintenta con espera exponencial, se entrega y se borra (de la tabla, del archivo y
-// del WAL), vence a los 7 días, respeta sus límites por nodo y exige el reto propio del enrutador.
+// del WAL), vence a los 7 días, respeta sus límites por nodo y en total, reparte las entregas por
+// turnos entre nodos y exige el reto propio del enrutador, adaptativo (H07).
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { NETWORK_ROUTES, PowChallengeSchema, RelayResponseSchema } from '@sigilo/contracts';
@@ -13,6 +14,7 @@ import {
   verifyRelayQueueReceipt,
 } from '@sigilo/red';
 import type { DemoNodeId } from '@sigilo/red';
+import { createQueuePow, occupancyExtraBits, queueLoadExtraBits } from './queue-pow.ts';
 import { retryDelayMs, DEFAULT_RELAY_QUEUE_LIMITS } from './relay-queue.ts';
 import { TEST_DAY, createTestRouter } from './test-support.ts';
 import type { TestRouter } from './test-support.ts';
@@ -210,6 +212,106 @@ describe('cola de entrega del enrutador', () => {
     router.setNow(at(1));
     expect(await router.queue.deliverDue()).toMatchObject({ rejected: 1, delivered: 0 });
     expect(queueRows(router)).toBe(0);
+  });
+
+  it('H07: con el nodo arriba, la marca de diferida no llega al nodo (cobra su propio reto)', async () => {
+    const router = createTestRouter({ withRelaySecrets: true });
+    await register(router, 'node.queretaro');
+    const relay = await deferredComplaint(router);
+    expect((await post(router, relay)).status).toBe(200);
+    const delivered = router.captured.find((request) =>
+      request.url.endsWith(NETWORK_ROUTES.nodeInbox),
+    );
+    // El nodo recibe el sobre sin `deferral`: no puede saltarse su prueba de trabajo adaptativa ni
+    // gastar su cupo de entregas diferidas.
+    expect(JSON.parse(delivered?.body ?? '{}')).toEqual({
+      v: relay.v,
+      node: relay.node,
+      sealed: relay.sealed,
+    });
+  });
+
+  it('H07: los reintentos desde la cola sí llevan la marca de diferida', async () => {
+    const router = createTestRouter({ withRelaySecrets: true });
+    await register(router, 'node.queretaro');
+    router.setNodeDown('node.queretaro', true);
+    const relay = await deferredComplaint(router);
+    await post(router, relay);
+    router.setNodeDown('node.queretaro', false);
+    router.captured.length = 0;
+    router.setNow(at(1));
+    expect((await router.queue.deliverDue()).delivered).toBe(1);
+    expect(JSON.parse(router.captured.at(-1)?.body ?? '{}')).toEqual(relay);
+  });
+
+  it('H07: tope total entre nodos y reparto por turnos al entregar', async () => {
+    const router = createTestRouter({
+      withRelaySecrets: true,
+      queueLimits: { maxTotalBytes: 1, batchSize: 2 },
+    });
+    router.setNodeDown('node.queretaro', true);
+    // Con 1 byte de tope total, nada cabe aunque el nodo tenga lugar.
+    expect((await post(router, await deferredComplaint(router))).status).toBe(429);
+    expect(queueRows(router)).toBe(0);
+
+    const fair = createTestRouter({ withRelaySecrets: true, queueLimits: { batchSize: 2 } });
+    await register(fair, 'node.queretaro');
+    await register(fair, 'node.oaxaca');
+    fair.setNodeDown('node.queretaro', true);
+    fair.setNodeDown('node.oaxaca', true);
+    for (let index = 0; index < 3; index += 1) {
+      await post(fair, await deferredComplaint(fair));
+    }
+    const oaxaca = findNode(fair.signed.directory, 'node.oaxaca');
+    if (oaxaca === undefined) throw new Error('sin nodo');
+    const { relay } = await sealRoutedRequest(
+      {
+        to: 'authority.comptroller-oaxaca',
+        operationId: 'submitComplaint',
+        query: {},
+        proofOfWork: null,
+        body: { kind: 'json', value: { marcador: MARKER } },
+        folio: generateFolio(),
+      },
+      oaxaca,
+    );
+    fair.setNow(at(0.5));
+    await post(fair, { ...relay, deferral: { proof: await queueProof(fair) } });
+    fair.captured.length = 0;
+    fair.setNow(at(2));
+    await fair.queue.deliverDue();
+    // Una vuelta de 2: un sobre de cada nodo, aunque Querétaro tenga tres más viejos.
+    const origins = fair.captured
+      .filter((request) => request.url.endsWith(NETWORK_ROUTES.nodeInbox))
+      .map((request) => new URL(request.url).origin)
+      .sort();
+    expect(origins).toEqual(['http://nodo-oaxaca.invalid', 'http://nodo-queretaro.invalid']);
+  });
+
+  it('H07: la dificultad del reto de la cola sube con la ocupación y con la carga', () => {
+    let fill = 0;
+    const now = () => at(0);
+    const pow = createQueuePow({ bits: 18, now, occupancy: () => fill, loadThreshold: 2 });
+    expect(pow.currentBits()).toBe(18);
+    fill = 0.3;
+    expect(pow.currentBits()).toBe(19);
+    fill = 0.8;
+    expect(pow.currentBits()).toBe(21);
+    fill = 1;
+    expect(pow.currentBits()).toBe(21);
+    expect(pow.issue().bits).toBe(21);
+    // Nunca más de la base más el margen.
+    expect(occupancyExtraBits(1) + queueLoadExtraBits(1_000_000, 2)).toBeGreaterThan(4);
+    expect(
+      createQueuePow({ bits: 18, now, occupancy: () => 1, loadThreshold: 0 }).currentBits(),
+    ).toBe(21);
+    // Un reto emitido con la cola vacía deja de servir cuando la cola se llena (más de un bit).
+    fill = 0;
+    const cheap = createQueuePow({ bits: 4, now, occupancy: () => fill });
+    const challenge = cheap.issue();
+    const counter = solvePow(challenge.token, challenge.bits) ?? '0';
+    fill = 0.8;
+    expect(cheap.spend(formatPowHeader(challenge.token, counter))).toBe(false);
   });
 
   it('la espera crece al doble hasta un máximo', () => {

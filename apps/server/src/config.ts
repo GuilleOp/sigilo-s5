@@ -2,6 +2,8 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { MAX_POW_BITS } from '@sigilo/contracts';
+import { ALL_FRONTS, NODE_PROFILE_FRONTS, NODE_PROFILES } from './http/exposure.ts';
+import type { NodeFront, NodeProfile } from './http/exposure.ts';
 import type { RequestLogMode } from './http/request-log.ts';
 import { REQUEST_LOG_MODES } from './http/request-log.ts';
 import { parseKeysFile } from './keys-file.ts';
@@ -59,6 +61,24 @@ export interface ServerConfig {
   corroborationIndexUrl: string | null;
   /** Auditor en la tarea periódica (`SIGILO_AUDIT`, activo por omisión). */
   isAuditEnabled: boolean;
+  /**
+   * Perfil del nodo (`SIGILO_NODE_PROFILE`): `completo` (todo; por omisión fuera de producción) o
+   * `nodo` (red, lecturas públicas y panel; por omisión con `NODE_ENV=production`). Ver
+   * `http/exposure.ts`.
+   */
+  profile: NodeProfile;
+  /** Frentes que publica el nodo según el perfil y `SIGILO_NODE_INTAKE` (H03). */
+  fronts: ReadonlySet<NodeFront>;
+  /**
+   * Puerto propio del panel (`SIGILO_PANEL_PORT`), o `null`. Con él, el puerto principal deja de
+   * servir el panel y este sirve solo el panel y las lecturas públicas.
+   */
+  panelPort: number | null;
+  /**
+   * Si el buzón acepta todavía la etiqueta HMAC v1 sin frescura (`SIGILO_RELAY_AUTH_LEGACY`, sí
+   * por omisión durante la transición; `0` exige la v2, H13).
+   */
+  allowLegacyRelayAuth: boolean;
 }
 
 /** Archivos con que el nodo entra a la red; los genera `npm run red:demo`. */
@@ -143,6 +163,42 @@ function parsePowMaxBits(value: string | undefined, powBits: number): number {
     );
   }
   return bits;
+}
+
+/**
+ * Perfil y frentes del nodo (H03). Lanza error si `SIGILO_NODE_PROFILE` o `SIGILO_NODE_INTAKE` no
+ * son válidos. `SIGILO_NODE_INTAKE=1` vuelve a abrir la recepción directa en el perfil `nodo`
+ * (por ejemplo, un nodo que también es ventanilla de su estado): el operador vería entonces las
+ * conexiones de quien denuncia.
+ */
+function parseProfile(env: NodeJS.ProcessEnv): { profile: NodeProfile; fronts: Set<NodeFront> } {
+  const value = env.SIGILO_NODE_PROFILE ?? '';
+  const profile =
+    value === ''
+      ? env.NODE_ENV === 'production'
+        ? 'nodo'
+        : 'completo'
+      : NODE_PROFILES.find((candidate) => candidate === value);
+  if (profile === undefined) {
+    throw new Error(`SIGILO_NODE_PROFILE debe ser ${NODE_PROFILES.join(' o ')}.`);
+  }
+  const intake = env.SIGILO_NODE_INTAKE ?? '';
+  if (intake !== '' && intake !== '0' && intake !== '1') {
+    throw new Error('SIGILO_NODE_INTAKE debe ser 0 o 1.');
+  }
+  const fronts = new Set<NodeFront>(profile === 'completo' ? ALL_FRONTS : NODE_PROFILE_FRONTS);
+  if (intake === '1') fronts.add('ventanilla');
+  return { profile, fronts };
+}
+
+function parsePanelPort(env: NodeJS.ProcessEnv, port: number): number | null {
+  const value = env.SIGILO_PANEL_PORT ?? '';
+  if (value === '') return null;
+  const panel = Number(value);
+  if (!Number.isInteger(panel) || panel < 1 || panel > 65535 || panel === port) {
+    throw new Error('SIGILO_PANEL_PORT debe ser un puerto válido y distinto de SIGILO_PORT.');
+  }
+  return panel;
 }
 
 function parseRetentionDays(env: NodeJS.ProcessEnv): number {
@@ -343,9 +399,14 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
   if (testClockFile !== null) assertTestClockFileSafe(testClockFile);
   const powBits = parsePowBits(env.SIGILO_POW_BITS);
   const dataDir = resolve(env.SIGILO_DATA_DIR || DEFAULT_DATA_DIR);
+  const port = parsePort(env.SIGILO_PORT);
+  const legacy = env.SIGILO_RELAY_AUTH_LEGACY ?? '';
+  if (legacy !== '' && legacy !== '0' && legacy !== '1') {
+    throw new Error('SIGILO_RELAY_AUTH_LEGACY debe ser 0 o 1.');
+  }
   return {
     host: '127.0.0.1',
-    port: parsePort(env.SIGILO_PORT),
+    port,
     dataDir,
     accountsFile: resolve(env.SIGILO_ACCOUNTS_FILE || join(dataDir, ACCOUNTS_FILE_NAME)),
     oauthClientsFile: resolve(env.SIGILO_OAUTH_CLIENTS_FILE || join(dataDir, 'oauth-clients.json')),
@@ -367,6 +428,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
       env.SIGILO_CORROBORATION_INDEX_URL,
     ),
     isAuditEnabled: env.SIGILO_AUDIT !== '0',
+    ...parseProfile(env),
+    panelPort: parsePanelPort(env, port),
+    allowLegacyRelayAuth: legacy !== '0',
   };
 }
 

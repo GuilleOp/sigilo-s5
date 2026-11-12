@@ -2,12 +2,15 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
+import { HTTP_SERVER_OPTIONS } from '@sigilo/red';
 import { loadEvaluatorConfig, loadEvaluatorKeys } from './config.ts';
 import { EVALUATOR_SCHEMA, openDatabase } from './database.ts';
 import { createEvaluatorApp } from './evaluator-app.ts';
 import { createEvaluatorService } from './evaluator-service.ts';
 
 function start(): void {
+  // Seguridad (H18): bases, WAL y llaves se crean 0600 aunque el umask del sistema sea 022.
+  process.umask(0o077);
   const config = loadEvaluatorConfig(process.env);
   const keys = loadEvaluatorKeys(config.dataDir);
   mkdirSync(config.dataDir, { recursive: true });
@@ -22,11 +25,20 @@ function start(): void {
       : { maxDailyEvaluations: config.maxDailyEvaluations }),
   });
   const app = createEvaluatorApp({ evaluator, hstsMaxAgeSeconds: config.hstsMaxAgeSeconds });
-  const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
-    process.stdout.write(
-      `Evaluador OPRF de SIGILO (época ${keys.key.epoch}, llave ${keys.key.keyId}) en http://${config.host}:${info.port}\n`,
-    );
-  });
+  // H12: tiempos límite de cabeceras y peticiones, menores que los de Node.
+  const server = serve(
+    {
+      fetch: app.fetch,
+      hostname: config.host,
+      port: config.port,
+      serverOptions: HTTP_SERVER_OPTIONS,
+    },
+    (info) => {
+      process.stdout.write(
+        `Evaluador OPRF de SIGILO (época ${keys.key.epoch}, llave ${keys.key.keyId}) en http://${config.host}:${info.port}\n`,
+      );
+    },
+  );
   const shutdown = (): void => {
     server.close(() => {
       db.close();
