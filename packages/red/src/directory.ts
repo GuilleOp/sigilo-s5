@@ -9,6 +9,7 @@ import type {
   SignedAuthorityDirectory,
 } from '@sigilo/contracts';
 import { canonicalize, keyIdFor, sha256Hex, toBase64Url } from '@sigilo/core';
+import { functionTableProblems } from './function-table.ts';
 import {
   keyIdMatches,
   signWithDomain,
@@ -61,7 +62,8 @@ function duplicates(values: readonly string[]): string[] {
 
 /**
  * Comprueba la coherencia interna del directorio y devuelve los problemas en español (vacío si
- * no hay). No verifica firmas.
+ * no hay). No verifica las firmas del directorio; sí la de cada tabla de funciones, que es parte
+ * de su contenido.
  */
 export function directoryProblems(directory: AuthorityDirectory): string[] {
   const problems: string[] = [];
@@ -125,6 +127,8 @@ export function directoryProblems(directory: AuthorityDirectory): string[] {
   if (directory.serial === 1 && directory.previousDigest !== DIRECTORY_GENESIS_DIGEST) {
     problems.push('La primera versión debe tener el digesto anterior en ceros.');
   }
+  // Seguridad: cada tabla de funciones lleva la firma de su nodo; la operación no puede cambiarla.
+  problems.push(...functionTableProblems(directory));
   return problems;
 }
 

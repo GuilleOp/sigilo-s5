@@ -11,6 +11,9 @@ import {
   DirectoryAuthoritySchema,
   DirectoryNodeSchema,
   DirectoryObserverSchema,
+  FunctionHolderSchema,
+  FunctionRuleSchema,
+  FunctionTableSchema,
   NETWORK_ROUTES,
   NationalCosignatureRequestSchema,
   NationalHeadSchema,
@@ -25,6 +28,7 @@ import {
   NodeRegistrationReceiptSchema,
   NodeRegistrationSchema,
   RelayRequestSchema,
+  SignedFunctionTableSchema,
   RelayResponseSchema,
   RoutedReplySchema,
   RoutedRequestSchema,
@@ -61,6 +65,10 @@ export const NETWORK_COMPONENTS = {
   DirectoryAuthority: DirectoryAuthoritySchema,
   AuthorityCompetence: AuthorityCompetenceSchema,
   DirectoryObserver: DirectoryObserverSchema,
+  SignedFunctionTable: SignedFunctionTableSchema,
+  FunctionTable: FunctionTableSchema,
+  FunctionRule: FunctionRuleSchema,
+  FunctionHolder: FunctionHolderSchema,
   WitnessPolicy: WitnessPolicySchema,
   WitnessSignature: WitnessSignatureSchema,
   NetworkTrustAnchor: NetworkTrustAnchorSchema,
@@ -120,7 +128,6 @@ const directory: AuthorityDirectory = {
       id: 'node.queretaro',
       name: 'Nodo estatal Querétaro',
       baseUrl: 'https://denuncias.queretaro.example',
-      isCommonNode: false,
       boxKeyId: KEY_ID_2,
       boxPublicKey: PUBLIC_KEY_2,
       signingKeyId: KEY_ID_3,
@@ -159,6 +166,66 @@ const directory: AuthorityDirectory = {
     },
   ],
   witnessPolicy: { threshold: 1, witnessIds: ['observer.cpc-queretaro', 'node.queretaro'] },
+  functionTables: [
+    {
+      table: {
+        format: 1,
+        nodeId: 'node.queretaro',
+        stateCode: '22',
+        version: 1,
+        issuedOn: DAY,
+        functions: {
+          intake: [
+            {
+              governmentLevels: ['estatal', 'municipal'],
+              entityIds: [],
+              holder: { kind: 'authority', authorityId: 'authority.buzon-queretaro' },
+            },
+          ],
+          operation: [
+            {
+              governmentLevels: ['estatal', 'municipal'],
+              entityIds: [],
+              holder: {
+                kind: 'institution',
+                name: 'Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro',
+              },
+            },
+          ],
+          investigation: [
+            {
+              governmentLevels: ['estatal', 'municipal'],
+              entityIds: [],
+              holder: { kind: 'authority', authorityId: 'authority.comptroller-queretaro' },
+              legalBasis: 'LGRA, arts. 3, fr. II, y 10',
+            },
+          ],
+          substantiation: [],
+          resolution: [
+            {
+              governmentLevels: ['estatal', 'municipal'],
+              entityIds: [],
+              severity: 'serious',
+              holder: {
+                kind: 'institution',
+                name: 'Tribunal de Justicia Administrativa Ficticio de Querétaro',
+              },
+            },
+          ],
+          supervision: [],
+          prosecution: [],
+          observer: [
+            {
+              governmentLevels: ['estatal', 'municipal'],
+              entityIds: [],
+              holder: { kind: 'observer', observerId: 'observer.cpc-queretaro' },
+            },
+          ],
+        },
+      },
+      signature: SIGNATURE,
+    },
+  ],
 };
 
 const signedDirectory: SignedAuthorityDirectory = {

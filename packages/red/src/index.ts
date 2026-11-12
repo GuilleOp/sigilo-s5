@@ -2,6 +2,7 @@
 // y en Node (sin APIs de Node).
 export * from './signatures.ts';
 export * from './directory.ts';
+export * from './function-table.ts';
 export * from './competent-authority.ts';
 export * from './relay-envelope.ts';
 export * from './national-ledger.ts';

@@ -39,6 +39,7 @@ const OUT = resolve(process.env.SIGILO_RED_DEMO_DIR || join(ROOT, '.red-demo'));
 const NODE_PUBLIC_URLS: Record<DemoNodeId, string> = {
   'node.queretaro': 'http://127.0.0.1:8781',
   'node.federal': 'http://127.0.0.1:8782',
+  'node.ejemplo': 'http://127.0.0.1:8783',
 };
 
 /** Orígenes públicos del evaluador y del índice (los que publica `compose.yaml`). */
@@ -49,12 +50,14 @@ const INDEX_PUBLIC_URL = 'http://127.0.0.1:8792';
 const NODE_DIRS: Record<DemoNodeId, string> = {
   'node.queretaro': 'queretaro',
   'node.federal': 'federal',
+  'node.ejemplo': 'ejemplo',
 };
 
 /** Supervisora (segunda llave) de cada nodo, si tiene. */
 const NODE_SUPERVISOR: Record<DemoNodeId, DemoAuthorityId | null> = {
   'node.queretaro': null,
   'node.federal': 'authority.oversight-federal',
+  'node.ejemplo': null,
 };
 
 function writeFile(path: string, content: string, mode: number): void {

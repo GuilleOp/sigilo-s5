@@ -197,6 +197,7 @@ describe('agregador en el enrutador', () => {
     expect(requested.map((url) => new URL(url).pathname)).toEqual([
       ROUTES.openDataCsv,
       ROUTES.openDataCsv,
+      ROUTES.openDataCsv,
     ]);
 
     const response = await app.request(NETWORK_ROUTES.nationalOpenData);

@@ -1,18 +1,23 @@
-// Red sintética del escenario de la demostración (docs/demo-escenario.md, sección 2): nodos,
-// autoridades (con el buzón general de cada nodo), observadores y testigos 2 de 3, con llaves generadas al momento. Nada es real.
+// Red sintética del escenario de la demostración (docs/demo-escenario.md, sección 2): un nodo por
+// entidad (Querétaro y el Estado Ejemplo) y el nodo federal, sin nodo común; autoridades (con el
+// buzón general de cada nodo), la tabla de funciones de cada nodo firmada por él, observadores y
+// testigos 2 de 3, con llaves generadas al momento. Nada es real.
 import type {
   AuthorityCompetence,
   AuthorityDirectory,
   AuthorityRole,
   DirectoryAuthority,
   DirectoryCorroboration,
+  FunctionRule,
+  FunctionTable,
   GovernmentLevel,
 } from '@sigilo/contracts';
 import { generateBoxKeyPair, generateSigningKeyPair } from '@sigilo/core';
 import type { KeyPair } from '@sigilo/core';
 import { DIRECTORY_GENESIS_DIGEST, encodePublicKey } from './directory.ts';
+import { signFunctionTable } from './function-table.ts';
 
-export const DEMO_NODE_IDS = ['node.queretaro', 'node.federal'] as const;
+export const DEMO_NODE_IDS = ['node.queretaro', 'node.federal', 'node.ejemplo'] as const;
 export type DemoNodeId = (typeof DEMO_NODE_IDS)[number];
 
 export const DEMO_AUTHORITY_IDS = [
@@ -24,6 +29,7 @@ export const DEMO_AUTHORITY_IDS = [
   'authority.comptroller-ejemplo',
   'authority.buzon-federal',
   'authority.buzon-queretaro',
+  'authority.buzon-ejemplo',
 ] as const;
 export type DemoAuthorityId = (typeof DEMO_AUTHORITY_IDS)[number];
 
@@ -34,6 +40,14 @@ export type DemoAuthorityId = (typeof DEMO_AUTHORITY_IDS)[number];
 export const DEMO_INBOX_AUTHORITY_IDS: Readonly<Record<DemoNodeId, DemoAuthorityId>> = {
   'node.federal': 'authority.buzon-federal',
   'node.queretaro': 'authority.buzon-queretaro',
+  'node.ejemplo': 'authority.buzon-ejemplo',
+};
+
+/** Nombre de cada nodo de la demostración. */
+export const DEMO_NODE_NAMES: Readonly<Record<DemoNodeId, string>> = {
+  'node.queretaro': 'Nodo estatal Querétaro',
+  'node.federal': 'Nodo Federal',
+  'node.ejemplo': 'Nodo estatal Estado Ejemplo',
 };
 
 export const DEMO_OBSERVER_IDS = ['observer.cpc-queretaro', 'observer.university-ejemplo'] as const;
@@ -153,7 +167,7 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
   },
   'authority.comptroller-ejemplo': {
     name: 'Contraloría Ficticia del Estado Ejemplo',
-    nodeId: 'node.federal',
+    nodeId: 'node.ejemplo',
     governmentLevel: 'estatal',
     stateCode: 'state.ejemplo',
     role: 'investigating',
@@ -166,7 +180,7 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
     supervisorId: null,
   },
   // Buzones generales: no se proponen por competencia; reciben lo que no encuentra autoridad. El
-  // del nodo común atiende a todo el país; el estatal, a su entidad.
+  // federal atiende solo a los entes federales; el de cada estado, a los de su entidad.
   'authority.buzon-federal': {
     name: 'Buzón general ficticio del nodo Federal',
     nodeId: 'node.federal',
@@ -174,7 +188,7 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
     stateCode: null,
     role: 'inbox',
     competence: {
-      governmentLevels: ['federal', 'estatal', 'municipal'],
+      governmentLevels: ['federal'],
       stateCodes: [],
       entityIds: [],
       laws: ['LGRA', 'CPF'],
@@ -188,8 +202,22 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
     stateCode: '22',
     role: 'inbox',
     competence: {
-      governmentLevels: ['federal', 'estatal', 'municipal'],
+      governmentLevels: ['estatal', 'municipal'],
       stateCodes: ['22'],
+      entityIds: [],
+      laws: ['LGRA', 'CPF'],
+    },
+    supervisorId: null,
+  },
+  'authority.buzon-ejemplo': {
+    name: 'Buzón general ficticio del nodo Estado Ejemplo',
+    nodeId: 'node.ejemplo',
+    governmentLevel: 'estatal',
+    stateCode: 'state.ejemplo',
+    role: 'inbox',
+    competence: {
+      governmentLevels: ['estatal', 'municipal'],
+      stateCodes: ['state.ejemplo'],
       entityIds: [],
       laws: ['LGRA', 'CPF'],
     },
@@ -197,11 +225,179 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
   },
 };
 
+const STATE_LEVELS: GovernmentLevel[] = ['estatal', 'municipal'];
+const FEDERAL_LEVELS: GovernmentLevel[] = ['federal'];
+
+type RuleExtra = Partial<Pick<FunctionRule, 'entityIds' | 'severity' | 'legalBasis'>>;
+
+function rule(
+  governmentLevels: GovernmentLevel[],
+  holder: FunctionRule['holder'],
+  extra: RuleExtra = {},
+): FunctionRule {
+  return {
+    governmentLevels,
+    entityIds: extra.entityIds ?? [],
+    ...(extra.severity === undefined ? {} : { severity: extra.severity }),
+    holder,
+    ...(extra.legalBasis === undefined ? {} : { legalBasis: extra.legalBasis }),
+  };
+}
+
+function authorityRule(
+  governmentLevels: GovernmentLevel[],
+  authorityId: DemoAuthorityId,
+  extra: RuleExtra = {},
+): FunctionRule {
+  return rule(governmentLevels, { kind: 'authority', authorityId }, extra);
+}
+
+function institutionRule(
+  governmentLevels: GovernmentLevel[],
+  name: string,
+  extra: RuleExtra = {},
+): FunctionRule {
+  return rule(governmentLevels, { kind: 'institution', name }, extra);
+}
+
+/**
+ * Tabla de funciones que declara cada nodo de la demostración. Querétaro y el Estado Ejemplo cubren
+ * sus entes estatales y municipales («municipales sin OIC → Contraloría»); el federal, los entes
+ * federales, cada uno con su OIC («ente X → su OIC») y sin regla general: un ente federal sin OIC en
+ * el directorio va al buzón federal, que lo turna.
+ */
+export function demoFunctionTables(issuedOn: string): Record<DemoNodeId, FunctionTable> {
+  const table = (
+    nodeId: DemoNodeId,
+    stateCode: string | null,
+    functions: FunctionTable['functions'],
+  ): FunctionTable => ({ format: 1, nodeId, stateCode, version: 1, issuedOn, functions });
+  return {
+    'node.queretaro': table('node.queretaro', '22', {
+      intake: [authorityRule(STATE_LEVELS, 'authority.buzon-queretaro')],
+      operation: [
+        institutionRule(
+          STATE_LEVELS,
+          'Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro',
+        ),
+      ],
+      investigation: [
+        authorityRule(STATE_LEVELS, 'authority.comptroller-queretaro', {
+          legalBasis: 'LGRA, arts. 3, fr. II, y 10',
+        }),
+      ],
+      substantiation: [
+        institutionRule(
+          STATE_LEVELS,
+          'Dirección Ficticia de Responsabilidades de la Contraloría de Querétaro',
+          { legalBasis: 'LGRA, art. 3, fr. III' },
+        ),
+      ],
+      resolution: [
+        institutionRule(STATE_LEVELS, 'Contraloría Estatal Ficticia de Querétaro (resolutora)', {
+          severity: 'non_serious',
+          legalBasis: 'LGRA, art. 10',
+        }),
+        institutionRule(STATE_LEVELS, 'Tribunal de Justicia Administrativa Ficticio de Querétaro', {
+          severity: 'serious',
+          legalBasis: 'LGRA, art. 12',
+        }),
+      ],
+      supervision: [
+        institutionRule(STATE_LEVELS, 'Titular de la Contraloría Estatal Ficticia de Querétaro'),
+      ],
+      prosecution: [institutionRule(STATE_LEVELS, 'Fiscalía Anticorrupción Ficticia de Querétaro')],
+      observer: [rule(STATE_LEVELS, { kind: 'observer', observerId: 'observer.cpc-queretaro' })],
+    }),
+    'node.federal': table('node.federal', null, {
+      intake: [authorityRule(FEDERAL_LEVELS, 'authority.buzon-federal')],
+      operation: [
+        institutionRule(
+          FEDERAL_LEVELS,
+          'Secretaría Anticorrupción y Buen Gobierno Ficticia (operación del nodo federal)',
+        ),
+      ],
+      investigation: [
+        authorityRule(FEDERAL_LEVELS, 'authority.oic-iffe', { entityIds: ['VE-INSTITUTO'] }),
+        authorityRule(FEDERAL_LEVELS, 'authority.oic-dfps', { entityIds: ['VE-PROGRAMAS'] }),
+      ],
+      substantiation: [
+        authorityRule(FEDERAL_LEVELS, 'authority.oic-iffe', {
+          entityIds: ['VE-INSTITUTO'],
+          legalBasis: 'Área de responsabilidades del OIC (LGRA, art. 3, fr. III)',
+        }),
+        authorityRule(FEDERAL_LEVELS, 'authority.oic-dfps', {
+          entityIds: ['VE-PROGRAMAS'],
+          legalBasis: 'Área de responsabilidades del OIC (LGRA, art. 3, fr. III)',
+        }),
+      ],
+      resolution: [
+        authorityRule(FEDERAL_LEVELS, 'authority.oic-iffe', {
+          entityIds: ['VE-INSTITUTO'],
+          severity: 'non_serious',
+          legalBasis: 'LGRA, art. 10',
+        }),
+        authorityRule(FEDERAL_LEVELS, 'authority.oic-dfps', {
+          entityIds: ['VE-PROGRAMAS'],
+          severity: 'non_serious',
+          legalBasis: 'LGRA, art. 10',
+        }),
+        institutionRule(FEDERAL_LEVELS, 'Tribunal Federal Ficticio de Justicia Administrativa', {
+          severity: 'serious',
+          legalBasis: 'LGRA, art. 12',
+        }),
+      ],
+      supervision: [authorityRule(FEDERAL_LEVELS, 'authority.oversight-federal')],
+      prosecution: [authorityRule(FEDERAL_LEVELS, 'authority.prosecutor-anticorruption')],
+      observer: [
+        institutionRule(
+          FEDERAL_LEVELS,
+          'Comité de Participación Ciudadana Ficticio del Sistema Nacional Anticorrupción',
+        ),
+      ],
+    }),
+    'node.ejemplo': table('node.ejemplo', 'state.ejemplo', {
+      intake: [authorityRule(STATE_LEVELS, 'authority.buzon-ejemplo')],
+      operation: [
+        institutionRule(
+          STATE_LEVELS,
+          'Secretaría de la Contraloría Ficticia del Estado Ejemplo (operación del nodo)',
+        ),
+      ],
+      investigation: [
+        authorityRule(STATE_LEVELS, 'authority.comptroller-ejemplo', {
+          legalBasis: 'LGRA, arts. 3, fr. II, y 10',
+        }),
+      ],
+      substantiation: [
+        institutionRule(
+          STATE_LEVELS,
+          'Dirección Ficticia de Responsabilidades de la Contraloría del Estado Ejemplo',
+        ),
+      ],
+      resolution: [
+        institutionRule(STATE_LEVELS, 'Contraloría Ficticia del Estado Ejemplo (resolutora)', {
+          severity: 'non_serious',
+        }),
+        institutionRule(
+          STATE_LEVELS,
+          'Tribunal de Justicia Administrativa Ficticio del Estado Ejemplo',
+          { severity: 'serious' },
+        ),
+      ],
+      supervision: [],
+      prosecution: [institutionRule(STATE_LEVELS, 'Fiscalía Ficticia del Estado Ejemplo')],
+      // El Estado Ejemplo no tiene CPC (sección 2.4 del escenario).
+      observer: [],
+    }),
+  };
+}
+
 /** Opciones del directorio de demostración. */
 export interface DemoDirectoryOptions {
   issuedOn: string;
-  /** Origen público de cada nodo. */
-  baseUrls: Record<DemoNodeId, string>;
+  /** Origen público de cada nodo; el que falte usa `http://<nodo>.invalid`. */
+  baseUrls: Partial<Record<DemoNodeId, string>>;
   serial?: number;
   previousDigest?: string;
   /** Llave del evaluador OPRF y orígenes de la corroboración ciega; sin ella, no se ofrece. */
@@ -210,9 +406,12 @@ export interface DemoDirectoryOptions {
   validUntil?: string;
 }
 
-/** Arma la primera versión (sin firmar) del directorio del escenario. */
+/**
+ * Arma la primera versión (sin firmar) del directorio del escenario, con la tabla de funciones de
+ * cada nodo ya firmada por su llave (en la operación real, cada nodo la firma por separado).
+ */
 export function buildDemoDirectory(
-  keys: DemoNetworkKeys<PublicPart>,
+  keys: DemoNetworkKeys,
   options: DemoDirectoryOptions,
 ): AuthorityDirectory {
   const operator = encodePublicKey(keys.operator.publicKey);
@@ -245,10 +444,8 @@ export function buildDemoDirectory(
       const signing = encodePublicKey(keys.nodes[id].signing.publicKey);
       return {
         id,
-        name:
-          id === 'node.queretaro' ? 'Nodo estatal Querétaro' : 'Nodo Federal (también nodo común)',
-        baseUrl: options.baseUrls[id],
-        isCommonNode: id === 'node.federal',
+        name: DEMO_NODE_NAMES[id],
+        baseUrl: options.baseUrls[id] ?? `http://${id.replace('.', '-')}.invalid`,
         boxKeyId: box.keyId,
         boxPublicKey: box.publicKey,
         signingKeyId: signing.keyId,
@@ -272,6 +469,9 @@ export function buildDemoDirectory(
     ],
     witnessPolicy: { threshold: DEMO_WITNESS_THRESHOLD, witnessIds: [...DEMO_WITNESS_IDS] },
     ...(options.corroboration === undefined ? {} : { corroboration: options.corroboration }),
+    functionTables: Object.entries(demoFunctionTables(options.issuedOn)).map(([id, table]) =>
+      signFunctionTable(table, keys.nodes[id as DemoNodeId].signing.privateKey),
+    ),
   };
 }
 

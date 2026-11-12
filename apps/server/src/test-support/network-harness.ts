@@ -314,6 +314,7 @@ export function createTestNetwork(): TestNetwork {
   const relaySecrets: Record<DemoNodeId, Uint8Array> = {
     'node.federal': randomBytes(32),
     'node.queretaro': randomBytes(32),
+    'node.ejemplo': randomBytes(32),
   };
   const relay = createRelayService({
     db: routerDb,

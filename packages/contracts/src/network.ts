@@ -46,6 +46,25 @@ export const NETWORK_ROUTES = {
 } as const;
 
 /**
+ * Pasos de la ventanilla única de referencia (la web que sirve la SESNA junto al enrutador) hacia
+ * las rutas públicas de un nodo: la bitácora pública, para el registro público, y la solicitud de
+ * alta de una institución. No son parte del Estándar S5: son una comodidad del despliegue para que
+ * la web no haga peticiones a otros orígenes. Ninguna lleva denuncias.
+ */
+export const VENTANILLA_ROUTES = {
+  /** `GET`: cabeza firmada de la bitácora pública del nodo. */
+  nodeLedgerHead: (nodeId: string) => `${NETWORK_API_PREFIX}/nodes/${nodeId}/ledger/head`,
+  /** `GET ?from=&limit=`: eventos de la bitácora pública del nodo. */
+  nodeLedgerEvents: (nodeId: string) => `${NETWORK_API_PREFIX}/nodes/${nodeId}/ledger/events`,
+  /** `GET`: reto de prueba de trabajo de una solicitud de alta en el nodo. */
+  nodeRegistrationChallenge: (nodeId: string) =>
+    `${NETWORK_API_PREFIX}/nodes/${nodeId}/registration-requests/challenge`,
+  /** `POST`: solicitud de alta de una institución, que revisa la operación de ese nodo. */
+  nodeRegistrationRequests: (nodeId: string) =>
+    `${NETWORK_API_PREFIX}/nodes/${nodeId}/registration-requests`,
+} as const;
+
+/**
  * Tamaños permitidos del texto en claro (ya rellenado) de los sobres de red, en bytes. El
  * enrutador rechaza cualquier otro tamaño: así solo ve el tramo, no la longitud real.
  */
@@ -111,9 +130,6 @@ export const DirectoryNodeSchema = z
         description: 'Origen público del nodo (esquema, host y puerto, sin ruta).',
         examples: ['https://denuncias.queretaro.example'],
       }),
-    isCommonNode: z
-      .boolean()
-      .meta({ description: 'Si aloja a autoridades de entidades sin nodo propio.' }),
     boxKeyId: KeyIdSchema,
     boxPublicKey: Base64UrlSchema.meta({
       description: 'Llave pública X25519 del nodo: destinataria de los sobres de red.',
@@ -125,7 +141,10 @@ export const DirectoryNodeSchema = z
     }),
   })
   .strict()
-  .meta({ description: 'Nodo de la red: estatal (SESEA) o común.' });
+  .meta({
+    description:
+      'Nodo de la red: el de una entidad (lo opera su SESEA o su contraloría) o el federal. No hay nodo común: cada entidad monta el suyo.',
+  });
 export type DirectoryNode = z.infer<typeof DirectoryNodeSchema>;
 
 export const AuthorityRoleSchema = z
@@ -228,6 +247,136 @@ export const WitnessPolicySchema = z
   .meta({ description: 'Política de testigos m de n.' });
 export type WitnessPolicy = z.infer<typeof WitnessPolicySchema>;
 
+/**
+ * Funciones que cada nodo declara en su tabla de funciones: buzón general (recepción y turnado),
+ * operación del nodo (altas de autoridades), investigación y calificación, substanciación,
+ * resolución, supervisión (superior jerárquico), vía penal (fiscalía) y observador (CPC).
+ */
+export const NODE_FUNCTIONS = [
+  'intake',
+  'operation',
+  'investigation',
+  'substantiation',
+  'resolution',
+  'supervision',
+  'prosecution',
+  'observer',
+] as const;
+
+export const NodeFunctionSchema = z.enum(NODE_FUNCTIONS).meta({
+  description:
+    'Función: intake (buzón general: recibe y turna), operation (opera el nodo y da de alta autoridades), investigation (investiga y califica), substantiation (substancia), resolution (resuelve), supervision (superior: recibe escalamientos), prosecution (vía penal) u observer (observa: CPC).',
+});
+export type NodeFunction = z.infer<typeof NodeFunctionSchema>;
+
+export const FunctionHolderSchema = z
+  .discriminatedUnion('kind', [
+    z
+      .object({ kind: z.literal('authority'), authorityId: AuthorityIdSchema })
+      .strict()
+      .meta({ description: 'Una autoridad del directorio, con sus llaves.' }),
+    z
+      .object({ kind: z.literal('observer'), observerId: ObserverIdSchema })
+      .strict()
+      .meta({ description: 'Un observador del directorio.' }),
+    z
+      .object({
+        kind: z.literal('institution'),
+        name: z.string().min(1).max(300).meta({ description: 'Nombre oficial de la institución.' }),
+      })
+      .strict()
+      .meta({
+        description:
+          'Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves o quien opera el nodo).',
+      }),
+  ])
+  .meta({ description: 'Quién cumple la función: autoridad, observador o institución.' });
+export type FunctionHolder = z.infer<typeof FunctionHolderSchema>;
+
+export const FunctionRuleSchema = z
+  .object({
+    governmentLevels: z
+      .array(GovernmentLevelSchema)
+      .min(1)
+      .meta({ description: 'Órdenes de gobierno de los entes a los que aplica la regla.' }),
+    entityIds: z.array(z.string().min(1).max(64)).max(1000).meta({
+      description:
+        'Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «municipales sin OIC»). Una regla específica gana sobre una general.',
+    }),
+    severity: z.enum(['serious', 'non_serious']).optional().meta({
+      description:
+        'Solo para faltas graves (serious) o no graves (non_serious); sin el campo, para ambas. Sirve, por ejemplo, para la resolución.',
+    }),
+    holder: FunctionHolderSchema,
+    legalBasis: z
+      .string()
+      .min(1)
+      .max(300)
+      .optional()
+      .meta({ description: 'Fundamento corto, en lenguaje claro (ley y artículo).' }),
+  })
+  .strict()
+  .meta({ description: 'Regla: a qué entes aplica y quién cumple la función para ellos.' });
+export type FunctionRule = z.infer<typeof FunctionRuleSchema>;
+
+const functionRules = (description: string, min = 0) =>
+  z.array(FunctionRuleSchema).min(min).max(200).meta({ description });
+
+export const FunctionTableSchema = z
+  .object({
+    format: z.literal(1).meta({ description: 'Versión del formato de la tabla de funciones.' }),
+    nodeId: NodeIdSchema.meta({ description: 'Nodo que declara la tabla y la firma.' }),
+    stateCode: NetworkStateKeySchema.nullable().meta({
+      description:
+        'Entidad que cubre la tabla; null en la tabla del nodo federal (entes del orden federal).',
+    }),
+    version: z
+      .number()
+      .int()
+      .min(1)
+      .meta({ description: 'Versión de la tabla; crece en uno con cada cambio.' }),
+    issuedOn: DayDateSchema.meta({ description: 'Día en que el nodo firmó esta versión.' }),
+    functions: z
+      .object({
+        intake: functionRules(
+          'Buzón general: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58).',
+          1,
+        ),
+        operation: functionRules('Quién opera el nodo y da de alta a las autoridades.', 1),
+        investigation: functionRules('Autoridad investigadora y calificadora (LGRA, art. 3).'),
+        substantiation: functionRules('Autoridad substanciadora (LGRA, art. 3).'),
+        resolution: functionRules(
+          'Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3).',
+        ),
+        supervision: functionRules('Superior jerárquico que recibe los escalamientos (ADR 0007).'),
+        prosecution: functionRules('Vía penal: fiscalía de hechos de corrupción.'),
+        observer: functionRules('Observador ciudadano (CPC).'),
+      })
+      .strict()
+      .meta({ description: 'Reglas de cada función.' }),
+  })
+  .strict()
+  .meta({
+    description:
+      'Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente. Con ella la ventanilla propone a quién va cada denuncia.',
+  });
+export type FunctionTable = z.infer<typeof FunctionTableSchema>;
+
+export const SignedFunctionTableSchema = z
+  .object({
+    table: FunctionTableSchema,
+    signature: Base64UrlSchema.meta({
+      description:
+        'Firma Ed25519 del nodo (su llave de firma del directorio) sobre "sigilo/red/function-table/v1:" + SHA-256 de la forma canónica de table.',
+    }),
+  })
+  .strict()
+  .meta({
+    description:
+      'Tabla de funciones firmada por su nodo. Viaja dentro del directorio, que firma la operación y cofirman los testigos: la operación no puede cambiarla sin la firma del estado.',
+  });
+export type SignedFunctionTable = z.infer<typeof SignedFunctionTableSchema>;
+
 export const AuthorityDirectorySchema = z
   .object({
     format: z.literal(1).meta({ description: 'Versión del formato del directorio.' }),
@@ -265,6 +414,10 @@ export const AuthorityDirectorySchema = z
     corroboration: DirectoryCorroborationSchema.optional().meta({
       description:
         'Servicios de la corroboración ciega (ADR 0006) con la llave pública del evaluador OPRF; si falta, la red no ofrece corroboración.',
+    }),
+    functionTables: z.array(SignedFunctionTableSchema).max(40).optional().meta({
+      description:
+        'Tabla de funciones de cada nodo, firmada por el nodo: una por entidad y otra para el orden federal. Una entidad sin tabla no tiene nodo y no recibe denuncias estatales por la ventanilla.',
     }),
   })
   .strict()

@@ -529,7 +529,7 @@ describe('canal único: sin autoridad competente llega al buzón general (Bases 
     };
   }
 
-  it('la ventanilla propone el buzón del nodo común; queda en el buzón y este la turna al OIC', async () => {
+  it('un ente federal sin OIC en la tabla va al buzón federal; queda en el buzón y este la turna al OIC', async () => {
     const network = createTestNetwork();
     const { federal } = network;
     await network.runNodeTasks(federal);
@@ -588,9 +588,10 @@ describe('canal único: sin autoridad competente llega al buzón general (Bases 
     const network = createTestNetwork();
     const { queretaro } = network;
     await network.runNodeTasks(queretaro);
+    // Un ente fuera del catálogo: la tabla de Querétaro no nombra quién lo investiga.
     const proposal = proposeCompetentAuthority(
       network.services.directory,
-      { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-54' },
+      { stateCode: '22', entityId: 'VE-OTRO-SIN-CATALOGO', offenseCode: 'LGRA-54' },
       '2026-11-09',
     );
     expect(proposal.proposed?.authority.id).toBe('authority.buzon-queretaro');

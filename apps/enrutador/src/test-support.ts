@@ -33,6 +33,7 @@ export const TEST_DAY = '2026-11-09';
 export const NODE_URLS: Record<DemoNodeId, string> = {
   'node.queretaro': 'http://nodo-queretaro.invalid',
   'node.federal': 'http://nodo-federal.invalid',
+  'node.ejemplo': 'http://nodo-ejemplo.invalid',
 };
 
 /** Red sintética firmada y cofirmada por los tres testigos. */
@@ -97,6 +98,7 @@ export function createTestRouter(
   const nodeLedgers: Record<DemoNodeId, LedgerEvent[]> = {
     'node.queretaro': [],
     'node.federal': [],
+    'node.ejemplo': [],
   };
   const ledgerFetch: FetchLike = async (input, init) => {
     const request = new Request(input, init);

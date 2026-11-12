@@ -4504,7 +4504,6 @@ paths:
                         - id: node.queretaro
                           name: Nodo estatal Querétaro
                           baseUrl: https://denuncias.queretaro.example
-                          isCommonNode: false
                           boxKeyId: 9a0be41c77d25f13
                           boxPublicKey: TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f
                           signingKeyId: c3f8e2a1b0d94756
@@ -4541,6 +4540,60 @@ paths:
                         witnessIds:
                           - observer.cpc-queretaro
                           - node.queretaro
+                      functionTables:
+                        - table:
+                            format: 1
+                            nodeId: node.queretaro
+                            stateCode: '22'
+                            version: 1
+                            issuedOn: '2026-11-09'
+                            functions:
+                              intake:
+                                - governmentLevels:
+                                    - estatal
+                                    - municipal
+                                  entityIds: []
+                                  holder:
+                                    kind: authority
+                                    authorityId: authority.buzon-queretaro
+                              operation:
+                                - governmentLevels:
+                                    - estatal
+                                    - municipal
+                                  entityIds: []
+                                  holder:
+                                    kind: institution
+                                    name: Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro
+                              investigation:
+                                - governmentLevels:
+                                    - estatal
+                                    - municipal
+                                  entityIds: []
+                                  holder:
+                                    kind: authority
+                                    authorityId: authority.comptroller-queretaro
+                                  legalBasis: LGRA, arts. 3, fr. II, y 10
+                              substantiation: []
+                              resolution:
+                                - governmentLevels:
+                                    - estatal
+                                    - municipal
+                                  entityIds: []
+                                  severity: serious
+                                  holder:
+                                    kind: institution
+                                    name: Tribunal de Justicia Administrativa Ficticio de Querétaro
+                              supervision: []
+                              prosecution: []
+                              observer:
+                                - governmentLevels:
+                                    - estatal
+                                    - municipal
+                                  entityIds: []
+                                  holder:
+                                    kind: observer
+                                    observerId: observer.cpc-queretaro
+                          signature: 7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg
                     digest: 3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9f0a2b4c6d8e0f1a2b
                     operatorSignature: 7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg
                     witnessSignatures:
@@ -9933,6 +9986,12 @@ components:
         corroboration:
           description: Servicios de la corroboración ciega (ADR 0006) con la llave pública del evaluador OPRF; si falta, la red no ofrece corroboración.
           $ref: '#/components/schemas/DirectoryCorroboration'
+        functionTables:
+          description: 'Tabla de funciones de cada nodo, firmada por el nodo: una por entidad y otra para el orden federal. Una entidad sin tabla no tiene nodo y no recibe denuncias estatales por la ventanilla.'
+          maxItems: 40
+          type: array
+          items:
+            $ref: '#/components/schemas/SignedFunctionTable'
       required:
         - format
         - serial
@@ -9965,9 +10024,6 @@ components:
           description: Origen público del nodo (esquema, host y puerto, sin ruta).
           examples:
             - https://denuncias.queretaro.example
-        isCommonNode:
-          type: boolean
-          description: Si aloja a autoridades de entidades sin nodo propio.
         boxKeyId:
           type: string
           pattern: ^[0-9a-f]{16}$
@@ -9992,13 +10048,12 @@ components:
         - id
         - name
         - baseUrl
-        - isCommonNode
         - boxKeyId
         - boxPublicKey
         - signingKeyId
         - signingPublicKey
       additionalProperties: false
-      description: 'Nodo de la red: estatal (SESEA) o común.'
+      description: 'Nodo de la red: el de una entidad (lo opera su SESEA o su contraloría) o el federal. No hay nodo común: cada entidad monta el suyo.'
     DirectoryAuthority:
       type: object
       properties:
@@ -10185,6 +10240,223 @@ components:
         - signingPublicKey
       additionalProperties: false
       description: 'Observador: ve solo la bitácora pública y cofirma como testigo.'
+    SignedFunctionTable:
+      type: object
+      properties:
+        table:
+          $ref: '#/components/schemas/FunctionTable'
+        signature:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          description: Firma Ed25519 del nodo (su llave de firma del directorio) sobre "sigilo/red/function-table/v1:" + SHA-256 de la forma canónica de table.
+      required:
+        - table
+        - signature
+      additionalProperties: false
+      description: 'Tabla de funciones firmada por su nodo. Viaja dentro del directorio, que firma la operación y cofirman los testigos: la operación no puede cambiarla sin la firma del estado.'
+    FunctionTable:
+      type: object
+      properties:
+        format:
+          type: number
+          const: 1
+          description: Versión del formato de la tabla de funciones.
+        nodeId:
+          type: string
+          pattern: ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$
+          description: Nodo que declara la tabla y la firma.
+          examples:
+            - node.queretaro
+        stateCode:
+          anyOf:
+            - type: string
+              pattern: ^(?:\d{2}|state\.[a-z0-9]+(?:-[a-z0-9]+)*)$
+              description: 'Entidad federativa: clave INEGI de dos dígitos o clave `state.*` de una entidad sintética sin clave INEGI.'
+              examples:
+                - '22'
+            - type: 'null'
+          description: Entidad que cubre la tabla; null en la tabla del nodo federal (entes del orden federal).
+        version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Versión de la tabla; crece en uno con cada cambio.
+        issuedOn:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Día en que el nodo firmó esta versión.
+          examples:
+            - '2026-11-05'
+        functions:
+          type: object
+          properties:
+            intake:
+              minItems: 1
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: 'Buzón general: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58).'
+            operation:
+              minItems: 1
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: Quién opera el nodo y da de alta a las autoridades.
+            investigation:
+              minItems: 0
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: Autoridad investigadora y calificadora (LGRA, art. 3).
+            substantiation:
+              minItems: 0
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: Autoridad substanciadora (LGRA, art. 3).
+            resolution:
+              minItems: 0
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: 'Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3).'
+            supervision:
+              minItems: 0
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: Superior jerárquico que recibe los escalamientos (ADR 0007).
+            prosecution:
+              minItems: 0
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: 'Vía penal: fiscalía de hechos de corrupción.'
+            observer:
+              minItems: 0
+              maxItems: 200
+              type: array
+              items:
+                $ref: '#/components/schemas/FunctionRule'
+              description: Observador ciudadano (CPC).
+          required:
+            - intake
+            - operation
+            - investigation
+            - substantiation
+            - resolution
+            - supervision
+            - prosecution
+            - observer
+          additionalProperties: false
+          description: Reglas de cada función.
+      required:
+        - format
+        - nodeId
+        - stateCode
+        - version
+        - issuedOn
+        - functions
+      additionalProperties: false
+      description: 'Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente. Con ella la ventanilla propone a quién va cada denuncia.'
+    FunctionRule:
+      type: object
+      properties:
+        governmentLevels:
+          minItems: 1
+          type: array
+          items:
+            type: string
+            enum:
+              - federal
+              - estatal
+              - municipal
+            description: 'Orden de gobierno: federal, estatal o municipal.'
+          description: Órdenes de gobierno de los entes a los que aplica la regla.
+        entityIds:
+          maxItems: 1000
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+          description: Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «municipales sin OIC»). Una regla específica gana sobre una general.
+        severity:
+          description: Solo para faltas graves (serious) o no graves (non_serious); sin el campo, para ambas. Sirve, por ejemplo, para la resolución.
+          type: string
+          enum:
+            - serious
+            - non_serious
+        holder:
+          $ref: '#/components/schemas/FunctionHolder'
+        legalBasis:
+          description: Fundamento corto, en lenguaje claro (ley y artículo).
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+        - governmentLevels
+        - entityIds
+        - holder
+      additionalProperties: false
+      description: 'Regla: a qué entes aplica y quién cumple la función para ellos.'
+    FunctionHolder:
+      oneOf:
+        - type: object
+          properties:
+            kind:
+              type: string
+              const: authority
+            authorityId:
+              type: string
+              pattern: ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$
+              description: Identificador estable de la autoridad.
+              examples:
+                - authority.oic-iffe
+          required:
+            - kind
+            - authorityId
+          additionalProperties: false
+          description: Una autoridad del directorio, con sus llaves.
+        - type: object
+          properties:
+            kind:
+              type: string
+              const: observer
+            observerId:
+              type: string
+              pattern: ^observer\.[a-z0-9]+(?:-[a-z0-9]+)*$
+              description: Identificador estable del observador.
+              examples:
+                - observer.cpc-queretaro
+          required:
+            - kind
+            - observerId
+          additionalProperties: false
+          description: Un observador del directorio.
+        - type: object
+          properties:
+            kind:
+              type: string
+              const: institution
+            name:
+              type: string
+              minLength: 1
+              maxLength: 300
+              description: Nombre oficial de la institución.
+          required:
+            - kind
+            - name
+          additionalProperties: false
+          description: Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves o quien opera el nodo).
+      description: 'Quién cumple la función: autoridad, observador o institución.'
     WitnessPolicy:
       type: object
       properties:
