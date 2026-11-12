@@ -76,17 +76,20 @@ flowchart LR
 
 | Componente         | Decisión                                                                                                                                                                                                                                                                                                                                                   | Nivel |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| Ventanilla única   | Un solo punto de entrada (Bases, arts. 56 y 57) que monta la SESNA con el enrutador: sirve la web (perfil `ventanilla`), y el navegador propone la autoridad competente con la tabla de funciones del nodo. Los nodos no tienen ventanilla propia (perfil `panel`). No guarda denuncias.                                                                   | A     |
+| Ventanilla única   | Un solo punto de entrada (Bases, arts. 56 y 57) que monta la SESNA con el enrutador: sirve la web (perfil `ventanilla`), y el navegador propone la autoridad competente con la tabla de funciones del nodo. Los nodos no tienen ventanilla propia (web en perfil `panel`, servidor en perfil `nodo` sin denuncia directa). No guarda denuncias.            | A     |
 | Directorio firmado | Documento JSON versionado con cada autoridad: identificador, ámbito, entidad, tipos de ente que atiende, nodo, llaves públicas X25519 y Ed25519, vigencia y autoridad supervisora (ADR 0007). Lo firma la operación de la ventanilla y lo cofirman los testigos m de n. Cada versión entra en la bitácora nacional.                                        | A     |
 | Enrutador ciego    | Recibe un sobre HPKE cuyo encabezado externo solo dice el nodo destino (sobre v2, `{ v: 2, node, sealed }`; la autoridad va cifrada adentro) y lo entrega a ese nodo. No puede leer hechos, pruebas ni identidad. Los sobres se rellenan a tamaños fijos por tramo. Si el nodo no responde, guarda cerrada una denuncia sin pruebas en su cola de entrega. | A     |
 | Nodos              | Cada entidad opera su propio nodo (su SESEA o su contraloría); no hay nodo común (acuerdo con la SESNA, 2026-11-11). El nodo federal aloja solo autoridades federales. Un nodo guarda sobres de sus autoridades y su propia bitácora, y declara su tabla de funciones firmada. `docker compose` levanta ventanilla con enrutador, tres nodos y testigos.   | A     |
 | Turnado re-cifrado | Para turnar, el navegador de la autoridad que tiene la denuncia la descifra, toma la llave de la autoridad destino del directorio verificado y vuelve a cifrar. El evento de turnado registra los digestos de origen y destino. Nadie en medio ve el contenido.                                                                                            | A     |
 | Bitácora nacional  | Encadena las cabezas firmadas de cada nodo y las versiones del directorio. Una cabeza nacional vale solo con firmas de m de n testigos, que antes comprueban que la cadena solo creció. El navegador fija las llaves de los testigos, no las de cada autoridad.                                                                                            | A     |
 
-En la red, los hechos viajan cifrados hacia la autoridad: el nodo valida forma, tamaño y prueba de
-trabajo; la validación de catálogos ocurre en el navegador antes de cifrar y en el de la autoridad
-al descifrar. El perfil de nodo único (hechos en claro hacia el servidor, como en v0.9) sigue
-disponible para quien adopte SIGILO sin la red.
+En la red, el navegador cifra la denuncia hacia la llave del nodo destino: el enrutador no ve
+hechos, pruebas ni identidad. El nodo abre el sobre y valida la denuncia como cualquier petición de
+la API v1 (catálogos, forma, tamaño y prueba de trabajo); guarda los hechos en claro, y las pruebas
+y la identidad sellada, cifradas hacia la autoridad competente. Cifrar también los hechos hacia la
+autoridad (SEC-11) es un siguiente paso: mientras tanto, quien opera el nodo puede leer los hechos
+de lo que llega a su nodo. El perfil de nodo único (sin red) sigue disponible para quien adopte
+SIGILO sin la red.
 
 ## Alternativas consideradas
 
@@ -111,8 +114,8 @@ disponible para quien adopte SIGILO sin la red.
 
 - Las llaves fijadas en el bundle (ADR 0002) se sustituyen por el directorio verificado con las
   llaves de los testigos; un error en el directorio afecta a todas las autoridades.
-- En el perfil federado el nodo ya no puede rechazar catálogos inválidos; la autoridad debe
-  manejar sobres que al descifrarse no validan.
+- Quien opera un nodo puede leer los hechos de lo que llega a su nodo (no la identidad sellada ni
+  las pruebas); cifrar los hechos hacia la autoridad queda como siguiente paso.
 - El turnado depende de que la autoridad de origen actúe; si no lo hace, entra el escalamiento
   (ADR 0007).
 

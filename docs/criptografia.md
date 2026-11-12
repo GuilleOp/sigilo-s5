@@ -139,9 +139,10 @@ contra el registro público (ver «Comprobante firmado»).
   la llave derivada de su recibo), acepta abrir su identidad solo para el recurso: el nodo registra
   `appeal.filed` (con el digesto de sus motivos y del acuerdo de calificación) e `identity.opened`
   con su `receiptTag`, y la apertura aparece en su seguimiento con `actorRole: reporter`. La
-  autoridad investigadora que calificó (investigación o supervisión) puede pedir el sobre sin la
-  aprobación 2 de 3, que existe para las aperturas que la persona no pidió, y sin el vencimiento
-  de 7 días. El servidor sigue sin descifrar. La firma autógrafa queda fuera del sistema.
+  entrega del sobre exige dos aprobaciones de cuentas distintas de la autoridad, al menos una de
+  supervisión, dentro de la ventana del recurso (hasta el plazo de la Sala, art. 107) en lugar de
+  los 7 días, y cada entrega registra el evento público `identity.released` con el `receiptTag`
+  (G07). El servidor sigue sin descifrar. La firma autógrafa queda fuera del sistema.
 
 ## Sobre de escalamiento (segunda llave)
 
@@ -736,6 +737,21 @@ reinicio invalida los tokens vigentes). Lleva `iss` = `aud` = id del nodo, `sub`
 `iat`, `exp` y `jti`. El nodo guarda solo el SHA-256 del secreto de cada cliente y el digesto scrypt
 de la contraseña del flujo `password`, y compara en tiempo constante
 (`apps/server/src/network/oauth-server.ts`).
+
+### Etiqueta HMAC del buzón (v2)
+
+El enrutador agrega a cada sobre que entrega al buzón de red la cabecera `X-Sigilo-Relay-Auth`
+(`packages/red/src/relay-auth.ts`), además del token OAuth:
+
+```text
+v2.<milisegundos>.<nonce de 16 bytes en hex>.<Base64URL(HMAC-SHA256(secreto,
+  "sigilo/red/relay-auth/v2:" + milisegundos + "." + nonce + "." + cuerpo exacto))>
+```
+
+El nodo la acepta solo dentro de ±5 minutos y una sola vez por nonce. La v2 es la que envía el
+enrutador por omisión (`SIGILO_ROUTER_RELAY_AUTH`); la v1 (HMAC del cuerpo sin marca de tiempo ni
+nonce, dominio `sigilo/red/relay-auth/v1:`) se acepta solo durante la transición y se apaga en el
+nodo con `SIGILO_RELAY_AUTH_LEGACY=0`, que `./sigilo instalar` ya deja así.
 
 ### Secretos de enlace derivados (SESNA ↔ nodo)
 

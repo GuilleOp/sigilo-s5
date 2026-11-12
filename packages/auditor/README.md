@@ -73,9 +73,13 @@ for (const { signal, record } of report.findings) {
 
 Cada señal produce un `AuditLedgerRecord` (`@sigilo/contracts`, `audit.ts`) con la versión de las
 reglas o el digesto del modelo, el digesto del sujeto (`"sigilo/audit/subject:" + clave`), el
-digesto canónico de la entrada y de la salida, el resultado y el día. **Integración pendiente del
-dueño del servidor:** agregar `audit.signal` a `LedgerEventTypeSchema` y publicar
-`payloadDigest = sha256(canonicalize(record))`. El registro nunca lleva texto.
+digesto canónico de la entrada y de la salida, el resultado y el día. El servidor de referencia lo
+publica en su bitácora como `audit.signal` con `payloadDigest = sha256(canonicalize(record))`
+(`apps/server/src/services/audit-service.ts`). El registro nunca lleva texto.
+
+El servidor de referencia corre solo las reglas: todavía no conecta el adaptador del modelo local
+(`@sigilo/auditor/model`), que hoy se usa en las pruebas y en la evaluación. Conectarlo es un
+siguiente paso.
 
 ## Modelo local opcional (`@sigilo/auditor/model`)
 

@@ -21,7 +21,8 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - Verificación: **auto** (el validador la comprueba desde fuera; su identificador está en
   `verificaciones.json`), **prueba** (prueba automática en el repositorio del componente) o
   **manual** (revisión documental o de código).
-- Estado en SIGILO (v0.9.1 con el nodo de varias autoridades de la Etapa 2): **cumple**, **parcial** o **brecha**. Las brechas se resumen al final.
+- Estado en SIGILO (software 1.1.0): **cumple**, **parcial** o **brecha**. Las brechas se resumen al
+  final.
 
 ## 1. Llaves y criptografía
 
@@ -62,9 +63,9 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **SIGILO.** **Parcial.** Llaves fijadas en el bundle y comparadas con `GET /api/v1/keys`
   (`e2e/key-pinning.spec.ts`). En la red, la web toma las llaves de un directorio firmado por la
   operación y cofirmado m de n contra la raíz fijada (`packages/red/src/directory.ts`). Una versión
-  anterior del directorio con llaves revocadas seguía verificando (G10): la raíz admite
-  `minDirectorySerial` y `maxDirectoryAgeDays`, y el directorio `validUntil`; falta que la web fije
-  el serial vigente al construirse (estado: pendiente).
+  anterior del directorio con llaves revocadas seguía verificando (G10): ahora la raíz fijada en la
+  web admite `minDirectorySerial` y `maxDirectoryAgeDays`, y el directorio `validUntil`. Residual:
+  una web construida antes de una revocación acepta copias viejas hasta su `validUntil`.
 
 ### SEC-04 Llave de firma del nodo protegida
 
@@ -95,10 +96,10 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
   lo ve; el servidor entrega el sobre solo a quien aprobó y nunca descifra
   (`apps/server/src/services/identity-service.ts`, `apps/server/src/routes/identity.test.ts`).
   Pendiente: el umbral es de política del nodo, no criptográfico (la llave de descifrado sigue en
-  un solo navegador), y el tercer custodio externo (observador) no participa todavía. Sexta
-  ronda (estado: pendiente): tras la inconformidad, la identidad para el recurso se entrega a una
-  sola cuenta, sin segunda aprobación ni vencimiento (G07), y bloquear con intentos fallidos la
-  cuenta de una persona custodia retrasa una aprobación (G08).
+  un solo navegador), y el tercer custodio externo (observador) no participa todavía. La
+  identidad para el recurso de inconformidad exige también dos aprobaciones, una de supervisión,
+  dentro de la ventana del recurso (G07). Bloquear con intentos fallidos la cuenta de una persona
+  custodia retrasa una aprobación hasta 15 minutos (G08, ver SEC-15).
 
 ### SEC-06 Separación de funciones
 
@@ -166,8 +167,11 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **Por qué.** Una orden sobre los respaldos o una copia filtrada de la base entrega los relatos,
   que muchas veces identifican.
 - **Verificación.** Manual.
-- **SIGILO.** **Brecha.** Hechos y pruebas limpias quedan en claro en SQLite y en disco (modelo de
-  amenazas C01 y F01).
+- **SIGILO.** **Parcial.** Las pruebas se cifran en el navegador hacia la autoridad competente y el
+  nodo guarda solo el contenedor (`docs/criptografia.md`, «Pruebas cifradas de extremo a extremo»;
+  modelo de amenazas G21). Los hechos quedan en claro en SQLite; `./sigilo respaldar` cifra los
+  respaldos, y el disco del nodo debe ir cifrado (modelo de amenazas C01 y F01). Cifrar los hechos
+  hacia la autoridad es un siguiente paso.
 
 ## 2. Identidades, autenticación y sesiones
 
@@ -194,7 +198,8 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **Por qué.** El panel de autoridad es el objetivo de quien quiere saber quién denunció.
 - **Verificación.** Manual.
 - **SIGILO.** **Brecha.** Sin segundo factor: usuario y contraseña con sesión corta. WebAuthn
-  para el panel y para aprobar aperturas queda pendiente (Etapa 5).
+  para el panel y para aprobar aperturas es un siguiente paso; mientras tanto, el panel solo se
+  publica por VPN o lista de IP (`docs/seguridad-produccion.md`).
 
 ### SEC-14 Sesiones con vencimiento
 
@@ -225,7 +230,8 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
   más un freno global; un usuario inexistente responde igual que una contraseña equivocada. El
   límite por usuario permite a quien conozca un usuario bloquearlo 15 minutos, y una persona de la
   misma autoridad sí conoce los usuarios: puede bloquear a una persona custodia justo cuando debe
-  aprobar una apertura (G08, estado: pendiente).
+  aprobar una apertura. Desde la 1.1.0 (H05) el usuario bloqueado se rechaza también con la
+  contraseña correcta; se acepta solo con el panel detrás de VPN (G08, G28).
 
 ### SEC-16 Credenciales de seguimiento de alta entropía y respuesta uniforme
 
@@ -276,12 +282,12 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **Por qué.** «Un S5 que nadie en medio puede leer»: el punto central de la red es el blanco más
   valioso.
 - **Verificación.** Prueba y manual.
-- **SIGILO.** **Parcial.** El enrutador ve solo la autoridad destino y un sobre de tramo fijo, no
-  guarda sobres, IP ni cabeceras y responde igual para cualquier destino
-  (`apps/enrutador/src/relay.test.ts`); el turnado entre nodos vuelve a cifrar en el navegador de la
-  autoridad. Sexta ronda (estado: pendiente): el turnado acepta un comprobante ajeno con el que se
-  puede enterrar la denuncia o avisar otro folio (G01), y el buzón de red de un nodo acepta sobres
-  que no pasaron por el enrutador (G11).
+- **SIGILO.** **Cumple.** Con el sobre v2 el enrutador ve solo el nodo destino (la autoridad va
+  cifrada) y un sobre de tramo fijo; no guarda sobres, IP ni cabeceras y responde igual para
+  cualquier destino (`apps/enrutador/src/relay.test.ts`). El turnado entre nodos vuelve a cifrar en
+  el navegador de la autoridad y exige el comprobante del nodo destino ligado al folio (G01). El
+  buzón de red acepta solo sobres del enrutador, con su token OAuth y la etiqueta HMAC v2 (G11).
+  Residual: la hora y el tramo siguen visibles (modelo de amenazas G27).
 
 ## 4. Bitácora y registros
 
@@ -303,8 +309,8 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
   de los nodos y su cabeza vale con 2 de 3 cofirmas de testigos. Hasta la sexta ronda solo se
   detectaba una bifurcación con la misma secuencia: una historia reescrita con secuencia mayor se
   registraba y se cofirmaba (G04). La corrección hace que el enrutador y cada testigo verifiquen el
-  tramo de `ledgerEvents` entre la cabeza anterior y la nueva (`packages/red/src/node-history.ts`;
-  estado: pendiente). El anclaje del nodo sigue siendo manual.
+  tramo de `ledgerEvents` entre la cabeza anterior y la nueva (`packages/red/src/node-history.ts`).
+  El anclaje del nodo sigue siendo manual.
 
 ### SEC-21 Eventos de seguridad con actor individual
 
@@ -334,8 +340,9 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
   denunciante, y rechaza el modo por petición en producción (`apps/server/src/http/request-log.ts`,
   `request-log.test.ts`, `config.ts`). No hay configuración de referencia del proxy inverso que
   termina TLS, que es donde suele registrarse la IP. Las rutas de red (buzón de red), de
-  inconformidad y de la corroboración todavía entran al conteo por hora, que puede delatar la hora
-  de un envío en un nodo con poco tráfico (G09, estado: pendiente).
+  inconformidad y de la corroboración ya no entran al conteo (G09). Proxy: la instalación usa Caddy
+  sin registro de accesos y `docs/seguridad-produccion.md` da las reglas para un proxy propio; un
+  proxy que no las siga queda fuera del control del software.
 
 ### SEC-23 Registros sin inyección
 
@@ -422,9 +429,11 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **Por qué.** Un archivo malicioso ataca el equipo de la autoridad; uno con metadatos identifica a
   quien lo tomó.
 - **Verificación.** Prueba; manual (pendiente de automatizar con PRV-20).
-- **SIGILO.** **Parcial.** Bytes mágicos y adjunto con `nosniff`
-  (`apps/server/src/routes/evidence.test.ts`, `authority.test.ts`). No recodifica en el servidor
-  ni rechaza metadatos: la limpieza ocurre solo en el navegador (modelo de amenazas C10, A08).
+- **SIGILO.** **Parcial.** El navegador limpia y recodifica cada imagen y la cifra hacia la
+  autoridad: el nodo recibe solo el contenedor cifrado (comprueba su formato y su tamaño) y lo
+  entrega como `application/octet-stream` con `nosniff`. Los bytes mágicos los revisa el panel al
+  descifrar, antes de mostrar. El servidor no puede recodificar ni rechazar metadatos porque no ve
+  la imagen (modelo de amenazas C10, A08 y G21).
 
 ### SEC-30 Errores uniformes y sin detalles
 
@@ -446,9 +455,11 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **Referencia.** ASVS V9.1.1, V9.1.2, V9.1.3, V14.4.5.
 - **Por qué.** Un observador de red (modelo de amenazas A5) no debe ver contenido ni forzar HTTP.
 - **Verificación.** Manual (pendiente de automatizar); el HSTS ya lo comprueba PRV-03.
-- **SIGILO.** **Parcial.** El servidor escucha en 127.0.0.1 y delega TLS a un proxy que no está
-  documentado. Con `SIGILO_HTTPS=1` envía `Strict-Transport-Security` con un año e
-  `includeSubDomains`, y rechaza un `SIGILO_HSTS_MAX_AGE` menor que un año
+- **SIGILO.** **Parcial.** El servidor escucha en 127.0.0.1 y delega TLS a un proxy: la instalación
+  trae Caddy (Let's Encrypt o certificado propio) y `docs/seguridad-produccion.md` documenta un
+  proxy propio; la elección de suites queda en ese proxy. Con `SIGILO_HTTPS=1` envía
+  `Strict-Transport-Security` con un año e `includeSubDomains`, y rechaza un `SIGILO_HSTS_MAX_AGE`
+  menor que un año
   (`apps/server/src/config.ts`, `apps/server/src/config.test.ts`).
 
 ### SEC-32 Cabeceras de seguridad
@@ -495,8 +506,10 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 - **Referencia.** ASVS V14.2.1, V14.2.4, V14.2.5.
 - **Por qué.** Una dependencia comprometida en la ventanilla lee la denuncia antes de cifrarla.
 - **Verificación.** Manual.
-- **SIGILO.** **Parcial.** `package-lock.json` y `npm ci` en CI (`.github/workflows/ci.yml`), sin
-  `npm audit`, SBOM ni detección de secretos.
+- **SIGILO.** **Parcial.** `package-lock.json`, `npm ci`, `npm audit --omit=dev`,
+  `npm audit signatures` y SBOM CycloneDX en CI (`.github/workflows/ci.yml`), acciones fijadas por
+  SHA y Dependabot; las imágenes publicadas llevan SBOM, procedencia y firma de cosign
+  (`.github/workflows/imagenes.yml`). Falta la detección de secretos.
 
 ### SEC-36 Integridad del código servido
 
@@ -539,29 +552,25 @@ automatizables de ambos perfiles, en [verificaciones.json](verificaciones.json).
 Ordenadas por riesgo para la persona denunciante. Se atienden en las etapas indicadas o quedan como
 residuales en el modelo de amenazas.
 
-| Requisito      | Brecha                                                                                                | Riesgo |
-| -------------- | ----------------------------------------------------------------------------------------------------- | ------ |
-| SEC-02         | La llave privada se importa en una página servida por el mismo servidor                               | Alto   |
-| SEC-36         | Sin verificación de la integridad del código servido                                                  | Alto   |
-| SEC-05         | Apertura 2 de 3 de política, no criptográfica; sin custodio externo                                   | Medio  |
-| SEC-11         | Hechos y pruebas en claro en la base y los respaldos                                                  | Medio  |
-| SEC-13         | Sin segundo factor en el panel ni para aprobar aperturas                                              | Medio  |
-| SEC-19, G01    | El turnado entre nodos acepta un comprobante ajeno (enterrar la denuncia o avisar otro folio)         | Alto   |
-| SEC-06, G02    | Un cierre que declina una falta grave (improcedente, no grave) no llega a la supervisora              | Alto   |
-| SEC-18, G03    | La corroboración servía de oráculo de «¿hay denuncias contra X?» y el spam sumaba fuentes             | Medio  |
-| SEC-20, G04    | Una historia reescrita del nodo con secuencia mayor se registraba y se cofirmaba                      | Medio  |
-| SEC-06, G05    | La autoridad con conflicto de interés se justifica a sí misma y desactiva la regla                    | Medio  |
-| SEC-20, G06    | El aviso del archivo se compara por día, no por instante                                              | Medio  |
-| SEC-05, G07    | La identidad para el recurso de inconformidad se entrega a una sola cuenta                            | Medio  |
-| SEC-15, G08    | Bloquear la cuenta de una persona custodia con intentos fallidos                                      | Medio  |
-| SEC-22, G09    | Rutas de red, de inconformidad y de corroboración en el conteo por hora                               | Bajo   |
-| SEC-03, G10    | Vuelta a una versión anterior del directorio con llaves revocadas                                     | Bajo   |
-| SEC-19, G11    | El buzón de red de un nodo acepta sobres que no pasaron por el enrutador                              | Bajo   |
-| SEC-26         | Sin plazo de retención para denuncias, identidades y mensajes                                         | Medio  |
-| SEC-29, PRV-20 | Pruebas sin recodificación ni rechazo de metadatos en el servidor                                     | Medio  |
-| SEC-22         | Sin configuración de referencia del proxy que no registre IP                                          | Medio  |
-| SEC-01, SEC-04 | Sin procedimiento de rotación; llave de firma del nodo en claro en disco                              | Medio  |
-| SEC-24         | Topes globales agotables: 200 000 eventos diarios en la bitácora (503) y cuota total de pruebas (507) | Medio  |
-| SEC-31, PRV-03 | HSTS solo con `SIGILO_HTTPS=1`; TLS en un proxy sin configuración de referencia                       | Bajo   |
-| SEC-35         | Sin `npm audit`, SBOM ni detección de secretos en CI                                                  | Bajo   |
-| SEC-20         | Anclaje manual y sin testigos m de n                                                                  | Bajo   |
+| Requisito        | Brecha                                                                                          | Riesgo |
+| ---------------- | ----------------------------------------------------------------------------------------------- | ------ |
+| SEC-02           | La llave privada se importa en una página servida por el mismo servidor                         | Alto   |
+| SEC-36           | Sin verificación de la integridad del código servido                                            | Alto   |
+| SEC-05           | Apertura 2 de 3 de política, no criptográfica; sin custodio externo                             | Medio  |
+| SEC-11           | Hechos en claro en la base del nodo (las pruebas ya van cifradas hacia la autoridad)            | Medio  |
+| SEC-13           | Sin segundo factor en el panel ni para aprobar aperturas                                        | Medio  |
+| SEC-15, G08, G28 | Quien conozca un usuario del panel puede bloquearlo 15 minutos, también a una persona custodia  | Medio  |
+| SEC-18, G03      | La corroboración conserva el oráculo inherente para quien adivina un identificador              | Medio  |
+| SEC-19, G27      | Correlación por hora y tramo entre la entrada a la ventanilla y la entrega a un nodo            | Medio  |
+| SEC-26           | Sin plazo de retención para denuncias, identidades y mensajes                                   | Medio  |
+| SEC-29, PRV-20   | El servidor no puede recodificar ni rechazar metadatos: no ve la imagen (lo hace el navegador)  | Medio  |
+| SEC-01, SEC-04   | Sin rotación de las llaves de autoridad ni de la de firma del nodo, que está en claro en disco  | Medio  |
+| SEC-24           | Topes globales agotables: 200 000 eventos diarios en la bitácora (503) y cuota de pruebas (507) | Medio  |
+| SEC-20, G06      | El aviso del archivo se compara por secuencia del buzón, sin marcarlo como aviso en el AAD      | Bajo   |
+| G29              | El paso del relevo del frente «panel» no exige la sesión de la autoridad                        | Bajo   |
+| SEC-35           | Sin detección de secretos en la integración continua                                            | Bajo   |
+| SEC-20           | Anclaje manual de la bitácora del nodo (la nacional sí tiene testigos m de n)                   | Bajo   |
+
+Corregidas en la versión 1.1.0: G01, G02, G04, G05, G07, G09, G10 y G11 de la sexta ronda; la
+configuración de referencia del proxy sin registro de IP (SEC-22) y de TLS con HSTS (SEC-31); y
+`npm audit`, SBOM y firma de imágenes en la integración continua (SEC-35, salvo los secretos).

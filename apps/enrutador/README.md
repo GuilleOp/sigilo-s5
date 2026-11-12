@@ -2,7 +2,7 @@
 
 Pieza central de la red federada «un S5, muchas llaves» ([ADR 0005](../../docs/adr/0005-estandar-s5-federado.md)
 y [ADR 0007](../../docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)). Lo opera la SESNA y hace
-cuatro cosas:
+cinco cosas:
 
 1. **Publica el directorio de autoridades** firmado por la operación y cofirmado por m de n testigos.
 2. **Reenvía sobres opacos** al nodo destino, sin poder leerlos: el sobre v2 nombra solo el nodo;
@@ -33,8 +33,9 @@ npm run red:demo                 # llaves sintéticas en .red-demo/ (no se versi
 SIGILO_ROUTER_DATA_DIR=.red-demo/enrutador npm run dev:enrutador
 ```
 
-O toda la red con `npm run demo:todo` (o `docker compose build && docker compose up -d`; ver la
-[guía para conectar un estado](../../docs/guia-conecta-tu-estado.md)).
+O toda la red con `npm run demo:todo` (ver [demo.md](../../docs/demo.md)). En producción, la SESNA
+instala el enrutador con `./sigilo-sesna instalar`
+([instalacion-sesna.md](../../docs/instalacion-sesna.md)).
 
 | Variable                                 | Por omisión           | Uso                                                                                           |
 | ---------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
@@ -55,6 +56,10 @@ O toda la red con `npm run demo:todo` (o `docker compose build && docker compose
 | `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir                                 |
 | `SIGILO_ROUTER_QUEUE_MAX_PER_NODE`       | `500`                 | Sobres en cola por nodo; al llenarse responde `429`                                           |
 | `SIGILO_ROUTER_QUEUE_MAX_MB_PER_NODE`    | `64`                  | Megabytes en cola por nodo                                                                    |
+
+Las variables de endurecimiento para producción (`SIGILO_ROUTER_RELAY_AUTH`, `v2` por omisión;
+`SIGILO_ROUTER_OPERATION_TOKEN`, `SIGILO_ROUTER_MAX_RELAYS`, topes de la cola y HSTS) están en
+[seguridad-produccion.md](../../docs/seguridad-produccion.md#enrutador-appsenrutador).
 
 Al arrancar verifica `directory.json`: la primera vez contra la raíz fijada `trust.json`; después
 exige la misma versión o exactamente la siguiente, cofirmada por los testigos de la anterior. Si no
@@ -180,9 +185,10 @@ reloj real.
 ## APIs con los nodos (OAuth 2.0)
 
 Con la metodología de las APIs de la PDN (S2 y S3), **cada nodo es el proveedor y su propio
-servidor de autorización**, y el enrutador (la SESNA) es el **cliente**. Las credenciales que cada
-nodo entrega a la SESNA están en `node-credentials.json` (permisos `0600`; el enrutador no arranca
-si otros pueden leerlo):
+servidor de autorización**, y el enrutador (la SESNA) es el **cliente**. Sus credenciales ante cada
+nodo están en `node-credentials.json` (permisos `0600`; el enrutador no arranca si otros pueden
+leerlo). En producción nadie las entrega: `./sigilo-sesna publicar` deriva el secreto de cada nodo
+con la llave de enlace ([criptografia.md](../../docs/criptografia.md#secretos-de-enlace-derivados-sesna--nodo)):
 
 ```json
 {
@@ -299,7 +305,7 @@ El servidor de referencia (`apps/server`) ya cumple este contrato (`src/routes/n
    const inbox = createNodeInboxHandler({
      nodeBoxPrivateKey,
      nodeId, // sobres dirigidos a otro nodo no abren
-     relaySecret, // etiqueta HMAC del enrutador (H11)
+     relaySecret, // etiqueta HMAC del enrutador (G11; v2 con marca de tiempo y nonce, H13)
      // La autoridad viaja cifrada (sobre v2): el nodo solo entrega a las que aloja y están vigentes.
      hostsAuthority: (authorityId) => isHostedAndValidToday(authorityId),
      handle: async (routed) =>

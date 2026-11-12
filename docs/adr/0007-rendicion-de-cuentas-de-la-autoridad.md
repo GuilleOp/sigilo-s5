@@ -85,8 +85,10 @@ identidad.
 
 ### Negativas
 
-- Los plazos en días hábiles requieren un calendario de días inhábiles por autoridad; la entrega
-  usa uno sintético y el calendario oficial queda en nivel C.
+- Los plazos en días hábiles requieren un calendario de días inhábiles por autoridad. Desde la
+  1.1.0, cada nodo suma a los días oficiales sus días inhábiles locales (`config/dias-inhabiles.csv`,
+  publicados en `/datos/dias-inhabiles.json`); cargar el calendario oficial de cada autoridad queda
+  en manos de quien opera su nodo, y la demostración usa uno sintético.
 - Cada denuncia lleva un segundo sobre: más almacenamiento y una llave más que custodiar por
   autoridad supervisora.
 - La verificación de conflicto depende de la cobertura de S1 y S2 (ADR 0008).

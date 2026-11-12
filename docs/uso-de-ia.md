@@ -42,7 +42,9 @@ exclusivamente del autor.
 Por omisión, SIGILO **no usa modelos de inteligencia artificial** en su funcionamiento y **nunca**
 envía datos a servicios de inteligencia artificial de terceros. El auditor de la autoridad
 (`packages/auditor`, [ADR 0009](adr/0009-ia-local.md)) funciona con reglas deterministas y públicas,
-y admite un modelo abierto local opcional, desactivado por omisión.
+y su paquete trae un adaptador para un modelo abierto local opcional, desactivado por omisión. El
+servidor de referencia todavía no conecta ese adaptador: hoy el nodo corre solo las reglas, y el
+modelo se usa en las pruebas y en la evaluación con un doble.
 
 | Aspecto            | Declaración                                                                                                                                                                                                                                                       |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -57,7 +59,7 @@ y admite un modelo abierto local opcional, desactivado por omisión.
 | Registro           | Cada señal, sugerencia o descarte deja un registro de bitácora con la versión de las reglas o el digesto del modelo y los digestos de la entrada y la salida, nunca el texto.                                                                                     |
 | Evaluación         | Publicada en `packages/auditor/EVALUACION.md` (`npm run auditor:eval`). El modelo real no se ha evaluado porque no hay uno instalado en la máquina de desarrollo; las defensas se prueban con un doble que simula respuestas, incluidas maliciosas.               |
 
-Si una autoridad activa el modelo, debe registrar su nombre, licencia y digesto en la
-configuración y publicar su evaluación con el mismo conjunto. La declaración de uso de IA en el
+Cuando el adaptador se conecte al nodo y una autoridad active el modelo, deberá registrar su
+nombre, licencia y digesto en la configuración y publicar su evaluación con el mismo conjunto. La declaración de uso de IA en el
 desarrollo del proyecto (secciones anteriores) sigue vigente: el auditor, sus pruebas y su
 evaluación también se escribieron con asistentes de IA bajo la dirección y revisión del autor.

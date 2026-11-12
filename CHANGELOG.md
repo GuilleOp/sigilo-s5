@@ -81,8 +81,7 @@ endurecimiento de seguridad y el Estándar S5 0.3.0 al estilo de las especificac
 - «Ninguna se parece» (`SIN-CLASIFICAR`): la denuncia llega al buzón general, que la clasifica; aviso
   de vía propia si el relato menciona tortura o desaparición.
 - Catálogo de conductas cotejado con la LGRA (DOF 15-12-2025) y el CPF (DOF 13-03-2026): LGRA 64
-  Bis, 64 Ter, 64 Quáter y 73, y CPF 225 (38 claves con `SIN-CLASIFICAR`); «¿Quién lo hizo?»
-  acorta la lista.
+  Bis, 64 Ter, 64 Quáter y 73, y CPF 225 (38 claves con `SIN-CLASIFICAR`).
 - El detalle de la denuncia trae `s5References`: artículos de la ley de responsabilidades y del
   código penal de la entidad con su id del catálogo de faltas del S5 (95 % de 3,559 entradas).
 - Cada autoridad entra al panel con su propia llave, comprobada contra el directorio firmado, y
@@ -109,8 +108,9 @@ endurecimiento de seguridad y el Estándar S5 0.3.0 al estilo de las especificac
     con la bitácora ya comprobada.
 - Catálogo de conductas alineado con el del S5: nepotismo (LGRA 63 Bis), simulación de acto
   jurídico (LGRA 60 Bis) y CPF 216, 217 Bis, 217 Ter y 222 Bis; equivalencias por entidad con el
-  catálogo de faltas del S5 (`packages/contracts/src/s5/equivalencias-faltas.json` (publicado en la web como `/datos/s5/equivalencias-faltas.json`)), que el panel muestra como «En
-  la ley que aplica»; y la pregunta «¿Quién lo hizo?» que acorta la lista de conductas.
+  catálogo de faltas del S5 (`packages/contracts/src/s5/equivalencias-faltas.json`, publicado en
+  la web como `/datos/s5/equivalencias-faltas.json`), que el panel muestra como «En la ley que
+  aplica»; y la pregunta «¿Quién lo hizo?», que acorta la lista de conductas.
 - Alta de autoridades, pasos 1 a 3: página «Solicitar alta de mi institución» (`/solicitar-alta`)
   con las llaves creadas en el navegador (solo el candado viaja) y folio y huella al enviar;
   función de cuenta «Operación del nodo», que entra sin llave, no ve denuncias y aprueba solo con
@@ -135,10 +135,11 @@ endurecimiento de seguridad y el Estándar S5 0.3.0 al estilo de las especificac
   `iniciar`, `diagnostico` (sale con 0, 1 o 2), `respaldar` (cifrado con AES-256-GCM y scrypt sobre
   una frase de 8 palabras, `VACUUM INTO` con el nodo en marcha), `restaurar`, `actualizar` (con
   regreso automático), `cuenta nueva`, `tabla revisar|firmar` (la tabla de funciones como CSV),
-  `calendario revisar`, `directorio actualizar` y `rotar-llaves --enlace`. SESNA: `sigilo-sesna
-instalar|aceptar|publicar|empaquetar`. Testigos: `sigilo testigo crear-llave|cofirmar`, con el
-  resumen de cambios recalculado contra la versión vigente. Toda respuesta va también por bandera o
-  variable `SIGILO_<CLAVE>`; `tools/sigilo/src/flujo.test.ts` recorre el alta completa sin Docker.
+  `calendario revisar`, `directorio actualizar` y `rotar-llaves --enlace`. SESNA:
+  `sigilo-sesna instalar|aceptar|publicar|empaquetar`. Testigos:
+  `sigilo testigo crear-llave|cofirmar`, con el resumen de cambios recalculado contra la versión
+  vigente. Toda respuesta va también por bandera o variable `SIGILO_<CLAVE>`;
+  `tools/sigilo/src/flujo.test.ts` recorre el alta completa sin Docker.
   Guías: `docs/instalacion-nodo.md` y `docs/instalacion-sesna.md`.
 - **Solicitud de alta firmada y sin secretos** (`packages/red/src/node-join.ts`): `red.json` firmado
   por la operación con su huella de 128 bits, solicitud firmada por el nodo con su huella para leer
@@ -164,7 +165,6 @@ instalar|aceptar|publicar|empaquetar`. Testigos: `sigilo testigo crear-llave|cof
 - `POST /api/v1/evidence` acepta solo contenedores cifrados (hasta 10 MiB más 165 bytes);
   `downloadEvidence` responde `application/octet-stream`. `POST /api/v1/complaints` acepta
   `?folio=` elegido por el navegador, porque las pruebas se cifran con el folio en el AAD.
-
 - Capa visual moderna (`styles/features/modern.css`), tras compararla con la versión de pruebas
   del S5: fondo con profundidad (brillo y ondas de líneas, sin recursos externos), barra superior
   translúcida, navegación sin mayúsculas, superficies con borde fino y sombra suave, botones sin
@@ -180,7 +180,6 @@ instalar|aceptar|publicar|empaquetar`. Testigos: `sigilo testigo crear-llave|cof
   panel de autoridad no muestra la navegación de quien denuncia.
 - Nombres coherentes: «Mi denuncia» (antes «Dar seguimiento») y «Registro público» (antes
   «Verificar bitácora»).
-
 - Menos texto para quien denuncia: una frase por bloque y el detalle a un toque («¿Por qué?»,
   «Ver…»), sin palabras técnicas a la vista. El inicio pasa de unas 1,000 palabras a unas 100, con
   tres promesas y la página nueva «Cómo te cuidamos» (quién puede saber qué, cómo comprobarlo,
@@ -203,6 +202,9 @@ instalar|aceptar|publicar|empaquetar`. Testigos: `sigilo testigo crear-llave|cof
 - `red:demo` deja la llave del buzón y la de la supervisora en `.red-demo/nodos/<nodo>/llaves-demo/`,
   fuera del volumen del nodo.
 - `docs/guia-conecta-tu-estado.md` se queda con los conceptos y remite a la guía de instalación.
+- Documentación alineada con la 1.1.0: pruebas cifradas (ya no «en claro»), perfil `nodo` del
+  servidor frente al perfil `panel` de la web, evaluador e índice sin puerto en el equipo, etiqueta
+  HMAC v2 y estado vigente de las brechas en los perfiles de seguridad y de privacidad del estándar.
 
 ### Corregido
 

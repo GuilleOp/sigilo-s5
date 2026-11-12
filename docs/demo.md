@@ -92,14 +92,14 @@ recomendada para replicar la demostración en un equipo limpio. Sigue el modelo 
 SESNA: **una sola ventanilla nacional**, que sirve la SESNA junto con el enrutador ciego, y **un nodo
 por estado**, sin nodo común. Los nodos solo tienen el panel de autoridades.
 
-| Servicio                                  | Quién lo opera en la realidad             | Dirección                         |
-| ----------------------------------------- | ----------------------------------------- | --------------------------------- |
-| Ventanilla única y enrutador ciego        | SESNA (sin llaves: no lee denuncias)      | <http://127.0.0.1:8790/>          |
-| Nodo Querétaro (solo panel)               | SESEA de Querétaro                        | <http://127.0.0.1:8781/autoridad> |
-| Nodo Federal (solo autoridades federales) | Secretaría Anticorrupción y Buen Gobierno | <http://127.0.0.1:8782/autoridad> |
-| Nodo Oaxaca (solo panel)                  | Contraloría Ficticia de Oaxaca            | <http://127.0.0.1:8783/autoridad> |
-| Evaluador OPRF e índice de coincidencias  | Corroboración ciega                       | 127.0.0.1:8791 y 127.0.0.1:8792   |
-| Dos testigos                              | CPC de Querétaro y Universidad Ejemplo    | sin puerto publicado              |
+| Servicio                                  | Quién lo opera en la realidad             | Dirección                          |
+| ----------------------------------------- | ----------------------------------------- | ---------------------------------- |
+| Ventanilla única y enrutador ciego        | SESNA (sin llaves: no lee denuncias)      | <http://127.0.0.1:8790/>           |
+| Nodo Querétaro (solo panel)               | SESEA de Querétaro                        | <http://127.0.0.1:8781/autoridad>  |
+| Nodo Federal (solo autoridades federales) | Secretaría Anticorrupción y Buen Gobierno | <http://127.0.0.1:8782/autoridad>  |
+| Nodo Oaxaca (solo panel)                  | Contraloría Ficticia de Oaxaca            | <http://127.0.0.1:8783/autoridad>  |
+| Evaluador OPRF e índice de coincidencias  | Corroboración ciega                       | sin puerto publicado (por el 8790) |
+| Dos testigos                              | CPC de Querétaro y Universidad Ejemplo    | sin puerto publicado               |
 
 ### Requisitos
 
@@ -109,7 +109,9 @@ por estado**, sin nodo común. Los nodos solo tienen el panel de autoridades.
   llaves y siembra el escenario desde el equipo; los servicios corren en los contenedores.
 - Conexión a internet solo la primera vez, para descargar la imagen oficial `node:22-bookworm-slim`
   y los paquetes de npm al construir. Después todo funciona sin conexión.
-- Puertos libres en `127.0.0.1`: 8781, 8782, 8783, 8790, 8791 y 8792. Los puertos y el nombre del
+- Puertos libres en `127.0.0.1`: 8781, 8782, 8783 y 8790. El evaluador y el índice no publican
+  puerto: la web llega al evaluador por el paso de la ventanilla (8790) y los nodos, por la red
+  interna de Compose. Los puertos y el nombre del
   proyecto de Compose (`sigilo-red`, en `compose.yaml`) son fijos, así que solo puede correr una
   copia de la red a la vez en el mismo equipo: antes de levantarla desde otro clon, bájala en el
   primero (`npm run demo:apagar`).
@@ -131,8 +133,10 @@ npm run demo:apagar   # baja la red y borra .red-demo/
 3. Genera llaves, directorio firmado y cuentas sintéticas nuevas en `.red-demo/`
    (`npm run red:demo -- --force`).
 4. Construye las imágenes (`docker compose build`). La ventanilla (imagen del enrutador) se
-   construye en perfil «ventanilla» con la raíz de confianza de la red; el panel de cada nodo, en
-   perfil «panel» con sus llaves públicas fijadas. Ninguna llave privada entra a las imágenes.
+   construye con la web en perfil «ventanilla» y la raíz de confianza de la red; cada nodo, con la
+   web en perfil «panel» (solo `/autoridad`) y sus llaves públicas fijadas, y el servidor corre en
+   perfil `nodo` (`SIGILO_NODE_PROFILE=nodo`: sin denuncia directa). Ninguna llave privada entra a
+   las imágenes.
 5. Levanta la red (`docker compose up -d --wait`) con tu UID y GID, espera a que el enrutador, los
    tres nodos, el evaluador y el índice estén sanos y prueba cada dirección por HTTP.
 6. Siembra el escenario hasta el día 35 (`npm run demo:seed`).
@@ -202,7 +206,8 @@ Lo que se ve, comprobado con la red en Docker:
   de no grave con dos o más señales del auditor»; las demás, en «Falta grave sin iniciar el
   procedimiento a los 30 días». Al final van los avisos de «Turnado vencido» de las denuncias que
   pasaron 2 días hábiles sin turnar o sin aceptar, sin copia que abrir. «Abrir» pide la segunda
-  llave (`apps/server/data/supervisor-demo-key.json` o `.red-demo/nodos/federal/llaves-demo/`), recibe el sobre
+  llave (`.red-demo/nodos/federal/llaves-demo/supervisor-demo-key.json`; con un solo nodo,
+  `apps/server/data/supervisor-demo-key.json`), recibe el sobre
   (`POST /api/v1/authority/escalations/{folio}/envelope`), lo abre en el navegador y lo compara
   con el registro público: muestra los hechos y las pruebas, nunca la identidad. El detalle completo
   sigue siendo de la autoridad que tiene la denuncia.
@@ -227,7 +232,7 @@ duplica los casos y regresa el reloj al día 0: para repetir, usa `npm run demo:
   `open -a Docker` y espera a que `docker version` muestre el servidor. En Linux,
   `sudo systemctl start docker` y revisa que tu usuario pueda usarlo (grupo `docker`).
 - **«Los puertos … están ocupados».** Otro programa, u otra copia del repositorio con la red en
-  marcha, usa 8781, 8782, 8783, 8790, 8791 u 8792. `lsof -i :8790` lo muestra; en la otra copia,
+  marcha, usa 8781, 8782, 8783 u 8790. `lsof -i :8790` lo muestra; en la otra copia,
   `npm run demo:apagar -- --conservar-datos`.
 - **Linux: un nodo sale con `EACCES: permission denied` o con «El archivo del reloj de pruebas debe
   pertenecer al usuario del servidor».** Tu UID no es 1000 y los contenedores corren por omisión
@@ -310,7 +315,7 @@ puertas.
 8. Enviar. Aparecen el folio y el recibo de 8 palabras; confirmar dos palabras (basta con las
    primeras 4 letras).
 9. En las herramientas del navegador, mostrar que no hay peticiones a terceros y que la identidad
-   viaja cifrada.
+   y las pruebas viajan cifradas hacia la autoridad.
 
 ## Acto 2. Trámite (1 min)
 
@@ -404,12 +409,12 @@ rm -rf /tmp/sigilo-reloj /tmp/sigilo-anclas /tmp/sigilo-copia
 
 ## Preguntas previstas
 
-| Pregunta                                    | Respuesta breve                                                                                                                        |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| ¿Y si el servidor entrega código malicioso? | Riesgo residual documentado; hashes publicados por versión y verificador son trabajo futuro.                                           |
-| ¿Y si la autoridad abre sin motivo?         | Abrir exige a dos personas distintas de la autoridad (2 de 3), cada una con su fundamento; queda registrado y visible para la persona. |
-| ¿Y si pierdo el recibo?                     | No hay recuperación por diseño; se puede presentar otra denuncia citando el folio.                                                     |
-| ¿Es legal la apertura?                      | La LGRA obliga a la autoridad a mantener la confidencialidad (art. 91); el sistema la hace verificable.                                |
-| ¿Qué evita el abuso masivo?                 | Prueba de trabajo por envío, límites, cuota de almacenamiento y, como último recurso, cuotas globales.                                 |
-| ¿Por qué la bitácora tarda un día?          | Publicar al instante revelaría la hora exacta de cada envío; los lotes diarios lo evitan.                                              |
-| ¿Quién garantiza que no reescriben todo?    | Las anclas versionadas en un repositorio público; entre dos anclas sigue siendo posible, y así se documenta.                           |
+| Pregunta                                    | Respuesta breve                                                                                                                              |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| ¿Y si el servidor entrega código malicioso? | Riesgo residual documentado; hashes publicados por versión y verificador son trabajo futuro.                                                 |
+| ¿Y si la autoridad abre sin motivo?         | Abrir exige a dos personas distintas de la autoridad (2 de 3), cada una con su fundamento; queda registrado y visible para la persona.       |
+| ¿Y si pierdo el recibo?                     | No hay recuperación por diseño; se puede presentar otra denuncia citando el folio.                                                           |
+| ¿Es legal la apertura?                      | La LGRA obliga a la autoridad a mantener la confidencialidad (art. 91); el sistema la hace verificable.                                      |
+| ¿Qué evita el abuso masivo?                 | Prueba de trabajo adaptativa por envío, cuota de almacenamiento y tope diario de la bitácora; no hay topes globales que dejen fuera a todos. |
+| ¿Por qué la bitácora tarda un día?          | Publicar al instante revelaría la hora exacta de cada envío; los lotes diarios lo evitan.                                                    |
+| ¿Quién garantiza que no reescriben todo?    | Las anclas versionadas en un repositorio público; entre dos anclas sigue siendo posible, y así se documenta.                                 |

@@ -4,7 +4,7 @@ SIGILO es una capa de anonimato para un sistema de denuncias. Todo lo que puede 
 persona denunciante se procesa en su navegador; el servidor almacena hechos, sobres cifrados y una
 bitácora, y no puede leer identidades.
 
-El estándar S5 y la red federada se deciden en los [ADR 0005 a 0010](adr/).
+El estándar S5 y la red federada se deciden en los [ADR 0005 a 0011](adr/).
 
 ## Componentes
 
@@ -35,7 +35,7 @@ flowchart LR
     P[Panel de autoridad] --> C2[core]
     K[(Llave privada de la autoridad)]
   end
-  W -- mismo origen: hechos, pruebas limpias, sobres --> S[apps/server]
+  W -- mismo origen: hechos, pruebas cifradas, sobres --> S[apps/server]
   P -- mismo origen, sesión de una cuenta individual --> S
   S --> DB[(SQLite: hechos, sobres, bitácora)]
   DB -- npm run ledger:anchor --> A[(anchors/ en el repositorio público)]
@@ -44,7 +44,8 @@ flowchart LR
 ## Fronteras de confianza
 
 1. **Navegador de la persona denunciante.** Zona de confianza. Aquí se genera el recibo, se derivan
-   las llaves, se limpian las pruebas, se eliminan las marcas invisibles y se cifra la identidad.
+   las llaves, se limpian las pruebas, se eliminan las marcas invisibles y se cifran la identidad y
+   las pruebas.
 2. **Red y servidor.** Zona no confiable para la identidad. El servidor recibe solo lo necesario para
    el trámite y no registra direcciones IP. Sí entrega el código de la web: un servidor
    comprometido puede alterarlo (ver `modelo-de-amenazas.md`, C03 y D03).
@@ -57,17 +58,17 @@ flowchart LR
 
 ## Qué ve cada actor
 
-| Dato                                          | Persona denunciante  | Servidor y operación         | Autoridad competente                                 | Público                                                                                           |
-| --------------------------------------------- | -------------------- | ---------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Hechos (descripción, ente, conducta, periodo) | Sí                   | Sí                           | Sí                                                   | No                                                                                                |
-| Pruebas limpias                               | Sí                   | Sí                           | Sí                                                   | No                                                                                                |
-| Pruebas originales                            | Solo en su navegador | No                           | No (solo su digesto, dentro de la identidad sellada) | No                                                                                                |
-| Identidad (modo `sealed`)                     | Sí                   | Solo texto cifrado           | Sí, tras solicitud con fundamento registrada         | No                                                                                                |
-| Recibo de 8 palabras                          | Sí                   | No (solo `SHA-256(authKey)`) | No                                                   | No                                                                                                |
-| Mensajes del buzón                            | Sí                   | Solo texto cifrado           | Sí                                                   | No                                                                                                |
-| Folio                                         | Sí                   | Sí                           | Sí                                                   | No (la bitácora pública usa `folioDigest`)                                                        |
-| Eventos de la bitácora                        | Los de su denuncia   | Todos                        | Todos                                                | Solo los de días cerrados, barajados, con `folioDigest`                                           |
-| Estadísticas agregadas                        | Sí                   | Sí                           | Sí                                                   | Meses congelados, redondeo aleatorio a múltiplos de 5, celdas que redondean a menos de 5 omitidas |
+| Dato                                          | Persona denunciante  | Servidor y operación                               | Autoridad competente                                 | Público                                                                                           |
+| --------------------------------------------- | -------------------- | -------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Hechos (descripción, ente, conducta, periodo) | Sí                   | Sí                                                 | Sí                                                   | No                                                                                                |
+| Pruebas limpias                               | Sí                   | Solo el contenedor cifrado, su tamaño y su digesto | Sí, al descifrarlas en su navegador                  | No                                                                                                |
+| Pruebas originales                            | Solo en su navegador | No                                                 | No (solo su digesto, dentro de la identidad sellada) | No                                                                                                |
+| Identidad (modo `sealed`)                     | Sí                   | Solo texto cifrado                                 | Sí, tras solicitud con fundamento registrada         | No                                                                                                |
+| Recibo de 8 palabras                          | Sí                   | No (solo `SHA-256(authKey)`)                       | No                                                   | No                                                                                                |
+| Mensajes del buzón                            | Sí                   | Solo texto cifrado                                 | Sí                                                   | No                                                                                                |
+| Folio                                         | Sí                   | Sí                                                 | Sí                                                   | No (la bitácora pública usa `folioDigest`)                                                        |
+| Eventos de la bitácora                        | Los de su denuncia   | Todos                                              | Todos                                                | Solo los de días cerrados, barajados, con `folioDigest`                                           |
+| Estadísticas agregadas                        | Sí                   | Sí                                                 | Sí                                                   | Meses congelados, redondeo aleatorio a múltiplos de 5, celdas que redondean a menos de 5 omitidas |
 
 ## Flujos por etapa
 
@@ -84,12 +85,13 @@ sequenceDiagram
   W->>S: GET /keys (compara con las llaves fijadas; si difieren, no envía nada)
   W->>S: GET /pow/challenge (reto de un solo uso)
   W->>W: Resuelve la prueba de trabajo en un Web Worker
-  W->>S: POST /evidence con X-Sigilo-Pow (solo imágenes limpias y verificadas)
-  S-->>W: evidenceId, sha256
+  W->>W: Elige el folio y cifra cada imagen limpia hacia la autoridad (contenedor SGEV)
+  W->>S: POST /evidence con X-Sigilo-Pow (solo contenedores cifrados)
+  S-->>W: evidenceId, sha256 del contenedor
   W->>W: Genera recibo, deriva authKey y llaves del buzón
   W->>W: (modo sealed) Cifra la identidad con HPKE hacia la autoridad
-  W->>S: POST /complaints con X-Sigilo-Pow (hechos, sobre, llaves públicas, authVerifier)
-  S->>S: Valida catálogos, genera folio, deja complaint.received pendiente
+  W->>S: POST /complaints?folio= con X-Sigilo-Pow (hechos, sobre, llaves públicas, authVerifier)
+  S->>S: Valida catálogos y folio, deja complaint.received y evidence.received pendientes
   S-->>W: folio y comprobante firmado
   W->>D: Muestra folio y recibo; pide confirmar dos palabras
 ```
@@ -134,7 +136,7 @@ sequenceDiagram
   Note over S: La recepción de la autoridad turnada acepta, reasigna o devuelve
   I->>P: Inicia sesión e importa su llave
   P->>S: GET /authority/complaints/{folio}
-  S-->>P: Hechos, pruebas, llaves del denunciante, digestos, trámite, mensajes
+  S-->>P: Hechos, pruebas cifradas, llaves del denunciante, digestos, trámite, mensajes
   P->>P: Recalcula el digesto del envío y verifica las llaves del denunciante
   I->>S: POST procedure { advance_stage } / mensajes cifrados en el navegador
   I->>S: POST procedure { close, reason, legalBasis, agreement }
@@ -409,8 +411,9 @@ flowchart LR
     reloj simulado de los nodos, para que «mes cerrado» signifique lo mismo en ambos lados.
 - **APIs entre la SESNA y los nodos (OAuth 2.0, metodología de la PDN).** Como en las APIs del
   S2 y del S3, **cada nodo es el proveedor** y su propio servidor de autorización
-  (`POST /oauth/token`, RFC 6749), y **la SESNA (enrutador) es el cliente** con las credenciales
-  que le entrega cada nodo (`node-credentials.json`, 0600). Flujos: `password` (el de la PDN;
+  (`POST /oauth/token`, RFC 6749), y **la SESNA (enrutador) es el cliente** con sus credenciales
+  ante cada nodo (`node-credentials.json`, 0600; en producción, el secreto se deriva en los dos
+  lados y no se entrega). Flujos: `password` (el de la PDN;
   desaconsejado en OAuth 2.1), `client_credentials` (el que usa el enrutador) y `refresh_token`.
   El token de acceso es un JWT HS256 de 5 minutos que solo verifica el nodo que lo emitió
   (`iss` = `aud` = id del nodo, `sub` = cliente, `scope`, `exp`, `jti`). Permisos:
@@ -451,7 +454,8 @@ flowchart LR
 - **Despliegue local.** `npm run red:demo` genera llaves, tablas de funciones y cuentas sintéticas
   en `.red-demo/` y `docker compose up` levanta el enrutador con la ventanilla única
   (`127.0.0.1:8790`), los nodos Querétaro (8781), Federal (8782) y Oaxaca (8783) con la web
-  en perfil panel, el evaluador, el índice y dos testigos observadores. `npm run demo:seed` siembra
+  en perfil `panel` y el servidor en perfil `nodo`, el evaluador, el índice (los dos sin puerto en el
+  equipo) y dos testigos observadores. `npm run demo:seed` siembra
   el escenario. Guía: [conecta tu estado](guia-conecta-tu-estado.md).
 - **Hecho: rutas de denuncia directa cerradas en el servidor.** En perfil `nodo`
   (`apps/server/src/http/exposure.ts`, H03) el nodo publica solo los frentes red, público y panel:
