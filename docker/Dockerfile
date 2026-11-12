@@ -1,12 +1,15 @@
 # syntax=docker/dockerfile:1
 # Imágenes de la red de SIGILO, en varias etapas sobre la imagen oficial de Node 22:
-#   enrutador  enrutador ciego y bitácora nacional (apps/enrutador)
+#   enrutador  enrutador ciego y bitácora nacional (apps/enrutador), con la ventanilla única: la web
+#              en perfil «ventanilla» en el mismo origen (la sirve la SESNA)
 #   testigo    proceso de un testigo que cofirma la bitácora nacional
-#   nodo       servidor de referencia (apps/server, tal cual) con la web en el mismo origen
+#   nodo       servidor de referencia (apps/server, tal cual) con la web en perfil «panel» (solo
+#              el panel de autoridades) en el mismo origen
 #   evaluador  evaluador OPRF de la corroboración ciega (apps/corroboracion)
 #   indice     índice de coincidencias de la corroboración ciega (apps/corroboracion)
 # Sin secretos: las llaves privadas y el token llegan en tiempo de ejecución por volumen y env_file.
-# La web fija las llaves públicas de su nodo, que entran por el contexto adicional `node-keys`.
+# La web fija las llaves públicas de su nodo (o la raíz de la red, en la ventanilla), que entran por
+# el contexto adicional `node-keys`; el perfil de la web llega con el argumento SIGILO_WEB_PROFILE.
 
 ARG NODE_IMAGE=node:22-bookworm-slim
 
@@ -41,8 +44,11 @@ RUN npm ci --ignore-scripts
 FROM manifests AS prod-deps
 RUN npm ci --omit=dev --ignore-scripts
 
-# Web construida con las llaves públicas fijadas del nodo.
+# Web construida con las llaves públicas fijadas del nodo y su perfil: `panel` en los nodos,
+# `ventanilla` en el enrutador, `completo` (un solo nodo) por omisión.
 FROM deps AS web-build
+ARG SIGILO_WEB_PROFILE=completo
+ARG SIGILO_VENTANILLA_URL=
 COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps/web apps/web
@@ -55,7 +61,8 @@ COPY datos/abiertos datos/abiertos
 COPY --from=node-keys pinned-keys.json apps/web/src/config/pinned-keys.json
 # Raíz de confianza de la red: con ella la web verifica el directorio y envía por el enrutador.
 COPY --from=node-keys network-trust.json apps/web/src/config/network-trust.json
-RUN npm run build -w @sigilo/web
+RUN VITE_SIGILO_PERFIL="$SIGILO_WEB_PROFILE" VITE_SIGILO_VENTANILLA_URL="$SIGILO_VENTANILLA_URL" \
+    npm run build -w @sigilo/web
 
 # Base de ejecución común: paquetes compartidos y dependencias de producción.
 FROM ${NODE_IMAGE} AS runtime
@@ -70,7 +77,9 @@ COPY packages packages
 
 FROM runtime AS enrutador
 COPY apps/enrutador apps/enrutador
-ENV SIGILO_ROUTER_DATA_DIR=/data \
+COPY --from=web-build /app/apps/web/dist /app/ventanilla
+ENV SIGILO_ROUTER_WEB_DIST=/app/ventanilla \
+    SIGILO_ROUTER_DATA_DIR=/data \
     SIGILO_ROUTER_HOST=0.0.0.0 \
     SIGILO_ROUTER_PORT=8790
 USER node

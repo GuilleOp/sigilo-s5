@@ -12,20 +12,23 @@ import { resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '..');
 
 /** Puertos que publica `compose.yaml` en 127.0.0.1. */
-const PORTS = [8781, 8782, 8790, 8791, 8792];
+const PORTS = [8781, 8782, 8783, 8790, 8791, 8792];
 
 /** Lo que se comprueba por HTTP después de que Docker reporta los servicios sanos. */
 const ENDPOINTS = [
+  { name: 'Ventanilla única (SESNA)', url: 'http://127.0.0.1:8790/' },
   { name: 'Enrutador (directorio firmado)', url: 'http://127.0.0.1:8790/api/v1/red/directory' },
   // El enrutador hace el primer corte al arrancar y lo rehace en cada vuelta (cada minuto).
   {
     name: 'Enrutador (corte nacional de datos abiertos)',
     url: 'http://127.0.0.1:8790/api/v1/red/national/open-data',
   },
-  { name: 'Nodo Querétaro (web)', url: 'http://127.0.0.1:8781/' },
+  { name: 'Nodo Querétaro (panel)', url: 'http://127.0.0.1:8781/autoridad' },
   { name: 'Nodo Querétaro (API)', url: 'http://127.0.0.1:8781/api/v1/keys' },
-  { name: 'Nodo Federal (web)', url: 'http://127.0.0.1:8782/' },
+  { name: 'Nodo Federal (panel)', url: 'http://127.0.0.1:8782/autoridad' },
   { name: 'Nodo Federal (API)', url: 'http://127.0.0.1:8782/api/v1/keys' },
+  { name: 'Nodo Estado Ejemplo (panel)', url: 'http://127.0.0.1:8783/autoridad' },
+  { name: 'Nodo Estado Ejemplo (API)', url: 'http://127.0.0.1:8783/api/v1/keys' },
   {
     name: 'Evaluador OPRF',
     url: 'http://127.0.0.1:8791/api/v1/corroboracion/evaluador/llave',
@@ -35,7 +38,14 @@ const ENDPOINTS = [
 ];
 
 /** Servicios con verificación de salud en la imagen (los testigos no publican puerto). */
-const HEALTHY_SERVICES = ['enrutador', 'nodo-queretaro', 'nodo-federal', 'evaluador', 'indice'];
+const HEALTHY_SERVICES = [
+  'enrutador',
+  'nodo-queretaro',
+  'nodo-federal',
+  'nodo-ejemplo',
+  'evaluador',
+  'indice',
+];
 
 const MIN_NODE = [22, 18];
 const MIN_COMPOSE = [2, 17];
@@ -253,8 +263,10 @@ async function main(): Promise<void> {
   say(`  Listo en ${elapsed(step)}.`);
 
   say('\nPaso 4 de 6. Construir las imágenes (la primera vez descarga Node 22 y dependencias).');
-  say('  La web de cada nodo se construye con sus llaves públicas fijadas; ninguna llave privada');
-  say('  entra a las imágenes.');
+  say(
+    '  La ventanilla (con el enrutador) fija la raíz de la red; el panel de cada nodo, sus llaves',
+  );
+  say('  públicas. Ninguna llave privada entra a las imágenes.');
   step = Date.now();
   if (run('docker', ['compose', 'build'], env).status !== 0) {
     fail('docker compose build falló. Revisa la conexión a internet (descarga node:22 y npm).');
@@ -298,8 +310,10 @@ async function main(): Promise<void> {
   }
 
   say(`\nDemostración lista en ${elapsed(total)}. Todo es sintético y corre solo en este equipo.`);
-  say('  Nodo Querétaro (web): http://127.0.0.1:8781/');
-  say('  Nodo Federal (web):   http://127.0.0.1:8782/  ·  panel: http://127.0.0.1:8782/autoridad');
+  say('  Ventanilla única:     http://127.0.0.1:8790/ (la sirve la SESNA con el enrutador)');
+  say('  Paneles de los nodos: Querétaro http://127.0.0.1:8781/autoridad');
+  say('                        Federal http://127.0.0.1:8782/autoridad');
+  say('                        Estado Ejemplo http://127.0.0.1:8783/autoridad');
   say('  Cuentas del panel:    .red-demo/nodos/<nodo>/credenciales.json');
   say('  Llave del panel:      .red-demo/autoridades/<id>.json (la de la autoridad de la cuenta)');
   say('  Llave del buzón:      .red-demo/nodos/<nodo>/data/authority-demo-key.json');

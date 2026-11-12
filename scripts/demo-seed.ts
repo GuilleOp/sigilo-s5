@@ -1,8 +1,9 @@
 // Siembra el escenario de docs/demo-escenario.md contra la red de demostración en marcha (después
 // de npm run red:demo y docker compose up): importa los 31 acuerdos con plantilla y los 5 de
-// control, envía las denuncias de Marta (ventanilla única, con la foto ya limpia), del atacante
-// (tres, día 2), de la persona denunciante de Querétaro y de Luis (entrada propia del nodo Federal,
-// día 3), y lleva el trámite de Marta por la calificación de no grave con plantilla y su
+// control, envía por la ventanilla única las denuncias de Marta (con la foto ya limpia), del
+// atacante (tres, día 2), de la persona denunciante de Querétaro y de Luis (día 3, que elige él
+// mismo el buzón general del nodo Federal), deja las solicitudes de alta en el nodo de cada
+// entidad (no hay nodo común: el Estado Ejemplo tiene el suyo), y lleva el trámite de Marta por la calificación de no grave con plantilla y su
 // notificación por el buzón (día 30), las señales y el escalamiento (día 31), la apertura del
 // expediente con la segunda llave (día 32) y la inconformidad con apertura de identidad para el
 // recurso (día 35), adelantando el reloj simulado. Hace lo que harían el navegador y las personas
@@ -22,6 +23,7 @@ import {
   RegistrationReceiptSchema,
   ROUTES,
   SubmitComplaintResponseSchema,
+  VENTANILLA_ROUTES,
 } from '@sigilo/contracts';
 import type {
   AuthorityDirectory,
@@ -65,6 +67,7 @@ const EVALUATOR = process.env.SIGILO_DEMO_EVALUATOR_URL || 'http://127.0.0.1:879
 const NODES = {
   federal: process.env.SIGILO_DEMO_FEDERAL_URL || 'http://127.0.0.1:8782',
   queretaro: process.env.SIGILO_DEMO_QUERETARO_URL || 'http://127.0.0.1:8781',
+  ejemplo: process.env.SIGILO_DEMO_EJEMPLO_URL || 'http://127.0.0.1:8783',
 } as const;
 const CLOCK_FILE = join(OUT, 'reloj', 'desfase');
 const DAY_MS = 86_400_000;
@@ -364,26 +367,6 @@ async function submitViaRouter(
   return { key: spec.key, folio: response.folio, words: phrase.words, keys };
 }
 
-async function submitDirect(
-  directory: AuthorityDirectory,
-  node: NodeName,
-  spec: ComplaintSpec,
-): Promise<Seeded> {
-  const phrase = generateReceiptPhrase();
-  const request = await buildRequest(directory, spec, deriveReceiptKeys(phrase.entropy));
-  const header = solved(
-    await json(await fetch(`${NODES[node]}${ROUTES.powChallenge}?purpose=complaint`), 'Reto'),
-  );
-  const response = SubmitComplaintResponseSchema.parse(
-    await json(
-      await postJson(`${NODES[node]}${ROUTES.complaints}`, request, { [POW_HEADER]: header }),
-      'Denuncia',
-    ),
-  );
-  say(`- ${spec.key}: folio ${response.folio} (entrada propia del nodo ${node}).`);
-  return { key: spec.key, folio: response.folio, words: phrase.words };
-}
-
 const TEMPLATE_VARIANTS = [
   'no se cuenta con elementos suficientes',
   'no se advierten elementos suficientes',
@@ -502,7 +485,7 @@ interface SeededRegistration {
 /** Arma una solicitud de alta sintética y guarda su llave privada en `.red-demo/solicitudes/`. */
 function registrationRequest(
   institutionName: string,
-  stateCode: string,
+  stateCode: string | null,
   people: RegistrationRequest['people'],
 ): RegistrationRequest {
   const box = generateBoxKeyPair();
@@ -528,7 +511,7 @@ function registrationRequest(
   return {
     institutionName,
     stateCode,
-    governmentLevel: 'estatal',
+    governmentLevel: stateCode === null ? 'federal' : 'estatal',
     role: 'investigating',
     laws: ['LGRA'],
     supervisorId: null,
@@ -547,47 +530,61 @@ function registrationRequest(
 }
 
 /**
- * Solicitudes de alta en el nodo Federal: Oaxaca (sin nodo propio, irá al nodo común) queda
- * pendiente para mostrar la confirmación de la huella; otra queda rechazada con su motivo.
+ * Solicitudes de alta, cada una en el nodo de su entidad por los pasos de la ventanilla única (no
+ * hay nodo común: una entidad sin nodo primero monta el suyo). En el nodo del Estado Ejemplo queda
+ * pendiente la del OIC de su Secretaría de Salud, para mostrar la confirmación de la huella; en el
+ * Federal, otra queda rechazada con su motivo.
  */
 async function seedRegistrations(): Promise<SeededRegistration[]> {
   const specs = [
     {
-      request: registrationRequest('Secretaría de la Contraloría Ficticia de Oaxaca', '20', [
-        { fullName: 'Persona Ficticia Uno', functions: ['intake', 'investigation'] },
-        { fullName: 'Persona Ficticia Dos', functions: ['intake', 'investigation'] },
-        { fullName: 'Persona Ficticia Tres', functions: ['substantiation'] },
-      ]),
+      node: 'ejemplo',
+      nodeId: 'node.ejemplo',
+      request: registrationRequest(
+        'Órgano Interno de Control Ficticio de la Secretaría de Salud del Estado Ejemplo',
+        'state.ejemplo',
+        [
+          { fullName: 'Persona Ficticia Uno', functions: ['intake', 'investigation'] },
+          { fullName: 'Persona Ficticia Dos', functions: ['intake', 'investigation'] },
+          { fullName: 'Persona Ficticia Tres', functions: ['substantiation'] },
+        ],
+      ),
       rejectReason: null,
     },
     {
-      request: registrationRequest('Contraloría Municipal Ficticia de Villa Ejemplo', '20', [
-        { fullName: 'Persona Ficticia Cuatro', functions: ['intake', 'investigation'] },
-      ]),
+      node: 'federal',
+      nodeId: 'node.federal',
+      request: registrationRequest(
+        'Órgano Interno de Control Ficticio en la Oficina Federal de Aduanas',
+        null,
+        [{ fullName: 'Persona Ficticia Cuatro', functions: ['intake', 'investigation'] }],
+      ),
       rejectReason:
-        'El oficio de nombramiento no coincide con el padrón de la contraloría estatal. Envíe el oficio vigente.',
+        'El oficio de nombramiento no coincide con el padrón de órganos internos de control. Envíe el oficio vigente.',
     },
-  ];
+  ] as const;
   const seeded: SeededRegistration[] = [];
   for (const spec of specs) {
     const header = solved(
       await json(
-        await fetch(`${NODES.federal}${ROUTES.powChallenge}?purpose=registration`),
+        await fetch(`${ROUTER}${VENTANILLA_ROUTES.nodeRegistrationChallenge(spec.nodeId)}`),
         'Reto',
       ),
     );
     const receipt = RegistrationReceiptSchema.parse(
       await json(
-        await postJson(`${NODES.federal}${ROUTES.registrationRequests}`, spec.request, {
-          [POW_HEADER]: header,
-        }),
+        await postJson(
+          `${ROUTER}${VENTANILLA_ROUTES.nodeRegistrationRequests(spec.nodeId)}`,
+          spec.request,
+          { [POW_HEADER]: header },
+        ),
         'Solicitud de alta',
       ),
     );
     if (spec.rejectReason !== null) {
       await asAuthority(
-        'federal',
-        'operacion.federal',
+        spec.node,
+        `operacion.${spec.node}`,
         ROUTES.operationRegistrationDecision(receipt.requestId),
         { decision: 'reject', reason: spec.rejectReason },
       );
@@ -700,13 +697,19 @@ async function main(): Promise<void> {
   }
   if (until >= 3) {
     await advanceTo(3);
-    const luis = await submitDirect(directory, 'federal', {
-      key: 'case.luis',
-      mode: 'anonymous',
-      facts: { ...MARTA_FACTS, description: demoCase('case.luis').narrative },
-      identifier: { kind: 'ocid', ocid: DEMO_OCID },
-    });
-    seeded.push(luis);
+    // Los nodos no tienen ventanilla propia: Luis entra por la ventanilla única y elige él mismo el
+    // buzón general del nodo Federal en lugar de la autoridad propuesta.
+    const luis = await submitViaRouter(
+      directory,
+      {
+        key: 'case.luis',
+        mode: 'anonymous',
+        facts: { ...MARTA_FACTS, description: demoCase('case.luis').narrative },
+        identifier: { kind: 'ocid', ocid: DEMO_OCID },
+      },
+      'authority.buzon-federal',
+    );
+    seeded.push({ key: luis.key, folio: luis.folio, words: luis.words });
     // El buzón general la turna al OIC, que la acepta: solo entonces el nodo la confirma ante el
     // índice y cuenta como fuente independiente para Marta.
     await asAuthority('federal', 'buzon.federal', ROUTES.authorityProcedure(luis.folio), {
@@ -811,7 +814,7 @@ async function main(): Promise<void> {
     );
     say('- Marta se inconforma por la ventanilla única y abre su identidad solo para el recurso.');
   }
-  say('Alta de autoridades: solicitudes sintéticas en el nodo Federal.');
+  say('Alta de autoridades: solicitudes sintéticas en el nodo de cada entidad, por la ventanilla.');
   const solicitudes = await seedRegistrations();
   // Seguridad: las 8 palabras son secretas (sintéticas); el archivo queda solo para quien presenta.
   writeFileSync(
