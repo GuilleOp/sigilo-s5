@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/anonimato",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Grupo de anonimato en el navegador: tamaño del grupo por entidad, ente y área desde el fragmento estático de una sola entidad.",
   "license": "CC-BY-NC-4.0",
   "type": "module",
@@ -13,6 +13,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@sigilo/huella": "1.0.1"
+    "@sigilo/huella": "1.1.0"
   }
 }

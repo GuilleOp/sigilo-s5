@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/web",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Aplicacion web de referencia: denuncia, seguimiento, panel de autoridad y datos abiertos.",
   "license": "CC-BY-NC-4.0",
   "private": true,
@@ -12,12 +12,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@sigilo/anonimato": "1.0.1",
-    "@sigilo/contracts": "1.0.1",
-    "@sigilo/core": "1.0.1",
-    "@sigilo/corroboracion": "1.0.1",
-    "@sigilo/huella": "1.0.1",
-    "@sigilo/red": "1.0.1",
+    "@sigilo/anonimato": "1.1.0",
+    "@sigilo/contracts": "1.1.0",
+    "@sigilo/core": "1.1.0",
+    "@sigilo/corroboracion": "1.1.0",
+    "@sigilo/huella": "1.1.0",
+    "@sigilo/red": "1.1.0",
     "pdfjs-dist": "^6.4.299",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

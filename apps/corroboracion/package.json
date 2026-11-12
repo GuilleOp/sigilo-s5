@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/corroboracion-servicio",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Servicios de la corroboracion ciega: evaluador OPRF (RFC 9497) e indice de coincidencias, operados por partes distintas.",
   "license": "CC-BY-NC-4.0",
   "private": true,
@@ -17,10 +17,10 @@
     "@hono/node-server": "^2.1.3",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
-    "@sigilo/contracts": "1.0.1",
-    "@sigilo/core": "1.0.1",
-    "@sigilo/corroboracion": "1.0.1",
-    "@sigilo/red": "1.0.1",
+    "@sigilo/contracts": "1.1.0",
+    "@sigilo/core": "1.1.0",
+    "@sigilo/corroboracion": "1.1.0",
+    "@sigilo/red": "1.1.0",
     "hono": "^4.13.13",
     "zod": "^4.6.5"
   }
