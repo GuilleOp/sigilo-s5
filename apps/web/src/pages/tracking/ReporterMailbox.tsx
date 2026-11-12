@@ -1,6 +1,7 @@
-// Mensajes de la persona denunciante con la autoridad: hilo y respuesta revisada. El botón de
-// enviar siempre está activo; si la respuesta está vacía o es muy larga, se dice en el campo.
-// Antes de sellarla se quitan siempre los caracteres invisibles.
+// Mensajes de la persona denunciante con la autoridad: hilo, respuesta revisada y solicitud de
+// medidas de protección (que viaja como un mensaje más). El botón de enviar siempre está activo;
+// si la respuesta está vacía o es muy larga, se dice en el campo. Antes de sellarla se quitan
+// siempre los caracteres invisibles.
 import { useState } from 'react';
 import { MAX_MAILBOX_TEXT_LENGTH } from '@sigilo/core';
 import { MessageThread } from '../../components/MessageThread.tsx';
@@ -10,6 +11,7 @@ import type { DecodedMessage } from '../../crypto/tracking.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { prepareMailboxText } from '../../lib/mailbox-text.ts';
 import { detectPersonalDataRequest } from '../../lib/personal-data-request.ts';
+import { ProtectionRequest } from './ProtectionRequest.tsx';
 
 interface ReporterMailboxProps {
   messages: readonly DecodedMessage[];
@@ -122,10 +124,12 @@ export function ReporterMailbox({
         >
           {isSending ? 'Enviando...' : 'Enviar respuesta'}
         </button>
-        <p role="status" aria-live="polite">
-          {status}
-        </p>
       </form>
+      <ProtectionRequest isSending={isSending} onSend={onSend} />
+      {/* Un solo aviso para la respuesta y para la solicitud de medidas de protección. */}
+      <p role="status" aria-live="polite" data-testid="reply-status">
+        {status}
+      </p>
     </section>
   );
 }

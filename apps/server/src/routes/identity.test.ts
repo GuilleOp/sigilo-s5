@@ -3,6 +3,7 @@
 // entrega a quien aprobó después del umbral. La persona denunciante ve la apertura.
 import { describe, expect, it } from 'vitest';
 import {
+  formatCriminalOpeningBasis,
   IdentityOpeningRequestViewSchema,
   OpenIdentityResponseSchema,
   ROUTES,
@@ -24,6 +25,7 @@ import {
   getAsAuthority,
   moveTo,
   postJson,
+  procedureAs,
   submitComplaint,
   SYNTHETIC_IDENTITY,
   TEST_ACCOUNTS,
@@ -233,5 +235,47 @@ describe('apertura de identidad 2 de 3', () => {
       404,
     );
     expect((await approve(server, folio, pending.requestId, 'oicInvestigator')).status).toBe(409);
+  });
+
+  it('en la vía penal exige el fundamento de la lista y el número de la resolución (CNPP art. 109 fr. XXVI)', async () => {
+    const { server, folio, reporter } = await setup();
+    await moveTo(server, folio, 'routed');
+    const accepted = await procedureAs(server, 'oicIntake', folio, { action: 'accept' });
+    expect(accepted.status).toBe(200);
+    const advanced = await procedureAs(server, 'oicInvestigator', folio, {
+      action: 'advance_stage',
+      stage: 'criminal_investigation',
+    });
+    expect(advanced.status).toBe(200);
+    // Un fundamento libre ya no basta: la apertura en la vía penal la decide una resolución.
+    const free = await post(
+      server,
+      ROUTES.authorityIdentityRequests(folio),
+      { legalBasis: FIRST_BASIS },
+      'oicInvestigator',
+    );
+    expect(free.status).toBe(400);
+    const basis = formatCriminalOpeningBasis({
+      ground: 'cnpp_109_xxvi',
+      resolutionReference: 'Causa penal 45/2026',
+      reason: 'El juez de control ordenó dar a conocer la identidad a la defensa (sintético).',
+    });
+    const requested = await post(
+      server,
+      ROUTES.authorityIdentityRequests(folio),
+      { legalBasis: basis },
+      'oicInvestigator',
+    );
+    expect(requested.status).toBe(201);
+    const pending = IdentityOpeningRequestViewSchema.parse(await requested.json());
+    // La doble aprobación sigue igual: sola no abre.
+    expect(pending.status).toBe('pending');
+    const approved = await approve(server, folio, pending.requestId, 'oicIntakeInvestigator');
+    expect(IdentityOpeningRequestViewSchema.parse(await approved.json()).status).toBe('approved');
+    // La persona ve el fundamento con el número de la resolución.
+    const view = TrackingViewSchema.parse(
+      await (await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter))).json(),
+    );
+    expect(view.identityAccess.map((entry) => entry.legalBasis)).toEqual([basis]);
   });
 });

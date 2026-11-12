@@ -16,6 +16,7 @@ import {
 import type { ReporterKeysVerification } from '../../crypto/authority.ts';
 import { parseLedgerAnchors } from '../../crypto/ledger-verification.ts';
 import { mailboxCountText, prepareMailboxText } from '../../lib/mailbox-text.ts';
+import { isProtectionRequestMessage } from '../../lib/protection-request.ts';
 import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
@@ -152,7 +153,12 @@ export function AuthorityMailbox({ session, detail, reload }: AuthorityMailboxPr
       setItems(
         thread.map((message) => ({
           id: message.messageId,
-          author: message.from === 'authority' ? 'Autoridad' : 'Persona denunciante',
+          author:
+            message.from === 'authority'
+              ? 'Autoridad'
+              : message.state === 'opened' && isProtectionRequestMessage(message.text)
+                ? 'Persona denunciante: pide medidas de protección'
+                : 'Persona denunciante',
           sentOn: message.sentOn,
           tone:
             message.from === 'authority'

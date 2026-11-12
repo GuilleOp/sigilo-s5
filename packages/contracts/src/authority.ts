@@ -247,12 +247,15 @@ export type ComplaintDetail = z.infer<typeof ComplaintDetailSchema>;
 
 export const OpenIdentityRequestSchema = z
   .strictObject({
-    /** Fundamento legal y motivo. Visible para la persona denunciante. */
+    /**
+     * Fundamento legal y motivo. Visible para la persona denunciante. En la vía penal, con la forma
+     * de `formatCriminalOpeningBasis`.
+     */
     legalBasis: LegalBasisTextSchema,
   })
   .meta({
     description:
-      'Solicitud de apertura de la identidad sellada, con su fundamento; cuenta como la primera aprobación.',
+      'Solicitud de apertura de la identidad sellada, con su fundamento; cuenta como la primera aprobación. Si la denuncia está en una etapa de la vía penal, el fundamento debe tener la forma «Vía penal. Fundamento: [uno de CRIMINAL_OPENING_GROUNDS]. Resolución: [número]. Motivo: [motivo]» (CNPP, art. 109 fr. XXVI); si no, el nodo responde 400.',
   });
 export type OpenIdentityRequest = z.infer<typeof OpenIdentityRequestSchema>;
 

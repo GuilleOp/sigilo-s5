@@ -507,7 +507,9 @@
   margin-top: 0;
 }
 
-.identity-panel__appeal {
+/* Recurso de inconformidad y vía penal (fundamento de la lista y número de la resolución). */
+.identity-panel__appeal,
+.identity-panel__criminal {
   margin-block: var(--space-4);
   padding: var(--space-3);
   border: 2px solid var(--color-protect);

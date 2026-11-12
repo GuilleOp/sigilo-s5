@@ -7,6 +7,8 @@ import {
   hasFunction,
   IDENTITY_APPROVAL_THRESHOLD,
   IDENTITY_REQUEST_TTL_DAYS,
+  isCriminalStage,
+  parseCriminalOpeningBasis,
 } from '@sigilo/contracts';
 import {
   addNaturalDays,
@@ -151,9 +153,21 @@ function openIfApproved(
 }
 
 /**
+ * Vía penal (CNPP, art. 109 fr. XXVI): el resguardo de la identidad cede solo ante una resolución
+ * del Órgano jurisdiccional o un requerimiento del Ministerio Público. Si la denuncia está en una
+ * etapa del proceso penal, la solicitud debe citar uno de `CRIMINAL_OPENING_GROUNDS` con el número
+ * de la resolución (`formatCriminalOpeningBasis`); un fundamento libre se rechaza con `bad_request`.
+ */
+function assertCriminalBasis(complaint: ComplaintRecord, legalBasis: string): void {
+  if (!isCriminalStage(complaint.legalStage)) return;
+  if (parseCriminalOpeningBasis(legalBasis) === null) throw new ApiFailure('bad_request');
+}
+
+/**
  * Crea una solicitud de apertura con su fundamento; cuenta como la primera aprobación y queda en
  * la bitácora (`identity.approved`).
- * Lanza `not_found` si la denuncia no existe, es de otra autoridad o es anónima.
+ * Lanza `not_found` si la denuncia no existe, es de otra autoridad o es anónima, y `bad_request`
+ * si está en la vía penal sin un fundamento de la lista y el número de la resolución.
  */
 export function requestIdentityOpening(
   ctx: AppContext,
@@ -165,6 +179,7 @@ export function requestIdentityOpening(
     const complaint = ctx.complaints.find(folio);
     if (complaint === null) throw new ApiFailure('not_found');
     assertCustodian(ctx, account, complaint);
+    assertCriminalBasis(complaint, legalBasis);
     const request: StoredIdentityRequest = {
       requestId: toHex(randomBytes(16)),
       folio,

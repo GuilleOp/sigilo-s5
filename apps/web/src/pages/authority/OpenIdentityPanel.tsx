@@ -2,13 +2,27 @@
 // solicita con su fundamento, otra de la misma autoridad la aprueba con el suyo y, al alcanzar el
 // umbral, quien aprobó recibe el sobre y lo abre en este navegador con el contexto recalculado
 // desde el detalle vigente. Para el recurso de inconformidad (la persona ya pidió abrirla), la
-// entrega del sobre exige dos aprobaciones distintas, al menos una de supervisión (H7).
+// entrega del sobre exige dos aprobaciones distintas, al menos una de supervisión (H7). En la vía
+// penal (CNPP, art. 109 fr. XXVI) el fundamento se elige de una lista y cita el número de la
+// resolución jurisdiccional o del requerimiento ministerial.
 import { useEffect, useRef, useState } from 'react';
-import type { ComplaintDetail, IdentityBlock } from '@sigilo/contracts';
+import {
+  CRIMINAL_OPENING_GROUNDS,
+  criminalOpeningBasisProblem,
+  formatCriminalOpeningBasis,
+  isCriminalStage,
+  MAX_RESOLUTION_REFERENCE,
+} from '@sigilo/contracts';
+import type {
+  ComplaintDetail,
+  CriminalOpeningBasis,
+  CriminalOpeningGroundKey,
+  IdentityBlock,
+} from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
 import { SealedRing } from '../../components/a/SealedRing.tsx';
 import { StateTag } from '../../components/a/StateTag.tsx';
-import { TextAreaField } from '../../components/Field.tsx';
+import { SelectField, TextAreaField, TextField } from '../../components/Field.tsx';
 import { openSealedIdentity, SealedForOtherKeyError } from '../../crypto/authority.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { api } from '../../services/api.ts';
@@ -24,9 +38,22 @@ interface OpenIdentityPanelProps {
 
 const MIN_LEGAL_BASIS = 20;
 
+/** Largo máximo del motivo en la vía penal: con el fundamento y la resolución cabe en 1000. */
+const MAX_CRIMINAL_REASON = 700;
+
+/** Campos de la apertura en la vía penal, para llevar el foco al que falla. */
+const CRIMINAL_FIELD_IDS: Readonly<Record<keyof CriminalOpeningBasis, string>> = {
+  ground: 'criminal-ground',
+  resolutionReference: 'criminal-reference',
+  reason: 'legal-basis',
+};
+
 /** Panel de apertura. */
 export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPanelProps) {
   const [legalBasis, setLegalBasis] = useState('');
+  const [ground, setGround] = useState('');
+  const [resolutionReference, setResolutionReference] = useState('');
+  const [criminalField, setCriminalField] = useState<keyof CriminalOpeningBasis | null>(null);
   const [isAcknowledged, setAcknowledged] = useState(false);
   const [identity, setIdentity] = useState<IdentityBlock | null>(null);
   const [notice, setNotice] = useState('');
@@ -35,6 +62,7 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
   const isBusyRef = useRef(false);
   const isMounted = useRef(true);
   const trimmed = legalBasis.trim();
+  const isCriminal = isCriminalStage(detail.procedure?.legalStage);
 
   useEffect(() => {
     isMounted.current = true;
@@ -94,6 +122,27 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
     return false;
   }
 
+  /**
+   * Fundamento de la solicitud o de la aprobación: el texto libre o, en la vía penal, el que arma
+   * `formatCriminalOpeningBasis`. `null` si falta algo (el error queda junto a su campo).
+   */
+  function basisText(): string | null {
+    if (!isCriminal) return hasBasis() ? trimmed : null;
+    const basis: CriminalOpeningBasis = {
+      ground: ground as CriminalOpeningGroundKey,
+      resolutionReference,
+      reason: legalBasis,
+    };
+    const problem = criminalOpeningBasisProblem(basis);
+    setCriminalField(problem?.field ?? null);
+    if (problem !== null) {
+      setError(problem.message);
+      focusAfterRender(CRIMINAL_FIELD_IDS[problem.field]);
+      return null;
+    }
+    return formatCriminalOpeningBasis(basis);
+  }
+
   function approveAppeal(): void {
     if (appeal === undefined || !hasBasis()) return;
     void run(async () => {
@@ -114,19 +163,22 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
   }
 
   function submitRequest(): void {
-    if (!hasBasis()) return;
+    const text = basisText();
+    if (text === null) return;
     void run(async () => {
       const folio = detail.summary.folio;
       if (pending !== undefined && canApprove) {
-        await api.approveIdentityOpening(session.token, folio, pending.requestId, trimmed);
+        await api.approveIdentityOpening(session.token, folio, pending.requestId, text);
         if (isMounted.current) setNotice('Aprobaste la apertura. Ya puede abrirse.');
       } else {
-        await api.requestIdentityOpening(session.token, folio, trimmed);
+        await api.requestIdentityOpening(session.token, folio, text);
         if (isMounted.current) {
           setNotice('Solicitud registrada. Falta que otra persona de tu autoridad la apruebe.');
         }
       }
       setLegalBasis('');
+      setResolutionReference('');
+      setGround('');
       onOpened();
     }, 'No pudimos registrar la solicitud. Inténtalo de nuevo.');
   }
@@ -278,15 +330,57 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
       ) : (
         (pending === undefined || canApprove) && (
           <>
+            {isCriminal && (
+              <div className="identity-panel__criminal" data-testid="criminal-opening">
+                <p>
+                  <strong>Vía penal.</strong> En el proceso penal el resguardo de la identidad cede
+                  solo ante una resolución del Órgano jurisdiccional o un requerimiento fundado del
+                  Ministerio Público, salvaguardando los derechos de la defensa (CNPP, art. 109 fr.
+                  XXVI). Elige el fundamento y escribe el número de la resolución: la persona
+                  denunciante lo leerá y quedará en la bitácora.
+                </p>
+                <SelectField
+                  id={CRIMINAL_FIELD_IDS.ground}
+                  label="Fundamento en la vía penal"
+                  required
+                  value={ground}
+                  error={criminalField === 'ground' ? error : undefined}
+                  onChange={(event) => setGround(event.target.value)}
+                  data-testid="criminal-ground"
+                >
+                  <option value="">Elige el fundamento</option>
+                  {CRIMINAL_OPENING_GROUNDS.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </SelectField>
+                <TextField
+                  id={CRIMINAL_FIELD_IDS.resolutionReference}
+                  label="Número de la resolución o del requerimiento"
+                  hint="Por ejemplo, la causa penal o la carpeta de investigación."
+                  required
+                  maxLength={MAX_RESOLUTION_REFERENCE}
+                  value={resolutionReference}
+                  error={criminalField === 'resolutionReference' ? error : undefined}
+                  onChange={(event) => setResolutionReference(event.target.value)}
+                  data-testid="criminal-reference"
+                />
+              </div>
+            )}
             <TextAreaField
-              id="legal-basis"
-              label="Fundamento legal y motivo"
+              id={CRIMINAL_FIELD_IDS.reason}
+              label={isCriminal ? 'Motivo' : 'Fundamento legal y motivo'}
               hint={`Al menos ${MIN_LEGAL_BASIS} caracteres. La persona lo leerá tal cual.`}
               required
               rows={4}
-              maxLength={1000}
+              maxLength={isCriminal ? MAX_CRIMINAL_REASON : 1000}
               value={legalBasis}
-              error={error || undefined}
+              error={
+                criminalField === null || criminalField === 'reason'
+                  ? error || undefined
+                  : undefined
+              }
               onChange={(event) => setLegalBasis(event.target.value)}
               data-testid="legal-basis"
             />

@@ -136,7 +136,11 @@ versión 0.3.0, con su propio [registro de cambios](estandar/CHANGELOG.md)):
 En lugar de pedir confianza, la web da formas de comprobar el anonimato: escribir en modo avión,
 «Lo que sale de tu equipo», «¿Quién sabe qué de ti?» y las cifras de la bitácora comprobada
 ([confianza-verificable.md](docs/confianza-verificable.md)). También protege a la persona ciudadana
-que denuncia a quien la atendió ([personas-ciudadanas.md](docs/personas-ciudadanas.md)).
+que denuncia a quien la atendió ([personas-ciudadanas.md](docs/personas-ciudadanas.md)). ¿Quién
+protege a quien denuncia? La LGRA (art. 64) a las personas servidoras públicas, el CNPP (art. 109)
+a la víctima u ofendido en la vía penal y SIGILO con su diseño; desde el seguimiento se pueden
+solicitar medidas de protección por el buzón cifrado
+([proteccion-de-quien-denuncia.md](docs/proteccion-de-quien-denuncia.md)).
 
 ## Qué más propone
 
@@ -149,16 +153,16 @@ que denuncia a quien la atendió ([personas-ciudadanas.md](docs/personas-ciudada
 
 ## Para revisar el proyecto
 
-| Busco                                     | Dónde                                                                                                                                                                            |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| El modelo (ventanilla, nodos y funciones) | [Arquitectura](docs/arquitectura.md), [ADR 0005](docs/adr/0005-estandar-s5-federado.md) y la [guía para conectar un estado](docs/guia-conecta-tu-estado.md)                      |
-| El estándar                               | [estandar/README.md](estandar/README.md): OpenAPI, diccionarios, catálogos, perfiles y validador                                                                                 |
-| La instalación                            | [Nodo del estado](docs/instalacion-nodo.md), [SESNA](docs/instalacion-sesna.md) y [demostración](docs/demo.md)                                                                   |
-| La seguridad                              | [Modelo de amenazas](docs/modelo-de-amenazas.md), [producción](docs/seguridad-produccion.md), [historial](docs/historial-de-seguridad.md) y [criptografía](docs/criptografia.md) |
-| El manejo de las pruebas                  | [Pruebas cifradas](docs/criptografia.md#pruebas-cifradas-de-extremo-a-extremo) y [cadena de custodia](docs/arquitectura.md#pruebas-y-cadena-de-custodia)                         |
-| El fundamento legal                       | [Marco legal](docs/requisitos.md#marco-legal) (LGRA, LGSNA y Bases de la PDN) y [ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)                                |
-| El uso de IA                              | [Declaración de uso de IA](docs/uso-de-ia.md)                                                                                                                                    |
-| El cumplimiento del reto                  | [Matriz de requisitos](docs/requisitos.md)                                                                                                                                       |
+| Busco                                     | Dónde                                                                                                                                                                                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El modelo (ventanilla, nodos y funciones) | [Arquitectura](docs/arquitectura.md), [ADR 0005](docs/adr/0005-estandar-s5-federado.md) y la [guía para conectar un estado](docs/guia-conecta-tu-estado.md)                                                                                 |
+| El estándar                               | [estandar/README.md](estandar/README.md): OpenAPI, diccionarios, catálogos, perfiles y validador                                                                                                                                            |
+| La instalación                            | [Nodo del estado](docs/instalacion-nodo.md), [SESNA](docs/instalacion-sesna.md) y [demostración](docs/demo.md)                                                                                                                              |
+| La seguridad                              | [Modelo de amenazas](docs/modelo-de-amenazas.md), [producción](docs/seguridad-produccion.md), [historial](docs/historial-de-seguridad.md) y [criptografía](docs/criptografia.md)                                                            |
+| El manejo de las pruebas                  | [Pruebas cifradas](docs/criptografia.md#pruebas-cifradas-de-extremo-a-extremo) y [cadena de custodia](docs/arquitectura.md#pruebas-y-cadena-de-custodia)                                                                                    |
+| El fundamento legal                       | [Marco legal](docs/requisitos.md#marco-legal) (LGRA, LGSNA, Bases de la PDN, CNPP y LGPDPPSO), [¿quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md) y [ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md) |
+| El uso de IA                              | [Declaración de uso de IA](docs/uso-de-ia.md)                                                                                                                                                                                               |
+| El cumplimiento del reto                  | [Matriz de requisitos](docs/requisitos.md)                                                                                                                                                                                                  |
 
 ## Inicio rápido (un solo nodo, sin Docker)
 
@@ -238,7 +242,7 @@ npx playwright install chromium       # una sola vez
 npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
 ```
 
-Hay 1,603 pruebas unitarias en 181 archivos, 34 del proceso de datos en Python y 103 de extremo a
+Hay 1,615 pruebas unitarias en 183 archivos, 34 del proceso de datos en Python y 106 de extremo a
 extremo;
 la [integración continua](.github/workflows/ci.yml) las corre en cada push con Node 22.18 y la
 versión más reciente, junto con `npm audit` de las dependencias de producción.
@@ -296,6 +300,7 @@ Diseño y seguridad:
 - [Criptografía: especificación del formato v1](docs/criptografia.md)
 - [Confianza verificable](docs/confianza-verificable.md)
 - [Cuando denuncia una persona ciudadana](docs/personas-ciudadanas.md)
+- [¿Quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md)
 - [Decisiones de arquitectura](docs/adr/)
 - [Interfaces entre paquetes](docs/interfaces.md)
 
