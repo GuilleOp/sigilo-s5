@@ -208,6 +208,11 @@ endurecimiento de seguridad y el Estándar S5 0.3.0 al estilo de las especificac
 
 ### Corregido
 
+- Dos turnos simultáneos de la misma denuncia a otro nodo ya no salen los dos: el segundo recibe
+  `409`.
+- El tope de intentos del flujo `password` de OAuth se respeta también con intentos simultáneos.
+- `sigilo restaurar` valida todo el respaldo antes de escribir y avisa con claridad si está dañado.
+- Repetir `sigilo rotar-llaves --enlace` firma de nuevo la misma llave pendiente en vez de perderla.
 - El panel de la autoridad mostraba «Las llaves no coinciden» en toda denuncia con corroboración
   ciega (Marta, Luis y los casos ciudadanos): el digesto del envío incluía la corroboración y el
   detalle no. Ahora entra su digesto (`corroborationDigest`, migración 13), que también recibe la
