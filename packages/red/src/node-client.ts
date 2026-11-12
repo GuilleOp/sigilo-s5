@@ -24,7 +24,7 @@ import { verifySignedDirectory } from './directory.ts';
 import type { DirectoryVerification } from './directory.ts';
 import { openRoutedRequest, sealRoutedReply } from './relay-envelope.ts';
 import { signNodeRegistration } from './registration.ts';
-import { RELAY_AUTH_HEADER, verifyRelayAuth } from './relay-auth.ts';
+import { RELAY_AUTH_HEADER, createRelayNonceCache, verifyRelayAuthHeader } from './relay-auth.ts';
 
 /** Función `fetch` compatible con la de la plataforma (inyectable en pruebas). */
 export type FetchLike = (input: string | Request, init?: RequestInit) => Promise<Response>;
@@ -184,6 +184,13 @@ export interface NodeInboxOptions {
    * Sin esta opción se admiten todas.
    */
   admitDeferred?: () => boolean;
+  /**
+   * Si se acepta todavía la etiqueta HMAC v1, sin frescura (`true` por omisión, para la
+   * transición). Con `false` solo vale la v2, con marca de tiempo y nonce (H13).
+   */
+  allowLegacyRelayAuth?: boolean;
+  /** Reloj en milisegundos para la frescura de la etiqueta v2 (por omisión, el real). */
+  now?: () => number;
 }
 
 const JSON_HEADERS = {
@@ -230,6 +237,9 @@ function isAllowedRouting(routed: RoutedRequest, deferred: boolean): boolean {
 export function createNodeInboxHandler(
   options: NodeInboxOptions,
 ): (request: Request) => Promise<Response> {
+  const nonces = createRelayNonceCache();
+  const allowLegacy = options.allowLegacyRelayAuth ?? true;
+  const now = options.now ?? (() => Date.now());
   return async (request) => {
     const mediaType = (request.headers.get('Content-Type') ?? '').split(';')[0]?.trim();
     if (request.method !== 'POST' || mediaType !== 'application/json') return inboxError();
@@ -240,7 +250,11 @@ export function createNodeInboxHandler(
       const secret = options.relaySecret;
       if (
         secret !== undefined &&
-        !verifyRelayAuth(secret, text, request.headers.get(RELAY_AUTH_HEADER) ?? undefined)
+        !verifyRelayAuthHeader(secret, text, request.headers.get(RELAY_AUTH_HEADER) ?? undefined, {
+          now: now(),
+          nonces,
+          allowLegacy,
+        })
       ) {
         return inboxError();
       }
