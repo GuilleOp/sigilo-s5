@@ -71,6 +71,7 @@ function networkSubmissionFor(
       },
     ),
     keys: keysForDestination(target),
+    authorityId: target.authority.id,
     authorityName: target.authority.name,
     nodeName: target.node.name,
     ...(key === null || identifier === null

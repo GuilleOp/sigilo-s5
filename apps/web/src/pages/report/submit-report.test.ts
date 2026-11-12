@@ -8,9 +8,16 @@ import type {
   SubmitComplaintRequest,
   SubmitComplaintResponse,
 } from '@sigilo/contracts';
+import { NODE_KEY_AUTHORITY_ID } from '@sigilo/contracts';
 import {
   computeSubmissionDigest,
+  decodeFileKey,
+  isFolio,
   isPowSolution,
+  openEscalation,
+  openEvidenceBody,
+  openEvidenceKey,
+  parseEvidenceContainer,
   parsePowHeader,
   receivedPayloadDigest,
   signReceipt,
@@ -74,6 +81,8 @@ function fakeApi(deployment: TestDeployment, served: PublicKeySet = deployment.p
   let uploads = 0;
   let challenges = 0;
   const submitted: SubmitComplaintRequest[] = [];
+  const folios: string[] = [];
+  const containers: Uint8Array[] = [];
   const proofs: string[] = [];
   const api = {
     getKeys: vi.fn(async () => served),
@@ -85,6 +94,7 @@ function fakeApi(deployment: TestDeployment, served: PublicKeySet = deployment.p
       async (blob: Blob, mediaType: string, proof: string): Promise<EvidenceDescriptor> => {
         proofs.push(proof);
         uploads += 1;
+        containers.push(new Uint8Array(await blob.arrayBuffer()));
         return {
           evidenceId: String(uploads).padStart(32, '0'),
           mediaType: mediaType === 'image/png' ? 'image/png' : 'image/jpeg',
@@ -93,27 +103,37 @@ function fakeApi(deployment: TestDeployment, served: PublicKeySet = deployment.p
         };
       },
     ),
-    submitComplaint: vi.fn(async (request: SubmitComplaintRequest, proof: string) => {
-      proofs.push(proof);
-      submitted.push(request);
-      const submissionDigest = computeSubmissionDigest(request);
-      const response: SubmitComplaintResponse = {
-        folio: 'ABCD-EFGH-JKMN',
-        receipt: signReceipt(
-          {
-            folio: 'ABCD-EFGH-JKMN',
-            submissionDigest,
-            receivedOn: '2026-10-07',
-            payloadDigest: receivedPayloadDigest('ABCD-EFGH-JKMN', submissionDigest),
-            serverKeyId: deployment.pinned.set.server.keyId,
-          },
-          deployment.server.privateKey,
-        ),
-      };
-      return response;
-    }),
+    submitComplaint: vi.fn(
+      async (request: SubmitComplaintRequest, proof: string, folio = 'ABCD-EFGH-JKMN') => {
+        proofs.push(proof);
+        submitted.push(request);
+        folios.push(folio);
+        const submissionDigest = computeSubmissionDigest(request);
+        const response: SubmitComplaintResponse = {
+          folio,
+          receipt: signReceipt(
+            {
+              folio,
+              submissionDigest,
+              receivedOn: '2026-10-07',
+              payloadDigest: receivedPayloadDigest(folio, submissionDigest),
+              serverKeyId: deployment.pinned.set.server.keyId,
+            },
+            deployment.server.privateKey,
+          ),
+        };
+        return response;
+      },
+    ),
   };
-  return { api, submitted, proofs, sigilo: api as unknown as SigiloApi };
+  return {
+    api,
+    submitted,
+    folios,
+    containers,
+    proofs,
+    sigilo: api as unknown as SigiloApi,
+  };
 }
 
 const noProgress = (): void => undefined;
@@ -139,7 +159,7 @@ describe('submitReport', () => {
 
   it('en un reintento reutiliza los descriptores de las pruebas ya subidas', async () => {
     const deployment = createTestDeployment();
-    const { api, submitted, sigilo } = fakeApi(deployment);
+    const { api, submitted, folios, sigilo } = fakeApi(deployment);
     api.submitComplaint.mockRejectedValueOnce(new ApiRequestError('network', 0));
     const draft = filledDraft();
     const uploads: UploadCache = new WeakMap();
@@ -152,7 +172,13 @@ describe('submitReport', () => {
 
     const result = await submitReport(draft, sigilo, noProgress, options);
     expect(api.uploadEvidence).toHaveBeenCalledTimes(2);
-    expect(result.folio).toBe('ABCD-EFGH-JKMN');
+    // Las pruebas se cifraron con el folio en el AAD: el reintento conserva el mismo folio.
+    expect(isFolio(result.folio)).toBe(true);
+    expect(api.submitComplaint.mock.calls.map((call) => call[2])).toEqual([
+      result.folio,
+      result.folio,
+    ]);
+    expect(folios).toEqual([result.folio]);
     expect(submitted.at(-1)?.evidence.map((item) => item.evidenceId)).toEqual([
       '0'.repeat(31) + '1',
       '0'.repeat(31) + '2',
@@ -187,12 +213,58 @@ describe('submitReport', () => {
       solver: inlinePowSolver,
       uploads: new WeakMap(),
     });
-    expect(result.folio).toBe('ABCD-EFGH-JKMN');
+    expect(second.api.submitComplaint.mock.calls.map((call) => call[2])).toEqual([
+      result.folio,
+      result.folio,
+    ]);
     expect(second.api.getPowChallenge).toHaveBeenCalledTimes(2);
     expect(second.api.submitComplaint).toHaveBeenCalledTimes(2);
   });
 
-  it('aborta si el descriptor devuelto no corresponde a la copia limpia', async () => {
+  it('cifra cada prueba hacia la autoridad con el folio en el AAD; el nodo no ve la imagen', async () => {
+    const deployment = createTestDeployment({ withSupervisor: true });
+    const { containers, submitted, sigilo } = fakeApi(deployment);
+    const draft = filledDraft();
+    const result = await submitReport(draft, sigilo, noProgress, {
+      pinned: deployment.pinned,
+      solver: inlinePowSolver,
+      uploads: new WeakMap(),
+    });
+    expect(containers).toHaveLength(2);
+    const [container] = containers;
+    if (container === undefined) throw new Error('Sin prueba.');
+    expect(parseEvidenceContainer(container)).not.toBeNull();
+    const fileKey = await openEvidenceKey(
+      container,
+      deployment.authorityBox.privateKey,
+      deployment.pinned.set.authority.keyId,
+      { folio: result.folio, authorityId: NODE_KEY_AUTHORITY_ID },
+    );
+    const opened = await openEvidenceBody(container, fileKey, result.folio, 'image/jpeg');
+    expect(new TextDecoder().decode(opened.plaintext)).toBe('a');
+    // La supervisora recibe en la segunda llave la llave de cada archivo.
+    const request = submitted[0];
+    if (request?.escalationEnvelope === undefined || deployment.supervisorBox === undefined) {
+      throw new Error('Sin segunda llave.');
+    }
+    const content = await openEscalation(
+      request.escalationEnvelope,
+      deployment.supervisorBox.privateKey,
+      { authVerifier: request.authVerifier, reporterKeys: request.reporterKeys },
+    );
+    const key = content.evidenceKeys[0];
+    if (key === undefined) throw new Error('Sin llave del archivo.');
+    expect(key.evidenceId).toBe(request.evidence[0]?.evidenceId);
+    const bySupervisor = await openEvidenceBody(
+      container,
+      decodeFileKey(key.fileKey),
+      result.folio,
+      'image/jpeg',
+    );
+    expect(bySupervisor.plaintext).toEqual(opened.plaintext);
+  });
+
+  it('aborta si el descriptor devuelto no corresponde a la prueba cifrada', async () => {
     for (const forge of [
       (descriptor: EvidenceDescriptor) => ({ ...descriptor, sha256: 'f'.repeat(64) }),
       (descriptor: EvidenceDescriptor) => ({ ...descriptor, sizeBytes: descriptor.sizeBytes + 1 }),

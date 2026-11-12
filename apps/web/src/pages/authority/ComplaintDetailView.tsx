@@ -3,8 +3,10 @@
 // funciones, turnado entre nodos, identidad y buzón.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { findMunicipality, findOffense, findState } from '@sigilo/contracts';
-import type { ComplaintDetail } from '@sigilo/contracts';
+import type { ComplaintDetail, EvidenceDescriptor } from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
+import { openForAuthority } from '../../crypto/evidence.ts';
+import type { OpenedEvidence } from '../../crypto/evidence.ts';
 import { EntityName } from '../../catalogs/EntityName.tsx';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate, formatMonthPeriod, STATUS_LABELS } from '../../lib/format.ts';
@@ -12,6 +14,7 @@ import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
 import { AuthorityMailbox } from './AuthorityMailbox.tsx';
+import { CustodyPanel } from './CustodyPanel.tsx';
 import { DiscardEvidencePanel } from './DiscardEvidencePanel.tsx';
 import { EvidenceGallery } from './EvidenceGallery.tsx';
 import { OpenIdentityPanel } from './OpenIdentityPanel.tsx';
@@ -68,6 +71,22 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
       loadId.current += 1;
     };
   }, [reload]);
+
+  // Las pruebas se abren en este navegador con la llave de la autoridad de la sesión.
+  const openEvidence = useCallback(
+    async (item: EvidenceDescriptor): Promise<OpenedEvidence> => {
+      if (detail === null) throw new Error('Sin detalle.');
+      const blob = await api.getEvidence(session.token, item.evidenceId);
+      return openForAuthority(
+        new Uint8Array(await blob.arrayBuffer()),
+        item,
+        detail,
+        session.keys,
+        session.account.authorityId,
+      );
+    },
+    [detail, session],
+  );
 
   // Al terminar la primera carga, el foco va al encabezado (el botón pulsado ya no existe).
   const isLoaded = detail !== null;
@@ -183,7 +202,10 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
           </p>
         </Alert>
       )}
-      <EvidenceGallery token={session.token} evidence={detail.evidence} />
+      <EvidenceGallery evidence={detail.evidence} open={openEvidence} />
+      {detail.evidenceCustody !== undefined && (
+        <CustodyPanel detail={detail} custody={detail.evidenceCustody} />
+      )}
       {detail.evidence.length > 0 && detail.storedEvidenceCount !== undefined && (
         <DiscardEvidencePanel
           token={session.token}

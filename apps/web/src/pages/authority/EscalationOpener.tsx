@@ -2,13 +2,17 @@
 // tiene competencia sobre la denuncia (su detalle es de la autoridad que la tiene), así que pide el
 // sobre de escalamiento, lo abre en este navegador con su llave y lo compara con el registro
 // público. Nunca trae la identidad.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
+import type { EvidenceDescriptor } from '@sigilo/contracts';
+import { decodeFileKey } from '@sigilo/core';
 import type { EscalationGroupEntry } from '../../lib/escalation-groups.ts';
 import { Alert } from '../../components/Alert.tsx';
 import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { openEscalationDelivery, readSupervisorKeyFile } from '../../crypto/escalation.ts';
 import type { OpenedEscalation, SupervisorKey } from '../../crypto/escalation.ts';
+import { EvidenceUnreadableError, openEvidenceWithKey } from '../../crypto/evidence.ts';
+import type { OpenedEvidence } from '../../crypto/evidence.ts';
 import { formatDayDate, formatMonthPeriod } from '../../lib/format.ts';
 import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
@@ -150,19 +154,41 @@ export function EscalationOpener({
           {state.message}
         </p>
       )}
-      {state.kind === 'opened' && <OpenedContent session={session} opened={state.opened} />}
+      {state.kind === 'opened' && (
+        <OpenedContent session={session} folio={folio} opened={state.opened} />
+      )}
     </section>
   );
 }
 
 function OpenedContent({
   session,
+  folio,
   opened,
 }: {
   session: AuthoritySession;
+  folio: string;
   opened: OpenedEscalation;
 }) {
   const { content, verification } = opened;
+  // Las pruebas se abren con la llave de cada archivo que trae la segunda llave: la supervisora
+  // nunca usa la llave de la autoridad competente.
+  const openEvidence = useCallback(
+    async (item: EvidenceDescriptor): Promise<OpenedEvidence> => {
+      const key = content.evidenceKeys.find((entry) => entry.evidenceId === item.evidenceId);
+      if (key === undefined) {
+        throw new EvidenceUnreadableError('La segunda llave no trae la llave de esta prueba.');
+      }
+      const blob = await api.getEvidence(session.token, item.evidenceId);
+      return openEvidenceWithKey(
+        new Uint8Array(await blob.arrayBuffer()),
+        item,
+        folio,
+        decodeFileKey(key.fileKey),
+      );
+    },
+    [content, folio, session.token],
+  );
   const facts = content.facts;
   const municipality =
     facts.municipalityCode === undefined
@@ -213,7 +239,7 @@ function OpenedContent({
       {content.evidence.length === 0 ? (
         <p>La persona no envió pruebas.</p>
       ) : (
-        <EvidenceGallery token={session.token} evidence={content.evidence} />
+        <EvidenceGallery evidence={content.evidence} open={openEvidence} />
       )}
     </>
   );

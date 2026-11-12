@@ -9,6 +9,7 @@ import {
   IdentityOpeningRequestViewSchema,
   ComplaintSummarySchema,
   DiscardEvidenceResponseSchema,
+  EvidenceKeyGrantsResponseSchema,
   EvidenceUploadResponseSchema,
   LedgerPageSchema,
   MailboxMessageSchema,
@@ -38,6 +39,8 @@ import type {
   ComplaintSummary,
   DiscardEvidenceResponse,
   EvidenceDescriptor,
+  EvidenceKeyGrantsRequest,
+  EvidenceKeyGrantsResponse,
   IdentityOpeningRequestView,
   LedgerPage,
   MailboxMessage,
@@ -98,8 +101,15 @@ export interface SigiloApi {
     mediaType: 'image/jpeg' | 'image/png',
     proof: string,
   ): Promise<EvidenceDescriptor>;
-  /** Envía la denuncia; `proof` es el valor de `POW_HEADER` de un reto `complaint`. */
-  submitComplaint(request: SubmitComplaintRequest, proof: string): Promise<SubmitComplaintResponse>;
+  /**
+   * Envía la denuncia; `proof` es el valor de `POW_HEADER` de un reto `complaint` y `folio`, el que
+   * eligió el navegador (las pruebas se cifran con el folio en el AAD antes de enviarla).
+   */
+  submitComplaint(
+    request: SubmitComplaintRequest,
+    proof: string,
+    folio?: string,
+  ): Promise<SubmitComplaintResponse>;
   track(credentials: TrackingCredentials): Promise<TrackingView>;
   /** Envía la respuesta; `proof` es el valor de `POW_HEADER` de un reto `message`. */
   sendReporterMessage(request: ReporterMessageRequest, proof: string): Promise<MailboxMessage>;
@@ -159,7 +169,14 @@ export interface SigiloApi {
     folio: string,
     message: AuthorityMessageRequest,
   ): Promise<MailboxMessage>;
+  /** Contenedor cifrado de una prueba; se abre en este navegador con la llave de la autoridad. */
   getEvidence(token: string, evidenceId: string): Promise<Blob>;
+  /** Llaves de los archivos de prueba re-cifradas hacia otra autoridad del nodo. */
+  grantEvidenceKeys(
+    token: string,
+    folio: string,
+    request: EvidenceKeyGrantsRequest,
+  ): Promise<EvidenceKeyGrantsResponse>;
   /** Descarta los archivos de las pruebas de la denuncia; queda en la bitácora y en el seguimiento. */
   discardEvidence(token: string, folio: string): Promise<DiscardEvidenceResponse>;
   /** Turnado a otro nodo con la denuncia ya re-cifrada en este navegador (SEC-19). */
@@ -204,10 +221,11 @@ export function createSigiloApi(
         contentType: mediaType,
         headers: { [POW_HEADER]: proof },
       }),
-    submitComplaint: (request, proof) =>
+    submitComplaint: (request, proof, folio) =>
       client.json(ROUTES.complaints, SubmitComplaintResponseSchema, {
         json: request,
         headers: { [POW_HEADER]: proof },
+        ...(folio === undefined ? {} : { query: { folio } }),
       }),
     track: (credentials) => client.json(ROUTES.tracking, TrackingViewSchema, { json: credentials }),
     sendReporterMessage: (request, proof) =>
@@ -276,6 +294,11 @@ export function createSigiloApi(
       }),
     getEvidence: (token, evidenceId) =>
       client.blob(ROUTES.authorityEvidence(evidenceId), { bearer: token }),
+    grantEvidenceKeys: (token, folio, request) =>
+      client.json(ROUTES.authorityEvidenceKeys(folio), EvidenceKeyGrantsResponseSchema, {
+        bearer: token,
+        json: request,
+      }),
     discardEvidence: (token, folio) =>
       client.json(ROUTES.authorityEvidenceDiscard(folio), DiscardEvidenceResponseSchema, {
         bearer: token,

@@ -43,6 +43,8 @@ export function TransferPanel({ session, detail, directory }: TransferPanelProps
     try {
       const done = await transferToOtherNode({
         token: session.token,
+        keys: session.keys,
+        authorityId: session.account.authorityId,
         detail,
         directory,
         targetAuthorityId: target,

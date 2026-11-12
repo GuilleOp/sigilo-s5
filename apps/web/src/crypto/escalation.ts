@@ -11,7 +11,7 @@ import {
   openEscalation,
   submissionDigestFromEscalation,
 } from '@sigilo/core';
-import type { ComplaintContent } from '@sigilo/core';
+import type { EscalationOpenedContent } from '@sigilo/core';
 import type { PinnedKeys } from '../config/pinned-keys.ts';
 import { verifyReceivedEvent } from './authority.ts';
 import type { ReporterKeysVerification } from './authority.ts';
@@ -73,7 +73,8 @@ export function wipeSupervisorKey(key: SupervisorKey): void {
 
 /** Sobre abierto y su comprobación contra el registro público. */
 export interface OpenedEscalation {
-  content: ComplaintContent;
+  /** Contenido de la denuncia y las llaves de los archivos de sus pruebas. */
+  content: EscalationOpenedContent;
   verification: ReporterKeysVerification;
 }
 
