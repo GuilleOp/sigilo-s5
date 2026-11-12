@@ -9,6 +9,7 @@ import { LeaveDialog } from '../components/LeaveDialog.tsx';
 import { ProfileBadge } from '../components/ProfileBadge.tsx';
 import { QuickExitButton } from '../components/QuickExitButton.tsx';
 import { AccessibilityControls, AccessibilityPanels } from '../components/AccessibilityTools.tsx';
+import { SigiloMark } from '../components/brand/SigiloMark.tsx';
 import { KioskBar } from '../components/UsageModesPanel.tsx';
 import { SHOW_DEMO_NOTICE, VENTANILLA_URL, WEB_PROFILE } from '../config/app-config.ts';
 import { ANNOUNCER_ID } from '../lib/announce.ts';
@@ -119,6 +120,7 @@ export function Layout() {
             className="site-brand"
             onClick={(event) => guardNavigation(event, PATHS.home)}
           >
+            <SigiloMark className="site-brand__mark" />
             <span className="site-brand__name">SIGILO</span>
           </NavLink>
         </div>

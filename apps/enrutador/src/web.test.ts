@@ -25,6 +25,9 @@ function webDist(): string {
   writeFileSync(join(dir, 'index.html'), '<!doctype html><title>Ventanilla</title>');
   mkdirSync(join(dir, 'assets'));
   writeFileSync(join(dir, 'assets', 'app.js'), 'console.log(1);');
+  mkdirSync(join(dir, 'marca'));
+  writeFileSync(join(dir, 'marca', 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  writeFileSync(join(dir, 'marca', 'favicon-32.png'), new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
   return dir;
 }
 
@@ -91,6 +94,13 @@ describe('ventanilla única en el enrutador', () => {
     const script = await app.request('/assets/app.js');
     expect(script.headers.get('Content-Type')).toContain('text/javascript');
     expect((await app.request('/assets/falta.js')).status).toBe(404);
+    // Íconos de la marca, del mismo origen y con su tipo (la CSP admite img-src 'self').
+    const favicon = await app.request('/marca/favicon.svg');
+    expect(favicon.headers.get('Content-Type')).toBe('image/svg+xml');
+    expect(favicon.headers.get('Content-Security-Policy')).toBe(VENTANILLA_WEB_CSP);
+    const png = await app.request('/marca/favicon-32.png');
+    expect(png.headers.get('Content-Type')).toBe('image/png');
+    expect((await app.request('/marca/falta.png')).status).toBe(404);
     const directory = await app.request(NETWORK_ROUTES.directory);
     expect(directory.status).toBe(200);
     expect(directory.headers.get('Content-Security-Policy')).toContain("default-src 'none'");
