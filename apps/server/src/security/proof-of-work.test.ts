@@ -17,6 +17,7 @@ import {
   DEFAULT_POW_MAX_BITS,
   loadExtraBits,
   MIN_POW_TTL_MS,
+  openEvidenceExtraBits,
   POW_TTL_MS,
   POW_TTL_SOLVE_FACTOR,
   powTtlMs,
@@ -201,6 +202,56 @@ describe('dificultad adaptativa', () => {
     expect(receipt?.expiresAt).toBeGreaterThan(now().getTime());
     expectRejected(() => guard.check(header, 'message'));
     expect(createPowGuard({ bits: 0, now }).verify(undefined, 'message')).toBeNull();
+  });
+
+  it('H06: las subidas en retos abiertos suben la dificultad de las denuncias nuevas', () => {
+    const now = () => new Date('2026-10-20T10:00:00Z');
+    const guard = createPowGuard({
+      bits: BITS,
+      maxBits: BITS + 2,
+      now,
+      maxOpenEvidenceUses: 4,
+      loadThresholds: { complaint: 1000 },
+    });
+    const first = solved(guard, 'complaint');
+    guard.verify(first, 'evidence');
+    expect(guard.currentBits('complaint')).toBe(BITS);
+    guard.verify(first, 'evidence');
+    // Mitad del tope: un bit más; tres cuartos: dos.
+    expect(guard.currentBits('complaint')).toBe(BITS + 1);
+    guard.verify(first, 'evidence');
+    expect(guard.currentBits('complaint')).toBe(BITS + 2);
+    expect(guard.currentBits('message')).toBe(BITS);
+    expect(openEvidenceExtraBits(0, 4)).toBe(0);
+    expect(openEvidenceExtraBits(3, 4)).toBe(2);
+  });
+
+  it('H06: con el tope lleno rechaza otra subida antes de leerla y lo libera al cerrar o vencer', () => {
+    let now = new Date('2026-10-20T10:00:00Z');
+    const guard = createPowGuard({
+      bits: BITS,
+      maxBits: BITS,
+      now: () => now,
+      maxOpenEvidenceUses: 4,
+    });
+    const first = solved(guard, 'complaint');
+    const second = solved(guard, 'complaint');
+    guard.verify(first, 'evidence');
+    guard.verify(first, 'evidence');
+    guard.verify(second, 'evidence');
+    guard.verify(second, 'evidence');
+    const rateLimited = expect.objectContaining({ code: 'rate_limited' });
+    expect(() => guard.check(first, 'evidence')).toThrow(rateLimited);
+    // Cerrar un reto con su denuncia libera sus subidas.
+    guard.verify(first, 'complaint');
+    expect(() => guard.check(second, 'evidence')).not.toThrow();
+    guard.verify(second, 'evidence');
+    guard.verify(second, 'evidence');
+    expect(() => guard.check(second, 'evidence')).toThrow(rateLimited);
+    // Al vencer el reto abierto también se liberan.
+    now = new Date(now.getTime() + powTtlMs(BITS) + 61_000);
+    const third = solved(guard, 'complaint');
+    expect(() => guard.check(third, 'evidence')).not.toThrow();
   });
 
   it('el contador deslizante olvida lo que sale de la ventana', () => {

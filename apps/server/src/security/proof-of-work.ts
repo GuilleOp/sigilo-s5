@@ -114,7 +114,18 @@ export interface PowGuardOptions {
   loadWindowMs?: number;
   /** Umbrales de carga por propósito (`DEFAULT_POW_LOAD_THRESHOLDS`). */
   loadThresholds?: Partial<Record<PowPurpose, number>>;
+  /**
+   * Subidas de pruebas a la vez en retos que siguen abiertos (sin denuncia y sin vencer); por
+   * omisión `DEFAULT_MAX_OPEN_EVIDENCE_USES`. Ver `createPowGuard` (H06).
+   */
+  maxOpenEvidenceUses?: number;
 }
+
+/**
+ * Subidas en retos abiertos por omisión: unas 128 pruebas de 10 MiB, lo que cabe en la parte de
+ * pendientes de la cuota por omisión (25 % de 5 GiB).
+ */
+export const DEFAULT_MAX_OPEN_EVIDENCE_USES = 128;
 
 /** Contador de eventos en una ventana deslizante, por ranuras. */
 export interface SlidingCounter {
@@ -179,6 +190,16 @@ export function spentPressure(
   return { extraBits, ttlMs: Math.max(Math.min(MIN_POW_TTL_MS, ttlMs), shortened) };
 }
 
+/**
+ * Bits que suma a los retos de denuncia la ocupación de las subidas en retos abiertos: uno desde la
+ * mitad del tope y otro desde tres cuartos (H06). Así llenar las pendientes con pocos retos sale
+ * más caro conforme se acerca al tope.
+ */
+export function openEvidenceExtraBits(open: number, max: number): number {
+  const fill = max <= 0 ? 1 : open / max;
+  return (fill >= 0.5 ? 1 : 0) + (fill >= 0.75 ? 1 : 0);
+}
+
 const ChallengePayloadSchema = z.object({
   v: z.literal(1),
   purpose: PowPurposeSchema,
@@ -237,6 +258,12 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
   };
   const spent = new Map<string, SpentChallenge>();
   let lastSweepAt = Number.NEGATIVE_INFINITY;
+  const maxOpenEvidence = options.maxOpenEvidenceUses ?? DEFAULT_MAX_OPEN_EVIDENCE_USES;
+  // Subidas de pruebas en retos que aún no cierran con su denuncia ni vencen (H06).
+  let openEvidenceUses = 0;
+  const release = (entry: SpentChallenge): void => {
+    if (!entry.isClosed) openEvidenceUses = Math.max(0, openEvidenceUses - entry.evidenceUses);
+  };
 
   function mac(body: string): Uint8Array {
     return new Uint8Array(createHmac('sha256', secret).update(body, 'utf8').digest());
@@ -247,15 +274,19 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
     if (time - lastSweepAt < 60_000 && spent.size < maxSpent) return;
     lastSweepAt = time;
     for (const [nonce, entry] of spent) {
-      if (entry.expiresAt <= time) spent.delete(nonce);
+      if (entry.expiresAt <= time) {
+        release(entry);
+        spent.delete(nonce);
+      }
     }
   }
 
   // El mapa conserva el orden de inserción, que sigue de cerca al de vencimiento.
   function forgetOldest(): void {
     const target = Math.floor(maxSpent * 0.9);
-    for (const nonce of spent.keys()) {
+    for (const [nonce, entry] of spent) {
       if (spent.size <= target) break;
+      release(entry);
       spent.delete(nonce);
     }
   }
@@ -263,7 +294,10 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
   function currentBits(purpose: PowPurpose): number {
     if (bits === 0) return 0;
     const pressure = spentPressure(spent.size, maxSpent, ttlMs);
-    const extra = loadExtraBits(load[purpose].count(), thresholds[purpose]) + pressure.extraBits;
+    const evidence =
+      purpose === 'complaint' ? openEvidenceExtraBits(openEvidenceUses, maxOpenEvidence) : 0;
+    const extra =
+      loadExtraBits(load[purpose].count(), thresholds[purpose]) + pressure.extraBits + evidence;
     return Math.min(maxBits, bits + extra);
   }
 
@@ -297,6 +331,13 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
       payload.bits >= Math.max(bits, currentBits(purpose) - 1) &&
       isPowSolution(solution.token, solution.counter, payload.bits);
     if (!isValid || !canUse(spent.get(payload.nonce), use)) throw new ApiFailure('proof_required');
+    // Seguridad (H06): con el tope de subidas en retos abiertos lleno, una subida más se rechaza
+    // antes de leer su cuerpo (la ruta comprueba la cabecera primero). La denuncia sin pruebas, y
+    // las pruebas de quien cierre su reto, siguen.
+    if (use === 'evidence' && openEvidenceUses >= maxOpenEvidence) {
+      sweep(now().getTime());
+      if (openEvidenceUses >= maxOpenEvidence) throw new ApiFailure('rate_limited');
+    }
     return payload;
   }
 
@@ -332,8 +373,13 @@ export function createPowGuard(options: PowGuardOptions): PowGuard {
         spent.set(payload.nonce, entry);
       }
       load[purpose].record();
-      if (use === 'evidence') entry.evidenceUses += 1;
-      else entry.isClosed = true;
+      if (use === 'evidence') {
+        entry.evidenceUses += 1;
+        openEvidenceUses += 1;
+      } else {
+        release(entry);
+        entry.isClosed = true;
+      }
       return { challengeId: payload.nonce, expiresAt: payload.expiresAt };
     },
   };
