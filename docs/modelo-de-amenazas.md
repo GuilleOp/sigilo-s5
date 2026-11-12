@@ -265,8 +265,20 @@ al integrar su corrección; el resumen está en [historial-de-seguridad.md](hist
 | G16 | Reusar un token de acceso filtrado contra el buzón o la estadística                          | A9, A5  | STRIDE S, I  | Tokens de 5 minutos con `aud` del nodo y permiso mínimo; el buzón exige además el HMAC del enrutador; los tokens no se registran ni se devuelven en errores                           | Media-baja | M         |
 | G17 | Reconstruir una celda suprimida con filtros o con cortes sucesivos de la estadística         | A9, A2  | LINDDUN I, L | Meses cerrados y congelados una vez; redondeo al azar con semilla que se borra al congelar; supresión bajo 5; filtros que solo eligen filas, sin totales ni marginales                | Media      | M parcial |
 | G18 | Un nodo publica de más (mes abierto, autoridad ajena) en la estadística nacional             | A9      | STRIDE T     | El enrutador valida esquema (múltiplos de 5, mínimo 5), meses cerrados, autoridades del propio nodo y repetidas; descarta completo al nodo                                            | Baja       | M         |
+| G19 | El nodo, la SESEA o la SESNA leen las pruebas que guardan o transportan                      | A9, A4  | LINDDUN D, I | Cifrado en el navegador hacia la autoridad (HPKE para la llave de cada archivo, folio y autoridad en el AAD); el nodo guarda solo el contenedor                                       | Alta       | M         |
+| G20 | Confirmar con la bitácora que una imagen conocida es la prueba de una denuncia               | A10, A2 | LINDDUN I, L | Se ancla un compromiso con sal secreta de 32 bytes que viaja cifrada, no el SHA-256 de la imagen; sin la sal no se recalcula                                                          | Media      | M         |
+| G21 | Cambiar, reordenar o trasplantar una prueba cifrada sin que la autoridad lo note             | A9      | STRIDE T     | Digesto del contenedor en el comprobante firmado y en evidence.received; el AAD liga folio, tipo y compromiso; el panel compara con lo anclado                                        | Media      | M         |
+| G22 | Quedarse con copias de las pruebas después de turnar la denuncia a otro nodo                 | A9, A10 | LINDDUN D    | Con el comprobante firmado del destino, el origen borra sus copias y registra evidence.custody_transferred; sin él las conserva                                                       | Media      | M parcial |
+| G23 | Supervisora o autoridad destino sin acceso a las pruebas cifradas hacia otra llave           | A10     | STRIDE D     | Llave de cada archivo en la segunda llave; dentro del nodo, llaves re-cifradas en el navegador hacia la autoridad destino antes de turnar                                             | Media-baja | M         |
 
 Notas:
+
+- **G19 a G23.** Pruebas cifradas de extremo a extremo y cadena de custodia (ver
+  [criptografia.md](criptografia.md), «Pruebas cifradas de extremo a extremo»). Residuales: la
+  autoridad que abre las pruebas puede copiarlas fuera del sistema (G22 solo controla las copias
+  del nodo); el nodo ya no comprueba el tipo real de la imagen, lo hace el panel antes de
+  mostrarla; el tamaño de cada contenedor sigue visible; y una autoridad que turna dentro del nodo
+  sin compartir las llaves deja a la destino sin pruebas (el panel lo impide, la API no puede).
 
 - **G03.** Conocer una etiqueta basta para preguntar por ella: cualquiera puede enviar una denuncia
   de sondeo con la etiqueta de un identificador, y el nodo la registra. Con la corrección, el
