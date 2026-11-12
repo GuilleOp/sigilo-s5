@@ -9,6 +9,7 @@ import {
   EvidenceUploadResponseSchema,
   LedgerPageSchema,
   EVIDENCE_CONTAINER_OVERHEAD,
+  HPKE_SUITE_V1,
   MAX_EVIDENCE_BYTES,
   POW_HEADER,
   PowChallengeSchema,
@@ -17,7 +18,7 @@ import {
 } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
 import { ComplaintDetailSchema } from '@sigilo/contracts';
-import { formatPowHeader, sha256Hex, solvePow } from '@sigilo/core';
+import { formatPowHeader, keyIdFor, sha256Hex, solvePow, toBase64Url } from '@sigilo/core';
 import { createEvidenceRepository } from '../db/evidence-repository.ts';
 import {
   CHALLENGE_UPLOADS_GRACE_MS,
@@ -38,6 +39,7 @@ import {
   sampleJpeg,
   samplePng,
   submitComplaint,
+  TEST_AUTHORITIES,
   TEST_TOKEN,
   uploadEvidence,
   moveTo,
@@ -90,6 +92,17 @@ describe('POST evidence', () => {
     const { app } = createTestServer();
     const response = await uploadEvidence(app, new Uint8Array(0), 'image/png');
     expect(response.status).toBe(400);
+  });
+
+  it('acepta justo el tamaño máximo y el mínimo de un byte de imagen cifrada', async () => {
+    const { app } = createTestServer({ evidenceQuotaBytes: 64 * MAX_EVIDENCE_BYTES });
+    const largest = await uploadEvidence(app, samplePng(MAX_EVIDENCE_BYTES), 'image/png');
+    expect(largest.status).toBe(201);
+    expect(EvidenceUploadResponseSchema.parse(await largest.json()).sizeBytes).toBe(
+      MAX_EVIDENCE_BYTES,
+    );
+    const smallest = samplePng(EVIDENCE_CONTAINER_OVERHEAD + 1);
+    expect((await uploadEvidence(app, smallest, 'image/png')).status).toBe(201);
   });
 
   it('responde 413 cuando se excede el tamaño máximo', async () => {
@@ -409,6 +422,89 @@ describe('descarte de pruebas por la autoridad', () => {
   });
 });
 
+describe('llaves re-cifradas hacia otra autoridad del nodo', () => {
+  async function withEvidence(server: TestServer) {
+    const evidence = [
+      EvidenceUploadResponseSchema.parse(
+        await (await uploadEvidence(server.app, samplePng(), 'image/png')).json(),
+      ),
+    ];
+    const { folio } = await submitComplaint(
+      server,
+      await buildComplaintRequest(server, {
+        mode: 'anonymous',
+        reporter: createReporter(),
+        evidence,
+      }),
+    );
+    return { folio, evidenceId: evidence[0]?.evidenceId ?? '' };
+  }
+
+  function grantFor(server: TestServer, evidenceId: string, authorityId: string, keyId?: string) {
+    return {
+      evidenceId,
+      authorityId,
+      envelope: {
+        v: 1,
+        suite: HPKE_SUITE_V1,
+        keyId: keyId ?? keyIdFor(server.authorityBox.publicKey),
+        enc: toBase64Url(new Uint8Array(32).fill(1)),
+        ct: toBase64Url(new Uint8Array(48).fill(2)),
+      },
+    };
+  }
+
+  const send = (server: TestServer, folio: string, grants: unknown[]) =>
+    postJson(server.app, ROUTES.authorityEvidenceKeys(folio), { grants }, TEST_TOKEN);
+
+  /** Llaves guardadas hacia el OIC (el detalle solo muestra las de la autoridad de la sesión). */
+  const storedGrants = (server: TestServer, folio: string) =>
+    server.ctx.evidence.listKeyGrants(folio, TEST_AUTHORITIES.oic);
+
+  it('guarda la llave hacia la llave publicada de otra autoridad del nodo', async () => {
+    const server = createTestServer();
+    const { folio, evidenceId } = await withEvidence(server);
+    const response = await send(server, folio, [
+      grantFor(server, evidenceId, TEST_AUTHORITIES.oic),
+    ]);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ granted: 1 });
+    expect(storedGrants(server, folio).map((grant) => grant.authorityId)).toEqual([
+      TEST_AUTHORITIES.oic,
+    ]);
+  });
+
+  it('rechaza pruebas de otra denuncia, autoridades ajenas y llaves equivocadas sin guardar nada', async () => {
+    const server = createTestServer();
+    const { folio, evidenceId } = await withEvidence(server);
+    const other = await withEvidence(server);
+    const valid = grantFor(server, evidenceId, TEST_AUTHORITIES.oic);
+    for (const bad of [
+      grantFor(server, other.evidenceId, TEST_AUTHORITIES.oic),
+      grantFor(server, 'f'.repeat(32), TEST_AUTHORITIES.oic),
+      grantFor(server, evidenceId, 'authority.no-existe'),
+      grantFor(server, evidenceId, TEST_AUTHORITIES.oic, keyIdFor(new Uint8Array(32).fill(9))),
+    ]) {
+      // Junto con una válida: la petición entera se rechaza y no queda ninguna.
+      const response = await send(server, folio, [valid, bad]);
+      expect(response.status).toBe(400);
+    }
+    expect(storedGrants(server, folio)).toEqual([]);
+  });
+
+  it('después del descarte ya no hay archivo al que dar llave', async () => {
+    const server = createTestServer();
+    const { folio, evidenceId } = await withEvidence(server);
+    expect(
+      (await postJson(server.app, ROUTES.authorityEvidenceDiscard(folio), {}, TEST_TOKEN)).status,
+    ).toBe(200);
+    const response = await send(server, folio, [
+      grantFor(server, evidenceId, TEST_AUTHORITIES.oic),
+    ]);
+    expect(response.status).toBe(400);
+  });
+});
+
 describe('purga de pendientes por reto vencido', () => {
   const BITS = 4;
 
@@ -426,6 +522,29 @@ describe('purga de pendientes por reto vencido', () => {
       body: samplePng(size),
     });
   }
+
+  it('un reto sirve para 10 pruebas válidas; las rechazadas no gastan sus usos', async () => {
+    const server = createTestServer({ powBits: BITS });
+    const header = await proof(server);
+    const send = (body: Uint8Array, type = 'image/png') =>
+      server.app.request(ROUTES.evidenceUpload, {
+        method: 'POST',
+        headers: { 'Content-Type': type, [POW_HEADER]: header },
+        body: new Uint8Array(body),
+      });
+    const otherVersion = samplePng(400);
+    otherVersion[4] = 0x02;
+    for (let index = 0; index < 4; index += 1) {
+      expect((await send(otherVersion)).status).toBe(415);
+      expect((await send(samplePng(), 'image/gif')).status).toBe(415);
+      expect((await send(new Uint8Array(0))).status).toBe(400);
+    }
+    for (let index = 0; index < 10; index += 1) {
+      expect((await send(samplePng(300 + index))).status, `prueba ${index + 1}`).toBe(201);
+    }
+    // La undécima con el mismo reto ya no pasa.
+    expect((await send(samplePng())).status).toBe(428);
+  });
 
   it('libera las pendientes de un reto que venció sin denuncia, sin esperar la purga diaria', async () => {
     // Cuota de 40 000 B: las pendientes caben hasta 10 000 B.
