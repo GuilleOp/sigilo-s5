@@ -246,7 +246,9 @@ function buildOperation(operation: PublishedOperation): JsonObject {
       ...(body === undefined ? {} : { content: bodyContent(body) }),
     },
   };
-  Object.assign(responses, errorResponses([...operation.errors, 'internal']));
+  // El grupo «PDN» documenta su propio `500` con `resError`; los demás, `internal` con `ApiError`.
+  const internal: ApiErrorCode[] = 'pdnErrors' in operation ? [] : ['internal'];
+  Object.assign(responses, errorResponses([...operation.errors, ...internal]));
   Object.assign(responses, pdnErrorResponses(operation));
   const result: JsonObject = {
     operationId: operation.operationId,

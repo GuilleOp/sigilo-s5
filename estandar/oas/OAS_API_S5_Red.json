@@ -1,0 +1,4326 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "S5 - Red federada",
+    "description": "Red federada del S5: directorio de autoridades firmado, enrutador ciego, registro y salud de nodos, bitácora nacional cofirmada y buzón de red de cada nodo. Lo sirve el enrutador (la SESNA), salvo el buzón de red, que lo sirve cada nodo. Propuesta de SIGILO; no es una especificación oficial de la SESNA.",
+    "version": "0.3.0",
+    "license": { "name": "CC BY-NC 4.0", "url": "https://creativecommons.org/licenses/by-nc/4.0/" }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8787",
+      "description": "Servidor de referencia en local (`npm run dev:server`)."
+    },
+    {
+      "url": "https://denuncias.example.org",
+      "description": "Ejemplo de un nodo publicado (dominio reservado para ejemplos)."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Red",
+      "description": "Red federada «un S5, muchas llaves»: directorio de autoridades firmado y cofirmado por testigos, enrutador ciego que solo ve el nodo destino, registro de nodos y bitácora nacional cofirmada m de n. Las sirve el enrutador, salvo el buzón de red, que lo sirve cada nodo."
+    }
+  ],
+  "paths": {
+    "/api/v1/red/directory": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getNetworkDirectory",
+        "tags": ["Red"],
+        "summary": "Directorio de autoridades firmado",
+        "description": "Versión vigente del directorio con la firma de la operación y las cofirmas de los testigos. El navegador lo verifica con la llave de la operación y las de los testigos que trae fijadas (m de n) y solo entonces toma de ahí las llaves de la autoridad. Al estar firmado, cualquier nodo puede servir una copia.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Directorio firmado y cofirmado.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SignedAuthorityDirectory" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-network-directory.response.json`.",
+                    "value": {
+                      "directory": {
+                        "format": 1,
+                        "serial": 1,
+                        "issuedOn": "2026-11-09",
+                        "previousDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+                        "operator": {
+                          "name": "Operación ficticia de la ventanilla única (demostración)",
+                          "signingKeyId": "5d1c2a9e8b7f3c40",
+                          "signingPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv"
+                        },
+                        "nodes": [
+                          {
+                            "id": "node.queretaro",
+                            "name": "Nodo estatal Querétaro",
+                            "baseUrl": "https://denuncias.queretaro.example",
+                            "boxKeyId": "9a0be41c77d25f13",
+                            "boxPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f",
+                            "signingKeyId": "c3f8e2a1b0d94756",
+                            "signingPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv"
+                          }
+                        ],
+                        "authorities": [
+                          {
+                            "id": "authority.comptroller-queretaro",
+                            "name": "Contraloría Estatal Ficticia de Querétaro",
+                            "nodeId": "node.queretaro",
+                            "governmentLevel": "estatal",
+                            "stateCode": "22",
+                            "role": "investigating",
+                            "competence": {
+                              "governmentLevels": ["estatal"],
+                              "stateCodes": ["22"],
+                              "entityIds": [],
+                              "laws": ["LGRA"]
+                            },
+                            "keyId": "9a0be41c77d25f13",
+                            "boxPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f",
+                            "signingPublicKey": "Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv",
+                            "supervisorId": null,
+                            "validFrom": "2026-11-09",
+                            "validUntil": null
+                          }
+                        ],
+                        "observers": [
+                          {
+                            "id": "observer.cpc-queretaro",
+                            "name": "Comité de Participación Ciudadana Ficticio de Querétaro",
+                            "kind": "cpc",
+                            "signingKeyId": "c3f8e2a1b0d94756",
+                            "signingPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f"
+                          }
+                        ],
+                        "witnessPolicy": {
+                          "threshold": 1,
+                          "witnessIds": ["observer.cpc-queretaro", "node.queretaro"]
+                        },
+                        "functionTables": [
+                          {
+                            "table": {
+                              "format": 1,
+                              "nodeId": "node.queretaro",
+                              "stateCode": "22",
+                              "version": 1,
+                              "issuedOn": "2026-11-09",
+                              "functions": {
+                                "intake": [
+                                  {
+                                    "governmentLevels": ["estatal", "municipal"],
+                                    "entityIds": [],
+                                    "holder": {
+                                      "kind": "authority",
+                                      "authorityId": "authority.buzon-queretaro"
+                                    }
+                                  }
+                                ],
+                                "operation": [
+                                  {
+                                    "governmentLevels": ["estatal", "municipal"],
+                                    "entityIds": [],
+                                    "holder": {
+                                      "kind": "institution",
+                                      "name": "Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro"
+                                    }
+                                  }
+                                ],
+                                "investigation": [
+                                  {
+                                    "governmentLevels": ["estatal", "municipal"],
+                                    "entityIds": [],
+                                    "holder": {
+                                      "kind": "authority",
+                                      "authorityId": "authority.comptroller-queretaro"
+                                    },
+                                    "legalBasis": "LGRA, arts. 3, fr. II, y 10"
+                                  }
+                                ],
+                                "substantiation": [],
+                                "resolution": [
+                                  {
+                                    "governmentLevels": ["estatal", "municipal"],
+                                    "entityIds": [],
+                                    "severity": "serious",
+                                    "holder": {
+                                      "kind": "institution",
+                                      "name": "Tribunal de Justicia Administrativa Ficticio de Querétaro"
+                                    }
+                                  }
+                                ],
+                                "supervision": [],
+                                "prosecution": [],
+                                "observer": [
+                                  {
+                                    "governmentLevels": ["estatal", "municipal"],
+                                    "entityIds": [],
+                                    "holder": {
+                                      "kind": "observer",
+                                      "observerId": "observer.cpc-queretaro"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          }
+                        ]
+                      },
+                      "digest": "3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9f0a2b4c6d8e0f1a2b",
+                      "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+                      "witnessSignatures": [
+                        {
+                          "witnessId": "observer.cpc-queretaro",
+                          "keyId": "c3f8e2a1b0d94756",
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/relay": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "relayEnvelope",
+        "tags": ["Red"],
+        "summary": "Enviar un sobre por el enrutador ciego",
+        "description": "Sobre v2: el enrutador lee solo el nodo destino (la autoridad va cifrada dentro del sobre), comprueba que el sobre vaya a la llave de ese nodo y que mida uno de los tramos fijos, y lo reenvía al buzón de red del nodo sin cabeceras de quien envía. No guarda el sobre, la dirección IP ni las cabeceras. Responde `200` con la misma forma y tamaño para cualquier destino; si no pudo entregar, el sobre de vuelta es relleno que el navegador no podrá abrir. Un sobre v1 (con `to` en el encabezado) se rechaza con `400` y un mensaje que pide actualizar la ventanilla. Cola de entrega: si el sobre lleva `deferral` (una denuncia sin pruebas, con la solución del reto `getQueueChallenge`) y el nodo no responde, el enrutador guarda el sobre cerrado (no puede abrirlo), responde con relleno y un acuse firmado en `queued`, y reintenta con espera exponencial hasta entregarlo o hasta que venza a los 7 días; al entregarlo lo borra. Responde `428` si la solución falta o no vale, y `429` si la cola de ese nodo está llena.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RelayRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/relay-envelope.request.json`.",
+                  "value": {
+                    "v": 2,
+                    "node": "node.queretaro",
+                    "sealed": {
+                      "v": 1,
+                      "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+                      "keyId": "9a0be41c77d25f13",
+                      "enc": "mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0",
+                      "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sobre de vuelta cifrado hacia la llave efímera del navegador.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RelayResponse" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/relay-envelope.response.json`.",
+                    "value": {
+                      "v": 2,
+                      "sealed": {
+                        "v": 1,
+                        "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+                        "keyId": "e07d9c3b5a1f2846",
+                        "enc": "mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0",
+                        "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw"
+                      },
+                      "queued": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`proof_required`: Falta la prueba de trabajo, no es válida, venció o ya se usó.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "proof_required",
+                    "message": "Falta una prueba de trabajo válida y vigente."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Demasiados intentos fallidos o mensajes en poco tiempo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Demasiados intentos. Intenta más tarde."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/queue/challenge": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getQueueChallenge",
+        "tags": ["Red"],
+        "summary": "Reto para dejar una denuncia en la cola de entrega",
+        "description": "Reto de prueba de trabajo del enrutador (firmado con su propia llave HMAC, con vencimiento y de un solo uso). Lo pide la ventanilla cuando el nodo destino no responde: la solución va en `deferral.proof` del sobre. El enrutador no puede pedirle al nodo caído su reto, así que la cola se protege con el suyo.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Reto vigente.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PowChallenge" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-queue-challenge.response.json`.",
+                    "value": { "token": "cmV0by1maWN0aWNpby1kZS1sYS1jb2xh.firma", "bits": 18 }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/health/nodes": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getNetworkHealth",
+        "tags": ["Red"],
+        "summary": "Salud de los nodos de la red",
+        "description": "Para la operación (la SESNA): de cada nodo del directorio, si respondió la última consulta a su `getNodeHealth`, su versión de software y del Estándar, el último contacto, si está registrado, si se le entregan sobres y cuántos sobres cerrados esperan en la cola. Si se configura una versión mínima, a un nodo con versión menor (o desconocida) no se le entregan sobres: los que pidieron la cola esperan, y `warning` lo dice. No contiene denuncias, autoridades ni contenido. `GET /api/v1/red/health/nodes.html` muestra lo mismo en una tabla.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Salud de la red.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NetworkHealth" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-network-health.response.json`.",
+                    "value": {
+                      "v": 1,
+                      "checkedAt": "2026-11-09T17:05Z",
+                      "minimumSoftwareVersion": "1.0.0",
+                      "nodes": [
+                        {
+                          "nodeId": "node.queretaro",
+                          "name": "Nodo estatal Querétaro",
+                          "status": "up",
+                          "softwareVersion": "1.0.1",
+                          "standardVersion": "0.3.0",
+                          "lastCheckAt": "2026-11-09T17:05Z",
+                          "lastContactAt": "2026-11-09T17:05Z",
+                          "registered": true,
+                          "deliverable": true,
+                          "warning": null,
+                          "queued": 0
+                        },
+                        {
+                          "nodeId": "node.federal",
+                          "name": "Nodo Federal",
+                          "status": "down",
+                          "softwareVersion": "1.0.1",
+                          "standardVersion": "0.3.0",
+                          "lastCheckAt": "2026-11-09T17:05Z",
+                          "lastContactAt": "2026-11-09T15:40Z",
+                          "registered": true,
+                          "deliverable": true,
+                          "warning": "unreachable",
+                          "queued": 3
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/health/nodes.html": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "viewNetworkHealth",
+        "tags": ["Red"],
+        "summary": "Salud de los nodos en una página sencilla",
+        "description": "La misma información de `getNetworkHealth` en una tabla HTML sin estilos ni scripts, para que la operación la consulte en un navegador.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Página HTML en UTF-8. Tabla con nodo, estado, versiones, último contacto, sobres en cola y aviso.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" },
+                "example": "<!doctype html><html lang=\"es-MX\">…<table>…</table>…</html>"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/nodes/{nodeId}/registration": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "registerNode",
+        "tags": ["Red"],
+        "summary": "Registrar un nodo",
+        "description": "El nodo prueba que tiene la llave de firma del directorio y declara si ya recibe sobres de red. La secuencia debe crecer: un registro anterior reenviado se rechaza.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del nodo en el directorio.",
+            "schema": { "type": "string", "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NodeRegistration" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/register-node.request.json`.",
+                  "value": {
+                    "v": 1,
+                    "nodeId": "node.queretaro",
+                    "sequence": 1794268800,
+                    "standardVersion": "0.1.0",
+                    "acceptsRelay": true,
+                    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registro aceptado.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NodeRegistrationReceipt" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/register-node.response.json`.",
+                    "value": {
+                      "nodeId": "node.queretaro",
+                      "sequence": 1794268800,
+                      "acceptsRelay": true,
+                      "registeredOn": "2026-11-09"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/nodes/{nodeId}/heads": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "publishNodeHead",
+        "tags": ["Red"],
+        "summary": "Publicar la cabeza de un nodo",
+        "description": "Agrega a la bitácora nacional la cabeza firmada de la bitácora del nodo (`SignedLedgerHead`), si está firmada con la llave del nodo en el directorio y avanza. Una cabeza que retrocede o repite la secuencia con otro hash se rechaza. El enrutador también recoge las cabezas por su cuenta en `GET /api/v1/ledger/head` de cada nodo.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del nodo en el directorio.",
+            "schema": { "type": "string", "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SignedLedgerHead" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/publish-node-head.request.json`.",
+                  "value": {
+                    "seq": 41,
+                    "hash": "a41f0c2e9b8d7a6c5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d",
+                    "at": "2026-11-09",
+                    "serverKeyId": "c3f8e2a1b0d94756",
+                    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cabeza registrada o ya presente.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NodeHeadAcceptance" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/publish-node-head.response.json`.",
+                    "value": { "nodeId": "node.queretaro", "status": "recorded", "entrySeq": 1 }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/head": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getNationalHead",
+        "tags": ["Red"],
+        "summary": "Cabeza nacional cofirmada",
+        "description": "Última cabeza de la bitácora nacional con la firma de la operación y al menos m cofirmas válidas de testigos distintos. Responde `404` si todavía no hay ninguna.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Cabeza nacional cofirmada.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CosignedNationalHead" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-national-head.response.json`.",
+                    "value": {
+                      "head": {
+                        "v": 1,
+                        "seq": 1,
+                        "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+                        "at": "2026-11-09",
+                        "directorySerial": 1,
+                        "operatorKeyId": "5d1c2a9e8b7f3c40"
+                      },
+                      "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+                      "cosignatures": [
+                        {
+                          "witnessId": "node.queretaro",
+                          "keyId": "c3f8e2a1b0d94756",
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        },
+                        {
+                          "witnessId": "observer.cpc-queretaro",
+                          "keyId": "c3f8e2a1b0d94756",
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/pending": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getPendingNationalHead",
+        "tags": ["Red"],
+        "summary": "Cabeza nacional pendiente",
+        "description": "Última cabeza emitida por la operación, con las cofirmas que tenga. Los testigos la verifican contra la bitácora antes de cofirmar.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Cabeza pendiente.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CosignedNationalHead" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-pending-national-head.response.json`.",
+                    "value": {
+                      "head": {
+                        "v": 1,
+                        "seq": 1,
+                        "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+                        "at": "2026-11-09",
+                        "directorySerial": 1,
+                        "operatorKeyId": "5d1c2a9e8b7f3c40"
+                      },
+                      "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+                      "cosignatures": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/cosignatures": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "cosignNationalHead",
+        "tags": ["Red"],
+        "summary": "Cofirmar la cabeza nacional",
+        "description": "Un testigo entrega su cofirma después de comprobar que la bitácora solo creció desde su última cofirma y que cada cabeza de nodo es válida. Una cofirma que no verifica con la llave del testigo en el directorio se rechaza.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NationalCosignatureRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/cosign-national-head.request.json`.",
+                  "value": {
+                    "seq": 1,
+                    "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+                    "cosignature": {
+                      "witnessId": "observer.cpc-queretaro",
+                      "keyId": "c3f8e2a1b0d94756",
+                      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cabeza con la cofirma agregada.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CosignedNationalHead" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/cosign-national-head.response.json`.",
+                    "value": {
+                      "head": {
+                        "v": 1,
+                        "seq": 1,
+                        "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+                        "at": "2026-11-09",
+                        "directorySerial": 1,
+                        "operatorKeyId": "5d1c2a9e8b7f3c40"
+                      },
+                      "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+                      "cosignatures": [
+                        {
+                          "witnessId": "node.queretaro",
+                          "keyId": "c3f8e2a1b0d94756",
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        },
+                        {
+                          "witnessId": "observer.cpc-queretaro",
+                          "keyId": "c3f8e2a1b0d94756",
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/entries": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "listNationalEntries",
+        "tags": ["Red"],
+        "summary": "Entradas de la bitácora nacional",
+        "description": "Entradas desde la secuencia `from`, con la última cabeza cofirmada. Cualquiera puede recalcular la cadena.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Secuencia inicial; 0 por omisión.",
+            "schema": { "type": "integer", "minimum": 0, "maximum": 999999999999999 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Tamaño de página: 100 por omisión y 500 como máximo.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 999999999999999,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de entradas.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NationalLedgerPage" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/list-national-entries.response.json`.",
+                    "value": {
+                      "entries": [
+                        {
+                          "v": 1,
+                          "seq": 0,
+                          "type": "directory.version",
+                          "at": "2026-11-09",
+                          "directorySerial": 1,
+                          "directoryDigest": "3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9f0a2b4c6d8e0f1a2b",
+                          "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+                          "hash": "6e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d"
+                        },
+                        {
+                          "v": 1,
+                          "seq": 1,
+                          "type": "node.head",
+                          "at": "2026-11-09",
+                          "nodeId": "node.queretaro",
+                          "nodeHead": {
+                            "seq": 41,
+                            "hash": "a41f0c2e9b8d7a6c5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d",
+                            "at": "2026-11-09",
+                            "serverKeyId": "c3f8e2a1b0d94756",
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          },
+                          "prevHash": "6e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d",
+                          "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f"
+                        }
+                      ],
+                      "head": {
+                        "head": {
+                          "v": 1,
+                          "seq": 1,
+                          "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+                          "at": "2026-11-09",
+                          "directorySerial": 1,
+                          "operatorKeyId": "5d1c2a9e8b7f3c40"
+                        },
+                        "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+                        "cosignatures": [
+                          {
+                            "witnessId": "node.queretaro",
+                            "keyId": "c3f8e2a1b0d94756",
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          },
+                          {
+                            "witnessId": "observer.cpc-queretaro",
+                            "keyId": "c3f8e2a1b0d94756",
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/inclusion": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getNodeHeadInclusion",
+        "tags": ["Red"],
+        "summary": "Prueba de inclusión de una cabeza de nodo",
+        "description": "Entrada que contiene exactamente esa cabeza del nodo, el tramo hasta la última cabeza cofirmada y esa cabeza. Responde `404` si la cabeza no está, o si todavía no la cubre una cabeza con m cofirmas.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": true,
+            "description": "Nodo de la cabeza.",
+            "schema": { "type": "string", "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          },
+          {
+            "name": "seq",
+            "in": "query",
+            "required": true,
+            "description": "Secuencia de la cabeza del nodo.",
+            "schema": { "type": "integer", "minimum": 0, "maximum": 999999999999999 }
+          },
+          {
+            "name": "hash",
+            "in": "query",
+            "required": true,
+            "description": "Hash de la cabeza del nodo.",
+            "schema": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prueba de inclusión.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NationalInclusionProof" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-node-head-inclusion.response.json`.",
+                    "value": {
+                      "entry": {
+                        "v": 1,
+                        "seq": 1,
+                        "type": "node.head",
+                        "at": "2026-11-09",
+                        "nodeId": "node.queretaro",
+                        "nodeHead": {
+                          "seq": 41,
+                          "hash": "a41f0c2e9b8d7a6c5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d",
+                          "at": "2026-11-09",
+                          "serverKeyId": "c3f8e2a1b0d94756",
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        },
+                        "prevHash": "6e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d",
+                        "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f"
+                      },
+                      "chain": [
+                        {
+                          "v": 1,
+                          "seq": 1,
+                          "type": "node.head",
+                          "at": "2026-11-09",
+                          "nodeId": "node.queretaro",
+                          "nodeHead": {
+                            "seq": 41,
+                            "hash": "a41f0c2e9b8d7a6c5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d",
+                            "at": "2026-11-09",
+                            "serverKeyId": "c3f8e2a1b0d94756",
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          },
+                          "prevHash": "6e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d",
+                          "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f"
+                        }
+                      ],
+                      "head": {
+                        "head": {
+                          "v": 1,
+                          "seq": 1,
+                          "hash": "f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f",
+                          "at": "2026-11-09",
+                          "directorySerial": 1,
+                          "operatorKeyId": "5d1c2a9e8b7f3c40"
+                        },
+                        "operatorSignature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg",
+                        "cosignatures": [
+                          {
+                            "witnessId": "node.queretaro",
+                            "keyId": "c3f8e2a1b0d94756",
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          },
+                          {
+                            "witnessId": "observer.cpc-queretaro",
+                            "keyId": "c3f8e2a1b0d94756",
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/open-data": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getNationalOpenData",
+        "tags": ["Red"],
+        "summary": "Corte nacional de datos abiertos",
+        "description": "Suma por entidad, conducta, mes y estatus de los CSV públicos de datos abiertos de cada nodo del directorio (Bases de la PDN, arts. 60 y 61). El enrutador descarga cada CSV en `GET /api/v1/open-data/complaints.csv`, lo valida (encabezado, catálogos, solo meses anteriores al mes en curso, conteos múltiplos de 5 y de al menos 5, sin celdas repetidas y con su fila de suprimidas) y descarta completo el que no cumpla. Después de sumar vuelve a aplicar la celda mínima. Un nodo que no responde aparece como `unreachable`: sin datos de ese nodo en este corte. Cada nodo lleva la cabeza de su bitácora vigente en la bitácora nacional, como referencia; los conteos no están firmados ni se pueden comprobar con ella: se comprueban rehaciendo la suma con los CSV de los nodos. Responde `404` hasta el primer corte.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Último corte nacional.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NationalOpenData" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-national-open-data.response.json`.",
+                    "value": {
+                      "v": 1,
+                      "cutAt": "2026-11-09T17:00Z",
+                      "closedBefore": "2026-11",
+                      "directorySerial": 1,
+                      "minCell": 5,
+                      "rounding": 5,
+                      "nodes": [
+                        {
+                          "nodeId": "node.queretaro",
+                          "name": "Nodo estatal Querétaro",
+                          "status": "included",
+                          "rejection": null,
+                          "cells": 2,
+                          "total": 25,
+                          "ledgerHead": {
+                            "seq": 41,
+                            "hash": "a41f0c2e9b8d7a6c5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d",
+                            "at": "2026-11-09",
+                            "serverKeyId": "c3f8e2a1b0d94756",
+                            "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                          },
+                          "nationalEntrySeq": 1
+                        },
+                        {
+                          "nodeId": "node.federal",
+                          "name": "Nodo Federal y común",
+                          "status": "unreachable",
+                          "rejection": null,
+                          "cells": 0,
+                          "total": 0,
+                          "ledgerHead": null,
+                          "nationalEntrySeq": null
+                        }
+                      ],
+                      "cells": [
+                        {
+                          "stateCode": "22",
+                          "offenseCode": "LGRA-52",
+                          "month": "2026-10",
+                          "status": "investigating",
+                          "count": 10
+                        },
+                        {
+                          "stateCode": "22",
+                          "offenseCode": "LGRA-57",
+                          "month": "2026-10",
+                          "status": "archived",
+                          "count": 10
+                        }
+                      ],
+                      "suppressed": 5
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/open-data.csv": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "downloadNationalOpenData",
+        "tags": ["Red"],
+        "summary": "Corte nacional de datos abiertos en CSV",
+        "description": "Las celdas del último corte nacional con las mismas columnas que el CSV de cada nodo y su fila final de suprimidas. Qué nodos se sumaron está en la versión JSON. Responde `404` hasta el primer corte.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Archivo CSV en UTF-8. Columnas: entidad, conducta, mes_recepcion, estatus, denuncias.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": { "type": "string" },
+                "example": "entidad,conducta,mes_recepcion,estatus,denuncias\n22,LGRA-52,2026-10,investigating,10\nsuprimidas,,,,5\n"
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/health": {
+      "get": {
+        "operationId": "getNodeHealth",
+        "tags": ["Red"],
+        "summary": "Salud del nodo",
+        "description": "La sirve cada nodo. Su identificador y las versiones de su software y del Estándar, para que el enrutador sepa si está arriba y si cumple la versión mínima. Sin datos de denuncias.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Identificador y versiones.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NodeHealthReport" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-node-health.response.json`.",
+                    "value": {
+                      "v": 1,
+                      "nodeId": "node.queretaro",
+                      "softwareVersion": "1.0.1",
+                      "standardVersion": "0.3.0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/national/statistics": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getNationalStatistics",
+        "tags": ["Red"],
+        "summary": "Corte nacional de la estadística para el portal de la PDN",
+        "description": "Filas de la estadística agregada que la SESNA consultó a cada nodo con OAuth 2.0 (`POST /v1/denuncias/estadisticas`, grupo «PDN»), para el portal de la PDN (Bases, art. 61). El enrutador valida cada fila (meses cerrados, conteos múltiplos de 5 y de al menos 5 o suprimidos, autoridades del propio nodo, sin repetidas) y descarta completo al nodo que no cumple. Copia las filas tal cual, con el nodo que las publicó: no vuelve a sumar ni rebaja la supresión. Responde `404` hasta el primer corte.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Último corte nacional de la estadística.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NationalStatistics" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-national-statistics.response.json`.",
+                    "value": {
+                      "v": 1,
+                      "cutAt": "2026-11-09T17:00Z",
+                      "closedBefore": "2026-11",
+                      "directorySerial": 1,
+                      "nodes": [
+                        {
+                          "nodeId": "node.queretaro",
+                          "name": "Nodo estatal Querétaro",
+                          "status": "included",
+                          "rejection": null,
+                          "rows": 1
+                        },
+                        {
+                          "nodeId": "node.federal",
+                          "name": "Nodo Federal",
+                          "status": "unreachable",
+                          "rejection": null,
+                          "rows": 0
+                        }
+                      ],
+                      "rows": [
+                        {
+                          "id": "2026-10|authority.comptroller-queretaro|22|LGRA-52",
+                          "fechaCaptura": "2026-11-01T00:00Z",
+                          "mes": "2026-10",
+                          "autoridad": {
+                            "clave": "authority.comptroller-queretaro",
+                            "nombre": "Contraloría Estatal Ficticia de Querétaro"
+                          },
+                          "entidad": { "clave": "22", "valor": "Querétaro" },
+                          "conducta": { "clave": "LGRA-52", "valor": "Cohecho" },
+                          "recibidas": 15,
+                          "turnadas": { "aTiempo": 10, "vencidas": null },
+                          "aceptadas": { "aTiempo": 10, "vencidas": 5 },
+                          "archivadas": [
+                            { "clave": "ATENDIDA", "valor": "Atendido", "total": null },
+                            { "clave": "CANALIZADA", "valor": "Canalizado", "total": null },
+                            { "clave": "IMPROCEDENTE", "valor": "Improcedente", "total": 5 },
+                            {
+                              "clave": "INFORMACION_INSUFICIENTE",
+                              "valor": "Información insuficiente",
+                              "total": null
+                            },
+                            { "clave": "ACUMULADA", "valor": "Acumulado", "total": null },
+                            { "clave": "OTRO_MOTIVO", "valor": "Otro", "total": null }
+                          ],
+                          "calificadas": { "graves": null, "noGraves": 5 },
+                          "escalamientos": null,
+                          "estatusAlCierre": [
+                            { "clave": "RECIBIDA", "valor": "Recibida", "total": null },
+                            {
+                              "clave": "BUSCANDO_AUTORIDAD",
+                              "valor": "Buscando a la autoridad que debe atenderla",
+                              "total": null
+                            },
+                            {
+                              "clave": "TURNADA",
+                              "valor": "Turnada a la autoridad competente",
+                              "total": 5
+                            },
+                            {
+                              "clave": "EN_INVESTIGACION",
+                              "valor": "En investigación",
+                              "total": 10
+                            },
+                            {
+                              "clave": "CALIFICADA",
+                              "valor": "Revisada: la autoridad decidió si la falta es grave",
+                              "total": null
+                            },
+                            { "clave": "ARCHIVADA", "valor": "Archivada", "total": null },
+                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null }
+                          ],
+                          "tiemposMedianosDiasHabiles": {
+                            "turno": 1,
+                            "aceptacion": 1,
+                            "archivo": null
+                          },
+                          "nodeId": "node.queretaro"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/inbox": {
+      "post": {
+        "operationId": "receiveRoutedEnvelope",
+        "tags": ["Red"],
+        "summary": "Buzón de red del nodo",
+        "description": "La sirve cada nodo, no el enrutador. Exige el token OAuth 2.0 que el propio nodo emitió a la SESNA con el permiso `sesna:entregas` (grupo «PDN»; sin él responde `401`, con otro permiso `403`) y, como defensa en profundidad, la etiqueta HMAC del buzón (`X-Sigilo-Relay-Auth`). Abre el sobre con la llave X25519 del nodo (el AAD lo liga al nodo del encabezado), comprueba que la autoridad interna (`RoutedRequest.to`) esté alojada en el nodo y vigente, ejecuta la operación pedida como si llegara a su ruta v1 y cifra la respuesta (`RoutedReply`) hacia la llave efímera. Un sobre que no abre, de otro nodo o hacia una autoridad que el nodo no aloja responde `400` sin decir por qué.",
+        "security": [{ "nodeOAuth": ["sesna:entregas"] }],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RelayRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/receive-routed-envelope.request.json`.",
+                  "value": {
+                    "v": 2,
+                    "node": "node.queretaro",
+                    "sealed": {
+                      "v": 1,
+                      "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+                      "keyId": "9a0be41c77d25f13",
+                      "enc": "mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0",
+                      "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sobre de vuelta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RelayResponse" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/receive-routed-envelope.response.json`.",
+                    "value": {
+                      "v": 2,
+                      "sealed": {
+                        "v": 1,
+                        "suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305",
+                        "keyId": "e07d9c3b5a1f2846",
+                        "enc": "mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0",
+                        "ct": "StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw"
+                      },
+                      "queued": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HpkeEnvelope": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato del sobre.", "enum": [1] },
+          "suite": {
+            "type": "string",
+            "description": "Suite HPKE: DHKEM X25519, HKDF-SHA256 y ChaCha20-Poly1305 (RFC 9180, modo base).",
+            "enum": ["DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/ChaCha20Poly1305"]
+          },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de la llave pública destinataria.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "enc": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave efímera encapsulada (salida enc de HPKE)."
+          },
+          "ct": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Texto cifrado con su etiqueta de autenticación."
+          }
+        },
+        "required": ["v", "suite", "keyId", "enc", "ct"],
+        "additionalProperties": false,
+        "description": "Sobre cifrado con HPKE hacia una llave pública X25519. Solo quien tiene la llave privada lo abre."
+      },
+      "SignedLedgerHead": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Secuencia del último evento del último día publicado completo."
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Hash de ese evento."
+          },
+          "at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día de ese evento.",
+            "example": "2026-11-05"
+          },
+          "serverKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 sobre la forma canónica de { seq, hash, at, serverKeyId }."
+          }
+        },
+        "required": ["seq", "hash", "at", "serverKeyId", "signature"],
+        "additionalProperties": false,
+        "description": "Cabeza pública firmada de la bitácora."
+      },
+      "PowChallenge": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "description": "Reto opaco firmado por el servidor; vence a los pocos minutos."
+          },
+          "bits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32,
+            "description": "Bits en cero que debe tener al inicio el digesto de la solución; 0 = sin prueba."
+          }
+        },
+        "required": ["token", "bits"],
+        "additionalProperties": false,
+        "description": "Reto de prueba de trabajo de un solo propósito."
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "not_found",
+                  "unauthorized",
+                  "forbidden",
+                  "conflict",
+                  "reassignment_limit",
+                  "payload_too_large",
+                  "unsupported_media_type",
+                  "rate_limited",
+                  "proof_required",
+                  "storage_full",
+                  "ledger_day_full",
+                  "internal"
+                ],
+                "description": "Código estable del error."
+              },
+              "message": {
+                "type": "string",
+                "description": "Mensaje fijo en español; nunca incluye datos de la solicitud."
+              }
+            },
+            "required": ["code", "message"],
+            "additionalProperties": false,
+            "description": "Código y mensaje del error."
+          }
+        },
+        "required": ["error"],
+        "additionalProperties": false,
+        "description": "Error con formato común. Los errores de seguimiento no distinguen si falló el folio o el recibo."
+      },
+      "ComplaintStatus": {
+        "type": "string",
+        "enum": [
+          "received",
+          "routing",
+          "routed",
+          "investigating",
+          "classified",
+          "archived",
+          "resolved"
+        ],
+        "description": "Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.\n\n- `received`: Recibida. Tu denuncia llegó y está en espera de revisión.\n- `routing`: Buscando a la autoridad que debe atenderla. Estamos buscando qué autoridad debe atender tu denuncia.\n- `routed`: Turnada a la autoridad competente. La autoridad competente ya la tiene.\n- `investigating`: En investigación. La autoridad está investigando los hechos.\n- `classified`: Revisada: la autoridad decidió si la falta es grave. La autoridad ya decidió si la falta es grave o no.\n- `archived`: Archivada. Se cerró por ahora; puede reabrirse si hay nuevos elementos.\n- `resolved`: Concluida. La autoridad terminó el trámite."
+      },
+      "SignedAuthorityDirectory": {
+        "type": "object",
+        "properties": {
+          "directory": { "$ref": "#/components/schemas/AuthorityDirectory" },
+          "digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "SHA-256 de la forma canónica de `directory`."
+          },
+          "operatorSignature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 de la operación sobre \"sigilo/red/directory/operator/v1:\" + digest."
+          },
+          "witnessSignatures": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WitnessSignature" },
+            "description": "Cofirmas sobre \"sigilo/red/directory/witness/v1:\" + digest."
+          }
+        },
+        "required": ["directory", "digest", "operatorSignature", "witnessSignatures"],
+        "additionalProperties": false,
+        "description": "Directorio publicado con la firma de la operación y las cofirmas."
+      },
+      "AuthorityDirectory": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "number",
+            "description": "Versión del formato del directorio.",
+            "enum": [1]
+          },
+          "serial": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Número de versión del directorio; crece en uno con cada cambio."
+          },
+          "issuedOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día de emisión de esta versión.",
+            "example": "2026-11-05"
+          },
+          "validUntil": {
+            "description": "Último día en que esta versión se acepta (H10). La operación reemite el directorio antes; una copia vieja deja de verificar.",
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "example": "2026-11-05"
+          },
+          "previousDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Digesto de la versión anterior (64 ceros en la primera): las versiones forman una cadena."
+          },
+          "operator": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300,
+                "description": "Quién opera la ventanilla única."
+              },
+              "signingKeyId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{16}$",
+                "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+                "example": "3f9a1c0b7d2e4a68"
+              },
+              "signingPublicKey": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "Llave Ed25519 de la operación: firma el directorio y la cabeza nacional."
+              }
+            },
+            "required": ["name", "signingKeyId", "signingPublicKey"],
+            "additionalProperties": false,
+            "description": "Operación de la ventanilla única y del enrutador."
+          },
+          "nodes": {
+            "minItems": 1,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DirectoryNode" },
+            "description": "Nodos de la red."
+          },
+          "authorities": {
+            "minItems": 1,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DirectoryAuthority" },
+            "description": "Autoridades registradas en la ventanilla única."
+          },
+          "observers": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DirectoryObserver" },
+            "description": "Observadores."
+          },
+          "witnessPolicy": { "$ref": "#/components/schemas/WitnessPolicy" },
+          "corroboration": {
+            "description": "Servicios de la corroboración ciega (ADR 0006) con la llave pública del evaluador OPRF; si falta, la red no ofrece corroboración.",
+            "allOf": [{ "$ref": "#/components/schemas/DirectoryCorroboration" }]
+          },
+          "functionTables": {
+            "description": "Tabla de funciones de cada nodo, firmada por el nodo: una por entidad y otra para el orden federal. Una entidad sin tabla no tiene nodo y no recibe denuncias estatales por la ventanilla.",
+            "maxItems": 40,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SignedFunctionTable" }
+          }
+        },
+        "required": [
+          "format",
+          "serial",
+          "issuedOn",
+          "previousDigest",
+          "operator",
+          "nodes",
+          "authorities",
+          "observers",
+          "witnessPolicy"
+        ],
+        "additionalProperties": false,
+        "description": "Directorio de autoridades: cada versión la firma la operación y la cofirman m de n testigos."
+      },
+      "DirectoryNode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Nombre del nodo."
+          },
+          "baseUrl": {
+            "type": "string",
+            "pattern": "^https?:\\/\\/[^\\s/?#]+$",
+            "description": "Origen público del nodo (esquema, host y puerto, sin ruta).",
+            "example": "https://denuncias.queretaro.example"
+          },
+          "boxKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "boxPublicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave pública X25519 del nodo: destinataria de los sobres de red."
+          },
+          "signingKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signingPublicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave pública Ed25519 del nodo: firma la cabeza de su bitácora, su registro y, si es testigo, sus cofirmas."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "baseUrl",
+          "boxKeyId",
+          "boxPublicKey",
+          "signingKeyId",
+          "signingPublicKey"
+        ],
+        "additionalProperties": false,
+        "description": "Nodo de la red: el de una entidad (lo opera su SESEA o su contraloría) o el federal. No hay nodo común: cada entidad monta el suyo."
+      },
+      "DirectoryAuthority": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable de la autoridad.",
+            "example": "authority.oic-iffe"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "Nombre de la autoridad."
+          },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "governmentLevel": {
+            "type": "string",
+            "enum": ["federal", "estatal", "municipal"],
+            "description": "Orden de gobierno: federal, estatal o municipal."
+          },
+          "stateCode": {
+            "type": "string",
+            "pattern": "^(?:\\d{2}|state\\.[a-z0-9]+(?:-[a-z0-9]+)*)$",
+            "description": "Entidad de la autoridad; null si es federal.",
+            "example": "22",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "enum": ["investigating", "supervisory", "prosecution", "inbox"],
+            "description": "Papel: investigating (investiga faltas), supervisory (supervisa y recibe escalamientos), prosecution (fiscalía de hechos de corrupción) o inbox (buzón general del nodo: recibe lo que no tiene autoridad competente en el directorio y lo turna; Bases de la PDN, arts. 56 y 58)."
+          },
+          "competence": { "$ref": "#/components/schemas/AuthorityCompetence" },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "boxPublicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave pública X25519 hacia la que se cifran hechos, identidad y mensajes."
+          },
+          "signingPublicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave pública Ed25519 con la que la autoridad firma sus mensajes."
+          },
+          "supervisorId": {
+            "type": "string",
+            "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Autoridad supervisora que recibe el sobre de escalamiento (ADR 0007), o null.",
+            "example": "authority.oic-iffe",
+            "nullable": true
+          },
+          "validFrom": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Primer día de vigencia de las llaves.",
+            "example": "2026-11-05"
+          },
+          "validUntil": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Último día de vigencia de las llaves, o null si no tiene fecha de término.",
+            "example": "2026-11-05",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "nodeId",
+          "governmentLevel",
+          "stateCode",
+          "role",
+          "competence",
+          "keyId",
+          "boxPublicKey",
+          "signingPublicKey",
+          "supervisorId",
+          "validFrom",
+          "validUntil"
+        ],
+        "additionalProperties": false,
+        "description": "Autoridad del directorio con su competencia y sus llaves públicas."
+      },
+      "AuthorityCompetence": {
+        "type": "object",
+        "properties": {
+          "governmentLevels": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["federal", "estatal", "municipal"],
+              "description": "Orden de gobierno: federal, estatal o municipal."
+            },
+            "description": "Órdenes de gobierno de los entes que atiende."
+          },
+          "stateCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(?:\\d{2}|state\\.[a-z0-9]+(?:-[a-z0-9]+)*)$",
+              "description": "Entidad federativa: clave INEGI de dos dígitos o clave `state.*` de una entidad sintética sin clave INEGI.",
+              "example": "22"
+            },
+            "description": "Entidades donde actúa; vacío significa todo el país."
+          },
+          "entityIds": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "description": "Entes del catálogo que atiende de forma específica; vacío significa todos los del orden y la entidad."
+          },
+          "laws": {
+            "minItems": 1,
+            "type": "array",
+            "items": { "type": "string", "enum": ["LGRA", "CPF"] },
+            "description": "Leyes de las conductas que conoce: LGRA (faltas administrativas) o CPF (delitos)."
+          }
+        },
+        "required": ["governmentLevels", "stateCodes", "entityIds", "laws"],
+        "additionalProperties": false,
+        "description": "Competencia declarada: con ella se propone la autoridad competente."
+      },
+      "DirectoryObserver": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^observer\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del observador.",
+            "example": "observer.cpc-queretaro"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "Nombre del observador."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["cpc", "audit-institution", "civil-society", "academia"],
+            "description": "Tipo de observador: CPC, entidad de fiscalización superior, organización de la sociedad civil o academia."
+          },
+          "signingKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signingPublicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave pública Ed25519 con la que cofirma el directorio y la bitácora nacional."
+          }
+        },
+        "required": ["id", "name", "kind", "signingKeyId", "signingPublicKey"],
+        "additionalProperties": false,
+        "description": "Observador: ve solo la bitácora pública y cofirma como testigo."
+      },
+      "SignedFunctionTable": {
+        "type": "object",
+        "properties": {
+          "table": { "$ref": "#/components/schemas/FunctionTable" },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo (su llave de firma del directorio) sobre \"sigilo/red/function-table/v1:\" + SHA-256 de la forma canónica de table."
+          }
+        },
+        "required": ["table", "signature"],
+        "additionalProperties": false,
+        "description": "Tabla de funciones firmada por su nodo. Viaja dentro del directorio, que firma la operación y cofirman los testigos: la operación no puede cambiarla sin la firma del estado."
+      },
+      "FunctionTable": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "number",
+            "description": "Versión del formato de la tabla de funciones.",
+            "enum": [1]
+          },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Nodo que declara la tabla y la firma.",
+            "example": "node.queretaro"
+          },
+          "stateCode": {
+            "type": "string",
+            "pattern": "^(?:\\d{2}|state\\.[a-z0-9]+(?:-[a-z0-9]+)*)$",
+            "description": "Entidad que cubre la tabla; null en la tabla del nodo federal (entes del orden federal).",
+            "example": "22",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Versión de la tabla; crece en uno con cada cambio."
+          },
+          "issuedOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día en que el nodo firmó esta versión.",
+            "example": "2026-11-05"
+          },
+          "functions": {
+            "type": "object",
+            "properties": {
+              "intake": {
+                "minItems": 1,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Buzón general: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58)."
+              },
+              "operation": {
+                "minItems": 1,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Quién opera el nodo y da de alta a las autoridades."
+              },
+              "investigation": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Autoridad investigadora y calificadora (LGRA, art. 3)."
+              },
+              "substantiation": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Autoridad substanciadora (LGRA, art. 3)."
+              },
+              "resolution": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3)."
+              },
+              "supervision": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Superior jerárquico que recibe los escalamientos (ADR 0007)."
+              },
+              "prosecution": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Vía penal: fiscalía de hechos de corrupción."
+              },
+              "observer": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Observador ciudadano (CPC)."
+              }
+            },
+            "required": [
+              "intake",
+              "operation",
+              "investigation",
+              "substantiation",
+              "resolution",
+              "supervision",
+              "prosecution",
+              "observer"
+            ],
+            "additionalProperties": false,
+            "description": "Reglas de cada función."
+          }
+        },
+        "required": ["format", "nodeId", "stateCode", "version", "issuedOn", "functions"],
+        "additionalProperties": false,
+        "description": "Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente. Con ella la ventanilla propone a quién va cada denuncia."
+      },
+      "FunctionRule": {
+        "type": "object",
+        "properties": {
+          "governmentLevels": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["federal", "estatal", "municipal"],
+              "description": "Orden de gobierno: federal, estatal o municipal."
+            },
+            "description": "Órdenes de gobierno de los entes a los que aplica la regla."
+          },
+          "entityIds": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "description": "Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «municipales sin OIC»). Una regla específica gana sobre una general."
+          },
+          "severity": {
+            "description": "Solo para faltas graves (serious) o no graves (non_serious); sin el campo, para ambas. Sirve, por ejemplo, para la resolución.",
+            "type": "string",
+            "enum": ["serious", "non_serious"]
+          },
+          "holder": { "$ref": "#/components/schemas/FunctionHolder" },
+          "legalBasis": {
+            "description": "Fundamento corto, en lenguaje claro (ley y artículo).",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "required": ["governmentLevels", "entityIds", "holder"],
+        "additionalProperties": false,
+        "description": "Regla: a qué entes aplica y quién cumple la función para ellos."
+      },
+      "FunctionHolder": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["authority"] },
+              "authorityId": {
+                "type": "string",
+                "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "Identificador estable de la autoridad.",
+                "example": "authority.oic-iffe"
+              }
+            },
+            "required": ["kind", "authorityId"],
+            "additionalProperties": false,
+            "description": "Una autoridad del directorio, con sus llaves."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["observer"] },
+              "observerId": {
+                "type": "string",
+                "pattern": "^observer\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "Identificador estable del observador.",
+                "example": "observer.cpc-queretaro"
+              }
+            },
+            "required": ["kind", "observerId"],
+            "additionalProperties": false,
+            "description": "Un observador del directorio."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["institution"] },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300,
+                "description": "Nombre oficial de la institución."
+              }
+            },
+            "required": ["kind", "name"],
+            "additionalProperties": false,
+            "description": "Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves o quien opera el nodo)."
+          }
+        ],
+        "description": "Quién cumple la función: autoridad, observador o institución."
+      },
+      "WitnessPolicy": {
+        "type": "object",
+        "properties": {
+          "threshold": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Número mínimo de cofirmas válidas de testigos distintos (m)."
+          },
+          "witnessIds": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(?:node|observer)\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "Testigo: un observador o un nodo del directorio.",
+              "example": "observer.university-ejemplo"
+            },
+            "description": "Testigos (n): observadores o nodos del directorio."
+          }
+        },
+        "required": ["threshold", "witnessIds"],
+        "additionalProperties": false,
+        "description": "Política de testigos m de n."
+      },
+      "WitnessSignature": {
+        "type": "object",
+        "properties": {
+          "witnessId": {
+            "type": "string",
+            "pattern": "^(?:node|observer)\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Testigo: un observador o un nodo del directorio.",
+            "example": "observer.university-ejemplo"
+          },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del testigo."
+          }
+        },
+        "required": ["witnessId", "keyId", "signature"],
+        "additionalProperties": false,
+        "description": "Cofirma de un testigo."
+      },
+      "RelayRequest": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato (2).", "enum": [2] },
+          "node": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Nodo destino: lo único que lee el enrutador. La autoridad destino va dentro del sobre cifrado.",
+            "example": "node.queretaro"
+          },
+          "sealed": {
+            "description": "Sobre HPKE hacia la llave de ese nodo, con texto en claro rellenado a un tramo fijo.",
+            "allOf": [{ "$ref": "#/components/schemas/HpkeEnvelope" }]
+          },
+          "deferral": { "$ref": "#/components/schemas/RelayDeferral" }
+        },
+        "required": ["v", "node", "sealed"],
+        "additionalProperties": false,
+        "description": "Sobre de red v2: el enrutador solo ve el nodo destino y el tramo de tamaño; nunca la autoridad."
+      },
+      "RelayDeferral": {
+        "type": "object",
+        "properties": {
+          "proof": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Solución del reto `queueChallenge` del enrutador, con la forma de la cabecera de prueba de trabajo."
+          }
+        },
+        "required": ["proof"],
+        "additionalProperties": false,
+        "description": "Pide guardar el sobre cerrado en la cola de entrega si el nodo no responde. Solo para una denuncia sin pruebas adjuntas (`submitComplaint` con `folio`)."
+      },
+      "RelayResponse": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato (2).", "enum": [2] },
+          "sealed": {
+            "description": "Respuesta del nodo cifrada hacia la llave efímera del navegador; si no se pudo entregar (o quedó en la cola), relleno indistinguible del mismo tamaño.",
+            "allOf": [{ "$ref": "#/components/schemas/HpkeEnvelope" }]
+          },
+          "queued": {
+            "description": "Acuse de la cola si el nodo no respondió y el sobre pidió `deferral`; null en cualquier otro caso.",
+            "allOf": [{ "$ref": "#/components/schemas/RelayQueueReceipt" }],
+            "nullable": true
+          }
+        },
+        "required": ["v", "sealed", "queued"],
+        "additionalProperties": false,
+        "description": "Respuesta del enrutador: igual en estatus, cabeceras y tamaño sin importar el destino ni el resultado."
+      },
+      "RelayQueueReceipt": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "queueId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "description": "Identificador aleatorio del sobre en la cola (16 bytes en hexadecimal)."
+          },
+          "node": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Nodo al que se entregará.",
+            "example": "node.queretaro"
+          },
+          "acceptedOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día (UTC) en que el enrutador lo aceptó.",
+            "example": "2026-11-05"
+          },
+          "expiresOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Último día (UTC) en que se intenta entregar; después se borra sin abrir.",
+            "example": "2026-11-05"
+          },
+          "envelopeDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "SHA-256 de la forma canónica del sobre cerrado (`sealed`) que quedó en la cola."
+          },
+          "operatorKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 de la operación sobre \"sigilo/red/relay-queue/v1:\" + forma canónica del acuse sin este campo."
+          }
+        },
+        "required": [
+          "v",
+          "queueId",
+          "node",
+          "acceptedOn",
+          "expiresOn",
+          "envelopeDigest",
+          "operatorKeyId",
+          "signature"
+        ],
+        "additionalProperties": false,
+        "description": "Acuse firmado de que el sobre cerrado quedó en la cola de entrega del enrutador. No es el comprobante del nodo: el folio y el recibo se consultan después en «Mi denuncia»."
+      },
+      "NodeRegistration": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Número creciente: un registro anterior no puede reenviarse."
+          },
+          "standardVersion": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Versión del Estándar S5 que implementa el nodo."
+          },
+          "acceptsRelay": {
+            "type": "boolean",
+            "description": "Si el nodo ya recibe sobres de red en su buzón de red."
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo sobre \"sigilo/red/node-registration/v1:\" + forma canónica del registro sin este campo."
+          }
+        },
+        "required": ["v", "nodeId", "sequence", "standardVersion", "acceptsRelay", "signature"],
+        "additionalProperties": false,
+        "description": "Registro de un nodo ante el enrutador, firmado con su llave del directorio."
+      },
+      "NodeRegistrationReceipt": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Secuencia aceptada."
+          },
+          "acceptsRelay": {
+            "type": "boolean",
+            "description": "Si el enrutador le entregará sobres."
+          },
+          "registeredOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día del registro (UTC).",
+            "example": "2026-11-05"
+          }
+        },
+        "required": ["nodeId", "sequence", "acceptsRelay", "registeredOn"],
+        "additionalProperties": false,
+        "description": "Acuse del registro."
+      },
+      "NodeHeadAcceptance": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["recorded", "unchanged"],
+            "description": "recorded: se agregó a la bitácora nacional; unchanged: ya estaba."
+          },
+          "entrySeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Entrada de la bitácora nacional que contiene la cabeza."
+          }
+        },
+        "required": ["nodeId", "status", "entrySeq"],
+        "additionalProperties": false,
+        "description": "Resultado de publicar la cabeza de un nodo."
+      },
+      "NationalLedgerEntry": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "v": { "type": "number", "enum": [1] },
+              "seq": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "type": { "type": "string", "enum": ["node.head"] },
+              "at": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+                "example": "2026-11-05"
+              },
+              "nodeId": {
+                "type": "string",
+                "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "Identificador estable del nodo.",
+                "example": "node.queretaro"
+              },
+              "nodeHead": { "$ref": "#/components/schemas/SignedLedgerHead" },
+              "prevHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Digesto SHA-256 en hexadecimal minúsculo (64 caracteres)."
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Digesto SHA-256 en hexadecimal minúsculo (64 caracteres)."
+              }
+            },
+            "required": ["v", "seq", "type", "at", "nodeId", "nodeHead", "prevHash", "hash"],
+            "additionalProperties": false,
+            "description": "Cabeza firmada de la bitácora de un nodo."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "v": { "type": "number", "enum": [1] },
+              "seq": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "type": { "type": "string", "enum": ["directory.version"] },
+              "at": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+                "example": "2026-11-05"
+              },
+              "directorySerial": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              "directoryDigest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Digesto SHA-256 en hexadecimal minúsculo (64 caracteres)."
+              },
+              "prevHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Digesto SHA-256 en hexadecimal minúsculo (64 caracteres)."
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Digesto SHA-256 en hexadecimal minúsculo (64 caracteres)."
+              }
+            },
+            "required": [
+              "v",
+              "seq",
+              "type",
+              "at",
+              "directorySerial",
+              "directoryDigest",
+              "prevHash",
+              "hash"
+            ],
+            "additionalProperties": false,
+            "description": "Versión publicada del directorio."
+          }
+        ],
+        "description": "Entrada de la bitácora nacional: `hash` es el SHA-256 de la forma canónica de la entrada sin ese campo y `prevHash` el de la anterior (64 ceros en la primera)."
+      },
+      "NationalHead": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Última entrada cubierta."
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Hash de esa entrada."
+          },
+          "at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día en que se emitió la cabeza.",
+            "example": "2026-11-05"
+          },
+          "directorySerial": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Versión del directorio vigente al emitirla."
+          },
+          "operatorKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          }
+        },
+        "required": ["v", "seq", "hash", "at", "directorySerial", "operatorKeyId"],
+        "additionalProperties": false,
+        "description": "Cabeza de la bitácora nacional."
+      },
+      "CosignedNationalHead": {
+        "type": "object",
+        "properties": {
+          "head": { "$ref": "#/components/schemas/NationalHead" },
+          "operatorSignature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 de la operación sobre \"sigilo/red/national-head/operator/v1:\" + forma canónica de head."
+          },
+          "cosignatures": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WitnessSignature" },
+            "description": "Cofirmas sobre \"sigilo/red/national-head/witness/v1:\" + forma canónica de head. Vale con m de n."
+          }
+        },
+        "required": ["head", "operatorSignature", "cosignatures"],
+        "additionalProperties": false,
+        "description": "Cabeza nacional con la firma de la operación y las cofirmas."
+      },
+      "NationalCosignatureRequest": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Secuencia de la cabeza cofirmada."
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Hash de la cabeza cofirmada."
+          },
+          "cosignature": { "$ref": "#/components/schemas/WitnessSignature" }
+        },
+        "required": ["seq", "hash", "cosignature"],
+        "additionalProperties": false,
+        "description": "Cofirma de un testigo sobre una cabeza nacional pendiente."
+      },
+      "NationalLedgerPage": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NationalLedgerEntry" },
+            "description": "Entradas en orden."
+          },
+          "head": {
+            "description": "Última cabeza con m cofirmas, o null si todavía no hay.",
+            "allOf": [{ "$ref": "#/components/schemas/CosignedNationalHead" }],
+            "nullable": true
+          }
+        },
+        "required": ["entries", "head"],
+        "additionalProperties": false,
+        "description": "Página de la bitácora nacional."
+      },
+      "NationalInclusionProof": {
+        "type": "object",
+        "properties": {
+          "entry": { "$ref": "#/components/schemas/NationalLedgerEntry" },
+          "chain": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NationalLedgerEntry" },
+            "description": "Tramo desde la entrada (incluida) hasta la de la cabeza, sin huecos."
+          },
+          "head": { "$ref": "#/components/schemas/CosignedNationalHead" }
+        },
+        "required": ["entry", "chain", "head"],
+        "additionalProperties": false,
+        "description": "Prueba de que la cabeza de un nodo está en la bitácora nacional: la entrada, el tramo hasta la cabeza y la cabeza cofirmada."
+      },
+      "NationalOpenData": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "cutAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:00Z$",
+            "description": "Hora del corte (UTC).",
+            "example": "2026-11-05T17:00Z"
+          },
+          "closedBefore": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Mes en curso al hacer el corte: solo se aceptan meses anteriores (cerrados y congelados en cada nodo).",
+            "example": "2026-09"
+          },
+          "directorySerial": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Versión del directorio con la que se eligieron los nodos."
+          },
+          "minCell": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Celda mínima, aplicada en cada nodo y otra vez después de sumar."
+          },
+          "rounding": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Múltiplo de los conteos publicados."
+          },
+          "nodes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NationalOpenDataNode" },
+            "description": "Todos los nodos del directorio, sumados o no, en el orden del directorio."
+          },
+          "cells": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NationalOpenDataCell" },
+            "description": "Celdas nacionales ordenadas por mes, entidad, conducta y estatus."
+          },
+          "suppressed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Suprimidas: la suma de la fila de suprimidas de cada nodo más las celdas que quedaron bajo la celda mínima después de sumar."
+          }
+        },
+        "required": [
+          "v",
+          "cutAt",
+          "closedBefore",
+          "directorySerial",
+          "minCell",
+          "rounding",
+          "nodes",
+          "cells",
+          "suppressed"
+        ],
+        "additionalProperties": false,
+        "description": "Corte nacional de datos abiertos: suma por entidad, conducta, mes y estatus de los CSV públicos de los nodos. Solo números: ninguna denuncia, folio ni persona. No está firmado; cualquiera puede rehacerlo con los CSV de cada nodo."
+      },
+      "NationalOpenDataNode": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Nombre del nodo en el directorio."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["included", "unreachable", "rejected"],
+            "description": "included: su CSV se sumó; unreachable: no respondió (sin datos de ese nodo en este corte); rejected: su CSV no cumplió las reglas y no se sumó."
+          },
+          "rejection": {
+            "type": "string",
+            "enum": [
+              "too-large",
+              "header",
+              "row",
+              "open-month",
+              "rounding",
+              "min-cell",
+              "duplicate",
+              "suppressed-row"
+            ],
+            "description": "Regla que no cumplió el CSV: too-large, header, row, open-month (mes no cerrado), rounding, min-cell, duplicate o suppressed-row; null si no se rechazó.",
+            "nullable": true
+          },
+          "cells": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Filas publicadas que aportó el nodo (0 si no se sumó)."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Denuncias que aportó el nodo: sus filas más su fila de suprimidas."
+          },
+          "ledgerHead": {
+            "description": "Cabeza firmada de la bitácora del nodo vigente en la bitácora nacional al hacer el corte, como referencia de integridad; null si aún no hay. No prueba los conteos.",
+            "allOf": [{ "$ref": "#/components/schemas/SignedLedgerHead" }],
+            "nullable": true
+          },
+          "nationalEntrySeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Entrada de la bitácora nacional que contiene esa cabeza, o null.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "nodeId",
+          "name",
+          "status",
+          "rejection",
+          "cells",
+          "total",
+          "ledgerHead",
+          "nationalEntrySeq"
+        ],
+        "additionalProperties": false,
+        "description": "Participación de un nodo en el corte nacional."
+      },
+      "NationalOpenDataCell": {
+        "type": "object",
+        "properties": {
+          "stateCode": {
+            "type": "string",
+            "pattern": "^\\d{2}$",
+            "description": "Clave INEGI de la entidad federativa (2 dígitos).",
+            "x-catalog": "STATES",
+            "enum": [
+              "01",
+              "02",
+              "03",
+              "04",
+              "05",
+              "06",
+              "07",
+              "08",
+              "09",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "23",
+              "24",
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30",
+              "31",
+              "32"
+            ],
+            "example": "22"
+          },
+          "offenseCode": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).",
+            "x-catalog": "OFFENSES",
+            "enum": [
+              "CPF-214",
+              "CPF-215",
+              "CPF-216",
+              "CPF-217",
+              "CPF-217-BIS",
+              "CPF-217-TER",
+              "CPF-218",
+              "CPF-219",
+              "CPF-220",
+              "CPF-221",
+              "CPF-222",
+              "CPF-222-BIS",
+              "CPF-223",
+              "CPF-224",
+              "CPF-225",
+              "LGRA-49",
+              "LGRA-50",
+              "LGRA-52",
+              "LGRA-53",
+              "LGRA-54",
+              "LGRA-55",
+              "LGRA-57",
+              "LGRA-58",
+              "LGRA-59",
+              "LGRA-60",
+              "LGRA-60-BIS",
+              "LGRA-61",
+              "LGRA-62",
+              "LGRA-63",
+              "LGRA-63-BIS",
+              "LGRA-64",
+              "LGRA-64-BIS",
+              "LGRA-64-QUATER",
+              "LGRA-64-TER",
+              "LGRA-66",
+              "LGRA-67",
+              "LGRA-68",
+              "LGRA-69",
+              "LGRA-70",
+              "LGRA-71",
+              "LGRA-72",
+              "LGRA-73",
+              "SIN-CLASIFICAR"
+            ],
+            "example": "LGRA-52"
+          },
+          "month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Mes de recepción (AAAA-MM), ya cerrado.",
+            "example": "2026-09"
+          },
+          "status": { "$ref": "#/components/schemas/ComplaintStatus" },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Suma de los conteos publicados por los nodos (ya redondeados): múltiplo del redondeo y al menos la celda mínima."
+          }
+        },
+        "required": ["stateCode", "offenseCode", "month", "status", "count"],
+        "additionalProperties": false,
+        "description": "Celda del corte nacional: entidad, conducta, mes y estatus."
+      },
+      "NodeHealthReport": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "softwareVersion": {
+            "type": "string",
+            "pattern": "^\\d{1,6}\\.\\d{1,6}\\.\\d{1,6}$",
+            "description": "Versión del software del nodo (el servidor de referencia u otra implementación).",
+            "example": "1.0.1"
+          },
+          "standardVersion": {
+            "type": "string",
+            "pattern": "^\\d{1,6}\\.\\d{1,6}\\.\\d{1,6}$",
+            "description": "Versión del Estándar S5 que implementa.",
+            "example": "1.0.1"
+          }
+        },
+        "required": ["v", "nodeId", "softwareVersion", "standardVersion"],
+        "additionalProperties": false,
+        "description": "Lo que el nodo dice de sí mismo al enrutador: identificador y versiones."
+      },
+      "NetworkHealth": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "checkedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}Z$",
+            "description": "Última vuelta de consultas, o null antes de la primera.",
+            "example": "2026-11-09T17:05Z",
+            "nullable": true
+          },
+          "minimumSoftwareVersion": {
+            "type": "string",
+            "pattern": "^\\d{1,6}\\.\\d{1,6}\\.\\d{1,6}$",
+            "description": "Versión mínima del software de los nodos: a un nodo con versión menor no se le entregan sobres. null si no hay mínima.",
+            "example": "1.0.1",
+            "nullable": true
+          },
+          "nodes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NetworkHealthNode" },
+            "description": "Todos los nodos del directorio, en su orden."
+          }
+        },
+        "required": ["v", "checkedAt", "minimumSoftwareVersion", "nodes"],
+        "additionalProperties": false,
+        "description": "Salud de la red para la operación (la SESNA): solo nodos, versiones y conteos de la cola; ninguna denuncia, autoridad ni contenido."
+      },
+      "NetworkHealthNode": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Nombre del nodo en el directorio."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["up", "down", "unknown"],
+            "description": "up: respondió la última consulta; down: no respondió o dijo ser otro nodo; unknown: aún no se consulta."
+          },
+          "softwareVersion": {
+            "type": "string",
+            "pattern": "^\\d{1,6}\\.\\d{1,6}\\.\\d{1,6}$",
+            "description": "Versión del software que reportó por última vez, o null.",
+            "example": "1.0.1",
+            "nullable": true
+          },
+          "standardVersion": {
+            "type": "string",
+            "pattern": "^\\d{1,6}\\.\\d{1,6}\\.\\d{1,6}$",
+            "description": "Versión del Estándar que reportó por última vez, o null.",
+            "example": "1.0.1",
+            "nullable": true
+          },
+          "lastCheckAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}Z$",
+            "description": "Última consulta, o null.",
+            "example": "2026-11-09T17:05Z",
+            "nullable": true
+          },
+          "lastContactAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}Z$",
+            "description": "Última vez que respondió, o null si nunca.",
+            "example": "2026-11-09T17:05Z",
+            "nullable": true
+          },
+          "registered": {
+            "type": "boolean",
+            "description": "Si se registró ante el enrutador y acepta sobres."
+          },
+          "deliverable": {
+            "type": "boolean",
+            "description": "Si el enrutador le entrega sobres ahora: registrado y, si hay versión mínima, con versión conocida y no menor."
+          },
+          "warning": {
+            "type": "string",
+            "enum": ["unreachable", "not-registered", "below-minimum-version", "unknown-version"],
+            "description": "unreachable (no respondió), not-registered, below-minimum-version (no se le entrega: actualizar el nodo), unknown-version (hay mínima y aún no se conoce su versión); null si todo bien.",
+            "nullable": true
+          },
+          "queued": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Sobres cerrados que esperan en la cola de entrega para este nodo."
+          }
+        },
+        "required": [
+          "nodeId",
+          "name",
+          "status",
+          "softwareVersion",
+          "standardVersion",
+          "lastCheckAt",
+          "lastContactAt",
+          "registered",
+          "deliverable",
+          "warning",
+          "queued"
+        ],
+        "additionalProperties": false,
+        "description": "Salud de un nodo: arriba o abajo, versiones, último contacto y cola."
+      },
+      "NationalStatistics": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "cutAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:00Z$",
+            "description": "Hora del corte (UTC).",
+            "example": "2026-11-05T17:00Z"
+          },
+          "closedBefore": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Mes en curso al hacer el corte: solo se aceptan meses anteriores.",
+            "example": "2026-09"
+          },
+          "directorySerial": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Versión del directorio."
+          },
+          "nodes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NationalStatisticsNode" },
+            "description": "Todos los nodos del directorio, en su orden."
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 400,
+                  "description": "Identificador estable de la fila: `mes|autoridad|entidad|conducta`. Sirve para el filtro `query.id`.",
+                  "example": "2026-10|authority.comptroller-queretaro|22|LGRA-52"
+                },
+                "fechaCaptura": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:00Z$",
+                  "description": "Fecha del corte de la fila (UTC): el primer instante del mes siguiente, cuando el mes cierra y se congela.",
+                  "example": "2026-11-01T00:00Z"
+                },
+                "mes": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                  "description": "Mes cerrado (AAAA-MM) al que se refiere la fila.",
+                  "example": "2026-09"
+                },
+                "autoridad": {
+                  "type": "object",
+                  "properties": {
+                    "clave": {
+                      "type": "string",
+                      "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "Identificador estable de la autoridad.",
+                      "example": "authority.oic-iffe"
+                    },
+                    "nombre": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300,
+                      "description": "Nombre de la autoridad."
+                    }
+                  },
+                  "required": ["clave", "nombre"],
+                  "additionalProperties": false,
+                  "description": "Autoridad del directorio que tenía la denuncia en su bandeja."
+                },
+                "entidad": {
+                  "type": "object",
+                  "properties": {
+                    "clave": {
+                      "type": "string",
+                      "pattern": "^\\d{2}$",
+                      "description": "Clave INEGI de la entidad federativa (2 dígitos).",
+                      "x-catalog": "STATES",
+                      "enum": [
+                        "01",
+                        "02",
+                        "03",
+                        "04",
+                        "05",
+                        "06",
+                        "07",
+                        "08",
+                        "09",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                        "14",
+                        "15",
+                        "16",
+                        "17",
+                        "18",
+                        "19",
+                        "20",
+                        "21",
+                        "22",
+                        "23",
+                        "24",
+                        "25",
+                        "26",
+                        "27",
+                        "28",
+                        "29",
+                        "30",
+                        "31",
+                        "32"
+                      ],
+                      "example": "22"
+                    },
+                    "valor": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300,
+                      "description": "Nombre de la entidad federativa."
+                    }
+                  },
+                  "required": ["clave", "valor"],
+                  "additionalProperties": false,
+                  "description": "Entidad federativa de los hechos (catálogo INEGI)."
+                },
+                "conducta": {
+                  "type": "object",
+                  "properties": {
+                    "clave": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).",
+                      "x-catalog": "OFFENSES",
+                      "enum": [
+                        "CPF-214",
+                        "CPF-215",
+                        "CPF-216",
+                        "CPF-217",
+                        "CPF-217-BIS",
+                        "CPF-217-TER",
+                        "CPF-218",
+                        "CPF-219",
+                        "CPF-220",
+                        "CPF-221",
+                        "CPF-222",
+                        "CPF-222-BIS",
+                        "CPF-223",
+                        "CPF-224",
+                        "CPF-225",
+                        "LGRA-49",
+                        "LGRA-50",
+                        "LGRA-52",
+                        "LGRA-53",
+                        "LGRA-54",
+                        "LGRA-55",
+                        "LGRA-57",
+                        "LGRA-58",
+                        "LGRA-59",
+                        "LGRA-60",
+                        "LGRA-60-BIS",
+                        "LGRA-61",
+                        "LGRA-62",
+                        "LGRA-63",
+                        "LGRA-63-BIS",
+                        "LGRA-64",
+                        "LGRA-64-BIS",
+                        "LGRA-64-QUATER",
+                        "LGRA-64-TER",
+                        "LGRA-66",
+                        "LGRA-67",
+                        "LGRA-68",
+                        "LGRA-69",
+                        "LGRA-70",
+                        "LGRA-71",
+                        "LGRA-72",
+                        "LGRA-73",
+                        "SIN-CLASIFICAR"
+                      ],
+                      "example": "LGRA-52"
+                    },
+                    "valor": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300,
+                      "description": "Término legal de la conducta."
+                    }
+                  },
+                  "required": ["clave", "valor"],
+                  "additionalProperties": false,
+                  "description": "Conducta denunciada (catálogo OFFENSES: ley y artículo)."
+                },
+                "recibidas": {
+                  "type": "integer",
+                  "minimum": 5,
+                  "maximum": 9007199254740991,
+                  "multipleOf": 5,
+                  "description": "Denuncias recibidas en el mes que quedaron en la bandeja de esta autoridad el día de recepción.",
+                  "nullable": true
+                },
+                "turnadas": {
+                  "type": "object",
+                  "properties": {
+                    "aTiempo": {
+                      "type": "integer",
+                      "minimum": 5,
+                      "maximum": 9007199254740991,
+                      "multipleOf": 5,
+                      "description": "Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).",
+                      "nullable": true
+                    },
+                    "vencidas": {
+                      "type": "integer",
+                      "minimum": 5,
+                      "maximum": 9007199254740991,
+                      "multipleOf": 5,
+                      "description": "Con el semáforo de turnado ya en «vencida» al hacerse.",
+                      "nullable": true
+                    }
+                  },
+                  "required": ["aTiempo", "vencidas"],
+                  "additionalProperties": false,
+                  "description": "Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera de turno), de las denuncias que esperaban en esta autoridad."
+                },
+                "aceptadas": {
+                  "type": "object",
+                  "properties": {
+                    "aTiempo": {
+                      "type": "integer",
+                      "minimum": 5,
+                      "maximum": 9007199254740991,
+                      "multipleOf": 5,
+                      "description": "Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).",
+                      "nullable": true
+                    },
+                    "vencidas": {
+                      "type": "integer",
+                      "minimum": 5,
+                      "maximum": 9007199254740991,
+                      "multipleOf": 5,
+                      "description": "Con el semáforo de turnado ya en «vencida» al hacerse.",
+                      "nullable": true
+                    }
+                  },
+                  "required": ["aTiempo", "vencidas"],
+                  "additionalProperties": false,
+                  "description": "Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera de aceptación)."
+                },
+                "archivadas": {
+                  "minItems": 6,
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "clave": {
+                        "type": "string",
+                        "enum": [
+                          "ATENDIDA",
+                          "CANALIZADA",
+                          "IMPROCEDENTE",
+                          "INFORMACION_INSUFICIENTE",
+                          "ACUMULADA",
+                          "OTRO_MOTIVO"
+                        ],
+                        "description": "Motivo de cierre: ATENDIDA (Atendido), CANALIZADA (Canalizado), IMPROCEDENTE (Improcedente), INFORMACION_INSUFICIENTE (Información insuficiente), ACUMULADA (Acumulado), OTRO_MOTIVO (Otro)."
+                      },
+                      "valor": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300,
+                        "description": "Nombre del motivo de cierre."
+                      },
+                      "total": {
+                        "type": "integer",
+                        "minimum": 5,
+                        "maximum": 9007199254740991,
+                        "multipleOf": 5,
+                        "description": "Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).",
+                        "nullable": true
+                      }
+                    },
+                    "required": ["clave", "valor", "total"],
+                    "additionalProperties": false,
+                    "description": "Cierres del mes con un motivo."
+                  },
+                  "description": "Cierres del mes por motivo: un elemento por motivo del catálogo, siempre todos y en el mismo orden."
+                },
+                "calificadas": {
+                  "type": "object",
+                  "properties": {
+                    "graves": {
+                      "type": "integer",
+                      "minimum": 5,
+                      "maximum": 9007199254740991,
+                      "multipleOf": 5,
+                      "description": "Faltas calificadas como graves.",
+                      "nullable": true
+                    },
+                    "noGraves": {
+                      "type": "integer",
+                      "minimum": 5,
+                      "maximum": 9007199254740991,
+                      "multipleOf": 5,
+                      "description": "Faltas calificadas como no graves.",
+                      "nullable": true
+                    }
+                  },
+                  "required": ["graves", "noGraves"],
+                  "additionalProperties": false,
+                  "description": "Calificaciones del mes (LGRA, art. 100)."
+                },
+                "escalamientos": {
+                  "type": "integer",
+                  "minimum": 5,
+                  "maximum": 9007199254740991,
+                  "multipleOf": 5,
+                  "description": "Reglas de escalamiento cumplidas en el mes con efecto de escalar.",
+                  "nullable": true
+                },
+                "estatusAlCierre": {
+                  "minItems": 7,
+                  "maxItems": 7,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "clave": {
+                        "type": "string",
+                        "enum": [
+                          "RECIBIDA",
+                          "BUSCANDO_AUTORIDAD",
+                          "TURNADA",
+                          "EN_INVESTIGACION",
+                          "CALIFICADA",
+                          "ARCHIVADA",
+                          "CONCLUIDA"
+                        ],
+                        "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida)."
+                      },
+                      "valor": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300,
+                        "description": "Nombre del estatus."
+                      },
+                      "total": {
+                        "type": "integer",
+                        "minimum": 5,
+                        "maximum": 9007199254740991,
+                        "multipleOf": 5,
+                        "description": "Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).",
+                        "nullable": true
+                      }
+                    },
+                    "required": ["clave", "valor", "total"],
+                    "additionalProperties": false,
+                    "description": "Denuncias del mes con un estatus al cerrarse el mes."
+                  },
+                  "description": "Estatus que tenían al cerrarse el mes las denuncias recibidas en él: un elemento por estatus del catálogo, siempre todos y en el mismo orden."
+                },
+                "tiemposMedianosDiasHabiles": {
+                  "type": "object",
+                  "properties": {
+                    "turno": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Mediana de días hábiles entre la entrada al buzón y el turno.",
+                      "nullable": true
+                    },
+                    "aceptacion": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Mediana de días hábiles entre el turno y la aceptación.",
+                      "nullable": true
+                    },
+                    "archivo": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Mediana de días hábiles entre la recepción y el cierre.",
+                      "nullable": true
+                    }
+                  },
+                  "required": ["turno", "aceptacion", "archivo"],
+                  "additionalProperties": false,
+                  "description": "Medianas en días hábiles; null si hay menos de 10 observaciones."
+                },
+                "nodeId": {
+                  "type": "string",
+                  "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "Identificador estable del nodo.",
+                  "example": "node.queretaro"
+                }
+              },
+              "required": [
+                "id",
+                "fechaCaptura",
+                "mes",
+                "autoridad",
+                "entidad",
+                "conducta",
+                "recibidas",
+                "turnadas",
+                "aceptadas",
+                "archivadas",
+                "calificadas",
+                "escalamientos",
+                "estatusAlCierre",
+                "tiemposMedianosDiasHabiles",
+                "nodeId"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Filas publicadas por cada nodo, con el nodo que las publicó."
+          }
+        },
+        "required": ["v", "cutAt", "closedBefore", "directorySerial", "nodes", "rows"],
+        "additionalProperties": false,
+        "description": "Corte nacional de la estadística para el portal de la PDN (Bases, art. 61): las filas que cada nodo ya publicó con sus reglas de protección, sin volver a sumar ni rebajar la supresión."
+      },
+      "NationalStatisticsNode": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Nombre del nodo en el directorio."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["included", "unreachable", "rejected", "no-credentials"],
+            "description": "included: se consultó y se sumó; unreachable: no respondió; rejected: su respuesta no cumplió las reglas; no-credentials: la SESNA no tiene credenciales de ese nodo."
+          },
+          "rejection": {
+            "type": "string",
+            "enum": [
+              "unauthorized",
+              "invalid",
+              "open-month",
+              "foreign-authority",
+              "duplicate",
+              "too-large"
+            ],
+            "description": "unauthorized (el nodo no dio token o lo rechazó), invalid (no cumple el esquema), open-month, foreign-authority (autoridad de otro nodo), duplicate o too-large; null si no se rechazó.",
+            "nullable": true
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Filas que aportó el nodo."
+          }
+        },
+        "required": ["nodeId", "name", "status", "rejection", "rows"],
+        "additionalProperties": false,
+        "description": "Participación de un nodo en el corte nacional de estadística."
+      },
+      "CorroborationEvaluatorKey": {
+        "type": "object",
+        "properties": {
+          "suite": {
+            "type": "string",
+            "description": "Suite OPRF de RFC 9497: ristretto255-SHA512, modo VOPRF (0x01).",
+            "enum": ["ristretto255-SHA512/VOPRF"]
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Época de la llave. Cambia solo al rotarla por compromiso; las etiquetas de épocas distintas no coinciden."
+          },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Primeros 16 hexadecimales del SHA-256 de la llave pública OPRF.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "publicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave pública OPRF (elemento ristretto255 de 32 bytes): contra ella el navegador verifica la prueba DLEQ."
+          },
+          "signingKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signingPublicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave Ed25519 con la que el evaluador firma su conteo diario de evaluaciones."
+          },
+          "validFrom": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Primer día de vigencia de la época.",
+            "example": "2026-11-05"
+          }
+        },
+        "required": [
+          "suite",
+          "epoch",
+          "keyId",
+          "publicKey",
+          "signingKeyId",
+          "signingPublicKey",
+          "validFrom"
+        ],
+        "additionalProperties": false,
+        "description": "Llave pública del evaluador OPRF de la corroboración ciega."
+      },
+      "DirectoryCorroboration": {
+        "type": "object",
+        "properties": {
+          "evaluator": { "$ref": "#/components/schemas/CorroborationEvaluatorKey" },
+          "evaluatorUrl": {
+            "type": "string",
+            "pattern": "^https?:\\/\\/[^\\s/?#]+$",
+            "description": "Origen público del evaluador OPRF."
+          },
+          "indexUrl": {
+            "type": "string",
+            "pattern": "^https?:\\/\\/[^\\s/?#]+$",
+            "description": "Origen del índice de coincidencias (solo lo llaman los nodos)."
+          }
+        },
+        "required": ["evaluator", "evaluatorUrl", "indexUrl"],
+        "additionalProperties": false,
+        "description": "Servicios de la corroboración ciega: evaluador OPRF e índice de coincidencias, operados por partes distintas (ADR 0006)."
+      }
+    },
+    "securitySchemes": {
+      "nodeOAuth": {
+        "type": "oauth2",
+        "description": "OAuth 2.0 del nodo, con la metodología de las APIs de la PDN: cada nodo es el proveedor y su propio servidor de autorización (`POST /oauth/token` en el origen del nodo); la SESNA es el cliente con las credenciales que le entrega cada nodo. El token de acceso (JWT HS256, 5 minutos) solo lo verifica el nodo que lo emitió: `iss` y `aud` son el identificador del nodo, `sub` el cliente. Flujos: `password` (el de las APIs del S2 y del S3; desaconsejado en OAuth 2.1) y `clientCredentials` (recomendado).",
+        "flows": {
+          "password": {
+            "tokenUrl": "/oauth/token",
+            "scopes": {
+              "sesna:entregas": "Entregar sobres de la ventanilla única al buzón de red del nodo.",
+              "sesna:estadisticas": "Consultar la estadística agregada de denuncias (meses cerrados, redondeo y supresión).",
+              "sesna:salud": "Reservado: consultar la salud del nodo (todavía sin ruta)."
+            }
+          },
+          "clientCredentials": {
+            "tokenUrl": "/oauth/token",
+            "scopes": {
+              "sesna:entregas": "Entregar sobres de la ventanilla única al buzón de red del nodo.",
+              "sesna:estadisticas": "Consultar la estadística agregada de denuncias (meses cerrados, redondeo y supresión).",
+              "sesna:salud": "Reservado: consultar la salud del nodo (todavía sin ruta)."
+            }
+          }
+        }
+      }
+    }
+  }
+}

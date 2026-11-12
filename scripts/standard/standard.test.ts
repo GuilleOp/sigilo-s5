@@ -1,5 +1,6 @@
-// Pruebas del Estándar S5: `estandar/` al día respecto de contracts, OpenAPI 3.1 válido, ejemplos
-// que cumplen sus esquemas, todas las rutas documentadas y diccionario completo.
+// Pruebas del Estándar S5: `estandar/` al día respecto de contracts, OpenAPI 3.1 y 3.0.3 válidos,
+// perfiles por grupo (el PDN con solo sus rutas), ejemplos que cumplen sus esquemas, todas las
+// rutas documentadas, diccionarios con el formato de la PDN y catálogos en pares CSV y JSON.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,7 +10,10 @@ import {
   ApiErrorCodeSchema,
   CORROBORATION_ROUTES,
   NETWORK_ROUTES,
+  OFFENSES,
+  PDN_ROUTES,
   ROUTES,
+  STATES,
 } from '@sigilo/contracts';
 import {
   CORROBORATION_COMPONENTS,
@@ -19,9 +23,26 @@ import {
   STANDARD_EXAMPLES,
   STANDARD_OPERATIONS,
 } from '@sigilo/contracts/standard';
+import { STANDARD_VERSION } from '@sigilo/contracts/standard';
 import type { StandardExampleName } from '@sigilo/contracts/standard';
-import { EXAMPLES_DIR, STANDARD_DIR, buildStandardFiles, validateOpenApi } from './build.ts';
-import { buildDictionaryRows } from './dictionary.ts';
+import {
+  EXAMPLES_DIR,
+  OPENAPI_30_FILE,
+  STANDARD_DIR,
+  buildOpenApiDocuments,
+  buildStandardFiles,
+  swaggerUrls,
+  validateOpenApi,
+} from './build.ts';
+import { CATALOGS_DIR, S3_TIPO_FALTA, buildCatalogs } from './catalogs.ts';
+import { buildDictionaryRows, pointerOf } from './dictionary.ts';
+import {
+  PDN_PROFILE,
+  PROFILES_DIR,
+  STANDARD_PROFILES,
+  buildProfileDocument,
+  toSchema30,
+} from './profiles.ts';
 import { buildComponentSchemas, buildOpenApiDocument } from './openapi.ts';
 import type { JsonObject } from './openapi.ts';
 import {
@@ -66,10 +87,115 @@ describe('estandar/ generado', () => {
   });
 
   it('el YAML y el JSON dicen lo mismo, también para un lector de YAML 1.1', () => {
-    const yamlText = readFileSync(join(STANDARD_DIR, 'openapi.yaml'), 'utf8');
-    const json: unknown = JSON.parse(readFileSync(join(STANDARD_DIR, 'openapi.json'), 'utf8'));
-    expect(parse(yamlText, { version: '1.1' })).toEqual(json);
-    expect(parse(yamlText)).toEqual(json);
+    for (const base of ['openapi', `${PROFILES_DIR}/${PDN_PROFILE.file}`]) {
+      const yamlText = readFileSync(join(STANDARD_DIR, `${base}.yaml`), 'utf8');
+      const json: unknown = JSON.parse(readFileSync(join(STANDARD_DIR, `${base}.json`), 'utf8'));
+      expect(parse(yamlText, { version: '1.1' })).toEqual(json);
+      expect(parse(yamlText)).toEqual(json);
+    }
+  });
+
+  it('Swagger UI ofrece un documento por grupo y cada uno existe en disco', () => {
+    const urls = swaggerUrls();
+    expect(urls.map((item) => item.name)).toEqual([
+      ...STANDARD_PROFILES.map((profile) => profile.name),
+      'S5 - Estándar completo (OpenAPI 3.1)',
+    ]);
+    for (const item of urls) {
+      expect(existsSync(join(STANDARD_DIR, 'swagger', item.url)), item.url).toBe(true);
+    }
+    const html = readFileSync(join(STANDARD_DIR, 'swagger', 'index.html'), 'utf8');
+    // Sin CDN: todo se carga del mismo origen.
+    expect(html).not.toMatch(/https?:\/\//u);
+    expect(html).toContain('vendor/swagger-ui-standalone-preset.js');
+  });
+});
+
+describe('OpenAPI 3.0.3 para el Swagger UI de la PDN', () => {
+  it('el completo y cada perfil son OpenAPI 3.0.3 válidos (el visor de la PDN solo lee 3.0.x)', async () => {
+    const documents = buildOpenApiDocuments();
+    expect([...documents.keys()].sort()).toEqual(
+      [
+        'openapi.json',
+        OPENAPI_30_FILE,
+        ...STANDARD_PROFILES.map((profile) => `${PROFILES_DIR}/${profile.file}.json`),
+      ].sort(),
+    );
+    for (const [path, document] of documents) {
+      if (path === 'openapi.json') continue;
+      // La misma comprobación que hace el Swagger UI de la PDN.
+      expect(String(document.openapi).startsWith('3.0.'), path).toBe(true);
+      expect(document.openapi).toBe('3.0.3');
+      await expect(validateOpenApi(document), path).resolves.toBeUndefined();
+    }
+  });
+
+  it('el validador de 3.0 rechaza palabras de 3.1 (const, examples, tipos con null)', async () => {
+    const documents = buildOpenApiDocuments();
+    const pdn = structuredClone(documents.get(`${PROFILES_DIR}/${PDN_PROFILE.file}.json`) ?? {});
+    const schemas = (pdn.components as { schemas: Record<string, JsonObject> }).schemas;
+    const resError = schemas.resError ?? {};
+    resError.const = 1;
+    await expect(validateOpenApi(pdn)).rejects.toThrow();
+  });
+
+  it('convierte sin perder significado lo que 3.0 escribe distinto', () => {
+    expect(toSchema30({ const: 'a' })).toEqual({ enum: ['a'], type: 'string' });
+    expect(
+      toSchema30({ anyOf: [{ type: 'integer', minimum: 5 }, { type: 'null' }], description: 'd' }),
+    ).toEqual({ type: 'integer', minimum: 5, description: 'd', nullable: true });
+    expect(toSchema30({ anyOf: [{ $ref: '#/x' }, { type: 'null' }] })).toEqual({
+      allOf: [{ $ref: '#/x' }],
+      nullable: true,
+    });
+    expect(toSchema30({ type: 'integer', exclusiveMinimum: 0, examples: [3] })).toEqual({
+      type: 'integer',
+      minimum: 0,
+      exclusiveMinimum: true,
+      example: 3,
+    });
+    expect(
+      toSchema30({
+        type: 'object',
+        propertyNames: { enum: ['a', 'b'] },
+        additionalProperties: { type: 'integer' },
+        required: ['a', 'b'],
+      }),
+    ).toEqual({
+      type: 'object',
+      properties: { a: { type: 'integer' }, b: { type: 'integer' } },
+      additionalProperties: false,
+      required: ['a', 'b'],
+    });
+    expect(toSchema30({ $ref: '#/x', description: 'd' })).toEqual({
+      description: 'd',
+      allOf: [{ $ref: '#/x' }],
+    });
+  });
+
+  it('el perfil PDN trae solo lo que consume la SESNA, con resError', () => {
+    const profile = buildProfileDocument(buildOpenApiDocument(), PDN_PROFILE);
+    expect(Object.keys(profile.paths as JsonObject).sort()).toEqual(
+      Object.values(PDN_ROUTES).sort(),
+    );
+    const schemas = Object.keys((profile.components as { schemas: JsonObject }).schemas);
+    expect(schemas).toContain('resError');
+    expect(schemas).not.toContain('PdnError');
+    expect(schemas).not.toContain('ApiError');
+    expect(schemas).not.toContain('SubmitComplaintRequest');
+    expect(JSON.stringify(profile)).not.toContain('#/components/schemas/PdnError"');
+    expect((profile.info as JsonObject).version).toBe(STANDARD_VERSION);
+    const paths = profile.paths as Record<string, Record<string, JsonObject>>;
+    for (const item of Object.values(paths)) {
+      for (const operation of Object.values(item)) {
+        const responses = operation.responses as Record<string, JsonObject>;
+        for (const [status, response] of Object.entries(responses)) {
+          if (Number(status) < 400) continue;
+          const content = response.content as Record<string, { schema: { $ref: string } }>;
+          expect(content['application/json']?.schema.$ref).toMatch(/resError(Token)?$/u);
+        }
+      }
+    }
   });
 });
 
@@ -280,5 +406,86 @@ describe('diccionario de datos', () => {
     expect(view).toContain('messages');
     const ledger = rows.find((row) => row.schema === 'LedgerEvent' && row.path === 'receiptTag');
     expect(ledger?.isRequired).toBe(false);
+  });
+
+  it('tiene el encabezado y las columnas del diccionario oficial de la PDN', () => {
+    for (const file of ['diccionario-de-datos.csv', 'diccionario-de-datos-pdn.csv']) {
+      const lines = readFileSync(join(STANDARD_DIR, file), 'utf8').split('\n');
+      expect(lines.slice(0, 5).map((line) => line.split(',')[0])).toEqual([
+        'Nombre',
+        'Objetivo',
+        'Fecha de última actualización',
+        'Versión del estándar',
+        'Liga swagger',
+      ]);
+      expect(lines[5]?.split(',').slice(0, 7)).toEqual([
+        'Path',
+        'Variable',
+        'Obligatorio',
+        'Formato',
+        'Tipo de dato',
+        'Público',
+        'Descripción',
+      ]);
+    }
+    const rows = buildDictionaryRows(buildComponentSchemas());
+    const state = rows.find((row) => row.schema === 'ComplaintFacts' && row.path === 'stateCode');
+    expect(state && pointerOf(state)).toBe('/ComplaintFacts');
+    expect(state?.isPublic).toBe(false);
+    const capture = rows.find(
+      (row) => row.schema === 'PdnStatisticsRow' && row.path === 'fechaCaptura',
+    );
+    expect(capture).toMatchObject({ pdnType: 'Date Time', isPublic: true });
+    // La identidad y el contacto nunca son públicos.
+    expect(rows.filter((row) => row.schema === 'IdentityBlock').every((row) => !row.isPublic)).toBe(
+      true,
+    );
+  });
+});
+
+describe('catálogos', () => {
+  it('cada catálogo es un par JSON y CSV de filas {clave, valor} sin claves repetidas', () => {
+    const catalogs = buildCatalogs();
+    expect(catalogs.map((catalog) => catalog.name)).toEqual([
+      'faltas',
+      'entidades',
+      'municipios',
+      'funciones-tabla',
+      'funciones-cuenta',
+      'motivos-cierre',
+      'estatus-denuncia',
+    ]);
+    for (const catalog of catalogs) {
+      const json = JSON.parse(
+        readFileSync(join(STANDARD_DIR, CATALOGS_DIR, `${catalog.name}.json`), 'utf8'),
+      ) as { clave: string; valor: string }[];
+      expect(json).toEqual(catalog.rows);
+      expect(new Set(json.map((row) => row.clave)).size).toBe(json.length);
+      const csv = readFileSync(join(STANDARD_DIR, CATALOGS_DIR, `${catalog.name}.csv`), 'utf8');
+      expect(csv.split('\n')[0]?.startsWith('clave,valor')).toBe(true);
+      expect(csv.trimEnd().split('\n')).toHaveLength(json.length + 1);
+    }
+    expect(catalogs.find((catalog) => catalog.name === 'entidades')?.rows).toHaveLength(
+      STATES.length,
+    );
+  });
+
+  it('las faltas traen la clave de su ley y el puente con tipoFalta del S3 solo en la LGRA', () => {
+    const faltas = buildCatalogs().find((catalog) => catalog.name === 'faltas')?.rows ?? [];
+    const codes = OFFENSES.flatMap((offense) => [offense.code, ...offense.equivalentCodes]);
+    expect(faltas.map((row) => row.clave).sort()).toEqual([...codes].sort());
+    expect(faltas.find((row) => row.clave === 'LGRA-52')).toMatchObject({
+      claveLey: 'LGRA',
+      s3TipoFalta: 'CEX',
+    });
+    expect(faltas.find((row) => row.clave === 'LGRA-53')?.s3TipoFalta).toBe('PEC');
+    expect(faltas.find((row) => row.clave === 'LGRA-58')?.s3TipoFalta).toBe('ABCI');
+    expect(faltas.find((row) => row.clave === 'CPF-222')).toMatchObject({
+      claveLey: 'CPF',
+      gravedad: 'Hecho de corrupción',
+      s3TipoFalta: null,
+      equivaleA: 'LGRA-52',
+    });
+    for (const code of Object.keys(S3_TIPO_FALTA)) expect(codes).toContain(code);
   });
 });

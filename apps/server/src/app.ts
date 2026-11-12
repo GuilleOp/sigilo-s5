@@ -18,7 +18,7 @@ import { registerKeysRoutes } from './routes/keys.ts';
 import { registerLedgerRoutes } from './routes/ledger.ts';
 import { registerNetworkRoutes } from './routes/network.ts';
 import { registerOpenDataRoutes } from './routes/open-data.ts';
-import { registerPdnRoutes } from './routes/pdn.ts';
+import { isPdnPath, pdnInternalError, registerPdnRoutes } from './routes/pdn.ts';
 import { registerPowRoutes } from './routes/pow.ts';
 import { registerRegistrationRoutes } from './routes/registration.ts';
 import { registerTrackingRoutes } from './routes/tracking.ts';
@@ -90,8 +90,11 @@ export function createAppFromContext(ctx: AppContext): Hono {
 
   app.notFound((c) => errorResponse(c, 'not_found'));
   // Seguridad: los errores inesperados se responden como `internal` sin detalles.
+  // Las rutas de la PDN responden con su propio formato (`resError`), también en un `500`.
   app.onError((error, c) =>
-    errorResponse(c, error instanceof ApiFailure ? error.code : 'internal'),
+    isPdnPath(c.req.path)
+      ? pdnInternalError(c)
+      : errorResponse(c, error instanceof ApiFailure ? error.code : 'internal'),
   );
   return app;
 }

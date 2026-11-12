@@ -84,7 +84,7 @@ export interface PdnBody {
 
 /** Respuesta de error con el formato propio de la PDN (no el `ApiError` del nodo). */
 export interface PdnErrorResponse {
-  status: 400 | 401 | 403 | 413 | 415 | 429;
+  status: 400 | 401 | 403 | 413 | 415 | 429 | 500;
   description: string;
   component: 'PdnError' | 'PdnTokenError';
 }
@@ -224,6 +224,13 @@ export const PDN_EXTRA_EXAMPLES: Partial<Record<PdnComponentName, PdnExampleName
   PdnError: 'pdn-error.content',
 };
 
+/** Error inesperado: también con el formato `resError`, sin detalles. */
+const INTERNAL_ERROR: PdnErrorResponse = {
+  status: 500,
+  description: 'Error inesperado del nodo, sin detalles; `code` es `500`.',
+  component: 'PdnError',
+};
+
 const RESOURCE_ERRORS: readonly PdnErrorResponse[] = [
   {
     status: 400,
@@ -288,6 +295,7 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
           'Demasiados fallos de ese cliente; se responde sin comparar credenciales (`code` es `429`).',
         component: 'PdnTokenError',
       },
+      INTERNAL_ERROR,
     ],
   },
   {
@@ -324,6 +332,7 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
         component: 'PdnError',
       },
       { status: 415, description: 'El cuerpo no es JSON; `code` es `415`.', component: 'PdnError' },
+      INTERNAL_ERROR,
     ],
   },
   {
@@ -347,7 +356,7 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
       },
     },
     errors: [],
-    pdnErrors: RESOURCE_ERRORS.filter((item) => item.status !== 400),
+    pdnErrors: [...RESOURCE_ERRORS.filter((item) => item.status !== 400), INTERNAL_ERROR],
   },
 ];
 

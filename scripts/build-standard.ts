@@ -1,20 +1,27 @@
-// Genera el Estándar S5 en `estandar/` desde @sigilo/contracts: OpenAPI 3.1, diccionario de datos,
-// catálogo del trámite y ejemplos; valida el OpenAPI y copia Swagger UI para verlo sin red.
+// Genera el Estándar S5 en `estandar/` desde @sigilo/contracts: OpenAPI 3.1 y 3.0.3, los perfiles
+// por grupo (el perfil PDN incluido), diccionarios de datos, catálogos, catálogo del trámite y
+// ejemplos; valida cada OpenAPI y copia Swagger UI (versión fija de swagger-ui-dist) para verlo
+// sin red.
 // Uso: npm run standard:build [-- --check]
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { buildOpenApiDocument } from './standard/openapi.ts';
 import {
   EXAMPLES_DIR,
   STANDARD_DIR,
   buildStandardFiles,
-  validateOpenApi,
+  validateOpenApiDocuments,
 } from './standard/build.ts';
 
 /** Archivos de Swagger UI que necesita la vista estática, copiados de `swagger-ui-dist`. */
-const SWAGGER_FILES = ['swagger-ui-bundle.js', 'swagger-ui.css', 'LICENSE', 'NOTICE'];
+export const SWAGGER_FILES = [
+  'swagger-ui-bundle.js',
+  'swagger-ui-standalone-preset.js',
+  'swagger-ui.css',
+  'LICENSE',
+  'NOTICE',
+];
 const SWAGGER_VENDOR_DIR = join(STANDARD_DIR, 'swagger', 'vendor');
 
 function staleFiles(files: Map<string, string>): string[] {
@@ -57,7 +64,7 @@ function copySwaggerUi(): void {
 
 async function main(): Promise<void> {
   const isCheck = process.argv.includes('--check');
-  await validateOpenApi(buildOpenApiDocument());
+  await validateOpenApiDocuments();
   const files = await buildStandardFiles();
   if (isCheck) {
     const stale = staleFiles(files);
@@ -73,7 +80,9 @@ async function main(): Promise<void> {
   }
   writeFiles(files);
   copySwaggerUi();
-  console.log(`Estándar S5 generado en estandar/ (${files.size} archivos) y OpenAPI 3.1 válido.`);
+  console.log(
+    `Estándar S5 generado en estandar/ (${files.size} archivos); OpenAPI 3.1 y 3.0.3 válidos.`,
+  );
   console.log(
     'Vista local: python3 -m http.server 8080 -d estandar y abre http://127.0.0.1:8080/swagger/',
   );

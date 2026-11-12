@@ -1,0 +1,432 @@
+[
+  {
+    "clave": "CPF-214",
+    "valor": "Ejercicio ilícito de servicio público",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "214",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-215",
+    "valor": "Abuso de autoridad",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "215",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-216",
+    "valor": "Coalición de servidores públicos",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "216",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-217",
+    "valor": "Uso ilícito de atribuciones y facultades",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "217",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-217-BIS",
+    "valor": "Uso ilícito de atribuciones y facultades",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "217 Bis",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": "CPF-217",
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-217-TER",
+    "valor": "Remuneración ilícita",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "217 Ter",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-218",
+    "valor": "Concusión",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "218",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-219",
+    "valor": "Intimidación",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "219",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-220",
+    "valor": "Ejercicio abusivo de funciones",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "220",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-221",
+    "valor": "Tráfico de influencias",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "221",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": "LGRA-61",
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-222",
+    "valor": "Cohecho",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "222",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": "LGRA-52",
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-222-BIS",
+    "valor": "Cohecho a servidores públicos extranjeros",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "222 Bis",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-223",
+    "valor": "Peculado",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "223",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": "LGRA-53",
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-224",
+    "valor": "Enriquecimiento ilícito",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "224",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "CPF-225",
+    "valor": "Delitos contra la administración de justicia",
+    "claveLey": "CPF",
+    "ley": "Código Penal Federal",
+    "articulo": "225",
+    "gravedad": "Hecho de corrupción",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-49",
+    "valor": "Incumplimiento de obligaciones del servicio público",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "49",
+    "gravedad": "No grave",
+    "equivaleA": null,
+    "s3TipoFalta": "ANG"
+  },
+  {
+    "clave": "LGRA-50",
+    "valor": "Daño a la Hacienda Pública",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "50",
+    "gravedad": "No grave",
+    "equivaleA": null,
+    "s3TipoFalta": "ANG"
+  },
+  {
+    "clave": "LGRA-52",
+    "valor": "Cohecho",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "52",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "CEX"
+  },
+  {
+    "clave": "LGRA-53",
+    "valor": "Peculado",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "53",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "PEC"
+  },
+  {
+    "clave": "LGRA-54",
+    "valor": "Desvío de recursos públicos",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "54",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "DRP"
+  },
+  {
+    "clave": "LGRA-55",
+    "valor": "Utilización indebida de información",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "55",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "UII"
+  },
+  {
+    "clave": "LGRA-57",
+    "valor": "Abuso de funciones",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "57",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "AFN"
+  },
+  {
+    "clave": "LGRA-58",
+    "valor": "Actuación bajo conflicto de interés",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "58",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "ABCI"
+  },
+  {
+    "clave": "LGRA-59",
+    "valor": "Contratación indebida",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "59",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "CIND"
+  },
+  {
+    "clave": "LGRA-60",
+    "valor": "Enriquecimiento oculto u ocultamiento de conflicto de interés",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "60",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "EOCI"
+  },
+  {
+    "clave": "LGRA-60-BIS",
+    "valor": "Simulación de acto jurídico",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "60 Bis",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-61",
+    "valor": "Tráfico de influencias",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "61",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "TINF"
+  },
+  {
+    "clave": "LGRA-62",
+    "valor": "Encubrimiento",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "62",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "ENCB"
+  },
+  {
+    "clave": "LGRA-63",
+    "valor": "Desacato",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "63",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "DSCT"
+  },
+  {
+    "clave": "LGRA-63-BIS",
+    "valor": "Nepotismo",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "63 Bis",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-64",
+    "valor": "Obstrucción de la justicia",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "64",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": "OJUST"
+  },
+  {
+    "clave": "LGRA-64-BIS",
+    "valor": "Violación a las disposiciones sobre fideicomisos",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "64 Bis",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-64-QUATER",
+    "valor": "Injerencia sindical",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "64 Quáter",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-64-TER",
+    "valor": "Omisión de enterar cuotas",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "64 Ter",
+    "gravedad": "Grave",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-66",
+    "valor": "Soborno",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "66",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-67",
+    "valor": "Participación ilícita en procedimientos administrativos",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "67",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-68",
+    "valor": "Tráfico de influencias para inducir a la autoridad",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "68",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-69",
+    "valor": "Utilización de información falsa",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "69",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-70",
+    "valor": "Colusión",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "70",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-71",
+    "valor": "Uso indebido de recursos públicos",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "71",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-72",
+    "valor": "Contratación indebida de exservidores públicos",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "72",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "LGRA-73",
+    "valor": "Faltas de particulares en situación especial",
+    "claveLey": "LGRA",
+    "ley": "Ley General de Responsabilidades Administrativas",
+    "articulo": "73",
+    "gravedad": "De particulares",
+    "equivaleA": null,
+    "s3TipoFalta": null
+  },
+  {
+    "clave": "SIN-CLASIFICAR",
+    "valor": "Sin clasificar",
+    "claveLey": null,
+    "ley": null,
+    "articulo": null,
+    "gravedad": null,
+    "equivaleA": null,
+    "s3TipoFalta": null
+  }
+]

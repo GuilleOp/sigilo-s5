@@ -1,0 +1,1663 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "S5 - Corroboración ciega",
+    "description": "Corroboración ciega con VOPRF (RFC 9497): el evaluador OPRF y el índice de coincidencias, dos servicios con operación separada. Propuesta de SIGILO; no es una especificación oficial de la SESNA.",
+    "version": "0.3.0",
+    "license": { "name": "CC BY-NC 4.0", "url": "https://creativecommons.org/licenses/by-nc/4.0/" }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8787",
+      "description": "Servidor de referencia en local (`npm run dev:server`)."
+    },
+    {
+      "url": "https://denuncias.example.org",
+      "description": "Ejemplo de un nodo publicado (dominio reservado para ejemplos)."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Corroboración",
+      "description": "Corroboración ciega con VOPRF (RFC 9497, ristretto255-SHA512): el navegador obtiene del evaluador OPRF una etiqueta del identificador sin revelarlo, y el índice de coincidencias cuenta fuentes independientes por etiqueta sin saber a quién se acusa. Son dos servicios que operan partes distintas; la coincidencia solo suma prioridad explicable."
+    }
+  ],
+  "paths": {
+    "/api/v1/corroboracion/evaluador/llave": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8791",
+          "description": "Evaluador OPRF en local (`npm run dev:evaluador`)."
+        },
+        {
+          "url": "https://evaluador.example.org",
+          "description": "Ejemplo de un evaluador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getCorroborationEvaluatorKey",
+        "tags": ["Corroboración"],
+        "summary": "Llave pública del evaluador OPRF",
+        "description": "Llave pública vigente del evaluador. Es informativa: el navegador debe usar la que publica el directorio firmado (`corroboration.evaluator`), porque una llave servida por el propio evaluador no protege contra una llave distinta por persona.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Llave pública del evaluador.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CorroborationEvaluatorKey" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-corroboration-evaluator-key.response.json`.",
+                    "value": {
+                      "suite": "ristretto255-SHA512/VOPRF",
+                      "epoch": 1,
+                      "keyId": "7c2e9a4b1d0f3856",
+                      "publicKey": "yAPizGsF_BUGRUm1kgZZykp3ssym8E9rNXAJM1R2rU4",
+                      "signingKeyId": "b51f0e3a9c7d2468",
+                      "signingPublicKey": "TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f",
+                      "validFrom": "2026-11-09"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corroboracion/evaluador/reto": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8791",
+          "description": "Evaluador OPRF en local (`npm run dev:evaluador`)."
+        },
+        {
+          "url": "https://evaluador.example.org",
+          "description": "Ejemplo de un evaluador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getCorroborationChallenge",
+        "tags": ["Corroboración"],
+        "summary": "Reto de prueba de trabajo para una evaluación",
+        "description": "Reto opaco firmado con HMAC por el evaluador, de un solo uso y con vencimiento. La dificultad la fija la operación del evaluador y encarece la enumeración de identificadores.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Reto de prueba de trabajo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PowChallenge" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-corroboration-challenge.response.json`.",
+                    "value": { "token": "cmV0by1maWN0aWNpbw.ZmlybWEtZmljdGljaWE", "bits": 18 }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corroboracion/evaluador/evaluaciones": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8791",
+          "description": "Evaluador OPRF en local (`npm run dev:evaluador`)."
+        },
+        {
+          "url": "https://evaluador.example.org",
+          "description": "Ejemplo de un evaluador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "evaluateCorroboration",
+        "tags": ["Corroboración"],
+        "summary": "Evaluar un elemento cegado",
+        "description": "Evalúa con la llave privada un elemento cegado por el navegador (VOPRF, RFC 9497, sección 3.3.2) y devuelve el resultado con la prueba DLEQ. Exige la cabecera `X-Sigilo-Pow` con un reto de `getCorroborationChallenge`. El evaluador no guarda el elemento, el resultado ni la dirección de quien pide; solo suma uno al conteo del día.",
+        "security": [{ "proofOfWork": [] }],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CorroborationEvaluationRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/evaluate-corroboration.request.json`.",
+                  "value": {
+                    "v": 1,
+                    "keyId": "7c2e9a4b1d0f3856",
+                    "blinded": "qo-gSHZNViOGhnlAL_YQjSUhiE-hOM1_nHZpqaAUJn4"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Elemento evaluado y prueba DLEQ.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CorroborationEvaluationResponse" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/evaluate-corroboration.response.json`.",
+                    "value": {
+                      "v": 1,
+                      "suite": "ristretto255-SHA512/VOPRF",
+                      "epoch": 1,
+                      "keyId": "7c2e9a4b1d0f3856",
+                      "evaluated": "yAPizGsF_BUGRUm1kgZZykp3ssym8E9rNXAJM1R2rU4",
+                      "proof": "3e-TdyaS5TXRpTkD2yQ2c1XMLMeN6Ts75aj_zGmF3QZtQ0ZCHRe_UReiof8Pyyp1n1ilOd--hXpAvOTPSexgDQ"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`proof_required`: Falta la prueba de trabajo, no es válida, venció o ya se usó.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "proof_required",
+                    "message": "Falta una prueba de trabajo válida y vigente."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Demasiados intentos fallidos o mensajes en poco tiempo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Demasiados intentos. Intenta más tarde."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corroboracion/evaluador/conteos": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8791",
+          "description": "Evaluador OPRF en local (`npm run dev:evaluador`)."
+        },
+        {
+          "url": "https://evaluador.example.org",
+          "description": "Ejemplo de un evaluador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "listEvaluationCounts",
+        "tags": ["Corroboración"],
+        "summary": "Conteos diarios de evaluaciones",
+        "description": "Conteos firmados de días ya cerrados (nunca el del día en curso, para no delatar el momento de cada consulta). La bitácora nacional los publica junto al número de denuncias: si las evaluaciones superan por mucho a las denuncias, hay enumeración.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Primer día (AAAA-MM-DD); por omisión, los últimos 30 días cerrados.",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conteos diarios firmados.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EvaluationCountsPage" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/list-evaluation-counts.response.json`.",
+                    "value": {
+                      "counts": [
+                        {
+                          "v": 1,
+                          "day": "2026-11-11",
+                          "epoch": 1,
+                          "evaluations": 7,
+                          "signingKeyId": "b51f0e3a9c7d2468",
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corroboracion/indice/registros": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8792",
+          "description": "Índice de coincidencias en local (`npm run dev:indice`)."
+        },
+        {
+          "url": "https://indice.example.org",
+          "description": "Ejemplo de un índice publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "registerCorroboration",
+        "tags": ["Corroboración"],
+        "summary": "Registrar la etiqueta de una denuncia",
+        "description": "El nodo registra, firmado con su llave del directorio, la etiqueta de una denuncia con su folio opaco y las señales de independencia. Mientras la denuncia no esté confirmada (ni envejecida ni en custodia), el índice responde el estado de una denuncia sola (`isRevealed: false`) y no la cuenta para las demás: registrar no sirve para saber si hay denuncias contra alguien ni para inflar fuentes. Las marcas de posible mismo origen o posible campaña sí se devuelven. Registrar dos veces el mismo folio devuelve el mismo estado; un folio dado de baja no se acepta.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IndexRegistration" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/register-corroboration.request.json`.",
+                  "value": {
+                    "v": 1,
+                    "nodeId": "node.federal",
+                    "epoch": 1,
+                    "tag": "5f0c8e2b7a91d4c36e0f2a8b9d1c7e3f4a6b8c0d2e4f6a8b0c1d3e5f7a9b1c2d",
+                    "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+                    "receivedAt": "2026-11-12T16:20Z",
+                    "entry": "direct",
+                    "similarity": "c3VtYXJpb19kaWZ1c29fZmljdGljaW9fZGVfNjRfYnl0ZXNfcGFyYV9lbF9lamVtcGxvX2RlbF9lc3RhbmRhcg",
+                    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de corroboración de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CorroborationStatus" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/register-corroboration.response.json`.",
+                    "value": {
+                      "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+                      "confirmation": "confirmed",
+                      "isRevealed": true,
+                      "groupId": "4b8e1f0a2c9d7e3651a0b4c8d2e6f193",
+                      "complaints": 2,
+                      "independentSources": 2,
+                      "confirmedOtherSources": 1,
+                      "sameOriginCount": 1,
+                      "flags": [],
+                      "signals": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corroboracion/indice/confirmaciones": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8792",
+          "description": "Índice de coincidencias en local (`npm run dev:indice`)."
+        },
+        {
+          "url": "https://indice.example.org",
+          "description": "Ejemplo de un índice publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "confirmCorroboration",
+        "tags": ["Corroboración"],
+        "summary": "Confirmar que la autoridad aceptó la denuncia",
+        "description": "El nodo la llama cuando la autoridad acepta la denuncia (estado «aceptada» del trámite) y lo registra en su bitácora. Desde entonces la denuncia cuenta como fuente independiente para las demás de su etiqueta y su estado incluye el grupo. Sin confirmación ni baja, la denuncia cuenta sola a los 30 días naturales de su registro según el reloj del índice (`aged`). Responde `404` si el folio no está registrado por ese nodo.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IndexConfirmation" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/confirm-corroboration.request.json`.",
+                  "value": {
+                    "v": 1,
+                    "nodeId": "node.federal",
+                    "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+                    "requestedAt": "2026-11-12T16:30Z",
+                    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de corroboración, ya revelado.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CorroborationStatus" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/confirm-corroboration.response.json`.",
+                    "value": {
+                      "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+                      "confirmation": "confirmed",
+                      "isRevealed": true,
+                      "groupId": "4b8e1f0a2c9d7e3651a0b4c8d2e6f193",
+                      "complaints": 2,
+                      "independentSources": 2,
+                      "confirmedOtherSources": 1,
+                      "sameOriginCount": 1,
+                      "flags": [],
+                      "signals": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corroboracion/indice/bajas": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8792",
+          "description": "Índice de coincidencias en local (`npm run dev:indice`)."
+        },
+        {
+          "url": "https://indice.example.org",
+          "description": "Ejemplo de un índice publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "withdrawCorroboration",
+        "tags": ["Corroboración"],
+        "summary": "Dar de baja una denuncia del índice",
+        "description": "El nodo la llama al cerrar una denuncia como spam, improcedente o acumulada. El índice borra el registro (etiqueta, hora y resumen), recalcula el grupo y avisa a los demás nodos si su estado cambia; solo conserva el folio opaco con el motivo para no aceptarlo de nuevo. Es idempotente.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IndexWithdrawal" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/withdraw-corroboration.request.json`.",
+                  "value": {
+                    "v": 1,
+                    "nodeId": "node.federal",
+                    "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+                    "reason": "spam",
+                    "requestedAt": "2026-11-12T16:30Z",
+                    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Baja aplicada.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IndexWithdrawalReceipt" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/withdraw-corroboration.response.json`.",
+                    "value": {
+                      "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+                      "withdrawn": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corroboracion/indice/avisos": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8792",
+          "description": "Índice de coincidencias en local (`npm run dev:indice`)."
+        },
+        {
+          "url": "https://indice.example.org",
+          "description": "Ejemplo de un índice publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "listCorroborationNotices",
+        "tags": ["Corroboración"],
+        "summary": "Avisos de corroboración para un nodo",
+        "description": "Petición firmada por el nodo. Devuelve los cambios de estado de los grupos donde el nodo tiene denuncias (por ejemplo, una coincidencia nueva con una denuncia archivada: posible nuevo indicio, LGRA, art. 100). Nunca dice qué otros nodos ni qué folios forman el grupo.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IndexNoticesRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/list-corroboration-notices.request.json`.",
+                  "value": {
+                    "v": 1,
+                    "nodeId": "node.federal",
+                    "after": 0,
+                    "requestedAt": "2026-11-12T16:30Z",
+                    "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Avisos pendientes.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IndexNoticesPage" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/list-corroboration-notices.response.json`.",
+                    "value": {
+                      "notices": [
+                        {
+                          "seq": 1,
+                          "status": {
+                            "folioDigest": "0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e",
+                            "confirmation": "confirmed",
+                            "isRevealed": true,
+                            "groupId": "4b8e1f0a2c9d7e3651a0b4c8d2e6f193",
+                            "complaints": 2,
+                            "independentSources": 2,
+                            "confirmedOtherSources": 1,
+                            "sameOriginCount": 1,
+                            "flags": [],
+                            "signals": []
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PowChallenge": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "description": "Reto opaco firmado por el servidor; vence a los pocos minutos."
+          },
+          "bits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32,
+            "description": "Bits en cero que debe tener al inicio el digesto de la solución; 0 = sin prueba."
+          }
+        },
+        "required": ["token", "bits"],
+        "additionalProperties": false,
+        "description": "Reto de prueba de trabajo de un solo propósito."
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "not_found",
+                  "unauthorized",
+                  "forbidden",
+                  "conflict",
+                  "reassignment_limit",
+                  "payload_too_large",
+                  "unsupported_media_type",
+                  "rate_limited",
+                  "proof_required",
+                  "storage_full",
+                  "ledger_day_full",
+                  "internal"
+                ],
+                "description": "Código estable del error."
+              },
+              "message": {
+                "type": "string",
+                "description": "Mensaje fijo en español; nunca incluye datos de la solicitud."
+              }
+            },
+            "required": ["code", "message"],
+            "additionalProperties": false,
+            "description": "Código y mensaje del error."
+          }
+        },
+        "required": ["error"],
+        "additionalProperties": false,
+        "description": "Error con formato común. Los errores de seguimiento no distinguen si falló el folio o el recibo."
+      },
+      "CorroborationEvaluatorKey": {
+        "type": "object",
+        "properties": {
+          "suite": {
+            "type": "string",
+            "description": "Suite OPRF de RFC 9497: ristretto255-SHA512, modo VOPRF (0x01).",
+            "enum": ["ristretto255-SHA512/VOPRF"]
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Época de la llave. Cambia solo al rotarla por compromiso; las etiquetas de épocas distintas no coinciden."
+          },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Primeros 16 hexadecimales del SHA-256 de la llave pública OPRF.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "publicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave pública OPRF (elemento ristretto255 de 32 bytes): contra ella el navegador verifica la prueba DLEQ."
+          },
+          "signingKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signingPublicKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Llave Ed25519 con la que el evaluador firma su conteo diario de evaluaciones."
+          },
+          "validFrom": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Primer día de vigencia de la época.",
+            "example": "2026-11-05"
+          }
+        },
+        "required": [
+          "suite",
+          "epoch",
+          "keyId",
+          "publicKey",
+          "signingKeyId",
+          "signingPublicKey",
+          "validFrom"
+        ],
+        "additionalProperties": false,
+        "description": "Llave pública del evaluador OPRF de la corroboración ciega."
+      },
+      "CorroborationEvaluationRequest": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Llave del evaluador con la que el navegador espera la evaluación.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "blinded": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Elemento cegado (ristretto255, 32 bytes): el evaluador no puede saber de qué identificador viene."
+          }
+        },
+        "required": ["v", "keyId", "blinded"],
+        "additionalProperties": false,
+        "description": "Petición de evaluación OPRF. No lleva identificador, etiqueta, folio ni nada de la denuncia."
+      },
+      "CorroborationEvaluationResponse": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "suite": {
+            "type": "string",
+            "description": "Suite OPRF con la que se evaluó.",
+            "enum": ["ristretto255-SHA512/VOPRF"]
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Época de la llave que evaluó."
+          },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "evaluated": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Elemento evaluado con la llave privada del evaluador."
+          },
+          "proof": {
+            "type": "string",
+            "minLength": 86,
+            "maxLength": 86,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Prueba DLEQ (RFC 9497, sección 2.2) de que se usó la llave publicada; el navegador la verifica antes de usar el resultado."
+          }
+        },
+        "required": ["v", "suite", "epoch", "keyId", "evaluated", "proof"],
+        "additionalProperties": false,
+        "description": "Resultado de la evaluación con su prueba de llave única."
+      },
+      "EvaluationDailyCount": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "day": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día ya cerrado (UTC) al que corresponde el conteo.",
+            "example": "2026-11-05"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Época de la llave del evaluador."
+          },
+          "evaluations": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Evaluaciones que hizo el evaluador ese día."
+          },
+          "signingKeyId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "description": "Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.",
+            "example": "3f9a1c0b7d2e4a68"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 sobre \"sigilo/corroboracion/evaluation-count/v1:\" + JSON canónico sin la firma."
+          }
+        },
+        "required": ["v", "day", "epoch", "evaluations", "signingKeyId", "signature"],
+        "additionalProperties": false,
+        "description": "Conteo diario firmado de evaluaciones: comparado con el número de denuncias, delata una enumeración masiva."
+      },
+      "EvaluationCountsPage": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "maxItems": 366,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EvaluationDailyCount" },
+            "description": "Conteos firmados, uno por día cerrado."
+          }
+        },
+        "required": ["counts"],
+        "additionalProperties": false,
+        "description": "Conteos diarios de días cerrados, del más antiguo al más reciente."
+      },
+      "IndexRegistration": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Época de la llave del evaluador con la que se obtuvo la etiqueta."
+          },
+          "tag": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Etiqueta de corroboración: HKDF de la salida VOPRF. Es igual para el mismo identificador y la misma época, y no revela cuál es."
+          },
+          "folioDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Digesto opaco del folio (HMAC con un secreto del nodo): solo el nodo lo relaciona con su denuncia."
+          },
+          "receivedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:[0-5]0Z$",
+            "description": "Fecha y hora redondeada hacia abajo a 10 minutos, en UTC (AAAA-MM-DDTHH:M0Z).",
+            "example": "2026-11-11T17:20Z"
+          },
+          "entry": { "$ref": "#/components/schemas/CorroborationEntry" },
+          "similarity": {
+            "type": "string",
+            "minLength": 86,
+            "maxLength": 86,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Resumen difuso del relato (512 bits MinHash con llave derivada de la etiqueta) que calculó el navegador, o null si el relato es muy corto. No permite reconstruir el texto.",
+            "nullable": true
+          },
+          "custody": {
+            "description": "true si la denuncia está en custodia (ADR 0006): ve cuántas fuentes confirmadas hay sin estar aceptada. Queda en la bitácora del nodo.",
+            "type": "boolean"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo (llave del directorio) sobre \"sigilo/corroboracion/index-registration/v1:\" + JSON canónico sin la firma."
+          }
+        },
+        "required": [
+          "v",
+          "nodeId",
+          "epoch",
+          "tag",
+          "folioDigest",
+          "receivedAt",
+          "entry",
+          "similarity",
+          "signature"
+        ],
+        "additionalProperties": false,
+        "description": "Registro de una denuncia en el índice: etiqueta, nodo, folio opaco y señales de independencia. Nunca el identificador."
+      },
+      "CorroborationEntry": {
+        "type": "string",
+        "enum": ["relay", "direct"],
+        "description": "Por dónde llegó la denuncia al nodo: relay (ventanilla única, por el enrutador) o direct (entrada propia del nodo)."
+      },
+      "CorroborationStatus": {
+        "type": "object",
+        "properties": {
+          "folioDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Digesto SHA-256 en hexadecimal minúsculo (64 caracteres)."
+          },
+          "confirmation": { "$ref": "#/components/schemas/CorroborationConfirmation" },
+          "isRevealed": {
+            "type": "boolean",
+            "description": "Si el estado incluye el grupo. Solo con la denuncia confirmada, envejecida o en custodia; si no, el estado es el de una denuncia sola, para que registrar no sirva de oráculo."
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "description": "Identificador aleatorio del grupo de la etiqueta (o uno propio de la denuncia mientras no se revela); no se deriva de ella ni dice qué nodos o folios lo forman."
+          },
+          "complaints": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Denuncias de su grupo de origen más las de las fuentes confirmadas; las demás no se cuentan ni se revelan."
+          },
+          "independentSources": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Esta fuente más las otras fuentes confirmadas (aceptadas o envejecidas); las denuncias que parecen de la misma fuente cuentan una vez."
+          },
+          "confirmedOtherSources": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Otras fuentes independientes confirmadas; 0 mientras no se revela. Es lo que libera una custodia."
+          },
+          "sameOriginCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Denuncias que cuentan como la misma fuente que esta (ella incluida)."
+          },
+          "flags": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CorroborationFlag" },
+            "description": "Marcas del grupo de origen de esta denuncia; vacío si parece independiente."
+          },
+          "signals": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IndependenceSignal" },
+            "description": "Señales que agruparon esta denuncia con otras, para explicar el conteo."
+          }
+        },
+        "required": [
+          "folioDigest",
+          "confirmation",
+          "isRevealed",
+          "groupId",
+          "complaints",
+          "independentSources",
+          "confirmedOtherSources",
+          "sameOriginCount",
+          "flags",
+          "signals"
+        ],
+        "additionalProperties": false,
+        "description": "Estado de corroboración de una denuncia del nodo: suma prioridad explicable, nunca retrasa, descarta ni cambia su estado."
+      },
+      "CorroborationConfirmation": {
+        "type": "string",
+        "enum": ["pending", "confirmed", "aged"],
+        "description": "Confirmación de la denuncia ante el índice: pending (registrada, sin confirmar), confirmed (el nodo confirmó que la autoridad la aceptó) o aged (pasaron los días de gracia sin confirmación ni baja)."
+      },
+      "IndexConfirmation": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "folioDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Folio opaco ya registrado por el nodo."
+          },
+          "requestedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:[0-5]0Z$",
+            "description": "Hora de la petición; el índice rechaza las que difieren más de 20 minutos.",
+            "example": "2026-11-11T17:20Z"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo sobre \"sigilo/corroboracion/index-confirmation/v1:\" + JSON canónico sin la firma."
+          }
+        },
+        "required": ["v", "nodeId", "folioDigest", "requestedAt", "signature"],
+        "additionalProperties": false,
+        "description": "El nodo confirma que la autoridad aceptó la denuncia (estado aceptada del trámite). La confirmación queda en la bitácora del nodo."
+      },
+      "IndexWithdrawal": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "folioDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Folio opaco que se retira."
+          },
+          "reason": { "$ref": "#/components/schemas/IndexWithdrawalReason" },
+          "requestedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:[0-5]0Z$",
+            "description": "Hora de la petición; el índice rechaza las que difieren más de 20 minutos.",
+            "example": "2026-11-11T17:20Z"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo sobre \"sigilo/corroboracion/index-withdrawal/v1:\" + JSON canónico sin la firma."
+          }
+        },
+        "required": ["v", "nodeId", "folioDigest", "reason", "requestedAt", "signature"],
+        "additionalProperties": false,
+        "description": "Baja firmada: el índice borra el registro, recalcula el grupo y no acepta volver a registrar ese folio."
+      },
+      "IndexWithdrawalReason": {
+        "type": "string",
+        "enum": ["spam", "inadmissible", "duplicate"],
+        "description": "Motivo de la baja: spam (envío sin hechos), inadmissible (cerrada como improcedente) o duplicate (acumulada a otra denuncia del mismo nodo)."
+      },
+      "IndexWithdrawalReceipt": {
+        "type": "object",
+        "properties": {
+          "folioDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Digesto SHA-256 en hexadecimal minúsculo (64 caracteres)."
+          },
+          "withdrawn": {
+            "type": "boolean",
+            "description": "Siempre true: la baja quedó aplicada.",
+            "enum": [true]
+          }
+        },
+        "required": ["folioDigest", "withdrawn"],
+        "additionalProperties": false,
+        "description": "Acuse de la baja."
+      },
+      "CorroborationFlag": {
+        "type": "string",
+        "enum": ["possible_same_origin", "possible_campaign"],
+        "description": "Marca del grupo de origen: possible_same_origin (parecen de la misma fuente) o possible_campaign (ráfaga de tres o más con textos parecidos). Nunca significa «falsa»."
+      },
+      "IndependenceSignal": {
+        "type": "string",
+        "enum": ["similar_text", "burst", "same_node", "same_entry"],
+        "description": "Señal que unió esta denuncia con otra: similar_text (relatos muy parecidos), burst (misma ventana corta), same_node (mismo nodo), same_entry (misma entrada a la red)."
+      },
+      "IndexNoticesRequest": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "description": "Versión del formato.", "enum": [1] },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "after": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Último aviso ya recibido (0 para empezar)."
+          },
+          "requestedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:[0-5]0Z$",
+            "description": "Hora de la petición; el índice rechaza las que difieren más de 20 minutos.",
+            "example": "2026-11-11T17:20Z"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo sobre \"sigilo/corroboracion/index-notices/v1:\" + JSON canónico sin la firma."
+          }
+        },
+        "required": ["v", "nodeId", "after", "requestedAt", "signature"],
+        "additionalProperties": false,
+        "description": "Petición firmada de avisos del índice para un nodo."
+      },
+      "IndexNotice": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Número del aviso para este nodo."
+          },
+          "status": { "$ref": "#/components/schemas/CorroborationStatus" }
+        },
+        "required": ["seq", "status"],
+        "additionalProperties": false,
+        "description": "Aviso: cambió el estado de corroboración de una denuncia del nodo."
+      },
+      "IndexNoticesPage": {
+        "type": "object",
+        "properties": {
+          "notices": {
+            "maxItems": 500,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IndexNotice" },
+            "description": "Avisos en orden de número."
+          }
+        },
+        "required": ["notices"],
+        "additionalProperties": false,
+        "description": "Avisos pendientes del nodo, del más antiguo al más reciente."
+      }
+    },
+    "securitySchemes": {
+      "proofOfWork": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Sigilo-Pow",
+        "description": "Prueba de trabajo sin cuentas ni rastreo: `X-Sigilo-Pow: <token>:<contador>`, donde `token` viene de `GET /api/v1/pow/challenge` y `SHA-256(token + \":\" + contador)` empieza con `bits` bits en cero. Si falta o no es válida, la respuesta es `428 proof_required`."
+      }
+    }
+  }
+}

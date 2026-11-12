@@ -1,0 +1,44 @@
+clave,valor,claveLey,ley,articulo,gravedad,equivaleA,s3TipoFalta
+CPF-214,Ejercicio ilícito de servicio público,CPF,Código Penal Federal,214,Hecho de corrupción,,
+CPF-215,Abuso de autoridad,CPF,Código Penal Federal,215,Hecho de corrupción,,
+CPF-216,Coalición de servidores públicos,CPF,Código Penal Federal,216,Hecho de corrupción,,
+CPF-217,Uso ilícito de atribuciones y facultades,CPF,Código Penal Federal,217,Hecho de corrupción,,
+CPF-217-BIS,Uso ilícito de atribuciones y facultades,CPF,Código Penal Federal,217 Bis,Hecho de corrupción,CPF-217,
+CPF-217-TER,Remuneración ilícita,CPF,Código Penal Federal,217 Ter,Hecho de corrupción,,
+CPF-218,Concusión,CPF,Código Penal Federal,218,Hecho de corrupción,,
+CPF-219,Intimidación,CPF,Código Penal Federal,219,Hecho de corrupción,,
+CPF-220,Ejercicio abusivo de funciones,CPF,Código Penal Federal,220,Hecho de corrupción,,
+CPF-221,Tráfico de influencias,CPF,Código Penal Federal,221,Hecho de corrupción,LGRA-61,
+CPF-222,Cohecho,CPF,Código Penal Federal,222,Hecho de corrupción,LGRA-52,
+CPF-222-BIS,Cohecho a servidores públicos extranjeros,CPF,Código Penal Federal,222 Bis,Hecho de corrupción,,
+CPF-223,Peculado,CPF,Código Penal Federal,223,Hecho de corrupción,LGRA-53,
+CPF-224,Enriquecimiento ilícito,CPF,Código Penal Federal,224,Hecho de corrupción,,
+CPF-225,Delitos contra la administración de justicia,CPF,Código Penal Federal,225,Hecho de corrupción,,
+LGRA-49,Incumplimiento de obligaciones del servicio público,LGRA,Ley General de Responsabilidades Administrativas,49,No grave,,ANG
+LGRA-50,Daño a la Hacienda Pública,LGRA,Ley General de Responsabilidades Administrativas,50,No grave,,ANG
+LGRA-52,Cohecho,LGRA,Ley General de Responsabilidades Administrativas,52,Grave,,CEX
+LGRA-53,Peculado,LGRA,Ley General de Responsabilidades Administrativas,53,Grave,,PEC
+LGRA-54,Desvío de recursos públicos,LGRA,Ley General de Responsabilidades Administrativas,54,Grave,,DRP
+LGRA-55,Utilización indebida de información,LGRA,Ley General de Responsabilidades Administrativas,55,Grave,,UII
+LGRA-57,Abuso de funciones,LGRA,Ley General de Responsabilidades Administrativas,57,Grave,,AFN
+LGRA-58,Actuación bajo conflicto de interés,LGRA,Ley General de Responsabilidades Administrativas,58,Grave,,ABCI
+LGRA-59,Contratación indebida,LGRA,Ley General de Responsabilidades Administrativas,59,Grave,,CIND
+LGRA-60,Enriquecimiento oculto u ocultamiento de conflicto de interés,LGRA,Ley General de Responsabilidades Administrativas,60,Grave,,EOCI
+LGRA-60-BIS,Simulación de acto jurídico,LGRA,Ley General de Responsabilidades Administrativas,60 Bis,Grave,,
+LGRA-61,Tráfico de influencias,LGRA,Ley General de Responsabilidades Administrativas,61,Grave,,TINF
+LGRA-62,Encubrimiento,LGRA,Ley General de Responsabilidades Administrativas,62,Grave,,ENCB
+LGRA-63,Desacato,LGRA,Ley General de Responsabilidades Administrativas,63,Grave,,DSCT
+LGRA-63-BIS,Nepotismo,LGRA,Ley General de Responsabilidades Administrativas,63 Bis,Grave,,
+LGRA-64,Obstrucción de la justicia,LGRA,Ley General de Responsabilidades Administrativas,64,Grave,,OJUST
+LGRA-64-BIS,Violación a las disposiciones sobre fideicomisos,LGRA,Ley General de Responsabilidades Administrativas,64 Bis,Grave,,
+LGRA-64-QUATER,Injerencia sindical,LGRA,Ley General de Responsabilidades Administrativas,64 Quáter,Grave,,
+LGRA-64-TER,Omisión de enterar cuotas,LGRA,Ley General de Responsabilidades Administrativas,64 Ter,Grave,,
+LGRA-66,Soborno,LGRA,Ley General de Responsabilidades Administrativas,66,De particulares,,
+LGRA-67,Participación ilícita en procedimientos administrativos,LGRA,Ley General de Responsabilidades Administrativas,67,De particulares,,
+LGRA-68,Tráfico de influencias para inducir a la autoridad,LGRA,Ley General de Responsabilidades Administrativas,68,De particulares,,
+LGRA-69,Utilización de información falsa,LGRA,Ley General de Responsabilidades Administrativas,69,De particulares,,
+LGRA-70,Colusión,LGRA,Ley General de Responsabilidades Administrativas,70,De particulares,,
+LGRA-71,Uso indebido de recursos públicos,LGRA,Ley General de Responsabilidades Administrativas,71,De particulares,,
+LGRA-72,Contratación indebida de exservidores públicos,LGRA,Ley General de Responsabilidades Administrativas,72,De particulares,,
+LGRA-73,Faltas de particulares en situación especial,LGRA,Ley General de Responsabilidades Administrativas,73,De particulares,,
+SIN-CLASIFICAR,Sin clasificar,,,,,,

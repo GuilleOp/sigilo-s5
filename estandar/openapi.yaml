@@ -6408,7 +6408,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnTokenError'
         '500':
-          description: '`internal`: Error interno, sin detalles.'
+          description: Error inesperado del nodo, sin detalles; `code` es `500`.
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6418,11 +6418,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
-              example:
-                error:
-                  code: internal
-                  message: Error interno del servidor.
+                $ref: '#/components/schemas/PdnError'
   /v1/denuncias/estadisticas:
     post:
       operationId: queryPdnStatistics
@@ -6606,7 +6602,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnError'
         '500':
-          description: '`internal`: Error interno, sin detalles.'
+          description: Error inesperado del nodo, sin detalles; `code` es `500`.
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6616,11 +6612,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
-              example:
-                error:
-                  code: internal
-                  message: Error interno del servidor.
+                $ref: '#/components/schemas/PdnError'
   /v1/denuncias/estadisticas/autoridades:
     get:
       operationId: listPdnStatisticsAuthorities
@@ -6678,7 +6670,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnError'
         '500':
-          description: '`internal`: Error interno, sin detalles.'
+          description: Error inesperado del nodo, sin detalles; `code` es `500`.
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6688,11 +6680,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
-              example:
-                error:
-                  code: internal
-                  message: Error interno del servidor.
+                $ref: '#/components/schemas/PdnError'
   /api/v1/corroboracion/evaluador/llave:
     servers:
       - url: http://127.0.0.1:8791

@@ -44,6 +44,18 @@ function pdnError(c: Context, code: ApiErrorCode, status: ContentfulStatusCode):
   return c.json(body, status);
 }
 
+const PDN_PATHS: ReadonlySet<string> = new Set(Object.values(PDN_ROUTES));
+
+/** Indica si la ruta es de la PDN (y sus errores van con el formato `resError`). */
+export function isPdnPath(path: string): boolean {
+  return PDN_PATHS.has(path);
+}
+
+/** Error inesperado en una ruta de la PDN: `500` con el formato `resError`, sin detalles. */
+export function pdnInternalError(c: Context): Response {
+  return pdnError(c, 'internal', 500);
+}
+
 /**
  * Error del punto de emisión de tokens: los campos de RFC 6749 (que leen los clientes OAuth) más
  * `code` y `message` del `resError` de la PDN (que revisa ValidAPI). No chocan: se mandan los dos.

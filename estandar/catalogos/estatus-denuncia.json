@@ -1,0 +1,17 @@
+[
+  { "clave": "RECIBIDA", "valor": "Recibida", "claveApi": "received" },
+  {
+    "clave": "BUSCANDO_AUTORIDAD",
+    "valor": "Buscando a la autoridad que debe atenderla",
+    "claveApi": "routing"
+  },
+  { "clave": "TURNADA", "valor": "Turnada a la autoridad competente", "claveApi": "routed" },
+  { "clave": "EN_INVESTIGACION", "valor": "En investigación", "claveApi": "investigating" },
+  {
+    "clave": "CALIFICADA",
+    "valor": "Revisada: la autoridad decidió si la falta es grave",
+    "claveApi": "classified"
+  },
+  { "clave": "ARCHIVADA", "valor": "Archivada", "claveApi": "archived" },
+  { "clave": "CONCLUIDA", "valor": "Concluida", "claveApi": "resolved" }
+]

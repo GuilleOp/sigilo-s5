@@ -1,5 +1,7 @@
 <!doctype html>
-<!-- Vista estática del Estándar S5 con Swagger UI copiado localmente (sin CDN ni peticiones a terceros). -->
+<!-- Vista estática del Estándar S5 con Swagger UI copiado localmente (sin CDN ni peticiones a terceros).
+     Un desplegable con un documento por grupo, como el Swagger UI de la PDN; el enrutador la sirve
+     en /estandar/swagger/. -->
 <html lang="es">
   <head>
     <meta charset="utf-8" />
@@ -16,8 +18,9 @@
   <body>
     <p class="prototype-banner">Prototipo para el Datatón 2026 · no es el sistema oficial</p>
     <noscript>
-      Esta vista necesita JavaScript. El documento está en
-      <a href="../openapi.yaml">openapi.yaml</a> y el diccionario en
+      Esta vista necesita JavaScript. El perfil de conexión con la PDN está en
+      <a href="../oas/OAS_API_S5_Estadisticas_Denuncias.json">OAS_API_S5_Estadisticas_Denuncias.json</a>,
+      el estándar completo en <a href="../openapi.yaml">openapi.yaml</a> y el diccionario en
       <a href="../diccionario-de-datos.md">diccionario-de-datos.md</a>.
     </noscript>
     <p id="swagger-missing" class="swagger-missing" hidden>
@@ -26,6 +29,7 @@
     </p>
     <main id="swagger-ui"></main>
     <script src="./vendor/swagger-ui-bundle.js"></script>
+    <script src="./vendor/swagger-ui-standalone-preset.js"></script>
     <script src="./swagger-init.js"></script>
   </body>
 </html>

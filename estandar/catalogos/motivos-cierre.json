@@ -1,0 +1,12 @@
+[
+  { "clave": "ATENDIDA", "valor": "Atendido", "claveApi": "attended" },
+  { "clave": "CANALIZADA", "valor": "Canalizado", "claveApi": "channeled" },
+  { "clave": "IMPROCEDENTE", "valor": "Improcedente", "claveApi": "inadmissible" },
+  {
+    "clave": "INFORMACION_INSUFICIENTE",
+    "valor": "Información insuficiente",
+    "claveApi": "insufficient_information"
+  },
+  { "clave": "ACUMULADA", "valor": "Acumulado", "claveApi": "joined" },
+  { "clave": "OTRO_MOTIVO", "valor": "Otro", "claveApi": "other" }
+]
