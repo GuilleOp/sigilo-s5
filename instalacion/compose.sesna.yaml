@@ -116,6 +116,8 @@ services:
     working_dir: /sigilo
     environment:
       SIGILO_INSTALL_DIR: /sigilo
+      # Sin el aviso de SQLite experimental en la salida del CLI.
+      NODE_NO_WARNINGS: '1'
     volumes:
       - .:/sigilo
     networks:
