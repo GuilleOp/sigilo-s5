@@ -308,6 +308,47 @@ describe('POST /v1/denuncias/estadisticas', () => {
     );
   });
 
+  it('cuerpos en el borde: null es la consulta por omisión; otros tipos y tamaños se rechazan', async () => {
+    const server = serverWithOAuth();
+    const token = await tokenFor(server, PDN_SCOPES.statistics);
+    const all = await page(server, {}, token);
+    expect(await page(server, null, token)).toEqual(all);
+    expect(await page(server, { pageSize: 1 }, token)).toMatchObject({
+      pagination: { pageSize: 1, page: 1 },
+    });
+    expect(await page(server, { pageSize: 200 }, token)).toMatchObject({
+      pagination: { pageSize: 200, page: 1 },
+    });
+    for (const body of [
+      [],
+      'texto',
+      7,
+      { pageSize: '10' },
+      { page: 1.5 },
+      { sort: { folio: 'asc' } },
+    ]) {
+      const response = await query(server, body, token);
+      expect(response.status, JSON.stringify(body)).toBe(400);
+      expect(PdnErrorSchema.parse(await response.json()).code).toBe(400);
+    }
+    const broken = await server.app.request(PDN_ROUTES.statistics, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: '{"page":',
+    });
+    expect(broken.status).toBe(400);
+    const form = await server.app.request(PDN_ROUTES.statistics, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain', Authorization: `Bearer ${token}` },
+      body: '{}',
+    });
+    expect(form.status).toBe(415);
+    expect(PdnErrorSchema.parse(await form.json()).code).toBe(415);
+    const huge = await query(server, { query: { id: 'x'.repeat(5000) } }, token);
+    expect(huge.status).toBe(413);
+    expect(PdnErrorSchema.parse(await huge.json()).code).toBe(413);
+  });
+
   it('el mes congelado no cambia aunque después cambie el trámite', async () => {
     const server = serverWithOAuth();
     const folios = await submitMany(server, 6, '22');

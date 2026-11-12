@@ -250,6 +250,22 @@ describe('autenticación del cliente', () => {
     expect(again.status).toBe(200);
   });
 
+  it('password: muchas contraseñas a la vez no se saltan el tope de 10 fallos', async () => {
+    const { server } = setup();
+    const attempt = (password: string) =>
+      server.token({
+        authorization: basic('sesna', SECRET),
+        params: { grant_type: 'password', username: 'sesna.pdn', password },
+      });
+    // 24 intentos simultáneos; la contraseña correcta va al final.
+    const guesses = Array.from({ length: 23 }, (_, index) => `mala-${index}`);
+    const outcomes = await Promise.all([...guesses, PASSWORD].map(attempt));
+    const statuses = outcomes.map((outcome) => outcome.status);
+    // A lo más 10 intentos se evalúan por ventana: el resto recibe 429, aunque acierte.
+    expect(statuses.filter((status) => status !== 429).length).toBeLessThanOrEqual(10);
+    expect(statuses.at(-1)).toBe(429);
+  });
+
   it('sin credenciales o con una cabecera Basic mal formada: invalid_client', async () => {
     const { server } = setup();
     expect(

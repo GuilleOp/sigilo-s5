@@ -13,6 +13,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -424,6 +425,49 @@ describe('instalación de punta a punta (sin Docker)', () => {
     rmSync(join(dirs.nodo, 'datos', 'authority-demo-key.json'));
   });
 
+  it('el diagnóstico sale con 1 si solo hay avisos y con 2 si el nodo no responde', async () => {
+    const webConfig = readFileSync(join(dirs.nodo, 'datos', 'web-config.json'), 'utf8');
+    const healthy = (): Record<string, () => Response> => ({
+      [`http://nodo:8081${WEB_CONFIG_PATH}`]: () => new Response(webConfig, { status: 200 }),
+      [`http://nodo:8080${NETWORK_ROUTES.nodeHealth}`]: () => new Response('{}', { status: 200 }),
+      // HTTPS responde, pero sin HSTS de un año: aviso, no problema.
+      [`https://${NODE_DOMAIN}/api/v1/keys`]: () =>
+        new Response('{}', {
+          status: 200,
+          headers: { 'Strict-Transport-Security': 'max-age=60' },
+        }),
+    });
+    const fetchFrom =
+      (routes: Record<string, () => Response>): FetchLike =>
+      (input) => {
+        const route = routes[String(input)];
+        return route === undefined
+          ? Promise.reject(new Error('sin ruta'))
+          : Promise.resolve(route());
+      };
+    // Además, la ventanilla no reporta el nodo (aviso) y el último respaldo tiene 30 días (aviso).
+    const backups = join(dirs.nodo, 'salida', 'respaldos');
+    const old = new Date(NOW.getTime() - 30 * 86_400_000);
+    for (const name of readdirSync(backups)) utimesSync(join(backups, name), old, old);
+    const warnings = await run(dirs.nodo, ['diagnostico'], { fetch: fetchFrom(healthy()) });
+    expect(warnings.text).not.toContain('✗');
+    expect(warnings.text).toContain('Último respaldo hace 30 días');
+    expect(warnings.text).toContain('sin HSTS de un año');
+    expect(warnings.code, warnings.text).toBe(1);
+
+    // Sin la salud del nodo es un problema: 2, aunque lo demás sean avisos.
+    const routes = Object.fromEntries(
+      Object.entries(healthy()).filter(([url]) => !url.endsWith(NETWORK_ROUTES.nodeHealth)),
+    );
+    const down = await run(dirs.nodo, ['diagnostico'], { fetch: fetchFrom(routes) });
+    expect(down.text).toContain('El nodo no responde su salud');
+    expect(down.code).toBe(2);
+    // Sin ninguna red: la web y HTTPS son avisos, la salud un problema.
+    expect((await run(dirs.nodo, ['diagnostico'])).code).toBe(2);
+    const now = new Date();
+    for (const name of readdirSync(backups)) utimesSync(join(backups, name), now, now);
+  });
+
   it('cuenta nueva, tabla revisar y firmar, calendario y rotación del enlace', async () => {
     const account = await run(dirs.nodo, [
       'cuenta',
@@ -486,6 +530,37 @@ describe('instalación de punta a punta (sin Docker)', () => {
         ? new Uint8Array(Buffer.from(relayAfter.secret, 'base64url'))
         : null,
     );
+  });
+
+  it('repetir la rotación antes de aplicarla conserva la llave que ya aceptó la SESNA', async () => {
+    const pendingPath = join(dirs.nodo, 'llaves', 'enlace-key.pendiente.json');
+    const rotationFile = join(dirs.nodo, 'salida', 'rotacion-enlace-oaxaca-e3.json');
+    const first = await run(dirs.nodo, ['rotar-llaves', '--enlace']);
+    expect(first.code, first.text).toBe(0);
+    const pending = readJsonFile(pendingPath);
+    const sesnaRotation = await run(dirs.sesna, ['sesna', 'aceptar', rotationFile]);
+    expect(sesnaRotation.code, sesnaRotation.text).toBe(0);
+    // La persona no recuerda si la mandó y la corre otra vez: la llave pendiente es la misma.
+    const again = await run(dirs.nodo, ['rotar-llaves', '--enlace']);
+    expect(again.code, again.text).toBe(0);
+    expect(readJsonFile(pendingPath)).toEqual(pending);
+    // Y el archivo de rotación, firmado de nuevo, nombra la misma llave y la misma época.
+    expect((readJsonFile(rotationFile) as { enlace: unknown }).enlace).toMatchObject({
+      epoca: 3,
+      keyId: (pending as { keyId: string }).keyId,
+    });
+    const applied = await run(dirs.nodo, ['rotar-llaves', '--enlace', '--aplicar']);
+    expect(applied.code, applied.text).toBe(0);
+    const relay = readJsonFile(join(dirs.nodo, 'datos', 'relay-secret.json')) as {
+      secret: string;
+    };
+    // El nodo y la SESNA derivan el mismo secreto: el enlace sigue funcionando.
+    expect(loadRelaySecrets(join(dirs.sesna, 'datos')).get('node.oaxaca')).toEqual(
+      new Uint8Array(Buffer.from(relay.secret, 'base64url')),
+    );
+    const nothing = await run(dirs.nodo, ['rotar-llaves', '--enlace', '--aplicar']);
+    expect(nothing.code).toBe(1);
+    expect(nothing.text).toContain('No hay una rotación pendiente');
   });
 
   it('empaqueta la descarga del nodo con sus sumas', async () => {

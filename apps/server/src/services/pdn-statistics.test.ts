@@ -2,7 +2,13 @@
 // turnado en días hábiles (a tiempo o vencida), medianas solo con 10 observaciones o más, y
 // redondeo y supresión de cada conteo.
 import { describe, expect, it } from 'vitest';
-import { PdnStatisticsRowSchema } from '@sigilo/contracts';
+import {
+  PDN_DEFAULT_PAGE_SIZE,
+  PDN_MAX_PAGE_SIZE,
+  PdnStatisticsRequestSchema,
+  PdnStatisticsRowSchema,
+  STATES,
+} from '@sigilo/contracts';
 import type { PdnStatisticsRepository, StatisticsStep } from '../db/pdn-statistics-repository.ts';
 import {
   computeMonth,
@@ -192,6 +198,131 @@ describe('formato publicado a la PDN', () => {
         (row) => row.autoridad.clave,
       ),
     ).toEqual([INBOX]);
+  });
+
+  describe('paginación con muchas filas', () => {
+    // 250 filas distintas: 5 meses × 5 autoridades × 10 entidades, cada una con su propia clave.
+    const base = rows[0];
+    if (base === undefined) throw new Error('Sin fila base.');
+    const many = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10'].flatMap((mes) =>
+      ['a', 'b', 'c', 'd', 'e'].flatMap((suffix) =>
+        STATES.slice(0, 10).map((state) => ({
+          ...base,
+          mes,
+          autoridad: { clave: `authority.oic-${suffix}`, nombre: `OIC ${suffix}` },
+          entidad: state.code,
+        })),
+      ),
+    );
+
+    it('pageSize 1, 200 y por omisión; 0 y 201 no pasan el esquema', () => {
+      const parse = (body: unknown) => PdnStatisticsRequestSchema.safeParse(body).success;
+      expect(parse({ pageSize: 1 })).toBe(true);
+      expect(parse({ pageSize: PDN_MAX_PAGE_SIZE })).toBe(true);
+      for (const pageSize of [0, PDN_MAX_PAGE_SIZE + 1, -1, 1.5, '10', null]) {
+        expect(parse({ pageSize }), String(pageSize)).toBe(false);
+      }
+      for (const page of [0, -1, 1.5, 1_000_001, '1']) {
+        expect(parse({ page }), String(page)).toBe(false);
+      }
+      expect(parse({ page: 1_000_000 })).toBe(true);
+
+      expect(queryPdnStatistics(many, {}).results).toHaveLength(PDN_DEFAULT_PAGE_SIZE);
+      expect(queryPdnStatistics(many, { pageSize: 1 }).pagination).toEqual({
+        pageSize: 1,
+        page: 1,
+        totalRows: 250,
+        hasNextPage: true,
+      });
+      const full = queryPdnStatistics(many, { pageSize: PDN_MAX_PAGE_SIZE });
+      expect(full.results).toHaveLength(200);
+      expect(full.pagination.hasNextPage).toBe(true);
+      const rest = queryPdnStatistics(many, { pageSize: PDN_MAX_PAGE_SIZE, page: 2 });
+      expect(rest.results).toHaveLength(50);
+      expect(rest.pagination.hasNextPage).toBe(false);
+    });
+
+    it('recorrer todas las páginas da cada fila una vez, en el mismo orden, con cualquier tamaño', () => {
+      const ids = (pageSize: number, sort?: { entidad: 'desc' }) => {
+        const seen: string[] = [];
+        for (let page = 1; ; page += 1) {
+          const result = queryPdnStatistics(many, { pageSize, page, ...(sort && { sort }) });
+          expect(result.pagination.totalRows).toBe(250);
+          seen.push(...result.results.map((row) => row.id));
+          if (!result.pagination.hasNextPage) break;
+        }
+        return seen;
+      };
+      const reference = ids(PDN_MAX_PAGE_SIZE);
+      expect(new Set(reference).size).toBe(250);
+      for (const size of [1, 7, 10, 125, 249, 250]) expect(ids(size)).toEqual(reference);
+      const descending = ids(PDN_MAX_PAGE_SIZE, { entidad: 'desc' });
+      expect(ids(13, { entidad: 'desc' })).toEqual(descending);
+      expect(descending).not.toEqual(reference);
+    });
+
+    it('la última página exacta no anuncia otra; la siguiente y una lejana vienen vacías', () => {
+      const exact = queryPdnStatistics(many, { pageSize: 125, page: 2 });
+      expect(exact.results).toHaveLength(125);
+      expect(exact.pagination.hasNextPage).toBe(false);
+      for (const page of [3, 1_000_000]) {
+        expect(queryPdnStatistics(many, { pageSize: 125, page })).toEqual({
+          pagination: { pageSize: 125, page, totalRows: 250, hasNextPage: false },
+          results: [],
+        });
+      }
+    });
+
+    it('sin filas: página 1 vacía y sin siguiente', () => {
+      expect(queryPdnStatistics([], { pageSize: 1 })).toEqual({
+        pagination: { pageSize: 1, page: 1, totalRows: 0, hasNextPage: false },
+        results: [],
+      });
+    });
+
+    it('rangos de meses inclusivos, invertidos vacíos, y el orden se aplica en el de las llaves', () => {
+      const between = queryPdnStatistics(many, {
+        pageSize: 200,
+        query: { mesDesde: '2026-07', mesHasta: '2026-08' },
+      });
+      expect(between.pagination.totalRows).toBe(100);
+      expect(new Set(between.results.map((row) => row.mes))).toEqual(
+        new Set(['2026-07', '2026-08']),
+      );
+      expect(
+        queryPdnStatistics(many, { query: { mesDesde: '2026-09', mesHasta: '2026-07' } }).pagination
+          .totalRows,
+      ).toBe(0);
+      // Primero la entidad (desc) y después el mes (desc): las llaves mandan en ese orden.
+      const [first] = queryPdnStatistics(many, {
+        pageSize: 1,
+        sort: { entidad: 'desc', mes: 'desc' },
+      }).results;
+      expect(first).toMatchObject({ mes: '2026-10', entidad: { clave: STATES[9]?.code } });
+      const [other] = queryPdnStatistics(many, {
+        pageSize: 1,
+        sort: { mes: 'desc', entidad: 'desc' },
+      }).results;
+      expect(other?.mes).toBe('2026-10');
+    });
+
+    it('los filtros vacíos se ignoran combinados con filtros reales y siempre dan {clave, valor}', () => {
+      const one = queryPdnStatistics(many, {
+        pageSize: 200,
+        query: { autoridad: 'authority.oic-c', entidad: '', mes: '2026-08', conducta: '' },
+      });
+      expect(one.pagination.totalRows).toBe(10);
+      for (const row of one.results) {
+        expect(PdnStatisticsRowSchema.parse(row)).toEqual(row);
+        expect(row.entidad).toEqual({
+          clave: row.entidad.clave,
+          valor: STATES.find((state) => state.code === row.entidad.clave)?.name,
+        });
+        for (const item of [...row.archivadas, ...row.estatusAlCierre]) {
+          expect(Object.keys(item).sort()).toEqual(['clave', 'total', 'valor']);
+        }
+      }
+    });
   });
 
   it('una página después de la última responde results vacío con el mismo totalRows', () => {

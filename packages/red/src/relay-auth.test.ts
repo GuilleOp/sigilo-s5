@@ -56,6 +56,64 @@ describe('etiqueta del buzón v2', () => {
     ).toBe(false);
   });
 
+  it('acepta justo en el borde de la ventana y rechaza un milisegundo después', () => {
+    const secret = randomBytes(32);
+    const header = relayAuthHeaderV2(secret, BODY, NOW);
+    const at = (now: number) => ({ now, nonces: createRelayNonceCache(), allowLegacy: false });
+    expect(verifyRelayAuthHeader(secret, BODY, header, at(NOW + RELAY_AUTH_WINDOW_MS))).toBe(true);
+    expect(verifyRelayAuthHeader(secret, BODY, header, at(NOW - RELAY_AUTH_WINDOW_MS))).toBe(true);
+    expect(verifyRelayAuthHeader(secret, BODY, header, at(NOW + RELAY_AUTH_WINDOW_MS + 1))).toBe(
+      false,
+    );
+  });
+
+  it('una etiqueta falsa con un nonce visto en el enlace no lo gasta', () => {
+    const secret = randomBytes(32);
+    const nonces = createRelayNonceCache();
+    const nonce = 'ab'.repeat(16);
+    const genuine = relayAuthHeaderV2(secret, BODY, NOW, nonce);
+    const check = { now: NOW, nonces, allowLegacy: false };
+    // Quien captura el nonce y manda antes una etiqueta inventada no bloquea la entrega legítima.
+    const forged = `v2.${NOW}.${nonce}.${'A'.repeat(43)}`;
+    expect(verifyRelayAuthHeader(secret, BODY, forged, check)).toBe(false);
+    expect(verifyRelayAuthHeader(secret, `${BODY}x`, genuine, check)).toBe(false);
+    expect(verifyRelayAuthHeader(secret, BODY, genuine, check)).toBe(true);
+    // Ya entregada: repetirla, aun con otra marca de tiempo firmada, no pasa.
+    const sameNonce = relayAuthHeaderV2(secret, BODY, NOW + 1, nonce);
+    expect(verifyRelayAuthHeader(secret, BODY, sameNonce, check)).toBe(false);
+  });
+
+  it('una v2 vencida no se acepta como v1 aunque la transición siga abierta', () => {
+    const secret = randomBytes(32);
+    const expired = relayAuthHeaderV2(secret, BODY, NOW - 2 * RELAY_AUTH_WINDOW_MS);
+    const check = { now: NOW, nonces: createRelayNonceCache(), allowLegacy: true };
+    expect(verifyRelayAuthHeader(secret, BODY, expired, check)).toBe(false);
+    // La v1 de otro cuerpo tampoco.
+    expect(verifyRelayAuthHeader(secret, BODY, relayAuthTag(secret, `${BODY} `), check)).toBe(
+      false,
+    );
+  });
+
+  it('rechaza secretos cortos y cabeceras con forma casi válida', () => {
+    const secret = randomBytes(32);
+    const header = relayAuthHeaderV2(secret, BODY, NOW);
+    const check = () => ({ now: NOW, nonces: createRelayNonceCache(), allowLegacy: true });
+    expect(verifyRelayAuthHeader(randomBytes(16), BODY, header, check())).toBe(false);
+    expect(() => relayAuthHeaderV2(randomBytes(16), BODY, NOW)).toThrow();
+    const [, ts, nonce, tag] = header.split('.');
+    for (const bad of [
+      `v3.${ts}.${nonce}.${tag}`,
+      `v2.${ts}.${(nonce ?? '').toUpperCase()}.${tag}`,
+      `v2.${ts}.${nonce}.${tag}=`,
+      `v2.${ts}.${nonce}`,
+      ` ${header}`,
+      `${header}\n`,
+      '',
+    ]) {
+      expect(verifyRelayAuthHeader(secret, BODY, bad, check()), bad).toBe(false);
+    }
+  });
+
   it('la caché llena de nonces vigentes rechaza en vez de olvidar', () => {
     const secret = randomBytes(32);
     const nonces = createRelayNonceCache(1);

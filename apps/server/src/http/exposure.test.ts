@@ -182,3 +182,44 @@ describe('configuración del perfil', () => {
     expect(loadConfig({ SIGILO_RELAY_AUTH_LEGACY: '0' }).allowLegacyRelayAuth).toBe(false);
   });
 });
+
+describe('rutas disfrazadas en el perfil nodo', () => {
+  it('codificar, duplicar barras o cambiar mayúsculas no abre la recepción directa', async () => {
+    const { app } = createTestServer({ exposedFronts: NODE_PROFILE_FRONTS });
+    const disguised = [
+      `${ROUTES.complaints}/`,
+      ROUTES.complaints.replace('/complaints', '//complaints'),
+      `/${ROUTES.complaints}`,
+      ROUTES.complaints.replace('complaints', '%63omplaints'),
+      ROUTES.complaints.replace('complaints', 'complaints%2F'),
+      ROUTES.complaints.toUpperCase(),
+      `${ROUTES.complaints};x`,
+      // `%2E%2E` se normaliza antes de clasificar: llega como la ruta de la ventanilla.
+      ROUTES.complaints.replace('/complaints', '/authority/%2E%2E/complaints'),
+      `/v1/%2e%2e${ROUTES.complaints}`,
+      ROUTES.evidenceUpload.replace('evidence', '%65vidence'),
+      ROUTES.tracking.replace('tracking', '%74racking'),
+    ];
+    for (const path of disguised) {
+      const response = await call(app.fetch, 'POST', path, {});
+      expect(response.status, path).toBe(404);
+    }
+  });
+
+  it('una ruta del panel con segmentos codificados sigue pidiendo sesión, no llega a la ventanilla', async () => {
+    const { app } = createTestServer({ exposedFronts: NODE_PROFILE_FRONTS });
+    for (const tail of ['..%2Fcomplaints', '%2e%2e%2fcomplaints']) {
+      const response = await call(app.fetch, 'POST', `${ROUTES.authorityComplaints}/${tail}`, {});
+      expect(response.status, tail).toBe(401);
+    }
+  });
+
+  it('HEAD de una lectura pública pasa; escribir en esa lectura no es de ningún frente', () => {
+    expect(frontOf('HEAD', ROUTES.keys, undefined)).toBe('publico');
+    expect(frontOf('POST', ROUTES.keys, undefined)).toBeNull();
+    expect(frontOf('POST', ROUTES.ledgerEvents, undefined)).toBeNull();
+    expect(frontOf('DELETE', NETWORK_ROUTES.nodeHealth, undefined)).toBeNull();
+    // Un reto sin propósito es de la ventanilla: nunca del frente público.
+    expect(frontOf('GET', ROUTES.powChallenge, undefined)).toBe('ventanilla');
+  });
+});

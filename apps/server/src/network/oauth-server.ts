@@ -368,17 +368,20 @@ export function createNodeOAuthServer(options: NodeOAuthOptions): NodeOAuthServe
           if (user === undefined || username === undefined || password === undefined) {
             return failure('invalid_request');
           }
+          const limited: TokenOutcome = {
+            status: 429,
+            body: { error: 'invalid_grant', error_description: RATE_LIMITED_DESCRIPTION },
+            basicChallenge: false,
+          };
           // Con el usuario bloqueado no se compara la contraseña: no hay oráculo de aciertos.
-          if (failures.isLimited(limiterKey)) {
-            return {
-              status: 429,
-              body: { error: 'invalid_grant', error_description: RATE_LIMITED_DESCRIPTION },
-              basicChallenge: false,
-            };
-          }
+          if (failures.isLimited(limiterKey)) return limited;
           const isUser = secretMatches(username, clientSecretDigest(user.username));
           const passwordHash = isUser ? user.passwordHash : decoyPassword(user.passwordHash);
           const isPassword = await verifyPassword(password, passwordHash);
+          // Seguridad: se vuelve a mirar el tope después de scrypt. Las peticiones simultáneas pasan
+          // todas la primera comprobación antes de que ninguna anote su fallo; sin esta, un lote de
+          // cientos de contraseñas a la vez se evaluaba completo y el tope no frenaba nada.
+          if (failures.isLimited(limiterKey)) return limited;
           if (!isUser || !isPassword) {
             failures.consume(limiterKey);
             return failure('invalid_grant');
