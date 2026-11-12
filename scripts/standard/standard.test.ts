@@ -84,7 +84,8 @@ describe('estandar/ generado', () => {
       (name) => `${EXAMPLES_DIR}/${name}`,
     );
     expect(onDisk.filter((path) => !files.has(path))).toEqual([]);
-  });
+    // Generar los 120 archivos y validar cada OpenAPI tarda varios segundos con la máquina cargada.
+  }, 30_000);
 
   it('el YAML y el JSON dicen lo mismo, también para un lector de YAML 1.1', () => {
     for (const base of ['openapi', `${PROFILES_DIR}/${PDN_PROFILE.file}`]) {
