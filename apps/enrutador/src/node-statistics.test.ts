@@ -2,42 +2,50 @@
 // cerrados, autoridades propias, sin repetidas, conteos ya redondeados y suprimidos) y no suma a un
 // nodo que no da token o que publica de más.
 import { describe, expect, it } from 'vitest';
-import { PDN_ROUTES, PdnStatisticsRowSchema } from '@sigilo/contracts';
+import {
+  PDN_CLOSURE_CATALOG,
+  PDN_ROUTES,
+  PDN_STATUS_CATALOG,
+  PdnStatisticsRowSchema,
+  pdnCaptureDate,
+  pdnConduct,
+  pdnEntity,
+  pdnStatisticsRowId,
+} from '@sigilo/contracts';
 import type { DirectoryNode, PdnStatisticsRow } from '@sigilo/contracts';
 import type { FetchLike } from '@sigilo/red';
 import { checkNodeRows, createNodeStatisticsAggregator } from './node-statistics.ts';
 import type { NodeTokenClient } from './oauth/token-client.ts';
 import { createTestNetwork } from './test-support.ts';
 
-const ROW: PdnStatisticsRow = {
-  mes: '2026-10',
-  autoridad: { clave: 'authority.comptroller-queretaro', nombre: 'Contraloría' },
-  entidad: '22',
-  conducta: 'LGRA-52',
-  recibidas: 10,
-  turnadas: { aTiempo: 5, vencidas: null },
-  aceptadas: { aTiempo: null, vencidas: null },
-  archivadas: {
-    attended: null,
-    channeled: null,
-    inadmissible: null,
-    insufficient_information: null,
-    joined: null,
-    other: null,
-  },
-  calificadas: { graves: null, noGraves: null },
-  escalamientos: null,
-  estatusAlCierre: {
-    received: null,
-    routing: null,
-    routed: 10,
-    investigating: null,
-    classified: null,
-    archived: null,
-    resolved: null,
-  },
-  tiemposMedianosDiasHabiles: { turno: null, aceptacion: null, archivo: null },
-};
+function row(overrides: Partial<PdnStatisticsRow> = {}): PdnStatisticsRow {
+  const base = {
+    mes: '2026-10',
+    autoridad: { clave: 'authority.comptroller-queretaro', nombre: 'Contraloría' },
+    entidad: pdnEntity('22'),
+    conducta: pdnConduct('LGRA-52'),
+    ...overrides,
+  };
+  return {
+    id: pdnStatisticsRowId(base.mes, base.autoridad.clave, base.entidad.clave, base.conducta.clave),
+    fechaCaptura: pdnCaptureDate(base.mes),
+    recibidas: 10,
+    turnadas: { aTiempo: 5, vencidas: null },
+    aceptadas: { aTiempo: null, vencidas: null },
+    archivadas: PDN_CLOSURE_CATALOG.map(({ clave, valor }) => ({ clave, valor, total: null })),
+    calificadas: { graves: null, noGraves: null },
+    escalamientos: null,
+    estatusAlCierre: PDN_STATUS_CATALOG.map(({ clave, valor }) => ({
+      clave,
+      valor,
+      total: clave === 'TURNADA' ? 10 : null,
+    })),
+    tiemposMedianosDiasHabiles: { turno: null, aceptacion: null, archivo: null },
+    ...base,
+  };
+}
+
+const ROW = row();
 
 const TOKENS: NodeTokenClient = {
   hasCredentials: (node) => node.id === 'node.queretaro',
@@ -54,19 +62,28 @@ describe('filas de un nodo', () => {
     expect(checkNodeRows([ROW], node, signed.directory, '2026-10')).toBe('open-month');
     expect(
       checkNodeRows(
-        [{ ...ROW, autoridad: { clave: 'authority.oic-iffe', nombre: 'OIC' } }],
+        [row({ autoridad: { clave: 'authority.oic-iffe', nombre: 'OIC' } })],
         node,
         signed.directory,
         '2026-11',
       ),
     ).toBe('foreign-authority');
     expect(checkNodeRows([ROW, ROW], node, signed.directory, '2026-11')).toBe('duplicate');
+    // Un id que no corresponde a su celda se rechaza.
+    expect(checkNodeRows([{ ...ROW, id: 'otro' }], node, signed.directory, '2026-11')).toBe(
+      'invalid',
+    );
   });
 
   it('el esquema rechaza conteos sin redondear o menores que 5', () => {
     expect(PdnStatisticsRowSchema.safeParse({ ...ROW, recibidas: 3 }).success).toBe(false);
     expect(PdnStatisticsRowSchema.safeParse({ ...ROW, recibidas: 7 }).success).toBe(false);
     expect(PdnStatisticsRowSchema.safeParse({ ...ROW, recibidas: null }).success).toBe(true);
+    // Los conteos por motivo y por estatus van en español, con todos los del catálogo.
+    expect(
+      PdnStatisticsRowSchema.safeParse({ ...ROW, archivadas: ROW.archivadas.slice(1) }).success,
+    ).toBe(false);
+    expect(PdnStatisticsRowSchema.safeParse({ ...ROW, entidad: '22' }).success).toBe(false);
   });
 });
 
@@ -95,7 +112,7 @@ describe('corte nacional', () => {
       const page = (body as { page: number }).page;
       return Response.json({
         pagination: { pageSize: 200, page, totalRows: 2, hasNextPage: page === 1 },
-        results: [{ ...ROW, conducta: page === 1 ? 'LGRA-52' : 'LGRA-57' }],
+        results: [row({ conducta: pdnConduct(page === 1 ? 'LGRA-52' : 'LGRA-57') })],
       });
     }).run();
     expect(pages).toEqual([
@@ -120,7 +137,7 @@ describe('corte nacional', () => {
     const open = await aggregator(() =>
       Response.json({
         pagination: { pageSize: 200, page: 1, totalRows: 1, hasNextPage: false },
-        results: [{ ...ROW, mes: '2026-11' }],
+        results: [row({ mes: '2026-11' })],
       }),
     ).run();
     expect(open.nodes.find((item) => item.nodeId === 'node.queretaro')?.rejection).toBe(

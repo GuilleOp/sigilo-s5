@@ -11,7 +11,13 @@ import {
   PDN_SCOPES,
   PdnStatisticsRequestSchema,
 } from '@sigilo/contracts';
-import type { ApiErrorCode, PdnAuthorities, PdnError } from '@sigilo/contracts';
+import type {
+  ApiErrorCode,
+  PdnAuthorities,
+  PdnError,
+  PdnTokenError,
+  PdnTokenErrorBody,
+} from '@sigilo/contracts';
 import type { AppContext } from '../context.ts';
 import { createPdnStatisticsRepository } from '../db/pdn-statistics-repository.ts';
 import { requireBearer } from '../network/oauth-guard.ts';
@@ -29,9 +35,33 @@ const TOKEN_PARAMETERS = new Set([
   'scope',
 ]);
 
-/** Error con la forma `resError` del S2 y del S3: `{ code, message }`. */
+/**
+ * Error con la forma `resError` del S2 y del S3: `{ code, message }`, con `code` igual al estatus
+ * HTTP (ValidAPI exige un número de 400 a 499 que coincida con la respuesta).
+ */
 function pdnError(c: Context, code: ApiErrorCode, status: ContentfulStatusCode): Response {
-  const body: PdnError = { code, message: API_ERROR_MESSAGES[code] };
+  const body: PdnError = { code: status, message: API_ERROR_MESSAGES[code] };
+  return c.json(body, status);
+}
+
+const PDN_PATHS: ReadonlySet<string> = new Set(Object.values(PDN_ROUTES));
+
+/** Indica si la ruta es de la PDN (y sus errores van con el formato `resError`). */
+export function isPdnPath(path: string): boolean {
+  return PDN_PATHS.has(path);
+}
+
+/** Error inesperado en una ruta de la PDN: `500` con el formato `resError`, sin detalles. */
+export function pdnInternalError(c: Context): Response {
+  return pdnError(c, 'internal', 500);
+}
+
+/**
+ * Error del punto de emisión de tokens: los campos de RFC 6749 (que leen los clientes OAuth) más
+ * `code` y `message` del `resError` de la PDN (que revisa ValidAPI). No chocan: se mandan los dos.
+ */
+function tokenError(c: Context, error: PdnTokenErrorBody, status: 400 | 401 | 413 | 429): Response {
+  const body: PdnTokenError = { ...error, code: status, message: error.error_description };
   return c.json(body, status);
 }
 
@@ -80,13 +110,18 @@ export function registerPdnRoutes(app: Hono, ctx: AppContext): void {
     bodyLimit({
       maxSize: MAX_TOKEN_BODY_BYTES,
       onError: (c) =>
-        c.json({ error: 'invalid_request', error_description: 'Petición demasiado grande.' }, 413),
+        tokenError(
+          c,
+          { error: 'invalid_request', error_description: 'Petición demasiado grande.' },
+          413,
+        ),
     }),
     async (c) => {
       c.header('Pragma', 'no-cache');
       const params = await readTokenParams(c);
       if (params === null) {
-        return c.json(
+        return tokenError(
+          c,
           {
             error: 'invalid_request',
             error_description: 'La petición no tiene los parámetros esperados.',
@@ -98,10 +133,9 @@ export function registerPdnRoutes(app: Hono, ctx: AppContext): void {
         authorization: c.req.header('Authorization'),
         params,
       });
-      if (outcome.status !== 200 && outcome.basicChallenge) {
-        c.header('WWW-Authenticate', 'Basic realm="sigilo"');
-      }
-      return c.json(outcome.body, outcome.status);
+      if (outcome.status === 200) return c.json(outcome.body, 200);
+      if (outcome.basicChallenge) c.header('WWW-Authenticate', 'Basic realm="sigilo"');
+      return tokenError(c, outcome.body, outcome.status);
     },
   );
 
@@ -138,10 +172,7 @@ export function registerPdnRoutes(app: Hono, ctx: AppContext): void {
       const request = PdnStatisticsRequestSchema.safeParse(raw ?? {});
       if (!request.success) return pdnError(c, 'bad_request', 400);
       freeze();
-      const result = queryPdnStatistics(repository.listFrozenRows(), request.data);
-      // Como en el S2 y el S3: una página que no existe es `400`.
-      if (result === 'invalid-page') return pdnError(c, 'bad_request', 400);
-      return c.json(result);
+      return c.json(queryPdnStatistics(repository.listFrozenRows(), request.data));
     },
   );
 
@@ -149,7 +180,11 @@ export function registerPdnRoutes(app: Hono, ctx: AppContext): void {
     const authorities: PdnAuthorities = ctx.authorities
       .listAuthorities()
       .map((item) => ({ clave: item.authorityId, nombre: item.name }))
-      .sort((left, right) => left.clave.localeCompare(right.clave));
+      // Como `dependencias` del S2: en orden alfabético por nombre (y por clave si se repite).
+      .sort(
+        (left, right) =>
+          left.nombre.localeCompare(right.nombre, 'es') || left.clave.localeCompare(right.clave),
+      );
     return c.json(authorities);
   });
 }

@@ -8,6 +8,7 @@ import {
   PDN_ROUTES,
   PDN_SCOPES,
   PdnStatisticsResponseSchema,
+  pdnStatisticsRowId,
 } from '@sigilo/contracts';
 import type {
   AuthorityDirectory,
@@ -56,8 +57,8 @@ type NodeResult =
   | { status: 'rejected'; rejection: StatisticsRejection };
 
 /**
- * Comprueba las filas de un nodo: meses cerrados, autoridades del propio nodo en el directorio y
- * sin filas repetidas. Los conteos (múltiplos de 5 y al menos 5, o `null`) ya los exige el esquema.
+ * Comprueba las filas de un nodo: meses cerrados, autoridades del propio nodo en el directorio,
+ * `id` congruente con la fila y sin filas repetidas. Los conteos (múltiplos de 5 y al menos 5, o `null`) ya los exige el esquema.
  * Seguridad: un nodo que publica de más (un mes abierto) o a nombre de otro no entra al corte.
  */
 export function checkNodeRows(
@@ -73,7 +74,15 @@ export function checkNodeRows(
   for (const row of rows) {
     if (row.mes >= closedBefore) return 'open-month';
     if (!own.has(row.autoridad.clave)) return 'foreign-authority';
-    const key = `${row.mes}|${row.autoridad.clave}|${row.entidad}|${row.conducta}`;
+    // El `id` debe ser el de su mes, autoridad, entidad y conducta: así no se repite la misma celda
+    // con dos identificadores ni un identificador apunta a otra celda.
+    const key = pdnStatisticsRowId(
+      row.mes,
+      row.autoridad.clave,
+      row.entidad.clave,
+      row.conducta.clave,
+    );
+    if (row.id !== key) return 'invalid';
     if (seen.has(key)) return 'duplicate';
     seen.add(key);
   }

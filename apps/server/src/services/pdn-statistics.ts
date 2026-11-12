@@ -10,9 +10,16 @@ import {
   COMPLAINT_STATUSES,
   OPEN_DATA_MIN_CELL,
   OPEN_DATA_ROUNDING,
+  PDN_CLOSURE_CATALOG,
   PDN_DEFAULT_PAGE_SIZE,
   PDN_MIN_MEDIAN_OBSERVATIONS,
+  PDN_STATUS_CATALOG,
   TURN_SEMAPHORE,
+  pdnCaptureDate,
+  pdnConduct,
+  pdnEntity,
+  pdnStatisticsFilters,
+  pdnStatisticsRowId,
   turnWaitFor,
 } from '@sigilo/contracts';
 import type {
@@ -29,6 +36,7 @@ import type {
 import { remainingDays } from '@sigilo/core';
 import { withTransaction } from '../db/database.ts';
 import type {
+  FrozenStatisticsRow,
   PdnStatisticsRepository,
   StatisticsComplaint,
   StatisticsStep,
@@ -228,8 +236,8 @@ export function publishMonth(
   authorityName: (authorityId: string) => string | null,
   noiseSeed: string,
   noiseUnit: NoiseUnit = hmacNoiseUnit,
-): PdnStatisticsRow[] {
-  const result: PdnStatisticsRow[] = [];
+): FrozenStatisticsRow[] {
+  const result: FrozenStatisticsRow[] = [];
   for (const item of raw) {
     const name = authorityName(item.authorityId);
     if (name === null || !AuthorityIdSchema.safeParse(item.authorityId).success) continue;
@@ -250,7 +258,7 @@ export function publishMonth(
       if (value !== null) hasValue = true;
       return value;
     };
-    const published: PdnStatisticsRow = {
+    const published: FrozenStatisticsRow = {
       mes: month,
       autoridad: { clave: item.authorityId, nombre: name },
       entidad: item.stateCode,
@@ -269,7 +277,7 @@ export function publishMonth(
           reason.key,
           count(`archivadas.${reason.key}`, item.archived[reason.key]),
         ]),
-      ) as PdnStatisticsRow['archivadas'],
+      ) as FrozenStatisticsRow['archivadas'],
       calificadas: {
         graves: count('calificadas.graves', item.serious),
         noGraves: count('calificadas.noGraves', item.nonSerious),
@@ -280,7 +288,7 @@ export function publishMonth(
           status.key,
           count(`estatus.${status.key}`, item.statuses[status.key]),
         ]),
-      ) as PdnStatisticsRow['estatusAlCierre'],
+      ) as FrozenStatisticsRow['estatusAlCierre'],
       tiemposMedianosDiasHabiles: {
         turno: medianOf(item.routingDays),
         aceptacion: medianOf(item.acceptanceDays),
@@ -331,6 +339,38 @@ export function freezePdnStatistics(deps: PdnStatisticsDeps): string[] {
   });
 }
 
+/**
+ * Fila con el formato publicado a la PDN: `id`, `fechaCaptura`, valores de catálogo como
+ * `{ clave, valor }` y conteos por motivo y por estatus con las claves en español, siempre todos y
+ * en el orden del catálogo. Solo cambia la forma: los números son los congelados.
+ */
+export function toPdnStatisticsRow(row: FrozenStatisticsRow): PdnStatisticsRow {
+  return {
+    id: pdnStatisticsRowId(row.mes, row.autoridad.clave, row.entidad, row.conducta),
+    fechaCaptura: pdnCaptureDate(row.mes),
+    mes: row.mes,
+    autoridad: row.autoridad,
+    entidad: pdnEntity(row.entidad),
+    conducta: pdnConduct(row.conducta),
+    recibidas: row.recibidas,
+    turnadas: row.turnadas,
+    aceptadas: row.aceptadas,
+    archivadas: PDN_CLOSURE_CATALOG.map(({ key, clave, valor }) => ({
+      clave,
+      valor,
+      total: row.archivadas[key] ?? null,
+    })),
+    calificadas: row.calificadas,
+    escalamientos: row.escalamientos,
+    estatusAlCierre: PDN_STATUS_CATALOG.map(({ key, clave, valor }) => ({
+      clave,
+      valor,
+      total: row.estatusAlCierre[key] ?? null,
+    })),
+    tiemposMedianosDiasHabiles: row.tiemposMedianosDiasHabiles,
+  };
+}
+
 type SortField = 'mes' | 'autoridad' | 'entidad' | 'conducta';
 
 function sortValue(row: PdnStatisticsRow, field: SortField): string {
@@ -340,9 +380,9 @@ function sortValue(row: PdnStatisticsRow, field: SortField): string {
     case 'autoridad':
       return row.autoridad.clave;
     case 'entidad':
-      return row.entidad;
+      return row.entidad.clave;
     case 'conducta':
-      return row.conducta;
+      return row.conducta.clave;
   }
 }
 
@@ -353,27 +393,29 @@ const DEFAULT_SORT: readonly [SortField, 'asc' | 'desc'][] = [
   ['conducta', 'asc'],
 ];
 
-/** Resultado de una consulta: la página o `invalid-page` si `page` pasa de la última. */
-export type PdnStatisticsQueryResult = PdnStatisticsResponse | 'invalid-page';
-
 /**
- * Filtra, ordena y pagina las filas congeladas.
+ * Filtra, ordena y pagina las filas congeladas, ya con el formato publicado. Como pide ValidAPI:
+ * un filtro con cadena vacía se ignora, un `id` que no existe da `results: []` y una página
+ * después de la última también (con `hasNextPage: false`); `totalRows` es el mismo en todas.
  * Seguridad: los filtros solo seleccionan filas ya publicadas; ninguno vuelve a sumar.
  */
 export function queryPdnStatistics(
-  rows: readonly PdnStatisticsRow[],
+  frozen: readonly FrozenStatisticsRow[],
   request: PdnStatisticsRequest,
-): PdnStatisticsQueryResult {
-  const query = request.query ?? {};
+): PdnStatisticsResponse {
+  const query = pdnStatisticsFilters(request);
+  const rows = frozen.map(toPdnStatisticsRow);
   const matching = rows.filter(
     (row) =>
+      (query.id === undefined || row.id === query.id) &&
       (query.mes === undefined || row.mes === query.mes) &&
       (query.mesDesde === undefined || row.mes >= query.mesDesde) &&
       (query.mesHasta === undefined || row.mes <= query.mesHasta) &&
-      (query.entidad === undefined || row.entidad === query.entidad) &&
+      (query.entidad === undefined || row.entidad.clave === query.entidad) &&
       (query.autoridad === undefined || row.autoridad.clave === query.autoridad) &&
-      (query.conducta === undefined || row.conducta === query.conducta) &&
-      (query.estatus === undefined || row.estatusAlCierre[query.estatus] !== null),
+      (query.conducta === undefined || row.conducta.clave === query.conducta) &&
+      (query.estatus === undefined ||
+        row.estatusAlCierre.some((item) => item.clave === query.estatus && item.total !== null)),
   );
   const requested = Object.entries(request.sort ?? {}) as [SortField, 'asc' | 'desc'][];
   const order = [
@@ -390,7 +432,6 @@ export function queryPdnStatistics(
   const pageSize = request.pageSize ?? PDN_DEFAULT_PAGE_SIZE;
   const page = request.page ?? 1;
   const start = (page - 1) * pageSize;
-  if (page > 1 && start >= sorted.length) return 'invalid-page';
   return {
     pagination: {
       pageSize,

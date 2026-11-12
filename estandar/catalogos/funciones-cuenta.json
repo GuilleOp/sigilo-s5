@@ -1,0 +1,7 @@
+[
+  { "clave": "intake", "valor": "Recepción y turnado" },
+  { "clave": "investigation", "valor": "Investigación" },
+  { "clave": "supervision", "valor": "Supervisión" },
+  { "clave": "substantiation", "valor": "Substanciación y resolución" },
+  { "clave": "operation", "valor": "Operación del nodo (solo solicitudes de alta)" }
+]

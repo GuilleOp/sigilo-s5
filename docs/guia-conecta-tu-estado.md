@@ -39,6 +39,7 @@ Así está repartida la red:
 2. Da de alta tus autoridades (sección 1) y genera sus llaves (sección 3).
 3. **Declara tu tabla de funciones** y fírmala con la llave de tu nodo (sección 2).
 4. La operación de la ventanilla agrega todo al directorio y los testigos lo cofirman (sección 4).
+5. Pide a la SESNA la conexión con la PDN y pasa sus pruebas (sección 7).
 
 ## El alta en cinco pasos
 
@@ -334,6 +335,77 @@ estado de todos los nodos en `GET /api/v1/red/health/nodes` (JSON) y
 `/api/v1/red/health/nodes.html` (tabla), sin datos de denuncias. Si la SESNA fija
 `SIGILO_ROUTER_MIN_NODE_VERSION`, no entrega a un nodo con una versión menor: lo que esté en cola
 espera hasta que lo actualices.
+
+## 7. Conexión oficial con la PDN
+
+Además de la red S5, la SESNA conecta a cada proveedor de la Plataforma Digital Nacional con un
+protocolo propio, el mismo que usa para el S1, el S2 y el S3. Lo que sigue lo resume tal como lo
+describen la _Memoria documental de la PDN_ (SESNA, 2024) y el texto público de ValidAPI, la
+herramienta con que la SESNA prueba las APIs. Los formatos, los plazos y los requisitos los fija la
+SESNA y pueden cambiar: consulta siempre la versión vigente en
+[plataformadigitalnacional.org](https://www.plataformadigitalnacional.org/) antes de pedir la
+conexión. El S5 todavía no tiene especificación oficial; este perfil es la propuesta de SIGILO.
+
+**Qué consume la SESNA de tu nodo.** El perfil de conexión PDN del estándar
+([`estandar/oas/OAS_API_S5_Estadisticas_Denuncias.json`](../estandar/oas/OAS_API_S5_Estadisticas_Denuncias.json),
+OpenAPI 3.0.3, el formato que lee el Swagger UI de la PDN): `POST /oauth/token`,
+`POST /v1/denuncias/estadisticas` y `GET /v1/denuncias/estadisticas/autoridades`. El servidor de
+referencia ya cumple sus reglas: token de 5 minutos, renovación de un solo uso que dura 7 minutos
+más, errores con `code` (el estatus HTTP) y `message`, página vacía después de la última, filtros
+vacíos que se ignoran y filas con `id` y `fechaCaptura`.
+
+### 7.1 Solicita la conexión
+
+1. Implementa (o levanta) tu nodo conforme a la especificación y publícalo con HTTPS: en el
+   ambiente productivo la ruta del token y la de consulta deben ser `https`.
+2. Llena el «Formato de solicitud de conexión» que publica la SESNA y envíalo a
+   **pdn@sesna.gob.mx**, dirigido a la Unidad de Servicios Tecnológicos y Plataforma Digital
+   Nacional. Normalmente pide los datos de la institución y de la persona responsable, el sistema
+   (aquí, el S5), el ámbito de gobierno y las URL del token y de consulta.
+3. Entrega las credenciales OAuth (sección 5: `client_id`, secreto y, para el flujo `password`,
+   usuario y contraseña) por el canal que acuerdes con la SESNA, nunca en el mismo correo que las
+   URL ni en texto plano.
+
+### 7.2 Pruebas en desarrollo
+
+La SESNA ejecuta conjuntos de pruebas de **seguridad**, **funcionales** y **de estrés** sobre tu
+API, primero en un ambiente de **desarrollo** con datos sintéticos. Antes de pedirlo, córrelas tú
+con el perfil «conexión PDN» del validador, que reproduce los casos públicos de ValidAPI:
+
+```sh
+SIGILO_PDN_CLIENT_ID=sesna SIGILO_PDN_CLIENT_SECRET=… \
+SIGILO_PDN_USERNAME=sesna.pdn SIGILO_PDN_PASSWORD=… \
+npm run validate:pdn -- \
+  --token-url https://desarrollo.tu-nodo.example/oauth/token \
+  --consulta-url https://desarrollo.tu-nodo.example/v1/denuncias/estadisticas \
+  --ambiente desarrollo --esperar-vencimiento
+```
+
+Corrige todo lo que salga «no aprobado». En desarrollo, ValidAPI avisa si el recurso tiene menos de
+50 registros: carga datos sintéticos suficientes (la red de demostración no llega a 50 filas, ver
+abajo). Las pruebas de estrés no se reproducen: su duración y concurrencia no son públicas.
+
+### 7.3 Pruebas en productivo
+
+Con las pruebas de desarrollo aprobadas, la SESNA repite las pruebas en el ambiente **productivo**,
+con datos reales (sin datos reservados). Aquí `http` ya no se acepta. Corre antes el validador con
+`--ambiente productivo` contra tus URL públicas.
+
+### 7.4 Si no se aprueba
+
+Si los resultados no son aprobatorios, la SESNA lo notifica a la institución para que haga los
+ajustes y **solicite una nueva revisión**. Vuelve a correr `npm run validate:pdn` en el ambiente que
+falló, corrige y pide la revisión otra vez por el mismo canal. Cada vez que cambies la API (otra
+versión del estándar, otra URL o credenciales nuevas) avisa a la SESNA: puede pedir repetir las
+pruebas antes de reconectarte.
+
+**Por qué la red de demostración no llega a 50 filas.** Cada fila de la estadística es una celda
+(mes cerrado, autoridad, entidad y conducta) con al menos 5 denuncias reales después del redondeo y
+la supresión. Llegar a 50 filas exigiría unas 300 denuncias completas por la ventanilla, cada una
+con su prueba de trabajo y su cifrado, y adelantar el reloj de la demostración hasta cerrar un mes:
+minutos de más en `npm run demo:seed`. Inventar filas sin denuncias se saltaría las reglas de
+protección que la estadística debe demostrar. Para la corrida de desarrollo, usa un ambiente con
+tus propios datos sintéticos.
 
 ## Seguridad operativa
 

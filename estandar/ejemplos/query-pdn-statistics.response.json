@@ -2,35 +2,45 @@
   "pagination": { "pageSize": 10, "page": 1, "totalRows": 1, "hasNextPage": false },
   "results": [
     {
+      "id": "2026-10|authority.comptroller-queretaro|22|LGRA-52",
+      "fechaCaptura": "2026-11-01T00:00Z",
       "mes": "2026-10",
       "autoridad": {
         "clave": "authority.comptroller-queretaro",
         "nombre": "Contraloría Estatal Ficticia de Querétaro"
       },
-      "entidad": "22",
-      "conducta": "LGRA-52",
+      "entidad": { "clave": "22", "valor": "Querétaro" },
+      "conducta": { "clave": "LGRA-52", "valor": "Cohecho" },
       "recibidas": 15,
       "turnadas": { "aTiempo": 10, "vencidas": null },
       "aceptadas": { "aTiempo": 10, "vencidas": 5 },
-      "archivadas": {
-        "attended": null,
-        "channeled": null,
-        "inadmissible": 5,
-        "insufficient_information": null,
-        "joined": null,
-        "other": null
-      },
+      "archivadas": [
+        { "clave": "ATENDIDA", "valor": "Atendido", "total": null },
+        { "clave": "CANALIZADA", "valor": "Canalizado", "total": null },
+        { "clave": "IMPROCEDENTE", "valor": "Improcedente", "total": 5 },
+        { "clave": "INFORMACION_INSUFICIENTE", "valor": "Información insuficiente", "total": null },
+        { "clave": "ACUMULADA", "valor": "Acumulado", "total": null },
+        { "clave": "OTRO_MOTIVO", "valor": "Otro", "total": null }
+      ],
       "calificadas": { "graves": null, "noGraves": 5 },
       "escalamientos": null,
-      "estatusAlCierre": {
-        "received": null,
-        "routing": null,
-        "routed": 5,
-        "investigating": 10,
-        "classified": null,
-        "archived": null,
-        "resolved": null
-      },
+      "estatusAlCierre": [
+        { "clave": "RECIBIDA", "valor": "Recibida", "total": null },
+        {
+          "clave": "BUSCANDO_AUTORIDAD",
+          "valor": "Buscando a la autoridad que debe atenderla",
+          "total": null
+        },
+        { "clave": "TURNADA", "valor": "Turnada a la autoridad competente", "total": 5 },
+        { "clave": "EN_INVESTIGACION", "valor": "En investigación", "total": 10 },
+        {
+          "clave": "CALIFICADA",
+          "valor": "Revisada: la autoridad decidió si la falta es grave",
+          "total": null
+        },
+        { "clave": "ARCHIVADA", "valor": "Archivada", "total": null },
+        { "clave": "CONCLUIDA", "valor": "Concluida", "total": null }
+      ],
       "tiemposMedianosDiasHabiles": { "turno": 1, "aceptacion": 1, "archivo": null }
     }
   ]

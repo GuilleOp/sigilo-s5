@@ -165,6 +165,52 @@ El reporte HTML no carga nada externo, escapa todo el contenido del sitio, usa u
 encabezados, muestra cada estado con ícono y texto (no solo color) y respeta el modo oscuro con
 contraste AA.
 
+## Perfil «conexión PDN»
+
+Reproduce, contra el nodo de un estado, los casos con que la SESNA prueba a un proveedor en su
+protocolo de conexión (ValidAPI, ver [`docs/guia-conecta-tu-estado.md`](../../docs/guia-conecta-tu-estado.md)).
+Solo pide tokens y consulta la estadística con las credenciales que el estado entregó a la SESNA: no
+crea ni cambia nada. Las credenciales van por variables de entorno, nunca en la línea de comandos, y
+el reporte no las guarda (tampoco los tokens).
+
+```sh
+SIGILO_PDN_CLIENT_ID=sesna SIGILO_PDN_CLIENT_SECRET=… \
+SIGILO_PDN_USERNAME=sesna.pdn SIGILO_PDN_PASSWORD=… \
+npm run validate:pdn -- \
+  --token-url https://nodo.example.org/oauth/token \
+  --consulta-url https://nodo.example.org/v1/denuncias/estadisticas \
+  --ambiente productivo
+```
+
+Sin `SIGILO_PDN_USERNAME` y `SIGILO_PDN_PASSWORD` usa `client_credentials`. `--esperar-vencimiento`
+espera `expires_in` segundos para comprobar que el token vencido ya no sirve. El reporte JSON va a
+`estandar/reportes/<host>-pdn-AAAA-MM-DD.json`. Cada caso sale como `aprobado`, `no_aprobado`,
+`advertencia` o `no_evaluado`; el código de salida es 1 si hay al menos un `no_aprobado`.
+
+| Caso       | Categoría | Qué revisa (regla de ValidAPI)                                                                                |
+| ---------- | --------- | ------------------------------------------------------------------------------------------------------------- |
+| `CPDEN-01` | seguridad | Token Bearer con las credenciales en el cuerpo y con `Authorization: Basic`; la ruta contiene `/oauth/token`. |
+| `CPDEN-02` | seguridad | `expires_in` de 5 minutos a 1 hora.                                                                           |
+| `CPDEN-03` | seguridad | Un token nuevo en cada petición.                                                                              |
+| `CPDEN-04` | seguridad | El token vencido responde `401` con `resError` (solo con `--esperar-vencimiento`).                            |
+| `CPDEN-05` | seguridad | `refresh_token` (opcional): dura de 5 a 10 minutos más que `expires_in`, renueva y es de un solo uso.         |
+| `CPDEN-06` | seguridad | Un token inválido responde `401` con `resError`.                                                              |
+| `CPDEN-07` | seguridad | https en las rutas: en productivo es obligatorio; en desarrollo, http es una advertencia.                     |
+| `CPDEN-08` | funcional | «Respuesta sin envío de parámetros»: `{}` responde con `page` 1 y `pageSize` 10.                              |
+| `CPDEN-09` | funcional | La página `techo(totalRows/pageSize) + 1` da `results: []` con el mismo `totalRows`; `page` 0 es error.       |
+| `CPDEN-10` | funcional | `pageSize` 0 y 201 son error; 200 es válido.                                                                  |
+| `CPDEN-11` | funcional | Filtrado por `id`: solo esa fila; un `id` inexistente da `results: []`, nunca un error.                       |
+| `CPDEN-12` | funcional | Un filtro con cadena vacía se ignora.                                                                         |
+| `CPDEN-13` | funcional | Orden ascendente y descendente por `mes`.                                                                     |
+| `CPDEN-14` | funcional | Autoridades sin repetidas, en orden alfabético por nombre y congruentes con la consulta.                      |
+| `CPDEN-15` | funcional | Cada error tiene `code` (el estatus HTTP 4xx) y `message` en el primer nivel.                                 |
+| `CPDEN-16` | funcional | Aviso si el endpoint trabaja con menos de 50 registros.                                                       |
+| `CPDEN-17` | estrés    | No se reproduce (la SESNA no publica la duración ni la concurrencia): siempre `no_evaluado`.                  |
+
+Los casos salen de leer las reglas públicas de ValidAPI; no son la herramienta de la SESNA ni
+sustituyen su revisión. No están en `estandar/verificaciones.json` porque ese catálogo es de las
+verificaciones de privacidad y seguridad del sitio de denuncias.
+
 ## Pruebas
 
 `npm test` incluye las pruebas del validador: verificaciones sobre capturas sintéticas (sin código
@@ -172,7 +218,8 @@ copiado de ningún sitio), un sitio local «bueno», uno «malo» y uno hostil (
 STUN local y redirecciones a `/admin` y al tercero) cargados en Chromium, con un tercero simulado que
 Chromium resuelve a 127.0.0.1 y cualquier otro nombre bloqueado; el servidor de referencia en
 memoria, un nodo que filtra trazas, la sonda de borradores con la marca más allá del recorte, la
-redacción y el enmascarado de capturas. Nada sale a internet.
+redacción y el enmascarado de capturas, y el perfil «conexión PDN» contra un nodo de referencia en
+el mismo proceso (con meses cerrados) y contra nodos que incumplen. Nada sale a internet.
 
 ## Pendiente
 

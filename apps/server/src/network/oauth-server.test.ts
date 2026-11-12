@@ -7,7 +7,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PDN_SCOPES } from '@sigilo/contracts';
+import { PDN_REFRESH_TOKEN_TTL_SECONDS, PDN_SCOPES } from '@sigilo/contracts';
 import { hashPassword } from '../security/passwords.ts';
 import {
   OAUTH_CLIENTS_FILE_NAME,
@@ -96,7 +96,7 @@ describe('emisión de tokens', () => {
     });
     expect(outcome.status).toBe(200);
     if (outcome.status !== 200) return;
-    expect(outcome.body.refresh_token_expires_in).toBe(3600);
+    expect(outcome.body.refresh_token_expires_in).toBe(PDN_REFRESH_TOKEN_TTL_SECONDS);
     const refresh = outcome.body.refresh_token ?? '';
     const renewed = await server.token({
       authorization: basic('sesna', SECRET),

@@ -10,6 +10,7 @@ import {
   PDN_SCOPES,
   PdnErrorSchema,
   PdnStatisticsResponseSchema,
+  PdnTokenErrorSchema,
   PdnTokenResponseSchema,
 } from '@sigilo/contracts';
 import type { PdnStatisticsResponse } from '@sigilo/contracts';
@@ -127,9 +128,12 @@ describe('POST /oauth/token', () => {
     });
     expect(response.status).toBe(401);
     expect(response.headers.get('WWW-Authenticate')).toBe('Basic realm="sigilo"');
+    // RFC 6749 para los clientes OAuth y `resError` (code = estatus HTTP) para ValidAPI.
     expect(await response.json()).toEqual({
       error: 'invalid_client',
       error_description: 'No se pudo autenticar al cliente.',
+      code: 401,
+      message: 'No se pudo autenticar al cliente.',
     });
   });
 
@@ -145,8 +149,43 @@ describe('POST /oauth/token', () => {
         body,
       });
       expect(response.status).toBe(400);
-      expect(((await response.json()) as { error: string }).error).toBe('invalid_request');
+      expect(PdnTokenErrorSchema.parse(await response.json())).toMatchObject({
+        error: 'invalid_request',
+        code: 400,
+      });
     }
+  });
+
+  it('el token de renovación vive 5 a 10 minutos más que el de acceso y es de un solo uso', async () => {
+    const server = serverWithOAuth();
+    const form = (params: Record<string, string>) =>
+      server.app.request(PDN_ROUTES.token, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: 'sesna',
+          client_secret: SECRET,
+          ...params,
+        }).toString(),
+      });
+    const issued = PdnTokenResponseSchema.parse(
+      await (
+        await form({ grant_type: 'password', username: 'sesna.pdn', password: PASSWORD })
+      ).json(),
+    );
+    const extra = (issued.refresh_token_expires_in ?? 0) - issued.expires_in;
+    expect(issued.expires_in).toBe(300);
+    expect(extra).toBeGreaterThanOrEqual(300);
+    expect(extra).toBeLessThanOrEqual(600);
+    const refresh = issued.refresh_token ?? '';
+    const renewed = await form({ grant_type: 'refresh_token', refresh_token: refresh });
+    expect(renewed.status).toBe(200);
+    const reused = await form({ grant_type: 'refresh_token', refresh_token: refresh });
+    expect(reused.status).toBe(400);
+    expect(PdnTokenErrorSchema.parse(await reused.json())).toMatchObject({
+      error: 'invalid_grant',
+      code: 400,
+    });
   });
 });
 
@@ -156,11 +195,14 @@ describe('POST /v1/denuncias/estadisticas', () => {
     const missing = await query(server, {});
     expect(missing.status).toBe(401);
     expect(missing.headers.get('WWW-Authenticate')).toContain('error="invalid_token"');
-    expect(PdnErrorSchema.parse(await missing.json()).code).toBe('unauthorized');
+    expect(PdnErrorSchema.parse(await missing.json())).toEqual({
+      code: 401,
+      message: 'No autorizado.',
+    });
     const deliveries = await tokenFor(server, PDN_SCOPES.deliveries);
     const wrongScope = await query(server, {}, deliveries);
     expect(wrongScope.status).toBe(403);
-    expect(PdnErrorSchema.parse(await wrongScope.json()).code).toBe('forbidden');
+    expect(PdnErrorSchema.parse(await wrongScope.json()).code).toBe(403);
     const catalog = await server.app.request(PDN_ROUTES.statisticsAuthorities);
     expect(catalog.status).toBe(401);
   });
@@ -183,7 +225,7 @@ describe('POST /v1/denuncias/estadisticas', () => {
     expect(inbox).toMatchObject({
       mes: '2026-10',
       autoridad: { clave: 'authority.buzon-prueba' },
-      entidad: '22',
+      entidad: { clave: '22', valor: 'Querétaro' },
       recibidas: null,
       turnadas: { aTiempo: 5, vencidas: null },
     });
@@ -192,14 +234,22 @@ describe('POST /v1/denuncias/estadisticas', () => {
       mes: '2026-10',
       autoridad: { clave: 'authority.oic-prueba', nombre: expect.any(String) },
       recibidas: 5,
-      estatusAlCierre: { routed: 5, received: null },
       tiemposMedianosDiasHabiles: { turno: null, aceptacion: null, archivo: null },
     });
+    expect(oic?.estatusAlCierre.slice(0, 3)).toEqual([
+      { clave: 'RECIBIDA', valor: 'Recibida', total: null },
+      {
+        clave: 'BUSCANDO_AUTORIDAD',
+        valor: 'Buscando a la autoridad que debe atenderla',
+        total: null,
+      },
+      { clave: 'TURNADA', valor: 'Turnada a la autoridad competente', total: 5 },
+    ]);
     // Las 3 de la entidad 09 no aparecen con ningún filtro: filtrar solo elige filas publicadas.
     for (const filter of [
       { entidad: '09' },
       { mes: '2026-10', entidad: '09' },
-      { estatus: 'received' },
+      { estatus: 'RECIBIDA' },
     ]) {
       expect((await page(server, { query: filter }, token)).results).toEqual([]);
     }
@@ -224,11 +274,30 @@ describe('POST /v1/denuncias/estadisticas', () => {
     expect(second.results[0]?.autoridad.clave).toBe('authority.buzon-prueba');
     const filtered = await page(server, { query: { autoridad: 'authority.oic-prueba' } }, token);
     expect(filtered.results.map((row) => row.autoridad.clave)).toEqual(['authority.oic-prueba']);
-    // Página fuera de rango, pageSize por encima de 200 o campos desconocidos: 400.
-    for (const body of [{ page: 3, pageSize: 1 }, { pageSize: 201 }, { query: { folio: 'X' } }]) {
+    // Como ValidAPI: la página después de la última es 200 con results vacío.
+    const after = await page(server, { page: 3, pageSize: 1 }, token);
+    expect(after).toEqual({
+      pagination: { pageSize: 1, page: 3, totalRows: 2, hasNextPage: false },
+      results: [],
+    });
+    // Filtros vacíos se ignoran y un id inexistente no es error.
+    const all = await page(server, {}, token);
+    expect(
+      await page(server, { query: { entidad: '', conducta: '', estatus: '' } }, token),
+    ).toEqual(all);
+    expect((await page(server, { query: { id: 'no-existe' } }, token)).results).toEqual([]);
+    const firstId = all.results[0]?.id ?? '';
+    expect((await page(server, { query: { id: firstId } }, token)).results).toHaveLength(1);
+    // page 0, pageSize 0 o por encima de 200, o campos desconocidos: 400 con code 400.
+    for (const body of [
+      { page: 0 },
+      { pageSize: 0 },
+      { pageSize: 201 },
+      { query: { folio: 'X' } },
+    ]) {
       const response = await query(server, body, token);
       expect(response.status).toBe(400);
-      expect(PdnErrorSchema.parse(await response.json()).code).toBe('bad_request');
+      expect(PdnErrorSchema.parse(await response.json()).code).toBe(400);
     }
     const catalog = await server.app.request(PDN_ROUTES.statisticsAuthorities, {
       headers: { Authorization: `Bearer ${token}` },

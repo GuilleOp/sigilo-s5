@@ -208,7 +208,7 @@ export function createTestRouter(
         v: 1,
         nodeId,
         softwareVersion: nodeVersions[nodeId],
-        standardVersion: '0.2.0',
+        standardVersion: '0.3.0',
       });
     }
     const handler = inboxes.get(new URL(request.url).origin);

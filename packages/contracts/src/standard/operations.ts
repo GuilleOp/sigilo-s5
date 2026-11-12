@@ -98,7 +98,13 @@ import type { StandardExampleName } from './examples.ts';
  * Versión SemVer del Estándar S5 (independiente de la versión del software). Cambio mayor: una
  * ruta, campo o valor que deja de aceptarse; menor: algo nuevo y opcional; parche: textos.
  */
-export const STANDARD_VERSION = '0.2.0';
+export const STANDARD_VERSION = '0.3.0';
+
+/**
+ * Fecha (AAAA-MM-DD) de la versión del estándar: la «fecha de última actualización» del encabezado
+ * del diccionario de datos, como en los diccionarios de la PDN. Cambia con `STANDARD_VERSION`.
+ */
+export const STANDARD_DATE = '2026-11-12';
 
 /**
  * Esquemas con nombre propio en `components.schemas`. El resto se describe en línea dentro de

@@ -433,7 +433,7 @@ const nodeHealthReport: NodeHealthReport = {
   v: 1,
   nodeId: 'node.queretaro',
   softwareVersion: '1.0.1',
-  standardVersion: '0.2.0',
+  standardVersion: '0.3.0',
 };
 
 const networkHealth: NetworkHealth = {
@@ -446,7 +446,7 @@ const networkHealth: NetworkHealth = {
       name: 'Nodo estatal Querétaro',
       status: 'up',
       softwareVersion: '1.0.1',
-      standardVersion: '0.2.0',
+      standardVersion: '0.3.0',
       lastCheckAt: '2026-11-09T17:05Z',
       lastContactAt: '2026-11-09T17:05Z',
       registered: true,
@@ -459,7 +459,7 @@ const networkHealth: NetworkHealth = {
       name: 'Nodo Federal',
       status: 'down',
       softwareVersion: '1.0.1',
-      standardVersion: '0.2.0',
+      standardVersion: '0.3.0',
       lastCheckAt: '2026-11-09T17:05Z',
       lastContactAt: '2026-11-09T15:40Z',
       registered: true,

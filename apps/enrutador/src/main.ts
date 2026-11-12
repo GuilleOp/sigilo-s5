@@ -31,6 +31,7 @@ import { createNodeHealthMonitor } from './node-health.ts';
 import { createQueuePow } from './queue-pow.ts';
 import { createRelayQueue } from './relay-queue.ts';
 import { createRelayService } from './relay-service.ts';
+import { loadStandardDocsConfig } from './standard-docs.ts';
 import { loadVentanillaConfig } from './web.ts';
 
 function start(): void {
@@ -120,6 +121,8 @@ function start(): void {
   });
   // Perfil «ventanilla»: la SESNA sirve la web pública en el mismo origen que el enrutador.
   const ventanilla = loadVentanillaConfig(process.env);
+  // Vista del Estándar S5 (Swagger UI) en /estandar/, en el mismo origen que la ventanilla.
+  const standardDocs = loadStandardDocsConfig(process.env);
   const app = createRouterApp({
     directory,
     national,
@@ -133,6 +136,7 @@ function start(): void {
     maxConcurrentRelays: config.relay.maxConcurrent,
     maxRelayBytesInFlight: config.relay.maxBytesInFlight,
     operationTokenDigest: config.operationTokenDigest,
+    ...(standardDocs === null ? {} : { standardDocs }),
     ...(ventanilla === null
       ? {}
       : {

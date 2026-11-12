@@ -9,6 +9,9 @@
 // expediente con la segunda llave (día 32) y la inconformidad con apertura de identidad para el
 // recurso (día 35), adelantando el reloj simulado. Hace lo que harían el navegador y las personas
 // de la autoridad, por HTTP. Todo es sintético. Uso: npm run demo:seed [-- --hasta 35]
+// No llega a las 50 filas de estadística con que ValidAPI deja de avisar: cada fila necesita al
+// menos 5 denuncias reales en la misma celda, y eso serían unas 300 denuncias más con su prueba de
+// trabajo (ver «Conexión oficial con la PDN» en docs/guia-conecta-tu-estado.md).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {

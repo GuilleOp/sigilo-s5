@@ -1,6 +1,8 @@
-// Diccionario de datos del Estándar S5 con el formato de la PDN (S1 a S3): una fila por campo con
-// ruta, nombre, tipo, formato, obligatoriedad, descripción, valores permitidos y ejemplo. Se deriva
-// de los mismos esquemas JSON del documento OpenAPI y de los ejemplos sintéticos.
+// Diccionario de datos del Estándar S5 con el formato de los diccionarios oficiales de la PDN (S2,
+// abril de 2023): un encabezado con el nombre, el objetivo, la fecha de última actualización y la
+// liga al Swagger, y una fila por campo con `Path, Variable, Obligatorio, Formato, Tipo de dato,
+// Público, Descripción`; al final, columnas propias (esquema, restricciones, valores permitidos y
+// ejemplo). Se deriva de los mismos esquemas JSON del documento OpenAPI y de los ejemplos.
 import {
   API_ERROR_DESCRIPTIONS,
   API_ERROR_HTTP_STATUS,
@@ -19,7 +21,7 @@ import {
   TURN_SEMAPHORE_STATUSES,
   formatLegalReference,
 } from '@sigilo/contracts';
-import { STANDARD_VERSION } from '@sigilo/contracts/standard';
+import { STANDARD_DATE, STANDARD_VERSION } from '@sigilo/contracts/standard';
 import type { StandardComponentName } from '@sigilo/contracts/standard';
 import type { JsonObject } from './openapi.ts';
 import {
@@ -34,13 +36,98 @@ export interface DictionaryRow {
   schema: string;
   path: string;
   name: string;
+  /** Tipo con el estilo propio del estándar (`cadena (ComplaintMode)`). */
   type: string;
+  /** Restricciones: patrón, longitudes, mínimos y máximos. */
   format: string;
   isRequired: boolean;
   description: string;
   allowed: string;
   example: string;
+  /** «Formato» del diccionario de la PDN: Alfanumérico, Numérico, Fecha en formato ISO 8601… */
+  pdnFormat: string;
+  /** «Tipo de dato» del diccionario de la PDN, al estilo JSON: String, Number, Object… */
+  pdnType: string;
+  /** Si el dato se publica (columna «Público»). */
+  isPublic: boolean;
 }
+
+/** Encabezado del diccionario, como el de los diccionarios oficiales de la PDN. */
+export interface DictionaryHeader {
+  name: string;
+  objective: string;
+  /** Liga al Swagger UI, relativa a `estandar/`. */
+  swaggerLink: string;
+}
+
+/**
+ * Esquemas cuyos datos se publican: el registro público, las llaves, el directorio y la red, los
+ * datos abiertos, la estadística de la PDN y los catálogos. Todo lo demás (la denuncia, la
+ * identidad, el contacto, el seguimiento, los mensajes y la bandeja de la autoridad) no es público.
+ */
+const PUBLIC_COMPONENTS: ReadonlySet<string> = new Set([
+  'LedgerPage',
+  'LedgerEvent',
+  'SignedLedgerHead',
+  'PublicKeySet',
+  'PowChallenge',
+  'ApiError',
+  'ComplaintMode',
+  'ComplaintStatus',
+  'LedgerEventType',
+  'PowPurpose',
+  'ManagementState',
+  'ClosureReason',
+  'LegalTrack',
+  'LegalStage',
+  'ProcedureActor',
+  'DeadlineKey',
+  'DeadlineUnit',
+  'DeadlineStatus',
+  'TurnSemaphoreStatus',
+  'TurnWait',
+  'ProcedureAction',
+  'OffenseSeverity',
+  'EscalationRuleKey',
+  'RuleEffect',
+  'AuthorityFunction',
+  'SignedAuthorityDirectory',
+  'AuthorityDirectory',
+  'DirectoryNode',
+  'DirectoryAuthority',
+  'AuthorityCompetence',
+  'DirectoryObserver',
+  'SignedFunctionTable',
+  'FunctionTable',
+  'FunctionRule',
+  'FunctionHolder',
+  'WitnessPolicy',
+  'WitnessSignature',
+  'NetworkTrustAnchor',
+  'NationalLedgerEntry',
+  'NationalHead',
+  'CosignedNationalHead',
+  'NationalLedgerPage',
+  'NationalInclusionProof',
+  'NationalOpenData',
+  'NationalOpenDataNode',
+  'NationalOpenDataCell',
+  'NetworkHealth',
+  'NetworkHealthNode',
+  'PdnError',
+  'PdnStatisticsResponse',
+  'PdnPagination',
+  'PdnStatisticsRow',
+  'PdnAuthorities',
+  'PdnAuthority',
+  'NationalStatistics',
+  'NationalStatisticsNode',
+  'CorroborationEvaluatorKey',
+  'DirectoryCorroboration',
+  'CorroborationIdentifierKind',
+  'CorroborationStatus',
+  'IndexWithdrawalReason',
+]);
 
 const REF_PREFIX = '#/components/schemas/';
 const MAX_EXAMPLE_LENGTH = 48;
@@ -114,6 +201,69 @@ function formatOf(schema: JsonObject): string {
   if (typeof maxItems === 'number') parts.push(`hasta ${maxItems} elementos`);
   if (schema.const !== undefined) parts.push(`valor fijo \`${String(schema.const)}\``);
   return parts.join('; ');
+}
+
+const PDN_TYPES: Readonly<Record<string, string>> = {
+  string: 'String',
+  integer: 'Number',
+  number: 'Number',
+  boolean: 'Boolean',
+  object: 'Object',
+  array: 'Array',
+};
+
+const DATE_TIME_PATTERNS = new Set(['^\\d{4}-\\d{2}-\\d{2}T\\d{2}:00Z$']);
+const DATE_PATTERNS = new Set(['^\\d{4}-\\d{2}-\\d{2}$']);
+const MONTH_PATTERNS = new Set(['^\\d{4}-(0[1-9]|1[0-2])$']);
+
+/** Tipo JSON de un esquema (`string`, `object`…), siguiendo `const`, `enum` y ramas con `null`. */
+function jsonType(schema: JsonObject): string | undefined {
+  if (schema.const !== undefined)
+    return typeof schema.const === 'number' ? 'number' : typeof schema.const;
+  if (typeof schema.type === 'string') return schema.type;
+  if (Array.isArray(schema.enum)) return typeof schema.enum[0];
+  const branches = Array.isArray(schema.anyOf)
+    ? schema.anyOf
+    : Array.isArray(schema.oneOf)
+      ? schema.oneOf
+      : [];
+  const types = branches
+    .filter(isObject)
+    .map((branch) => (branch.type === 'null' ? undefined : jsonType(branch)))
+    .filter((type): type is string => type !== undefined);
+  return types.length > 0 && types.every((type) => type === types[0]) ? types[0] : undefined;
+}
+
+/** «Formato» y «Tipo de dato» del diccionario de la PDN. */
+function pdnColumns(schema: JsonObject): { pdnFormat: string; pdnType: string } {
+  const pattern = typeof schema.pattern === 'string' ? schema.pattern : '';
+  if (DATE_TIME_PATTERNS.has(pattern))
+    return { pdnFormat: 'Fecha y hora en formato ISO 8601', pdnType: 'Date Time' };
+  if (DATE_PATTERNS.has(pattern))
+    return { pdnFormat: 'Fecha en formato ISO 8601', pdnType: 'Date' };
+  if (MONTH_PATTERNS.has(pattern))
+    return { pdnFormat: 'Año y mes en formato ISO 8601 (AAAA-MM)', pdnType: 'String' };
+  const type = jsonType(schema);
+  const isEnum = Array.isArray(schema.enum) || schema.const !== undefined;
+  const pdnType =
+    type === undefined
+      ? 'Valor'
+      : `${PDN_TYPES[type] ?? type}${isEnum && type === 'string' ? ' (enum)' : ''}`;
+  switch (type) {
+    case 'string':
+      return { pdnFormat: 'Alfanumérico', pdnType };
+    case 'integer':
+    case 'number':
+      return { pdnFormat: 'Numérico', pdnType };
+    case 'boolean':
+      return { pdnFormat: 'Booleano', pdnType };
+    case 'object':
+      return { pdnFormat: 'Objeto', pdnType };
+    case 'array':
+      return { pdnFormat: 'Arreglo', pdnType };
+    default:
+      return { pdnFormat: 'Valor', pdnType };
+  }
 }
 
 function allowedOf(schema: JsonObject, component?: string): string {
@@ -196,12 +346,21 @@ function walk(
   value: unknown,
 ): void {
   const name = path.split('.').at(-1)?.replace('[]', '') ?? '';
-  const base = { schema: context.component, path, name, isRequired };
+  const base = {
+    schema: context.component,
+    path,
+    name,
+    isRequired,
+    isPublic: PUBLIC_COMPONENTS.has(context.component),
+  };
   const reference = refName(schema);
   if (reference !== undefined) {
     const target = context.components[reference] ?? {};
+    const columns = pdnColumns(target);
     rows.push({
       ...base,
+      pdnFormat: columns.pdnFormat,
+      pdnType: columns.pdnType === 'Object' ? `Object (${reference})` : columns.pdnType,
       type: `${typeOf(target)} (${reference})`,
       format: '',
       description: firstParagraph(schema.description ?? target.description),
@@ -217,6 +376,11 @@ function walk(
     const itemFormat = itemReference === undefined ? formatOf(items) : '';
     rows.push({
       ...base,
+      pdnFormat: 'Arreglo',
+      pdnType:
+        itemReference === undefined
+          ? `Array of ${pdnColumns(items).pdnType}`
+          : `Array of ${itemReference}`,
       type: `arreglo de ${itemType}`,
       format: [formatOf(schema), itemFormat && `cada elemento: ${itemFormat}`]
         .filter(Boolean)
@@ -235,6 +399,8 @@ function walk(
     if (path !== '') {
       rows.push({
         ...base,
+        pdnFormat: 'Objeto',
+        pdnType: 'Object',
         type: 'objeto',
         format: '',
         description: firstParagraph(schema.description),
@@ -247,6 +413,7 @@ function walk(
   }
   rows.push({
     ...base,
+    ...pdnColumns(schema),
     type: typeOf(schema),
     format: formatOf(schema),
     description: firstParagraph(schema.description),
@@ -290,16 +457,19 @@ export function buildDictionaryRows(components: Record<string, JsonObject>): Dic
   return rows;
 }
 
+/** Columnas del diccionario oficial de la PDN (S2, abril de 2023) y, al final, las propias. */
 const CSV_HEADERS = [
-  'esquema',
-  'campo',
-  'nombre',
-  'tipo',
-  'formato',
-  'obligatorio',
-  'descripcion',
-  'valores_permitidos',
-  'ejemplo',
+  'Path',
+  'Variable',
+  'Obligatorio',
+  'Formato',
+  'Tipo de dato',
+  'Público',
+  'Descripción',
+  'Esquema',
+  'Restricciones',
+  'Valores permitidos',
+  'Ejemplo',
 ];
 
 function csvCell(value: string): string {
@@ -310,18 +480,66 @@ function plain(text: string): string {
   return text.replaceAll('`', '');
 }
 
-/** Diccionario en CSV (RFC 4180, UTF-8, separador coma). */
-export function dictionaryToCsv(rows: readonly DictionaryRow[]): string {
-  const lines = [CSV_HEADERS.join(',')];
+const MONTHS = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+/** Fecha del estándar como la escriben los diccionarios de la PDN: «12 de noviembre de 2026». */
+export function standardDateText(): string {
+  const [year = '', month = '1', day = '1'] = STANDARD_DATE.split('-');
+  return `${Number(day)} de ${MONTHS[Number(month) - 1] ?? ''} de ${year}`;
+}
+
+/**
+ * Ruta del objeto que contiene el campo, al estilo JSON Pointer de la PDN, con el esquema al
+ * principio: `facts.stateCode` de `SubmitComplaintRequest` da `/SubmitComplaintRequest/facts`.
+ */
+export function pointerOf(row: Pick<DictionaryRow, 'schema' | 'path'>): string {
+  const parents = row.path === '' ? [] : row.path.split('.').slice(0, -1);
+  return ['', row.schema, ...parents.map((part) => part.replace('[]', ''))].join('/');
+}
+
+function variableOf(row: DictionaryRow): string {
+  return row.path === '' ? '(valor)' : row.name;
+}
+
+/** Líneas del encabezado, como las del diccionario oficial del S2. */
+function headerLines(header: DictionaryHeader): [string, string][] {
+  return [
+    ['Nombre', header.name],
+    ['Objetivo', header.objective],
+    ['Fecha de última actualización', standardDateText()],
+    ['Versión del estándar', STANDARD_VERSION],
+    ['Liga swagger', header.swaggerLink],
+  ];
+}
+
+/** Diccionario en CSV (RFC 4180, UTF-8, separador coma) con el encabezado de la PDN. */
+export function dictionaryToCsv(rows: readonly DictionaryRow[], header: DictionaryHeader): string {
+  const lines = headerLines(header).map((cells) => cells.map(csvCell).join(','));
+  lines.push(CSV_HEADERS.join(','));
   for (const row of rows) {
     const cells = [
-      row.schema,
-      row.path === '' ? '(valor)' : row.path,
-      row.name === '' ? row.schema : row.name,
-      row.type,
-      plain(row.format),
-      row.isRequired ? 'sí' : 'no',
+      pointerOf(row),
+      variableOf(row),
+      row.isRequired ? 'Sí' : 'No',
+      row.pdnFormat,
+      row.pdnType,
+      row.isPublic ? 'Sí' : 'No',
       plain(row.description),
+      row.schema,
+      plain(row.format),
       row.allowed,
       row.example,
     ];
@@ -347,21 +565,39 @@ function code(value: string): string {
   return value === '' ? '' : `\`${value}\``;
 }
 
+/** Opciones del diccionario en Markdown. */
+export interface MarkdownOptions {
+  header: DictionaryHeader;
+  /** Archivo CSV con la misma información. */
+  csvFile: string;
+  /** Esquemas a incluir, en orden (por omisión, todos). */
+  components?: readonly string[];
+  /** Si incluye los catálogos del trámite y los códigos de error (solo el diccionario completo). */
+  withCatalogs: boolean;
+}
+
 /** Diccionario en Markdown, con las tablas de campos, los catálogos del trámite y los errores. */
 export function dictionaryToMarkdown(
   rows: readonly DictionaryRow[],
   components: Record<string, JsonObject>,
+  options: MarkdownOptions,
 ): string {
   const sections: string[] = [
-    '# Diccionario de datos del Estándar S5',
+    `# Diccionario de datos: ${options.header.name}`,
     '',
-    `Versión del estándar: ${STANDARD_VERSION}. Archivo generado con \`npm run standard:build\` desde \`packages/contracts\`; no se edita a mano. La misma información está en \`diccionario-de-datos.csv\`.`,
+    ...headerLines(options.header).map(([label, value]) =>
+      label === 'Liga swagger'
+        ? `- **${label}:** [${value}](${value})`
+        : `- **${label}:** ${value}`,
+    ),
     '',
-    'Cada tabla describe un esquema de `openapi.yaml`. La ruta del campo usa puntos para los objetos y `[]` para los elementos de un arreglo. Un tipo con un nombre entre paréntesis remite a la tabla de ese esquema. Las fechas se redondean al día o a la hora en UTC para reducir la correlación temporal. Los ejemplos son sintéticos.',
+    `Archivo generado con \`npm run standard:build\` desde \`packages/contracts\`; no se edita a mano. La misma información está en \`${options.csvFile}\`, con el encabezado y las columnas de los diccionarios oficiales de la PDN (\`Path, Variable, Obligatorio, Formato, Tipo de dato, Público, Descripción\`) y, al final, las propias del estándar.`,
+    '',
+    'Cada tabla describe un esquema. `Path` es la ruta del objeto que contiene el campo, al estilo JSON Pointer y con el esquema al principio; los elementos de un arreglo no llevan índice. `Público` dice si el dato se publica (registro público, directorio y red, datos abiertos o estadística de la PDN): la identidad, el contacto, los hechos, los mensajes y los testigos nunca son públicos. Un tipo con un nombre entre paréntesis remite a la tabla de ese esquema. Las fechas se redondean al día o a la hora en UTC para reducir la correlación temporal. Los ejemplos son sintéticos.',
     '',
     '## Esquemas',
   ];
-  for (const component of Object.keys(PUBLISHED_COMPONENTS)) {
+  for (const component of options.components ?? Object.keys(PUBLISHED_COMPONENTS)) {
     const own = rows.filter((row) => row.schema === component);
     sections.push(
       '',
@@ -371,27 +607,35 @@ export function dictionaryToMarkdown(
       '',
       mdTable(
         [
-          'Campo',
-          'Nombre',
-          'Tipo',
-          'Formato',
+          'Path',
+          'Variable',
           'Obligatorio',
+          'Formato',
+          'Tipo de dato',
+          'Público',
           'Descripción',
+          'Restricciones',
           'Valores permitidos o catálogo',
           'Ejemplo',
         ],
         own.map((row) => [
-          row.path === '' ? '(valor)' : code(row.path),
-          row.name === '' ? component : row.name,
-          row.type,
-          row.format,
+          code(pointerOf(row)),
+          row.path === '' ? '(valor)' : code(row.name),
           row.isRequired ? 'Sí' : 'No',
+          row.pdnFormat,
+          row.pdnType,
+          row.isPublic ? 'Sí' : 'No',
           row.description,
+          row.format,
           row.allowed,
           code(row.example),
         ]),
       ),
     );
+  }
+  if (!options.withCatalogs) {
+    sections.push('');
+    return sections.join('\n');
   }
   sections.push(
     '',

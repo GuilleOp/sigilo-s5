@@ -1,0 +1,7 @@
+clave,valor,claveApi
+ATENDIDA,Atendido,attended
+CANALIZADA,Canalizado,channeled
+IMPROCEDENTE,Improcedente,inadmissible
+INFORMACION_INSUFICIENTE,Información insuficiente,insufficient_information
+ACUMULADA,Acumulado,joined
+OTRO_MOTIVO,Otro,other

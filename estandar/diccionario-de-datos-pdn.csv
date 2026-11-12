@@ -1,0 +1,85 @@
+Nombre,S5 - Estadísticas de denuncias (perfil de conexión con la PDN)
+Objetivo,"Describir la estadística agregada de denuncias que cada nodo ofrece a la SESNA para el portal de la PDN (Bases de la PDN, art. 61): solo meses cerrados, conteos redondeados a múltiplos de 5 y celdas menores que 5 suprimidas."
+Fecha de última actualización,12 de noviembre de 2026
+Versión del estándar,0.3.0
+Liga swagger,swagger/index.html?urls.primaryName=S5+-+Estad%C3%ADsticas+de+denuncias+(PDN)
+Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Restricciones,Valores permitidos,Ejemplo
+/PdnTokenRequest,grant_type,Sí,Alfanumérico,String (enum),No,"Flujo: password (el de las APIs de la PDN; desaconsejado en OAuth 2.1), client_credentials (recomendado) o refresh_token.",PdnTokenRequest,,password; client_credentials; refresh_token,password
+/PdnTokenRequest,client_id,No,Alfanumérico,String,No,"Identificador del cliente, si no va en la cabecera Authorization: Basic (client_secret_post, como en la PDN).",PdnTokenRequest,de 1 a 256 caracteres,,
+/PdnTokenRequest,client_secret,No,Alfanumérico,String,No,"Secreto del cliente, si no va en la cabecera Authorization: Basic.",PdnTokenRequest,de 1 a 256 caracteres,,
+/PdnTokenRequest,username,No,Alfanumérico,String,No,Usuario que el nodo entregó a la SESNA (solo password).,PdnTokenRequest,de 1 a 256 caracteres,,sesna.pdn
+/PdnTokenRequest,password,No,Alfanumérico,String,No,Contraseña de ese usuario (solo password).,PdnTokenRequest,de 1 a 256 caracteres,,contraseña-ficticia
+/PdnTokenRequest,refresh_token,No,Alfanumérico,String,No,Token de renovación (solo refresh_token); cada uso entrega uno nuevo.,PdnTokenRequest,de 1 a 256 caracteres,,
+/PdnTokenRequest,scope,No,Alfanumérico,String,No,"Permisos separados por espacios; si falta, todos los que tiene el cliente.",PdnTokenRequest,hasta 256 caracteres,,sesna:estadisticas
+/PdnTokenResponse,access_token,Sí,Alfanumérico,String,No,Token de acceso (JWT HS256 que solo verifica el nodo que lo emitió).,PdnTokenResponse,al menos 1 caracteres,,eyJhbGciOiJIUzI1NiIsInR5cCI6ImF0K2p3dCJ9.eyJpc3…
+/PdnTokenResponse,token_type,Sí,Alfanumérico,String (enum),No,Siempre Bearer (RFC 6750).,PdnTokenResponse,valor fijo Bearer,,Bearer
+/PdnTokenResponse,expires_in,Sí,Numérico,Number,No,Segundos de vida del token de acceso.,PdnTokenResponse,mínimo 1,,300
+/PdnTokenResponse,scope,Sí,Alfanumérico,String,No,"Permisos concedidos, separados por espacios.",PdnTokenResponse,,,sesna:estadisticas
+/PdnTokenResponse,refresh_token,No,Alfanumérico,String,No,Token de renovación de un solo uso; solo con el flujo password.,PdnTokenResponse,al menos 1 caracteres,,cmVub3ZhY2lvbi1maWN0aWNpYS1kZS1lamVtcGxv
+/PdnTokenResponse,refresh_token_expires_in,No,Numérico,Number,No,Segundos de vida del token de renovación (campo del servidor OAuth de la PDN).,PdnTokenResponse,mínimo 1,,720
+/resErrorToken,error,Sí,Alfanumérico,String (enum),No,Código de error de RFC 6749.,resErrorToken,,invalid_request; invalid_client; invalid_grant; unauthorized_client; unsupported_grant_type; invalid_scope,invalid_client
+/resErrorToken,error_description,Sí,Alfanumérico,String,No,"Texto fijo, sin datos de la petición.",resErrorToken,,,No se pudo autenticar al cliente.
+/resErrorToken,code,Sí,Numérico,Number,No,"Estatus HTTP de la respuesta (400 a 499, o 500).",resErrorToken,de 400 a 599,,401
+/resErrorToken,message,Sí,Alfanumérico,String,No,"Mensaje fijo, sin datos de la petición.",resErrorToken,al menos 1 caracteres,,No se pudo autenticar al cliente.
+/resError,code,Sí,Numérico,Number,Sí,"Estatus HTTP de la respuesta (400 a 499, o 500).",resError,de 400 a 599,,401
+/resError,message,Sí,Alfanumérico,String,Sí,"Mensaje fijo, sin datos de la petición.",resError,al menos 1 caracteres,,No autorizado.
+/PdnStatisticsRequest,sort,No,Objeto,Object,No,"Orden por campo, ascendente o descendente; se aplica en el orden en que se escriben las llaves. autoridad, entidad y conducta se ordenan por su clave. Por omisión: mes, autoridad, entidad y conducta ascendentes.",PdnStatisticsRequest,,,
+/PdnStatisticsRequest/sort,mes,No,Alfanumérico,String (enum),No,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",PdnStatisticsRequest,,asc; desc,desc
+/PdnStatisticsRequest/sort,autoridad,No,Alfanumérico,String (enum),No,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",PdnStatisticsRequest,,asc; desc,
+/PdnStatisticsRequest/sort,entidad,No,Alfanumérico,String (enum),No,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",PdnStatisticsRequest,,asc; desc,
+/PdnStatisticsRequest/sort,conducta,No,Alfanumérico,String (enum),No,"Orden ascendente (asc) o descendente (desc), lexicográfico en español.",PdnStatisticsRequest,,asc; desc,
+/PdnStatisticsRequest,page,No,Numérico,Number,No,Página a mostrar; 1 por omisión. Una página después de la última responde results: [].,PdnStatisticsRequest,de 1 a 1000000,,1
+/PdnStatisticsRequest,pageSize,No,Numérico,Number,No,"Filas por página: 10 por omisión, de 1 a 200 (como en el S2 y el S3). Fuera de rango, error 400.",PdnStatisticsRequest,de 1 a 200,,10
+/PdnStatisticsRequest,query,No,Objeto,Object,No,Filtros; se combinan con AND y solo seleccionan filas ya publicadas.,PdnStatisticsRequest,,,
+/PdnStatisticsRequest/query,id,No,Alfanumérico,String,No,"Solo la fila con ese identificador; si no existe, results: [] (nunca un error). Una cadena vacía se ignora.",PdnStatisticsRequest,,,
+/PdnStatisticsRequest/query,mes,No,Alfanumérico,String,No,Solo ese mes (AAAA-MM). Una cadena vacía se ignora.,PdnStatisticsRequest,,,
+/PdnStatisticsRequest/query,mesDesde,No,Alfanumérico,String,No,Desde ese mes (incluido). Una cadena vacía se ignora.,PdnStatisticsRequest,,,2026-09
+/PdnStatisticsRequest/query,mesHasta,No,Alfanumérico,String,No,Hasta ese mes (incluido). Una cadena vacía se ignora.,PdnStatisticsRequest,,,
+/PdnStatisticsRequest/query,entidad,No,Alfanumérico,String,No,Clave INEGI de la entidad. Una cadena vacía se ignora.,PdnStatisticsRequest,,,22
+/PdnStatisticsRequest/query,autoridad,No,Alfanumérico,String,No,Clave de la autoridad. Una cadena vacía se ignora.,PdnStatisticsRequest,,,
+/PdnStatisticsRequest/query,conducta,No,Alfanumérico,String,No,Clave de la conducta. Una cadena vacía se ignora.,PdnStatisticsRequest,,,
+/PdnStatisticsRequest/query,estatus,No,Alfanumérico,String,No,Solo filas con un conteo publicado (no suprimido) de ese estatus en estatusAlCierre. Una cadena vacía se ignora.,PdnStatisticsRequest,,,
+/PdnStatisticsResponse,pagination,Sí,Objeto,Object (PdnPagination),Sí,Paginación (la misma de las APIs del S2 y del S3).,PdnStatisticsResponse,,,
+/PdnStatisticsResponse,results,Sí,Arreglo,Array of PdnStatisticsRow,Sí,Filas de la página.,PdnStatisticsResponse,,,
+/PdnPagination,pageSize,Sí,Numérico,Number,Sí,Filas por página.,PdnPagination,mínimo 1,,10
+/PdnPagination,page,Sí,Numérico,Number,Sí,Página actual.,PdnPagination,mínimo 1,,1
+/PdnPagination,totalRows,Sí,Numérico,Number,Sí,Filas que cumplen la consulta.,PdnPagination,mínimo 0,,1
+/PdnPagination,hasNextPage,Sí,Booleano,Boolean,Sí,Si hay otra página.,PdnPagination,,,false
+/PdnStatisticsRow,id,Sí,Alfanumérico,String,Sí,Identificador estable de la fila: mes|autoridad|entidad|conducta. Sirve para el filtro query.id.,PdnStatisticsRow,de 1 a 400 caracteres,,2026-10|authority.comptroller-queretaro|22|LGRA…
+/PdnStatisticsRow,fechaCaptura,Sí,Fecha y hora en formato ISO 8601,Date Time,Sí,"Fecha del corte de la fila (UTC): el primer instante del mes siguiente, cuando el mes cierra y se congela.",PdnStatisticsRow,patrón ^\d{4}-\d{2}-\d{2}T\d{2}:00Z$,,2026-11-01T00:00Z
+/PdnStatisticsRow,mes,Sí,Año y mes en formato ISO 8601 (AAAA-MM),String,Sí,Mes cerrado (AAAA-MM) al que se refiere la fila.,PdnStatisticsRow,patrón ^\d{4}-(0[1-9]|1[0-2])$,,2026-10
+/PdnStatisticsRow,autoridad,Sí,Objeto,Object,Sí,Autoridad del directorio que tenía la denuncia en su bandeja.,PdnStatisticsRow,,,
+/PdnStatisticsRow/autoridad,clave,Sí,Alfanumérico,String,Sí,Identificador estable de la autoridad.,PdnStatisticsRow,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.comptroller-queretaro
+/PdnStatisticsRow/autoridad,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,PdnStatisticsRow,de 1 a 300 caracteres,,Contraloría Estatal Ficticia de Querétaro
+/PdnStatisticsRow,entidad,Sí,Objeto,Object,Sí,Entidad federativa de los hechos (catálogo INEGI).,PdnStatisticsRow,,,
+/PdnStatisticsRow/entidad,clave,Sí,Alfanumérico,String (enum),Sí,Clave INEGI de la entidad federativa (2 dígitos).,PdnStatisticsRow,patrón ^\d{2}$,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
+/PdnStatisticsRow/entidad,valor,Sí,Alfanumérico,String,Sí,Nombre de la entidad federativa.,PdnStatisticsRow,de 1 a 300 caracteres,,Querétaro
+/PdnStatisticsRow,conducta,Sí,Objeto,Object,Sí,Conducta denunciada (catálogo OFFENSES: ley y artículo).,PdnStatisticsRow,,,
+/PdnStatisticsRow/conducta,clave,Sí,Alfanumérico,String (enum),Sí,Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).,PdnStatisticsRow,hasta 64 caracteres,Catálogo OFFENSES: conductas de la LGRA y del Código Penal Federal (LEY-artículo),LGRA-52
+/PdnStatisticsRow/conducta,valor,Sí,Alfanumérico,String,Sí,Término legal de la conducta.,PdnStatisticsRow,de 1 a 300 caracteres,,Cohecho
+/PdnStatisticsRow,recibidas,Sí,Numérico,Number,Sí,Denuncias recibidas en el mes que quedaron en la bandeja de esta autoridad el día de recepción.,PdnStatisticsRow,,,15
+/PdnStatisticsRow,turnadas,Sí,Objeto,Object,Sí,"Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera de turno), de las denuncias que esperaban en esta autoridad.",PdnStatisticsRow,,,
+/PdnStatisticsRow/turnadas,aTiempo,Sí,Numérico,Number,Sí,Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).,PdnStatisticsRow,,,10
+/PdnStatisticsRow/turnadas,vencidas,Sí,Numérico,Number,Sí,Con el semáforo de turnado ya en «vencida» al hacerse.,PdnStatisticsRow,,,null
+/PdnStatisticsRow,aceptadas,Sí,Objeto,Object,Sí,"Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera de aceptación).",PdnStatisticsRow,,,
+/PdnStatisticsRow/aceptadas,aTiempo,Sí,Numérico,Number,Sí,Dentro de los días hábiles del semáforo de turnado (antes de «vencida»).,PdnStatisticsRow,,,10
+/PdnStatisticsRow/aceptadas,vencidas,Sí,Numérico,Number,Sí,Con el semáforo de turnado ya en «vencida» al hacerse.,PdnStatisticsRow,,,5
+/PdnStatisticsRow,archivadas,Sí,Arreglo,Array of Object,Sí,"Cierres del mes por motivo: un elemento por motivo del catálogo, siempre todos y en el mismo orden.",PdnStatisticsRow,hasta 6 elementos,,
+/PdnStatisticsRow/archivadas,clave,Sí,Alfanumérico,String (enum),Sí,"Motivo de cierre: ATENDIDA (Atendido), CANALIZADA (Canalizado), IMPROCEDENTE (Improcedente), INFORMACION_INSUFICIENTE (Información insuficiente), ACUMULADA (Acumulado), OTRO_MOTIVO (Otro).",PdnStatisticsRow,,ATENDIDA; CANALIZADA; IMPROCEDENTE; INFORMACION_INSUFICIENTE; ACUMULADA; OTRO_MOTIVO,ATENDIDA
+/PdnStatisticsRow/archivadas,valor,Sí,Alfanumérico,String,Sí,Nombre del motivo de cierre.,PdnStatisticsRow,de 1 a 300 caracteres,,Atendido
+/PdnStatisticsRow/archivadas,total,Sí,Numérico,Number,Sí,Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).,PdnStatisticsRow,,,null
+/PdnStatisticsRow,calificadas,Sí,Objeto,Object,Sí,"Calificaciones del mes (LGRA, art. 100).",PdnStatisticsRow,,,
+/PdnStatisticsRow/calificadas,graves,Sí,Numérico,Number,Sí,Faltas calificadas como graves.,PdnStatisticsRow,,,null
+/PdnStatisticsRow/calificadas,noGraves,Sí,Numérico,Number,Sí,Faltas calificadas como no graves.,PdnStatisticsRow,,,5
+/PdnStatisticsRow,escalamientos,Sí,Numérico,Number,Sí,Reglas de escalamiento cumplidas en el mes con efecto de escalar.,PdnStatisticsRow,,,null
+/PdnStatisticsRow,estatusAlCierre,Sí,Arreglo,Array of Object,Sí,"Estatus que tenían al cerrarse el mes las denuncias recibidas en él: un elemento por estatus del catálogo, siempre todos y en el mismo orden.",PdnStatisticsRow,hasta 7 elementos,,
+/PdnStatisticsRow/estatusAlCierre,clave,Sí,Alfanumérico,String (enum),Sí,"Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida).",PdnStatisticsRow,,RECIBIDA; BUSCANDO_AUTORIDAD; TURNADA; EN_INVESTIGACION; CALIFICADA; ARCHIVADA; CONCLUIDA,RECIBIDA
+/PdnStatisticsRow/estatusAlCierre,valor,Sí,Alfanumérico,String,Sí,Nombre del estatus.,PdnStatisticsRow,de 1 a 300 caracteres,,Recibida
+/PdnStatisticsRow/estatusAlCierre,total,Sí,Numérico,Number,Sí,Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).,PdnStatisticsRow,,,null
+/PdnStatisticsRow,tiemposMedianosDiasHabiles,Sí,Objeto,Object,Sí,Medianas en días hábiles; null si hay menos de 10 observaciones.,PdnStatisticsRow,,,
+/PdnStatisticsRow/tiemposMedianosDiasHabiles,turno,Sí,Numérico,Number,Sí,Mediana de días hábiles entre la entrada al buzón y el turno.,PdnStatisticsRow,,,1
+/PdnStatisticsRow/tiemposMedianosDiasHabiles,aceptacion,Sí,Numérico,Number,Sí,Mediana de días hábiles entre el turno y la aceptación.,PdnStatisticsRow,,,1
+/PdnStatisticsRow/tiemposMedianosDiasHabiles,archivo,Sí,Numérico,Number,Sí,Mediana de días hábiles entre la recepción y el cierre.,PdnStatisticsRow,,,null
+/PdnAuthorities,(valor),Sí,Arreglo,Array of PdnAuthority,Sí,"Autoridades que el nodo aloja en el directorio, sin repetidas y en orden alfabético por nombre (como dependencias del S2).",PdnAuthorities,,,
+/PdnAuthority,clave,Sí,Alfanumérico,String,Sí,Identificador estable de la autoridad.,PdnAuthority,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.buzon-queretaro
+/PdnAuthority,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,PdnAuthority,de 1 a 300 caracteres,,Buzón general de Querétaro

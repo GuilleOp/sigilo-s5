@@ -1,0 +1,8 @@
+clave,valor,claveApi
+RECIBIDA,Recibida,received
+BUSCANDO_AUTORIDAD,Buscando a la autoridad que debe atenderla,routing
+TURNADA,Turnada a la autoridad competente,routed
+EN_INVESTIGACION,En investigación,investigating
+CALIFICADA,Revisada: la autoridad decidió si la falta es grave,classified
+ARCHIVADA,Archivada,archived
+CONCLUIDA,Concluida,resolved

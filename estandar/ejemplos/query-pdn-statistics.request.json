@@ -2,5 +2,5 @@
   "sort": { "mes": "desc" },
   "page": 1,
   "pageSize": 10,
-  "query": { "mesDesde": "2026-09", "entidad": "22" }
+  "query": { "mesDesde": "2026-09", "entidad": "22", "conducta": "" }
 }

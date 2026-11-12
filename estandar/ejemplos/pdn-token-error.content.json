@@ -1,1 +1,6 @@
-{ "error": "invalid_client", "error_description": "No se pudo autenticar al cliente." }
+{
+  "error": "invalid_client",
+  "error_description": "No se pudo autenticar al cliente.",
+  "code": 401,
+  "message": "No se pudo autenticar al cliente."
+}

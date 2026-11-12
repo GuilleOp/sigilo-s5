@@ -365,7 +365,8 @@ export function uploadEvidence(
   return app.request(ROUTES.evidenceUpload, {
     method: 'POST',
     headers: { 'Content-Type': mediaType },
-    body: bytes,
+    // Copia con ArrayBuffer propio: así el tipo también vale con la biblioteca DOM (validador).
+    body: new Uint8Array(bytes),
   });
 }
 
