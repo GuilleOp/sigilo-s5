@@ -86,17 +86,65 @@
   color: var(--color-on-header);
 }
 
-/* Sello de la marca: tres nodos de la constelación y el nodo turquesa de tu denuncia. Decorativo. */
-.site-brand::before {
-  content: '';
-  inline-size: 1.75rem;
-  block-size: 1.75rem;
+/* Símbolo de la marca (candado de lacre con la red; componente `SigiloMark`). Decorativo: el
+   nombre del enlace es el texto «SIGILO». Los colores siguen al tema con los tokens de marca. */
+.site-brand__mark {
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
   flex: none;
-  background:
-    radial-gradient(circle at 18% 72%, currentColor 0 12%, transparent 13%),
-    radial-gradient(circle at 46% 22%, currentColor 0 12%, transparent 13%),
-    radial-gradient(circle at 84% 42%, currentColor 0 12%, transparent 13%),
-    radial-gradient(circle at 56% 84%, var(--color-protect-fill) 0 15%, transparent 16%);
+}
+
+.sigilo-mark__shackle {
+  stroke: var(--color-brand-seal);
+}
+
+.sigilo-mark__seal {
+  fill: var(--color-brand-seal);
+}
+
+.sigilo-mark__disc {
+  fill: var(--color-brand-disc);
+}
+
+.sigilo-mark__ring,
+.sigilo-mark__links {
+  stroke: var(--color-brand-network);
+}
+
+.sigilo-mark__node {
+  fill: var(--color-brand-network);
+}
+
+.sigilo-mark__hub {
+  fill: var(--color-brand-hub);
+}
+
+/* Tu denuncia: siempre cempasúchil, en todos los temas. */
+.sigilo-mark__accent {
+  fill: var(--color-brand-accent);
+}
+
+/* Colores forzados (Windows): el símbolo en las tintas del sistema; tu denuncia, resaltada. */
+@media (forced-colors: active) {
+  .sigilo-mark__shackle,
+  .sigilo-mark__ring,
+  .sigilo-mark__links {
+    stroke: CanvasText;
+  }
+
+  .sigilo-mark__seal,
+  .sigilo-mark__node,
+  .sigilo-mark__hub {
+    fill: CanvasText;
+  }
+
+  .sigilo-mark__disc {
+    fill: Canvas;
+  }
+
+  .sigilo-mark__accent {
+    fill: Highlight;
+  }
 }
 
 .site-nav {

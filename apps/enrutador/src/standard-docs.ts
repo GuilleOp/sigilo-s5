@@ -53,6 +53,7 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.yaml': 'application/yaml; charset=utf-8',
   '.csv': 'text/csv; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8',
+  '.svg': 'image/svg+xml',
 };
 
 /** Configuración de la vista: dónde está `estandar/` y dónde está `swagger-ui-dist`. */

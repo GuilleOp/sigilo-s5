@@ -53,6 +53,13 @@
   --color-node: #3f8f83;
   --color-node-protect: #0e8a76;
   --color-node-cyan: #6cc9bb;
+  /* Marca (docs/marca.md): lacre verde profundo, disco blanco y red turquesa. El cempasúchil de
+     «tu denuncia» es el mismo en todos los temas: nunca se cambia. */
+  --color-brand-seal: #04463f;
+  --color-brand-disc: #ffffff;
+  --color-brand-network: #0e7565;
+  --color-brand-hub: #04463f;
+  --color-brand-accent: #f2b441;
   --status-ok: var(--color-success);
   --status-running: var(--color-info);
   --status-warning: var(--color-warning);
@@ -135,6 +142,10 @@
     --color-node: #5fb3a6;
     --color-node-protect: #5fe0c8;
     --color-node-cyan: #8fe3d6;
+    --color-brand-seal: #ffffff;
+    --color-brand-disc: #04463f;
+    --color-brand-network: #34cbb4;
+    --color-brand-hub: #ffffff;
   }
 }
 
@@ -175,6 +186,10 @@
   --color-node: #5fb3a6;
   --color-node-protect: #5fe0c8;
   --color-node-cyan: #8fe3d6;
+  --color-brand-seal: #ffffff;
+  --color-brand-disc: #04463f;
+  --color-brand-network: #34cbb4;
+  --color-brand-hub: #ffffff;
 }
 
 /* Alto contraste: negro, blanco y amarillo. Se aplica si el sistema pide más contraste o con
@@ -217,6 +232,10 @@
     --color-node: #ffffff;
     --color-node-protect: #5ff5dc;
     --color-node-cyan: #19e6ff;
+    --color-brand-seal: #ffffff;
+    --color-brand-disc: #000000;
+    --color-brand-network: #ffffff;
+    --color-brand-hub: #ffffff;
   }
 }
 
@@ -257,6 +276,10 @@
   --color-node: #ffffff;
   --color-node-protect: #5ff5dc;
   --color-node-cyan: #19e6ff;
+  --color-brand-seal: #ffffff;
+  --color-brand-disc: #000000;
+  --color-brand-network: #ffffff;
+  --color-brand-hub: #ffffff;
 }
 
 @media (prefers-reduced-motion: reduce) {

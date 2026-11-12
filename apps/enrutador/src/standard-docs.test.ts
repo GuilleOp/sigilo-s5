@@ -85,6 +85,10 @@ describe('vista del Estándar S5 en /estandar/', () => {
     expect(Object.keys(document.paths)).toContain('/v1/denuncias/estadisticas');
     expect((await app.request('/estandar/openapi.json')).status).toBe(200);
     expect((await app.request('/estandar/catalogos/faltas.csv')).status).toBe(200);
+    // La marca del encabezado es una copia local del símbolo.
+    const mark = await app.request(`${STANDARD_DOCS_PAGE}sigilo-simbolo-claro.svg`);
+    expect(mark.status).toBe(200);
+    expect(mark.headers.get('Content-Type')).toBe('image/svg+xml');
   });
 
   it('no sale de sus archivos', async () => {
