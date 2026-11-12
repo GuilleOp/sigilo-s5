@@ -87,4 +87,126 @@ describe('token de renovación', () => {
     expect(outcome.status).toBe(400);
     expect(outcome.body).toMatchObject({ error: 'invalid_grant' });
   });
+
+  it('dos usos a la vez: solo uno recibe tokens', async () => {
+    const { issue, refresh } = setup();
+    const token = (await issue()).refresh_token ?? '';
+    const outcomes = await Promise.all([refresh(token), refresh(token), refresh(token)]);
+    expect(outcomes.map((outcome) => outcome.status).sort()).toEqual([200, 400, 400]);
+  });
+
+  it('cada renovación entrega uno nuevo y deja muerto el anterior, en cadena', async () => {
+    const { issue, refresh, advance } = setup();
+    let token = (await issue()).refresh_token ?? '';
+    const used: string[] = [];
+    for (let round = 0; round < 3; round += 1) {
+      // Cada eslabón vive su propio plazo: renovar justo antes de vencer alarga la cadena.
+      advance(PDN_REFRESH_TOKEN_TTL_SECONDS - 1);
+      const outcome = await refresh(token);
+      if (outcome.status !== 200) throw new Error('Sin renovación.');
+      used.push(token);
+      token = outcome.body.refresh_token ?? '';
+      expect(token).not.toBe(used.at(-1));
+    }
+    for (const old of used) expect((await refresh(old)).status).toBe(400);
+    expect((await refresh(token)).status).toBe(200);
+  });
+
+  it('un token alterado, vacío o de otro formato es invalid_grant, sin 500', async () => {
+    const { issue, refresh } = setup();
+    const token = (await issue()).refresh_token ?? '';
+    const flipped = `${token.slice(0, -1)}${token.endsWith('A') ? 'B' : 'A'}`;
+    for (const bad of [flipped, '', ' ', 'x'.repeat(5000), `${token} `]) {
+      const outcome = await refresh(bad);
+      expect(outcome.status, JSON.stringify(bad.slice(0, 8))).toBe(400);
+      expect(outcome.body).toMatchObject({ error: 'invalid_grant' });
+    }
+    // Probar tokens falsos no gasta el legítimo.
+    expect((await refresh(token)).status).toBe(200);
+  });
+
+  it('al renovar se puede pedir menos permiso, nunca más', async () => {
+    let now = Date.parse('2026-11-11T12:00:00Z');
+    const server = createNodeOAuthServer({
+      issuer: 'node.queretaro',
+      clients: [
+        {
+          clientId: 'sesna',
+          clientSecretDigest: clientSecretDigest(SECRET),
+          scopes: [PDN_SCOPES.statistics, PDN_SCOPES.deliveries],
+          grantTypes: ['password', 'refresh_token'],
+          user: { username: 'sesna.pdn', passwordHash: hashPassword(PASSWORD, 10) },
+        },
+      ],
+      clock: () => now,
+    });
+    const credentials = { client_id: 'sesna', client_secret: SECRET };
+    const issued = await server.token({
+      authorization: undefined,
+      params: {
+        ...credentials,
+        grant_type: 'password',
+        username: 'sesna.pdn',
+        password: PASSWORD,
+        scope: PDN_SCOPES.statistics,
+      },
+    });
+    if (issued.status !== 200) throw new Error('Sin token.');
+    now += 1000;
+    const widened = await server.token({
+      authorization: undefined,
+      params: {
+        ...credentials,
+        grant_type: 'refresh_token',
+        refresh_token: issued.body.refresh_token ?? '',
+        scope: `${PDN_SCOPES.statistics} ${PDN_SCOPES.deliveries}`,
+      },
+    });
+    expect(widened.status).toBe(400);
+    expect(widened.body).toMatchObject({ error: 'invalid_scope' });
+  });
+
+  it('el token de renovación de un cliente no sirve a otro', async () => {
+    const OTHER = 'secreto-sintetico-de-otro-cliente-de-pruebas';
+    const server = createNodeOAuthServer({
+      issuer: 'node.queretaro',
+      clients: [
+        {
+          clientId: 'sesna',
+          clientSecretDigest: clientSecretDigest(SECRET),
+          scopes: [PDN_SCOPES.statistics],
+          grantTypes: ['password', 'refresh_token'],
+          user: { username: 'sesna.pdn', passwordHash: hashPassword(PASSWORD, 10) },
+        },
+        {
+          clientId: 'otro-cliente',
+          clientSecretDigest: clientSecretDigest(OTHER),
+          scopes: [PDN_SCOPES.statistics],
+          grantTypes: ['refresh_token', 'client_credentials'],
+        },
+      ],
+    });
+    const issued = await server.token({
+      authorization: undefined,
+      params: {
+        grant_type: 'password',
+        client_id: 'sesna',
+        client_secret: SECRET,
+        username: 'sesna.pdn',
+        password: PASSWORD,
+      },
+    });
+    if (issued.status !== 200) throw new Error('Sin token.');
+    const stolen = await server.token({
+      authorization: undefined,
+      params: {
+        grant_type: 'refresh_token',
+        client_id: 'otro-cliente',
+        client_secret: OTHER,
+        refresh_token: issued.body.refresh_token ?? '',
+      },
+    });
+    expect(stolen.status).toBe(400);
+    expect(stolen.body).toMatchObject({ error: 'invalid_grant' });
+  });
 });
