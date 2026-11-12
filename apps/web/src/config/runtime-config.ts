@@ -21,6 +21,14 @@ export type RuntimeConfigStatus =
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+async function discardBody(response: Response): Promise<void> {
+  try {
+    await response.arrayBuffer();
+  } catch {
+    // El cuerpo ya no importa.
+  }
+}
+
 /**
  * Descarga y aplica la configuración. Nunca lanza error: devuelve el estado.
  * Seguridad: misma fuente de confianza que el bundle (el mismo servidor sirve los dos); sin
@@ -44,9 +52,14 @@ export async function initRuntimeConfig(
   // para cualquier ruta. Equivale a no tener configuración: se usa el bundle.
   const isJson = (response.headers.get('Content-Type') ?? '').includes('application/json');
   if (response.status === 404 || (response.ok && !isJson)) {
+    // Se lee el cuerpo para cerrar la petición: sin esto queda abierta y la red nunca descansa.
+    await discardBody(response);
     return hasPinnedKeys ? 'bundle' : 'missing';
   }
-  if (!response.ok) return 'invalid';
+  if (!response.ok) {
+    await discardBody(response);
+    return 'invalid';
+  }
   try {
     const config = WebRuntimeConfigSchema.parse(await response.json());
     setPinnedKeys(config.pinnedKeys);
