@@ -41,6 +41,22 @@ export function writeLinkSecrets(
   });
 }
 
+/** Llave de enlace nueva de la época siguiente a la vigente. */
+function newPendingKey(nodeId: string, current: LinkKeyFile): LinkKeyFile {
+  const pair = generateBoxKeyPair();
+  const encoded = encodePublicKey(pair.publicKey);
+  const pending: LinkKeyFile = {
+    version: 1,
+    nodeId,
+    epoca: current.epoca + 1,
+    keyId: encoded.keyId,
+    boxPublicKey: encoded.publicKey,
+    boxPrivateKey: toBase64Url(pair.privateKey),
+  };
+  pair.privateKey.fill(0);
+  return pending;
+}
+
 /** `sigilo rotar-llaves --enlace [--aplicar]`. */
 export function rotateLink(ctx: Context): number {
   if (!hasFlag(ctx, 'enlace')) {
@@ -63,19 +79,13 @@ export function rotateLink(ctx: Context): number {
     ctx.screen.line('El envoltorio reinicia el nodo. Revisa con ./sigilo diagnostico.');
     return 0;
   }
-  const current = readLinkKey(paths.linkKey);
-  const epoch = current.epoca + 1;
-  const pair = generateBoxKeyPair();
-  const encoded = encodePublicKey(pair.publicKey);
-  const pending: LinkKeyFile = {
-    version: 1,
-    nodeId: record.nodeId,
-    epoca: epoch,
-    keyId: encoded.keyId,
-    boxPublicKey: encoded.publicKey,
-    boxPrivateKey: toBase64Url(pair.privateKey),
-  };
-  pair.privateKey.fill(0);
+  // Seguridad: si ya hay una rotación pendiente, se vuelve a firmar la misma llave. Generar otra
+  // la reemplazaba en silencio: si la SESNA ya había aceptado la primera (y no acepta otra de la
+  // misma época), `--aplicar` derivaba secretos que la SESNA no tiene y el enlace se caía.
+  const existing = existsSync(paths.pendingLinkKey) ? readLinkKey(paths.pendingLinkKey) : null;
+  const pending: LinkKeyFile = existing ?? newPendingKey(record.nodeId, readLinkKey(paths.linkKey));
+  const epoch = pending.epoca;
+  const encoded = { keyId: pending.keyId, publicKey: pending.boxPublicKey };
   const keys = KeysFileSchema.parse(readJson(paths.keys, 'datos/keys.json'));
   const signingKey = fromBase64Url(keys.server.signingPrivateKey);
   const rotation = signLinkRotation(
@@ -89,10 +99,14 @@ export function rotateLink(ctx: Context): number {
     signingKey,
   );
   signingKey.fill(0);
-  writeJson(paths.pendingLinkKey, pending);
+  if (existing === null) writeJson(paths.pendingLinkKey, pending);
   const name = `rotacion-enlace-${record.slug}-e${epoch}.json`;
   writeJson(join(paths.output, name), rotation, 0o644);
-  ctx.screen.ok(`Llave de enlace nueva (época ${epoch}), pendiente`);
+  ctx.screen.ok(
+    existing === null
+      ? `Llave de enlace nueva (época ${epoch}), pendiente`
+      : `Ya había una llave de enlace pendiente (época ${epoch}): se usa la misma`,
+  );
   ctx.screen.ok(`Rotación firmada → salida/${name}`);
   ctx.screen.line(
     'Envíala a la SESNA. Cuando te confirme que la aceptó: ./sigilo rotar-llaves --enlace --aplicar',

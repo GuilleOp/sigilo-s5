@@ -488,6 +488,37 @@ describe('instalación de punta a punta (sin Docker)', () => {
     );
   });
 
+  it('repetir la rotación antes de aplicarla conserva la llave que ya aceptó la SESNA', async () => {
+    const pendingPath = join(dirs.nodo, 'llaves', 'enlace-key.pendiente.json');
+    const rotationFile = join(dirs.nodo, 'salida', 'rotacion-enlace-oaxaca-e3.json');
+    const first = await run(dirs.nodo, ['rotar-llaves', '--enlace']);
+    expect(first.code, first.text).toBe(0);
+    const pending = readJsonFile(pendingPath);
+    const sesnaRotation = await run(dirs.sesna, ['sesna', 'aceptar', rotationFile]);
+    expect(sesnaRotation.code, sesnaRotation.text).toBe(0);
+    // La persona no recuerda si la mandó y la corre otra vez: la llave pendiente es la misma.
+    const again = await run(dirs.nodo, ['rotar-llaves', '--enlace']);
+    expect(again.code, again.text).toBe(0);
+    expect(readJsonFile(pendingPath)).toEqual(pending);
+    // Y el archivo de rotación, firmado de nuevo, nombra la misma llave y la misma época.
+    expect((readJsonFile(rotationFile) as { enlace: unknown }).enlace).toMatchObject({
+      epoca: 3,
+      keyId: (pending as { keyId: string }).keyId,
+    });
+    const applied = await run(dirs.nodo, ['rotar-llaves', '--enlace', '--aplicar']);
+    expect(applied.code, applied.text).toBe(0);
+    const relay = readJsonFile(join(dirs.nodo, 'datos', 'relay-secret.json')) as {
+      secret: string;
+    };
+    // El nodo y la SESNA derivan el mismo secreto: el enlace sigue funcionando.
+    expect(loadRelaySecrets(join(dirs.sesna, 'datos')).get('node.oaxaca')).toEqual(
+      new Uint8Array(Buffer.from(relay.secret, 'base64url')),
+    );
+    const nothing = await run(dirs.nodo, ['rotar-llaves', '--enlace', '--aplicar']);
+    expect(nothing.code).toBe(1);
+    expect(nothing.text).toContain('No hay una rotación pendiente');
+  });
+
   it('empaqueta la descarga del nodo con sus sumas', async () => {
     const result = await run(dirs.sesna, ['sesna', 'empaquetar']);
     expect(result.code, result.text).toBe(0);
