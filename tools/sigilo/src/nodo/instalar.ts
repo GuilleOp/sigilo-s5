@@ -515,6 +515,8 @@ export async function install(ctx: Context): Promise<number> {
     envFile('Generado por ./sigilo instalar. Sin secretos ni variables de demostración.', {
       NODE_ENV: 'production',
       SIGILO_NODE_PROFILE: 'nodo',
+      // Segundo factor (TOTP) obligatorio en el panel: cada cuenta lo inscribe al entrar.
+      SIGILO_MFA: 'requerido',
       SIGILO_NODE_ID: nodeId,
       SIGILO_ROUTER_URL: pkg.ventanillaUrl,
       SIGILO_PANEL_PORT: String(PANEL_PORT),
@@ -572,6 +574,10 @@ export async function install(ctx: Context): Promise<number> {
   screen.line('  3. Contraseñas del panel (no se vuelven a mostrar; anótalas):');
   screen.line(`        ${operationUser} · ${passwords.operation}`);
   screen.line(`        ${inboxUser} · ${passwords.inbox}`);
+  screen.line(
+    '     Al entrar por primera vez, cada cuenta activa la verificación en dos pasos (app de',
+  );
+  screen.line('     autenticación) y guarda sus 10 códigos de recuperación.');
   screen.line('');
   if (inbox.privateFile !== null) {
     screen.line(

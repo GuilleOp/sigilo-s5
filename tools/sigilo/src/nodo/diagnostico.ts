@@ -129,6 +129,14 @@ function checkHost(ctx: Context): void {
   if (env.get('NODE_ENV') !== 'production') {
     screen.fail('config/nodo.env no tiene NODE_ENV=production.', 'agrégala.');
   }
+  if ((env.get('SIGILO_MFA') ?? 'requerido') !== 'requerido') {
+    screen.fail(
+      'El panel no exige el segundo factor (SIGILO_MFA no es «requerido»).',
+      'SIGILO_MFA=requerido (o quítala): un nodo real siempre lo exige.',
+    );
+  } else {
+    screen.ok('Segundo factor del panel obligatorio (SIGILO_MFA=requerido)');
+  }
   if ((env.get('SIGILO_NODE_PROFILE') ?? 'nodo') !== 'nodo' || env.has('SIGILO_NODE_INTAKE')) {
     screen.fail(
       'El nodo no está en perfil «nodo» o reabre la recepción directa.',

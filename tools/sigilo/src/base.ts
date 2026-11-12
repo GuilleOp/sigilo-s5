@@ -38,6 +38,7 @@ const BOOLEAN_FLAGS = new Set([
   'ayuda',
   'reemplazar',
   'acepto-huella-red',
+  'confirmo',
 ]);
 
 /** Separa los argumentos de la línea de comandos. Lanza error si una bandera no trae su valor. */

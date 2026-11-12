@@ -34,6 +34,7 @@ const NODE_HELP = `Uso: ./sigilo <comando>
   restaurar <archivo>    extrae un respaldo (--sobrescribir, con el nodo detenido)
   actualizar [versión]   respaldo, imagen nueva, diagnóstico y regreso si algo falla
   cuenta nueva           cuenta individual del panel con contraseña temporal
+  cuenta reiniciar-mfa <usuario>  borra su segundo factor (lo inscribe de nuevo al entrar)
   tabla revisar|firmar   la tabla de funciones desde config/tabla-de-funciones.csv
   calendario revisar     días inhábiles locales desde config/dias-inhabiles.csv
   directorio actualizar  descarga la versión vigente del directorio (tarea diaria)
@@ -82,8 +83,14 @@ async function nodeCommand(command: string, sub: string | undefined): Promise<Ha
         return module.restore(ctx, file);
       };
     }
-    case 'cuenta':
-      return sub === 'nueva' ? (await import('./nodo/cuenta.ts')).newAccount : null;
+    case 'cuenta': {
+      const module = await import('./nodo/cuenta.ts');
+      return sub === 'nueva'
+        ? module.newAccount
+        : sub === 'reiniciar-mfa'
+          ? module.resetAccountMfa
+          : null;
+    }
     case 'tabla': {
       const module = await import('./nodo/tabla.ts');
       return sub === 'revisar' ? module.reviewTable : sub === 'firmar' ? module.signTable : null;
