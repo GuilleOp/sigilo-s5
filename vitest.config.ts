@@ -12,5 +12,11 @@ export default defineConfig({
     ],
     environment: 'node',
     passWithNoTests: true,
+    // `npm run test:coverage`: cobertura con V8 del código de los paquetes, sin las pruebas.
+    coverage: {
+      provider: 'v8',
+      include: ['packages/*/src/**', 'apps/*/src/**', 'tools/*/src/**'],
+      exclude: ['**/*.test.ts', '**/*.test.tsx', '**/test-support/**'],
+    },
   },
 });
