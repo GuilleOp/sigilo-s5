@@ -26,7 +26,7 @@ async function register(router: TestRouter, nodeId: DemoNodeId): Promise<void> {
     signingPrivateKey: router.keys.nodes[nodeId].signing.privateKey,
     fetch: router.routerFetch,
   });
-  await client.register({ sequence: 1, standardVersion: '0.2.0', acceptsRelay: true });
+  await client.register({ sequence: 1, standardVersion: '0.3.0', acceptsRelay: true });
 }
 
 async function queueProof(router: TestRouter): Promise<string> {

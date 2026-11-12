@@ -46,8 +46,12 @@ export const PDN_SCOPE_DESCRIPTIONS: Readonly<Record<PdnScope, string>> = {
 /** Vida de un token de acceso, en segundos (corta: la SESNA pide otro al vencer). */
 export const PDN_ACCESS_TOKEN_TTL_SECONDS = 300;
 
-/** Vida de un token de renovación, en segundos. */
-export const PDN_REFRESH_TOKEN_TTL_SECONDS = 3600;
+/**
+ * Vida de un token de renovación, en segundos: la del token de acceso más 7 minutos. ValidAPI (la
+ * herramienta con la que la SESNA prueba las APIs de los proveedores) exige que dure entre 5 y 10
+ * minutos más que `expires_in` y que sea de un solo uso.
+ */
+export const PDN_REFRESH_TOKEN_TTL_SECONDS = PDN_ACCESS_TOKEN_TTL_SECONDS + 7 * 60;
 
 /** Flujos que acepta el servidor de autorización del nodo. */
 export const PdnGrantTypeSchema = z.enum(['password', 'client_credentials', 'refresh_token']).meta({
@@ -126,24 +130,43 @@ export const PDN_TOKEN_ERRORS = [
   'invalid_scope',
 ] as const;
 
+/**
+ * Código y mensaje en el primer nivel, como el `resError` de las especificaciones del S2 y del S3:
+ * `code` es el estatus HTTP de la respuesta (ValidAPI exige un número entre 400 y 499 que coincida
+ * con él) y `message` un texto fijo.
+ */
+const ResErrorShape = {
+  code: z
+    .number()
+    .int()
+    .min(400)
+    .max(599)
+    .meta({ description: 'Estatus HTTP de la respuesta (400 a 499, o 500).', examples: [401] }),
+  message: z.string().min(1).meta({ description: 'Mensaje fijo, sin datos de la petición.' }),
+};
+
 export const PdnTokenErrorSchema = z
   .object({
     error: z.enum(PDN_TOKEN_ERRORS).meta({ description: 'Código de error de RFC 6749.' }),
     error_description: z.string().meta({ description: 'Texto fijo, sin datos de la petición.' }),
+    ...ResErrorShape,
   })
   .strict()
-  .meta({ description: 'Error del servidor de autorización (RFC 6749, sección 5.2).' });
+  .meta({
+    description:
+      'Error del servidor de autorización: los campos de RFC 6749 (sección 5.2), que leen los clientes OAuth, más `code` (el estatus HTTP) y `message` (el mismo texto que `error_description`) del `resError` de la PDN, que revisa ValidAPI. Los dos formatos conviven porque no chocan.',
+  });
 export type PdnTokenError = z.infer<typeof PdnTokenErrorSchema>;
+
+/** Parte RFC 6749 de un error del token; la ruta le agrega `code` y `message`. */
+export type PdnTokenErrorBody = Pick<PdnTokenError, 'error' | 'error_description'>;
 
 /**
  * Error de los recursos de la PDN (`resError` de las especificaciones del S2 y del S3): código y
  * mensaje en el primer nivel.
  */
-export const PdnErrorSchema = z
-  .object({
-    code: z.string().meta({ description: 'Código del error.', examples: ['bad_request'] }),
-    message: z.string().meta({ description: 'Mensaje fijo, sin datos de la petición.' }),
-  })
-  .strict()
-  .meta({ description: 'Error de un recurso de la PDN (formato `resError` del S2 y del S3).' });
+export const PdnErrorSchema = z.object(ResErrorShape).strict().meta({
+  description:
+    'Error de un recurso de la PDN (formato `resError` del S2 y del S3): `code` es el estatus HTTP y `message` un texto fijo.',
+});
 export type PdnError = z.infer<typeof PdnErrorSchema>;

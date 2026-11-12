@@ -95,7 +95,7 @@ import type { StandardExampleName } from './examples.ts';
  * Versión SemVer del Estándar S5 (independiente de la versión del software). Cambio mayor: una
  * ruta, campo o valor que deja de aceptarse; menor: algo nuevo y opcional; parche: textos.
  */
-export const STANDARD_VERSION = '0.2.0';
+export const STANDARD_VERSION = '0.3.0';
 
 /**
  * Esquemas con nombre propio en `components.schemas`. El resto se describe en línea dentro de

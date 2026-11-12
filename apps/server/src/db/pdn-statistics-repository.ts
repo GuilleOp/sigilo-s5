@@ -2,13 +2,16 @@
 // agregar). Solo se leen columnas de clasificación (fechas, autoridad, entidad, conducta, acción,
 // motivo, calificación y estatus): nunca hechos, identidad, mensajes ni pruebas.
 import type { DatabaseSync } from 'node:sqlite';
-import { PdnStatisticsRowSchema } from '@sigilo/contracts';
-import type {
-  ClosureReason,
-  ComplaintStatus,
-  PdnStatisticsRow,
-  ProcedureAction,
+import {
+  AuthorityIdSchema,
+  ClosureReasonSchema,
+  ComplaintStatusSchema,
+  MonthPeriodSchema,
+  OffenseCodeSchema,
+  PublishedCountSchema,
+  StateCodeSchema,
 } from '@sigilo/contracts';
+import type { ClosureReason, ComplaintStatus, ProcedureAction } from '@sigilo/contracts';
 import { z } from 'zod';
 import { readInteger, readOptionalText, readText } from './database.ts';
 
@@ -32,6 +35,39 @@ export interface StatisticsStep {
   closureReason: ClosureReason | null;
 }
 
+const TimelinessSchema = z
+  .object({ aTiempo: PublishedCountSchema, vencidas: PublishedCountSchema })
+  .strict();
+const MedianDaysSchema = z.number().int().nonnegative().nullable();
+
+/**
+ * Fila congelada tal como se guarda en `rows_json`: ya redondeada y suprimida, con las claves
+ * internas. Es un formato de almacenamiento, distinto del que se publica a la PDN
+ * (`PdnStatisticsRow`, en español y con `{ clave, valor }`), así que el formato publicado puede
+ * cambiar sin migrar los meses ya congelados (la tabla no admite cambios).
+ */
+export const FrozenStatisticsRowSchema = z
+  .object({
+    mes: MonthPeriodSchema,
+    autoridad: z.object({ clave: AuthorityIdSchema, nombre: z.string().min(1).max(300) }).strict(),
+    entidad: StateCodeSchema,
+    conducta: OffenseCodeSchema,
+    recibidas: PublishedCountSchema,
+    turnadas: TimelinessSchema,
+    aceptadas: TimelinessSchema,
+    archivadas: z.record(ClosureReasonSchema, PublishedCountSchema),
+    calificadas: z
+      .object({ graves: PublishedCountSchema, noGraves: PublishedCountSchema })
+      .strict(),
+    escalamientos: PublishedCountSchema,
+    estatusAlCierre: z.record(ComplaintStatusSchema, PublishedCountSchema),
+    tiemposMedianosDiasHabiles: z
+      .object({ turno: MedianDaysSchema, aceptacion: MedianDaysSchema, archivo: MedianDaysSchema })
+      .strict(),
+  })
+  .strict();
+export type FrozenStatisticsRow = z.infer<typeof FrozenStatisticsRowSchema>;
+
 /** Operaciones de la estadística de la PDN. */
 export interface PdnStatisticsRepository {
   /** Meses (`AAAA-MM`) anteriores a `beforeMonth` con denuncias o con actos del trámite. */
@@ -48,11 +84,11 @@ export interface PdnStatisticsRepository {
   escalationsOf(month: string): { folio: string; authorityId: string }[];
   /** Último estatus de cada folio recibido en el mes con cambio hasta `lastDay`. */
   statusAt(month: string, lastDay: string): Map<string, ComplaintStatus>;
-  insertMonth(month: string, rows: readonly PdnStatisticsRow[]): void;
-  listFrozenRows(): PdnStatisticsRow[];
+  insertMonth(month: string, rows: readonly FrozenStatisticsRow[]): void;
+  listFrozenRows(): FrozenStatisticsRow[];
 }
 
-const RowsSchema = z.array(PdnStatisticsRowSchema);
+const RowsSchema = z.array(FrozenStatisticsRowSchema);
 
 /** Crea el repositorio sobre `db`. */
 export function createPdnStatisticsRepository(db: DatabaseSync): PdnStatisticsRepository {

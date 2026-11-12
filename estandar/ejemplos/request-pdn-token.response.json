@@ -4,5 +4,5 @@
   "expires_in": 300,
   "scope": "sesna:estadisticas",
   "refresh_token": "cmVub3ZhY2lvbi1maWN0aWNpYS1kZS1lamVtcGxv",
-  "refresh_token_expires_in": 3600
+  "refresh_token_expires_in": 720
 }

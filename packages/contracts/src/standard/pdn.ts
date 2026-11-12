@@ -3,7 +3,12 @@
 // servidor de autorización OAuth 2.0 (`POST /oauth/token`) y la estadística agregada de denuncias
 // (`POST /v1/denuncias/estadisticas`), que consulta la SESNA para el portal (Bases, art. 61).
 import type { z } from 'zod';
-import { PDN_ROUTES, PDN_SCOPES } from '../pdn-oauth.ts';
+import {
+  PDN_ACCESS_TOKEN_TTL_SECONDS,
+  PDN_REFRESH_TOKEN_TTL_SECONDS,
+  PDN_ROUTES,
+  PDN_SCOPES,
+} from '../pdn-oauth.ts';
 import type {
   PdnError,
   PdnScope,
@@ -19,6 +24,8 @@ import {
 } from '../pdn-oauth.ts';
 import {
   NationalStatisticsNodeSchema,
+  PDN_CLOSURE_CATALOG,
+  PDN_STATUS_CATALOG,
   NationalStatisticsSchema,
   PdnAuthoritiesSchema,
   PdnAuthoritySchema,
@@ -110,56 +117,56 @@ const tokenResponse: PdnTokenResponse = {
   access_token:
     'eyJhbGciOiJIUzI1NiIsInR5cCI6ImF0K2p3dCJ9.eyJpc3MiOiJub2RlLnF1ZXJldGFybyJ9.ZmlybWEtZmljdGljaWE',
   token_type: 'Bearer',
-  expires_in: 300,
+  expires_in: PDN_ACCESS_TOKEN_TTL_SECONDS,
   scope: PDN_SCOPES.statistics,
   refresh_token: 'cmVub3ZhY2lvbi1maWN0aWNpYS1kZS1lamVtcGxv',
-  refresh_token_expires_in: 3600,
+  refresh_token_expires_in: PDN_REFRESH_TOKEN_TTL_SECONDS,
 };
 
 const tokenError: PdnTokenError = {
   error: 'invalid_client',
   error_description: 'No se pudo autenticar al cliente.',
+  code: 401,
+  message: 'No se pudo autenticar al cliente.',
 };
 
-const pdnError: PdnError = { code: 'unauthorized', message: 'No autorizado.' };
+const pdnError: PdnError = { code: 401, message: 'No autorizado.' };
 
 const statisticsRequest: PdnStatisticsRequest = {
   sort: { mes: 'desc' },
   page: 1,
   pageSize: 10,
-  query: { mesDesde: '2026-09', entidad: '22' },
+  query: { mesDesde: '2026-09', entidad: '22', conducta: '' },
 };
 
+const PUBLISHED_CLOSURES: Partial<Record<string, number>> = { IMPROCEDENTE: 5 };
+const PUBLISHED_STATUSES: Partial<Record<string, number>> = { TURNADA: 5, EN_INVESTIGACION: 10 };
+
 const row: PdnStatisticsRow = {
+  id: '2026-10|authority.comptroller-queretaro|22|LGRA-52',
+  fechaCaptura: '2026-11-01T00:00Z',
   mes: '2026-10',
   autoridad: {
     clave: 'authority.comptroller-queretaro',
     nombre: 'Contraloría Estatal Ficticia de Querétaro',
   },
-  entidad: '22',
-  conducta: 'LGRA-52',
+  entidad: { clave: '22', valor: 'Querétaro' },
+  conducta: { clave: 'LGRA-52', valor: 'Cohecho' },
   recibidas: 15,
   turnadas: { aTiempo: 10, vencidas: null },
   aceptadas: { aTiempo: 10, vencidas: 5 },
-  archivadas: {
-    attended: null,
-    channeled: null,
-    inadmissible: 5,
-    insufficient_information: null,
-    joined: null,
-    other: null,
-  },
+  archivadas: PDN_CLOSURE_CATALOG.map(({ clave, valor }) => ({
+    clave,
+    valor,
+    total: PUBLISHED_CLOSURES[clave] ?? null,
+  })),
   calificadas: { graves: null, noGraves: 5 },
   escalamientos: null,
-  estatusAlCierre: {
-    received: null,
-    routing: null,
-    routed: 5,
-    investigating: 10,
-    classified: null,
-    archived: null,
-    resolved: null,
-  },
+  estatusAlCierre: PDN_STATUS_CATALOG.map(({ clave, valor }) => ({
+    clave,
+    valor,
+    total: PUBLISHED_STATUSES[clave] ?? null,
+  })),
   tiemposMedianosDiasHabiles: { turno: 1, aceptacion: 1, archivo: null },
 };
 
@@ -220,19 +227,20 @@ export const PDN_EXTRA_EXAMPLES: Partial<Record<PdnComponentName, PdnExampleName
 const RESOURCE_ERRORS: readonly PdnErrorResponse[] = [
   {
     status: 400,
-    description: 'Consulta o página inválida (`bad_request`).',
+    description:
+      'Consulta inválida: un campo desconocido, `page` menor que 1 o `pageSize` fuera de 1 a 200. `code` es `400`.',
     component: 'PdnError',
   },
   {
     status: 401,
     description:
-      'Sin token o con un token vencido, de otro nodo o con firma inválida (`unauthorized`); `WWW-Authenticate: Bearer error="invalid_token"`.',
+      'Sin token o con un token vencido, de otro nodo o con firma inválida; `code` es `401` y la cabecera `WWW-Authenticate: Bearer error="invalid_token"`.',
     component: 'PdnError',
   },
   {
     status: 403,
     description:
-      'El token no tiene el permiso `sesna:estadisticas` (`forbidden`); `WWW-Authenticate: Bearer error="insufficient_scope"`.',
+      'El token no tiene el permiso `sesna:estadisticas`; `code` es `403` y la cabecera `WWW-Authenticate: Bearer error="insufficient_scope"`.',
     component: 'PdnError',
   },
 ];
@@ -246,7 +254,7 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
     servedBy: 'node',
     summary: 'Pedir un token de acceso (OAuth 2.0)',
     description:
-      'Servidor de autorización del nodo (RFC 6749), como el de las APIs de la PDN. El cliente se autentica con `Authorization: Basic` (client_secret_basic, recomendado) o con `client_id` y `client_secret` en el cuerpo (client_secret_post, como acepta el servidor OAuth de la PDN). Flujos: `password` con el usuario y la contraseña que el nodo entregó a la SESNA (el de la PDN; OAuth 2.1 lo desaconseja), `client_credentials` (recomendado, sin token de renovación) y `refresh_token` (de un solo uso). El cuerpo puede ir en formulario o en JSON. El token de acceso vive 5 minutos y solo vale en el nodo que lo emitió. Tras 10 fallos de un cliente en 15 minutos responde `429` sin comparar nada.',
+      'Servidor de autorización del nodo (RFC 6749), como el de las APIs de la PDN. El cliente se autentica con `Authorization: Basic` (client_secret_basic, recomendado) o con `client_id` y `client_secret` en el cuerpo (client_secret_post, como acepta el servidor OAuth de la PDN). Flujos: `password` con el usuario y la contraseña que el nodo entregó a la SESNA (el de la PDN; OAuth 2.1 lo desaconseja), `client_credentials` (recomendado, sin token de renovación) y `refresh_token` (de un solo uso). El cuerpo puede ir en formulario o en JSON. El token de acceso vive 5 minutos y solo vale en el nodo que lo emitió; el de renovación vive 7 minutos más (12 en total, dentro de la regla de ValidAPI: entre 5 y 10 minutos más que `expires_in`) y se borra al usarlo o al vencer. Tras 10 fallos de un cliente en 15 minutos responde `429` sin comparar nada. Los errores llevan los campos de RFC 6749 (`error`, `error_description`) y, además, `code` (el estatus HTTP) y `message`, como el `resError` de la PDN.',
     security: 'none',
     parameters: [],
     requestBody: {
@@ -265,18 +273,19 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
       {
         status: 400,
         description:
-          '`invalid_request`, `invalid_grant` (usuario, contraseña o token de renovación inválidos), `unauthorized_client`, `unsupported_grant_type` o `invalid_scope`.',
+          '`invalid_request`, `invalid_grant` (usuario, contraseña o token de renovación inválidos, vencidos o ya usados), `unauthorized_client`, `unsupported_grant_type` o `invalid_scope`; `code` es `400`.',
         component: 'PdnTokenError',
       },
       {
         status: 401,
         description:
-          '`invalid_client`: identificador o secreto del cliente inválidos (con `WWW-Authenticate: Basic` si vino en la cabecera).',
+          '`invalid_client`: identificador o secreto del cliente inválidos (con `WWW-Authenticate: Basic` si vino en la cabecera); `code` es `401`.',
         component: 'PdnTokenError',
       },
       {
         status: 429,
-        description: 'Demasiados fallos de ese cliente; se responde sin comparar credenciales.',
+        description:
+          'Demasiados fallos de ese cliente; se responde sin comparar credenciales (`code` es `429`).',
         component: 'PdnTokenError',
       },
     ],
@@ -289,7 +298,7 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
     servedBy: 'node',
     summary: 'Estadística agregada de denuncias',
     description:
-      'Como `POST /v1/spic` del S2 y `POST /v1/ssancionados` del S3: `sort`, `page` (1 por omisión), `pageSize` (10 por omisión, 200 como máximo) y `query` (mes o rango de meses, entidad, autoridad, conducta y estatus); responde `{ pagination, results }`. Cada fila es un mes cerrado, una autoridad, una entidad y una conducta, con indicadores ya redondeados a múltiplos de 5 (al azar, con semilla fija por mes) y suprimidos (`null`) si quedan bajo 5; las medianas de tiempo solo con 10 observaciones o más. La tabla de cada mes se congela al cerrarse y los filtros solo eligen filas: ninguna consulta vuelve a sumar, así que no permite reconstruir una celda suprimida. Exige un token del nodo con `sesna:estadisticas`.',
+      'Como `POST /v1/spic` del S2 y `POST /v1/ssancionados` del S3: `sort`, `page` (1 por omisión), `pageSize` (10 por omisión, de 1 a 200) y `query` (identificador, mes o rango de meses, entidad, autoridad, conducta y estatus); responde `{ pagination, results }`. Como pide ValidAPI: un cuerpo `{}` es válido, un filtro con cadena vacía se ignora, un `id` que no existe da `results: []` y una página después de la última también da `results: []`; `pageSize` fuera de rango o `page` menor que 1 dan `400`. Cada fila trae `id` y `fechaCaptura`, y sus valores de catálogo van como `{ clave, valor }`. Cada fila es un mes cerrado, una autoridad, una entidad y una conducta, con indicadores ya redondeados a múltiplos de 5 (al azar, con semilla fija por mes) y suprimidos (`null`) si quedan bajo 5; las medianas de tiempo solo con 10 observaciones o más. La tabla de cada mes se congela al cerrarse y los filtros solo eligen filas: ninguna consulta vuelve a sumar, así que no permite reconstruir una celda suprimida. Exige un token del nodo con `sesna:estadisticas`.',
     security: { oauth: [PDN_SCOPES.statistics] },
     parameters: [],
     requestBody: {
@@ -309,8 +318,12 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
     errors: [],
     pdnErrors: [
       ...RESOURCE_ERRORS,
-      { status: 413, description: 'Consulta demasiado grande.', component: 'PdnError' },
-      { status: 415, description: 'El cuerpo no es JSON.', component: 'PdnError' },
+      {
+        status: 413,
+        description: 'Consulta demasiado grande; `code` es `413`.',
+        component: 'PdnError',
+      },
+      { status: 415, description: 'El cuerpo no es JSON; `code` es `415`.', component: 'PdnError' },
     ],
   },
   {
@@ -321,7 +334,7 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
     servedBy: 'node',
     summary: 'Autoridades del nodo',
     description:
-      'Catálogo de las autoridades que aloja el nodo (clave del directorio y nombre), como `GET /v1/spic/dependencias` del S2. Sirve para el filtro `query.autoridad`. Exige un token del nodo con `sesna:estadisticas`.',
+      'Catálogo de las autoridades que aloja el nodo (clave del directorio y nombre), sin repetidas y en orden alfabético por nombre, como `GET /v1/spic/dependencias` del S2. Sirve para el filtro `query.autoridad`. Exige un token del nodo con `sesna:estadisticas`.',
     security: { oauth: [PDN_SCOPES.statistics] },
     parameters: [],
     success: {

@@ -2,8 +2,15 @@
 // turnado en días hábiles (a tiempo o vencida), medianas solo con 10 observaciones o más, y
 // redondeo y supresión de cada conteo.
 import { describe, expect, it } from 'vitest';
+import { PdnStatisticsRowSchema } from '@sigilo/contracts';
 import type { PdnStatisticsRepository, StatisticsStep } from '../db/pdn-statistics-repository.ts';
-import { computeMonth, lastDayOf, publishMonth, queryPdnStatistics } from './pdn-statistics.ts';
+import {
+  computeMonth,
+  lastDayOf,
+  publishMonth,
+  queryPdnStatistics,
+  toPdnStatisticsRow,
+} from './pdn-statistics.ts';
 
 const INBOX = 'authority.buzon-prueba';
 const OIC = 'authority.oic-prueba';
@@ -119,9 +126,81 @@ describe('estadística de un mes cerrado', () => {
     );
     const all = queryPdnStatistics(rows, {});
     const one = queryPdnStatistics(rows, { query: { autoridad: OIC } });
-    if (all === 'invalid-page' || one === 'invalid-page') throw new Error('página');
-    expect(one.results).toEqual(rows.filter((row) => row.autoridad.clave === OIC));
+    expect(one.results).toEqual(
+      rows.filter((row) => row.autoridad.clave === OIC).map(toPdnStatisticsRow),
+    );
     expect(one.pagination.totalRows).toBeLessThanOrEqual(all.pagination.totalRows);
     expect(lastDayOf('2026-02')).toBe('2026-02-28');
+  });
+});
+
+describe('formato publicado a la PDN', () => {
+  const rows = publishMonth(
+    '2026-10',
+    computeMonth(repository(10, '2026-10-06'), '2026-10'),
+    NAMES,
+    's',
+    () => 0.99,
+  );
+
+  it('cada fila trae id, fechaCaptura y catálogos {clave, valor} en español', () => {
+    const { results } = queryPdnStatistics(rows, {});
+    for (const row of results) expect(PdnStatisticsRowSchema.parse(row)).toEqual(row);
+    const oic = results.find((row) => row.autoridad.clave === OIC);
+    expect(oic).toMatchObject({
+      id: `2026-10|${OIC}|22|LGRA-52`,
+      fechaCaptura: '2026-11-01T00:00Z',
+      entidad: { clave: '22', valor: 'Querétaro' },
+      conducta: { clave: 'LGRA-52', valor: 'Cohecho' },
+    });
+    expect(oic?.archivadas.map((item) => item.clave)).toEqual([
+      'ATENDIDA',
+      'CANALIZADA',
+      'IMPROCEDENTE',
+      'INFORMACION_INSUFICIENTE',
+      'ACUMULADA',
+      'OTRO_MOTIVO',
+    ]);
+    expect(oic?.archivadas[0]).toEqual({ clave: 'ATENDIDA', valor: 'Atendido', total: 10 });
+    const inbox = results.find((row) => row.autoridad.clave === INBOX);
+    expect(inbox?.estatusAlCierre.find((item) => item.clave === 'ARCHIVADA')?.total).toBe(10);
+  });
+
+  it('ignora los filtros vacíos y un id inexistente da results vacío', () => {
+    const all = queryPdnStatistics(rows, {});
+    const empty = queryPdnStatistics(rows, {
+      query: {
+        id: '',
+        mes: '',
+        mesDesde: '',
+        mesHasta: '',
+        entidad: '',
+        autoridad: '',
+        conducta: '',
+        estatus: '',
+      },
+    });
+    expect(empty).toEqual(all);
+    const id = all.results[0]?.id ?? '';
+    expect(queryPdnStatistics(rows, { query: { id } }).results.map((row) => row.id)).toEqual([id]);
+    expect(queryPdnStatistics(rows, { query: { id: 'no-existe' } })).toEqual({
+      pagination: { pageSize: 10, page: 1, totalRows: 0, hasNextPage: false },
+      results: [],
+    });
+    expect(
+      queryPdnStatistics(rows, { query: { estatus: 'ARCHIVADA' } }).results.map(
+        (row) => row.autoridad.clave,
+      ),
+    ).toEqual([INBOX]);
+  });
+
+  it('una página después de la última responde results vacío con el mismo totalRows', () => {
+    const last = queryPdnStatistics(rows, { page: 2, pageSize: 1 });
+    expect(last.pagination).toEqual({ pageSize: 1, page: 2, totalRows: 2, hasNextPage: false });
+    expect(last.results).toHaveLength(1);
+    expect(queryPdnStatistics(rows, { page: 3, pageSize: 1 })).toEqual({
+      pagination: { pageSize: 1, page: 3, totalRows: 2, hasNextPage: false },
+      results: [],
+    });
   });
 });

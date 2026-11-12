@@ -14,7 +14,7 @@ info:
     El grupo «Corroboración» describe la corroboración ciega con VOPRF (RFC 9497): el evaluador OPRF, que ve solo elementos cegados, y el índice de coincidencias, que ve solo etiquetas y cuenta fuentes independientes. Son dos servicios con operación separada.
 
     Documento generado desde `packages/contracts` con `npm run standard:build`. Los esquemas son JSON Schema 2020-12. Las peticiones y respuestas no admiten campos que no estén en su esquema. El diccionario de datos y los ejemplos están en la misma carpeta.
-  version: 0.2.0
+  version: 0.3.0
   license:
     name: CC BY-NC 4.0
     identifier: CC-BY-NC-4.0
@@ -4864,7 +4864,7 @@ paths:
                         name: Nodo estatal Querétaro
                         status: up
                         softwareVersion: 1.0.1
-                        standardVersion: 0.2.0
+                        standardVersion: 0.3.0
                         lastCheckAt: 2026-11-09T17:05Z
                         lastContactAt: 2026-11-09T17:05Z
                         registered: true
@@ -4875,7 +4875,7 @@ paths:
                         name: Nodo Federal
                         status: down
                         softwareVersion: 1.0.1
-                        standardVersion: 0.2.0
+                        standardVersion: 0.3.0
                         lastCheckAt: 2026-11-09T17:05Z
                         lastContactAt: 2026-11-09T15:40Z
                         registered: true
@@ -5974,7 +5974,7 @@ paths:
                     v: 1
                     nodeId: node.queretaro
                     softwareVersion: 1.0.1
-                    standardVersion: 0.2.0
+                    standardVersion: 0.3.0
         '404':
           description: '`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).'
           headers:
@@ -6054,12 +6054,18 @@ paths:
                         rejection: null
                         rows: 0
                     rows:
-                      - mes: 2026-10
+                      - id: 2026-10|authority.comptroller-queretaro|22|LGRA-52
+                        fechaCaptura: 2026-11-01T00:00Z
+                        mes: 2026-10
                         autoridad:
                           clave: authority.comptroller-queretaro
                           nombre: Contraloría Estatal Ficticia de Querétaro
-                        entidad: '22'
-                        conducta: LGRA-52
+                        entidad:
+                          clave: '22'
+                          valor: Querétaro
+                        conducta:
+                          clave: LGRA-52
+                          valor: Cohecho
                         recibidas: 15
                         turnadas:
                           aTiempo: 10
@@ -6068,24 +6074,50 @@ paths:
                           aTiempo: 10
                           vencidas: 5
                         archivadas:
-                          attended: null
-                          channeled: null
-                          inadmissible: 5
-                          insufficient_information: null
-                          joined: null
-                          other: null
+                          - clave: ATENDIDA
+                            valor: Atendido
+                            total: null
+                          - clave: CANALIZADA
+                            valor: Canalizado
+                            total: null
+                          - clave: IMPROCEDENTE
+                            valor: Improcedente
+                            total: 5
+                          - clave: INFORMACION_INSUFICIENTE
+                            valor: Información insuficiente
+                            total: null
+                          - clave: ACUMULADA
+                            valor: Acumulado
+                            total: null
+                          - clave: OTRO_MOTIVO
+                            valor: Otro
+                            total: null
                         calificadas:
                           graves: null
                           noGraves: 5
                         escalamientos: null
                         estatusAlCierre:
-                          received: null
-                          routing: null
-                          routed: 5
-                          investigating: 10
-                          classified: null
-                          archived: null
-                          resolved: null
+                          - clave: RECIBIDA
+                            valor: Recibida
+                            total: null
+                          - clave: BUSCANDO_AUTORIDAD
+                            valor: Buscando a la autoridad que debe atenderla
+                            total: null
+                          - clave: TURNADA
+                            valor: Turnada a la autoridad competente
+                            total: 5
+                          - clave: EN_INVESTIGACION
+                            valor: En investigación
+                            total: 10
+                          - clave: CALIFICADA
+                            valor: 'Revisada: la autoridad decidió si la falta es grave'
+                            total: null
+                          - clave: ARCHIVADA
+                            valor: Archivada
+                            total: null
+                          - clave: CONCLUIDA
+                            valor: Concluida
+                            total: null
                         tiemposMedianosDiasHabiles:
                           turno: 1
                           aceptacion: 1
@@ -6285,7 +6317,7 @@ paths:
       tags:
         - PDN
       summary: Pedir un token de acceso (OAuth 2.0)
-      description: 'Servidor de autorización del nodo (RFC 6749), como el de las APIs de la PDN. El cliente se autentica con `Authorization: Basic` (client_secret_basic, recomendado) o con `client_id` y `client_secret` en el cuerpo (client_secret_post, como acepta el servidor OAuth de la PDN). Flujos: `password` con el usuario y la contraseña que el nodo entregó a la SESNA (el de la PDN; OAuth 2.1 lo desaconseja), `client_credentials` (recomendado, sin token de renovación) y `refresh_token` (de un solo uso). El cuerpo puede ir en formulario o en JSON. El token de acceso vive 5 minutos y solo vale en el nodo que lo emitió. Tras 10 fallos de un cliente en 15 minutos responde `429` sin comparar nada.'
+      description: 'Servidor de autorización del nodo (RFC 6749), como el de las APIs de la PDN. El cliente se autentica con `Authorization: Basic` (client_secret_basic, recomendado) o con `client_id` y `client_secret` en el cuerpo (client_secret_post, como acepta el servidor OAuth de la PDN). Flujos: `password` con el usuario y la contraseña que el nodo entregó a la SESNA (el de la PDN; OAuth 2.1 lo desaconseja), `client_credentials` (recomendado, sin token de renovación) y `refresh_token` (de un solo uso). El cuerpo puede ir en formulario o en JSON. El token de acceso vive 5 minutos y solo vale en el nodo que lo emitió; el de renovación vive 7 minutos más (12 en total, dentro de la regla de ValidAPI: entre 5 y 10 minutos más que `expires_in`) y se borra al usarlo o al vencer. Tras 10 fallos de un cliente en 15 minutos responde `429` sin comparar nada. Los errores llevan los campos de RFC 6749 (`error`, `error_description`) y, además, `code` (el estatus HTTP) y `message`, como el `resError` de la PDN.'
       security: []
       requestBody:
         required: true
@@ -6338,9 +6370,9 @@ paths:
                     expires_in: 300
                     scope: sesna:estadisticas
                     refresh_token: cmVub3ZhY2lvbi1maWN0aWNpYS1kZS1lamVtcGxv
-                    refresh_token_expires_in: 3600
+                    refresh_token_expires_in: 720
         '400':
-          description: '`invalid_request`, `invalid_grant` (usuario, contraseña o token de renovación inválidos), `unauthorized_client`, `unsupported_grant_type` o `invalid_scope`.'
+          description: '`invalid_request`, `invalid_grant` (usuario, contraseña o token de renovación inválidos, vencidos o ya usados), `unauthorized_client`, `unsupported_grant_type` o `invalid_scope`; `code` es `400`.'
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6352,7 +6384,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnTokenError'
         '401':
-          description: '`invalid_client`: identificador o secreto del cliente inválidos (con `WWW-Authenticate: Basic` si vino en la cabecera).'
+          description: '`invalid_client`: identificador o secreto del cliente inválidos (con `WWW-Authenticate: Basic` si vino en la cabecera); `code` es `401`.'
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6364,7 +6396,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnTokenError'
         '429':
-          description: Demasiados fallos de ese cliente; se responde sin comparar credenciales.
+          description: Demasiados fallos de ese cliente; se responde sin comparar credenciales (`code` es `429`).
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6397,7 +6429,7 @@ paths:
       tags:
         - PDN
       summary: Estadística agregada de denuncias
-      description: 'Como `POST /v1/spic` del S2 y `POST /v1/ssancionados` del S3: `sort`, `page` (1 por omisión), `pageSize` (10 por omisión, 200 como máximo) y `query` (mes o rango de meses, entidad, autoridad, conducta y estatus); responde `{ pagination, results }`. Cada fila es un mes cerrado, una autoridad, una entidad y una conducta, con indicadores ya redondeados a múltiplos de 5 (al azar, con semilla fija por mes) y suprimidos (`null`) si quedan bajo 5; las medianas de tiempo solo con 10 observaciones o más. La tabla de cada mes se congela al cerrarse y los filtros solo eligen filas: ninguna consulta vuelve a sumar, así que no permite reconstruir una celda suprimida. Exige un token del nodo con `sesna:estadisticas`.'
+      description: 'Como `POST /v1/spic` del S2 y `POST /v1/ssancionados` del S3: `sort`, `page` (1 por omisión), `pageSize` (10 por omisión, de 1 a 200) y `query` (identificador, mes o rango de meses, entidad, autoridad, conducta y estatus); responde `{ pagination, results }`. Como pide ValidAPI: un cuerpo `{}` es válido, un filtro con cadena vacía se ignora, un `id` que no existe da `results: []` y una página después de la última también da `results: []`; `pageSize` fuera de rango o `page` menor que 1 dan `400`. Cada fila trae `id` y `fechaCaptura`, y sus valores de catálogo van como `{ clave, valor }`. Cada fila es un mes cerrado, una autoridad, una entidad y una conducta, con indicadores ya redondeados a múltiplos de 5 (al azar, con semilla fija por mes) y suprimidos (`null`) si quedan bajo 5; las medianas de tiempo solo con 10 observaciones o más. La tabla de cada mes se congela al cerrarse y los filtros solo eligen filas: ninguna consulta vuelve a sumar, así que no permite reconstruir una celda suprimida. Exige un token del nodo con `sesna:estadisticas`.'
       security:
         - nodeOAuth:
             - sesna:estadisticas
@@ -6420,6 +6452,7 @@ paths:
                   query:
                     mesDesde: 2026-09
                     entidad: '22'
+                    conducta: ''
       responses:
         '200':
           description: Página de la estadística.
@@ -6444,12 +6477,18 @@ paths:
                       totalRows: 1
                       hasNextPage: false
                     results:
-                      - mes: 2026-10
+                      - id: 2026-10|authority.comptroller-queretaro|22|LGRA-52
+                        fechaCaptura: 2026-11-01T00:00Z
+                        mes: 2026-10
                         autoridad:
                           clave: authority.comptroller-queretaro
                           nombre: Contraloría Estatal Ficticia de Querétaro
-                        entidad: '22'
-                        conducta: LGRA-52
+                        entidad:
+                          clave: '22'
+                          valor: Querétaro
+                        conducta:
+                          clave: LGRA-52
+                          valor: Cohecho
                         recibidas: 15
                         turnadas:
                           aTiempo: 10
@@ -6458,30 +6497,56 @@ paths:
                           aTiempo: 10
                           vencidas: 5
                         archivadas:
-                          attended: null
-                          channeled: null
-                          inadmissible: 5
-                          insufficient_information: null
-                          joined: null
-                          other: null
+                          - clave: ATENDIDA
+                            valor: Atendido
+                            total: null
+                          - clave: CANALIZADA
+                            valor: Canalizado
+                            total: null
+                          - clave: IMPROCEDENTE
+                            valor: Improcedente
+                            total: 5
+                          - clave: INFORMACION_INSUFICIENTE
+                            valor: Información insuficiente
+                            total: null
+                          - clave: ACUMULADA
+                            valor: Acumulado
+                            total: null
+                          - clave: OTRO_MOTIVO
+                            valor: Otro
+                            total: null
                         calificadas:
                           graves: null
                           noGraves: 5
                         escalamientos: null
                         estatusAlCierre:
-                          received: null
-                          routing: null
-                          routed: 5
-                          investigating: 10
-                          classified: null
-                          archived: null
-                          resolved: null
+                          - clave: RECIBIDA
+                            valor: Recibida
+                            total: null
+                          - clave: BUSCANDO_AUTORIDAD
+                            valor: Buscando a la autoridad que debe atenderla
+                            total: null
+                          - clave: TURNADA
+                            valor: Turnada a la autoridad competente
+                            total: 5
+                          - clave: EN_INVESTIGACION
+                            valor: En investigación
+                            total: 10
+                          - clave: CALIFICADA
+                            valor: 'Revisada: la autoridad decidió si la falta es grave'
+                            total: null
+                          - clave: ARCHIVADA
+                            valor: Archivada
+                            total: null
+                          - clave: CONCLUIDA
+                            valor: Concluida
+                            total: null
                         tiemposMedianosDiasHabiles:
                           turno: 1
                           aceptacion: 1
                           archivo: null
         '400':
-          description: Consulta o página inválida (`bad_request`).
+          description: 'Consulta inválida: un campo desconocido, `page` menor que 1 o `pageSize` fuera de 1 a 200. `code` es `400`.'
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6493,7 +6558,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnError'
         '401':
-          description: 'Sin token o con un token vencido, de otro nodo o con firma inválida (`unauthorized`); `WWW-Authenticate: Bearer error="invalid_token"`.'
+          description: 'Sin token o con un token vencido, de otro nodo o con firma inválida; `code` es `401` y la cabecera `WWW-Authenticate: Bearer error="invalid_token"`.'
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6505,7 +6570,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnError'
         '403':
-          description: 'El token no tiene el permiso `sesna:estadisticas` (`forbidden`); `WWW-Authenticate: Bearer error="insufficient_scope"`.'
+          description: 'El token no tiene el permiso `sesna:estadisticas`; `code` es `403` y la cabecera `WWW-Authenticate: Bearer error="insufficient_scope"`.'
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6517,7 +6582,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnError'
         '413':
-          description: Consulta demasiado grande.
+          description: Consulta demasiado grande; `code` es `413`.
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6529,7 +6594,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnError'
         '415':
-          description: El cuerpo no es JSON.
+          description: El cuerpo no es JSON; `code` es `415`.
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6562,7 +6627,7 @@ paths:
       tags:
         - PDN
       summary: Autoridades del nodo
-      description: Catálogo de las autoridades que aloja el nodo (clave del directorio y nombre), como `GET /v1/spic/dependencias` del S2. Sirve para el filtro `query.autoridad`. Exige un token del nodo con `sesna:estadisticas`.
+      description: Catálogo de las autoridades que aloja el nodo (clave del directorio y nombre), sin repetidas y en orden alfabético por nombre, como `GET /v1/spic/dependencias` del S2. Sirve para el filtro `query.autoridad`. Exige un token del nodo con `sesna:estadisticas`.
       security:
         - nodeOAuth:
             - sesna:estadisticas
@@ -6589,7 +6654,7 @@ paths:
                     - clave: authority.comptroller-queretaro
                       nombre: Contraloría Estatal Ficticia de Querétaro
         '401':
-          description: 'Sin token o con un token vencido, de otro nodo o con firma inválida (`unauthorized`); `WWW-Authenticate: Bearer error="invalid_token"`.'
+          description: 'Sin token o con un token vencido, de otro nodo o con firma inválida; `code` es `401` y la cabecera `WWW-Authenticate: Bearer error="invalid_token"`.'
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -6601,7 +6666,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PdnError'
         '403':
-          description: 'El token no tiene el permiso `sesna:estadisticas` (`forbidden`); `WWW-Authenticate: Bearer error="insufficient_scope"`.'
+          description: 'El token no tiene el permiso `sesna:estadisticas`; `code` es `403` y la cabecera `WWW-Authenticate: Bearer error="insufficient_scope"`.'
           headers:
             Cache-Control:
               description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
@@ -12398,32 +12463,48 @@ components:
         error_description:
           type: string
           description: Texto fijo, sin datos de la petición.
+        code:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: Estatus HTTP de la respuesta (400 a 499, o 500).
+          examples:
+            - 401
+        message:
+          type: string
+          minLength: 1
+          description: Mensaje fijo, sin datos de la petición.
       required:
         - error
         - error_description
+        - code
+        - message
       additionalProperties: false
-      description: Error del servidor de autorización (RFC 6749, sección 5.2).
+      description: 'Error del servidor de autorización: los campos de RFC 6749 (sección 5.2), que leen los clientes OAuth, más `code` (el estatus HTTP) y `message` (el mismo texto que `error_description`) del `resError` de la PDN, que revisa ValidAPI. Los dos formatos conviven porque no chocan.'
     PdnError:
       type: object
       properties:
         code:
-          type: string
-          description: Código del error.
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: Estatus HTTP de la respuesta (400 a 499, o 500).
           examples:
-            - bad_request
+            - 401
         message:
           type: string
+          minLength: 1
           description: Mensaje fijo, sin datos de la petición.
       required:
         - code
         - message
       additionalProperties: false
-      description: Error de un recurso de la PDN (formato `resError` del S2 y del S3).
+      description: 'Error de un recurso de la PDN (formato `resError` del S2 y del S3): `code` es el estatus HTTP y `message` un texto fijo.'
     PdnStatisticsRequest:
       type: object
       properties:
         sort:
-          description: 'Orden por campo, ascendente o descendente; se aplica en el orden en que se escriben las llaves. Por omisión: mes, autoridad, entidad y conducta ascendentes.'
+          description: 'Orden por campo, ascendente o descendente; se aplica en el orden en que se escriben las llaves. `autoridad`, `entidad` y `conducta` se ordenan por su clave. Por omisión: mes, autoridad, entidad y conducta ascendentes.'
           type: object
           properties:
             mes:
@@ -12452,42 +12533,275 @@ components:
               description: Orden ascendente (asc) o descendente (desc), lexicográfico en español.
           additionalProperties: false
         page:
-          description: Página a mostrar; 1 por omisión.
+          description: 'Página a mostrar; 1 por omisión. Una página después de la última responde `results: []`.'
           examples:
             - 1
           type: integer
           minimum: 1
           maximum: 1000000
         pageSize:
-          description: 'Filas por página: 10 por omisión, 200 como máximo (como en el S2 y el S3).'
+          description: 'Filas por página: 10 por omisión, de 1 a 200 (como en el S2 y el S3). Fuera de rango, error 400.'
           examples:
             - 10
           type: integer
           minimum: 1
           maximum: 200
         query:
-          description: Filtros; solo seleccionan filas ya publicadas.
+          description: Filtros; se combinan con AND y solo seleccionan filas ya publicadas.
           type: object
           properties:
+            id:
+              description: 'Solo la fila con ese identificador; si no existe, `results: []` (nunca un error). Una cadena vacía se ignora.'
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  maxLength: 400
             mes:
-              description: Solo ese mes.
-              type: string
-              pattern: ^\d{4}-(0[1-9]|1[0-2])$
-              examples:
-                - 2026-09
+              description: Solo ese mes (AAAA-MM). Una cadena vacía se ignora.
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  pattern: ^\d{4}-(0[1-9]|1[0-2])$
+                  description: Año y mes (AAAA-MM).
+                  examples:
+                    - 2026-09
             mesDesde:
-              description: Desde ese mes (incluido).
-              type: string
-              pattern: ^\d{4}-(0[1-9]|1[0-2])$
-              examples:
-                - 2026-09
+              description: Desde ese mes (incluido). Una cadena vacía se ignora.
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  pattern: ^\d{4}-(0[1-9]|1[0-2])$
+                  description: Año y mes (AAAA-MM).
+                  examples:
+                    - 2026-09
             mesHasta:
-              description: Hasta ese mes (incluido).
-              type: string
-              pattern: ^\d{4}-(0[1-9]|1[0-2])$
-              examples:
-                - 2026-09
+              description: Hasta ese mes (incluido). Una cadena vacía se ignora.
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  pattern: ^\d{4}-(0[1-9]|1[0-2])$
+                  description: Año y mes (AAAA-MM).
+                  examples:
+                    - 2026-09
             entidad:
+              description: Clave INEGI de la entidad. Una cadena vacía se ignora.
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  pattern: ^\d{2}$
+                  description: Clave INEGI de la entidad federativa (2 dígitos).
+                  examples:
+                    - '22'
+                  x-catalog: STATES
+                  enum:
+                    - '01'
+                    - '02'
+                    - '03'
+                    - '04'
+                    - '05'
+                    - '06'
+                    - '07'
+                    - '08'
+                    - '09'
+                    - '10'
+                    - '11'
+                    - '12'
+                    - '13'
+                    - '14'
+                    - '15'
+                    - '16'
+                    - '17'
+                    - '18'
+                    - '19'
+                    - '20'
+                    - '21'
+                    - '22'
+                    - '23'
+                    - '24'
+                    - '25'
+                    - '26'
+                    - '27'
+                    - '28'
+                    - '29'
+                    - '30'
+                    - '31'
+                    - '32'
+            autoridad:
+              description: Clave de la autoridad. Una cadena vacía se ignora.
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  pattern: ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$
+                  description: Identificador estable de la autoridad.
+                  examples:
+                    - authority.oic-iffe
+            conducta:
+              description: Clave de la conducta. Una cadena vacía se ignora.
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  maxLength: 64
+                  description: 'Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).'
+                  examples:
+                    - LGRA-52
+                  x-catalog: OFFENSES
+                  enum:
+                    - CPF-214
+                    - CPF-215
+                    - CPF-216
+                    - CPF-217
+                    - CPF-217-BIS
+                    - CPF-217-TER
+                    - CPF-218
+                    - CPF-219
+                    - CPF-220
+                    - CPF-221
+                    - CPF-222
+                    - CPF-222-BIS
+                    - CPF-223
+                    - CPF-224
+                    - CPF-225
+                    - LGRA-49
+                    - LGRA-50
+                    - LGRA-52
+                    - LGRA-53
+                    - LGRA-54
+                    - LGRA-55
+                    - LGRA-57
+                    - LGRA-58
+                    - LGRA-59
+                    - LGRA-60
+                    - LGRA-60-BIS
+                    - LGRA-61
+                    - LGRA-62
+                    - LGRA-63
+                    - LGRA-63-BIS
+                    - LGRA-64
+                    - LGRA-64-BIS
+                    - LGRA-64-QUATER
+                    - LGRA-64-TER
+                    - LGRA-66
+                    - LGRA-67
+                    - LGRA-68
+                    - LGRA-69
+                    - LGRA-70
+                    - LGRA-71
+                    - LGRA-72
+                    - LGRA-73
+                    - SIN-CLASIFICAR
+            estatus:
+              description: Solo filas con un conteo publicado (no suprimido) de ese estatus en `estatusAlCierre`. Una cadena vacía se ignora.
+              anyOf:
+                - type: string
+                  const: ''
+                - type: string
+                  enum:
+                    - RECIBIDA
+                    - BUSCANDO_AUTORIDAD
+                    - TURNADA
+                    - EN_INVESTIGACION
+                    - CALIFICADA
+                    - ARCHIVADA
+                    - CONCLUIDA
+                  description: 'Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida).'
+          additionalProperties: false
+      additionalProperties: false
+      description: Consulta de la estadística, con la forma de las APIs del S2 y del S3.
+    PdnStatisticsResponse:
+      type: object
+      properties:
+        pagination:
+          $ref: '#/components/schemas/PdnPagination'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PdnStatisticsRow'
+          description: Filas de la página.
+      required:
+        - pagination
+        - results
+      additionalProperties: false
+      description: Página de la estadística.
+    PdnPagination:
+      type: object
+      properties:
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Filas por página.
+        page:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Página actual.
+        totalRows:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: Filas que cumplen la consulta.
+        hasNextPage:
+          type: boolean
+          description: Si hay otra página.
+      required:
+        - pageSize
+        - page
+        - totalRows
+        - hasNextPage
+      additionalProperties: false
+      description: Paginación (la misma de las APIs del S2 y del S3).
+    PdnStatisticsRow:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 400
+          description: 'Identificador estable de la fila: `mes|autoridad|entidad|conducta`. Sirve para el filtro `query.id`.'
+          examples:
+            - 2026-10|authority.comptroller-queretaro|22|LGRA-52
+        fechaCaptura:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:00Z$
+          description: 'Fecha del corte de la fila (UTC): el primer instante del mes siguiente, cuando el mes cierra y se congela.'
+          examples:
+            - 2026-11-01T00:00Z
+        mes:
+          type: string
+          pattern: ^\d{4}-(0[1-9]|1[0-2])$
+          description: Mes cerrado (AAAA-MM) al que se refiere la fila.
+          examples:
+            - 2026-09
+        autoridad:
+          type: object
+          properties:
+            clave:
+              type: string
+              pattern: ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$
+              description: Identificador estable de la autoridad.
+              examples:
+                - authority.oic-iffe
+            nombre:
+              type: string
+              minLength: 1
+              maxLength: 300
+              description: Nombre de la autoridad.
+          required:
+            - clave
+            - nombre
+          additionalProperties: false
+          description: Autoridad del directorio que tenía la denuncia en su bandeja.
+        entidad:
+          type: object
+          properties:
+            clave:
               type: string
               pattern: ^\d{2}$
               description: Clave INEGI de la entidad federativa (2 dígitos).
@@ -12527,13 +12841,20 @@ components:
                 - '30'
                 - '31'
                 - '32'
-            autoridad:
+            valor:
               type: string
-              pattern: ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$
-              description: Identificador estable de la autoridad.
-              examples:
-                - authority.oic-iffe
-            conducta:
+              minLength: 1
+              maxLength: 300
+              description: Nombre de la entidad federativa.
+          required:
+            - clave
+            - valor
+          additionalProperties: false
+          description: Entidad federativa de los hechos (catálogo INEGI).
+        conducta:
+          type: object
+          properties:
+            clave:
               type: string
               maxLength: 64
               description: 'Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).'
@@ -12584,174 +12905,16 @@ components:
                 - LGRA-72
                 - LGRA-73
                 - SIN-CLASIFICAR
-            estatus:
-              description: Solo filas con un conteo publicado (no suprimido) en `estatusAlCierre`.
-              $ref: '#/components/schemas/ComplaintStatus'
-          additionalProperties: false
-      additionalProperties: false
-      description: Consulta de la estadística, con la forma de las APIs del S2 y del S3.
-    PdnStatisticsResponse:
-      type: object
-      properties:
-        pagination:
-          $ref: '#/components/schemas/PdnPagination'
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/PdnStatisticsRow'
-          description: Filas de la página.
-      required:
-        - pagination
-        - results
-      additionalProperties: false
-      description: Página de la estadística.
-    PdnPagination:
-      type: object
-      properties:
-        pageSize:
-          type: integer
-          minimum: 1
-          maximum: 9007199254740991
-          description: Filas por página.
-        page:
-          type: integer
-          minimum: 1
-          maximum: 9007199254740991
-          description: Página actual.
-        totalRows:
-          type: integer
-          minimum: 0
-          maximum: 9007199254740991
-          description: Filas que cumplen la consulta.
-        hasNextPage:
-          type: boolean
-          description: Si hay otra página.
-      required:
-        - pageSize
-        - page
-        - totalRows
-        - hasNextPage
-      additionalProperties: false
-      description: Paginación (la misma de las APIs del S2 y del S3).
-    PdnStatisticsRow:
-      type: object
-      properties:
-        mes:
-          type: string
-          pattern: ^\d{4}-(0[1-9]|1[0-2])$
-          description: Mes cerrado (AAAA-MM) al que se refiere la fila.
-          examples:
-            - 2026-09
-        autoridad:
-          type: object
-          properties:
-            clave:
-              type: string
-              pattern: ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$
-              description: Identificador estable de la autoridad.
-              examples:
-                - authority.oic-iffe
-            nombre:
+            valor:
               type: string
               minLength: 1
               maxLength: 300
-              description: Nombre de la autoridad.
+              description: Término legal de la conducta.
           required:
             - clave
-            - nombre
+            - valor
           additionalProperties: false
-          description: Autoridad del directorio que tenía la denuncia en su bandeja.
-        entidad:
-          type: string
-          pattern: ^\d{2}$
-          description: Clave INEGI de la entidad federativa (2 dígitos).
-          examples:
-            - '22'
-          x-catalog: STATES
-          enum:
-            - '01'
-            - '02'
-            - '03'
-            - '04'
-            - '05'
-            - '06'
-            - '07'
-            - '08'
-            - '09'
-            - '10'
-            - '11'
-            - '12'
-            - '13'
-            - '14'
-            - '15'
-            - '16'
-            - '17'
-            - '18'
-            - '19'
-            - '20'
-            - '21'
-            - '22'
-            - '23'
-            - '24'
-            - '25'
-            - '26'
-            - '27'
-            - '28'
-            - '29'
-            - '30'
-            - '31'
-            - '32'
-        conducta:
-          type: string
-          maxLength: 64
-          description: 'Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).'
-          examples:
-            - LGRA-52
-          x-catalog: OFFENSES
-          enum:
-            - CPF-214
-            - CPF-215
-            - CPF-216
-            - CPF-217
-            - CPF-217-BIS
-            - CPF-217-TER
-            - CPF-218
-            - CPF-219
-            - CPF-220
-            - CPF-221
-            - CPF-222
-            - CPF-222-BIS
-            - CPF-223
-            - CPF-224
-            - CPF-225
-            - LGRA-49
-            - LGRA-50
-            - LGRA-52
-            - LGRA-53
-            - LGRA-54
-            - LGRA-55
-            - LGRA-57
-            - LGRA-58
-            - LGRA-59
-            - LGRA-60
-            - LGRA-60-BIS
-            - LGRA-61
-            - LGRA-62
-            - LGRA-63
-            - LGRA-63-BIS
-            - LGRA-64
-            - LGRA-64-BIS
-            - LGRA-64-QUATER
-            - LGRA-64-TER
-            - LGRA-66
-            - LGRA-67
-            - LGRA-68
-            - LGRA-69
-            - LGRA-70
-            - LGRA-71
-            - LGRA-72
-            - LGRA-73
-            - SIN-CLASIFICAR
+          description: 'Conducta denunciada (catálogo OFFENSES: ley y artículo).'
         recibidas:
           anyOf:
             - type: integer
@@ -12783,7 +12946,7 @@ components:
             - aTiempo
             - vencidas
           additionalProperties: false
-          description: Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera `routing`), de las denuncias que esperaban en esta autoridad.
+          description: Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera de turno), de las denuncias que esperaban en esta autoridad.
         aceptadas:
           type: object
           properties:
@@ -12807,27 +12970,44 @@ components:
             - aTiempo
             - vencidas
           additionalProperties: false
-          description: Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera `acceptance`).
+          description: Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera de aceptación).
         archivadas:
-          type: object
-          propertyNames:
-            $ref: '#/components/schemas/ClosureReason'
-          additionalProperties:
-            anyOf:
-              - type: integer
-                minimum: 5
-                maximum: 9007199254740991
-                multipleOf: 5
-              - type: 'null'
-            description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
-          required:
-            - attended
-            - channeled
-            - inadmissible
-            - insufficient_information
-            - joined
-            - other
-          description: Cierres del mes por motivo (catálogo CLOSURE_REASONS).
+          minItems: 6
+          maxItems: 6
+          type: array
+          items:
+            type: object
+            properties:
+              clave:
+                type: string
+                enum:
+                  - ATENDIDA
+                  - CANALIZADA
+                  - IMPROCEDENTE
+                  - INFORMACION_INSUFICIENTE
+                  - ACUMULADA
+                  - OTRO_MOTIVO
+                description: 'Motivo de cierre: ATENDIDA (Atendido), CANALIZADA (Canalizado), IMPROCEDENTE (Improcedente), INFORMACION_INSUFICIENTE (Información insuficiente), ACUMULADA (Acumulado), OTRO_MOTIVO (Otro).'
+              valor:
+                type: string
+                minLength: 1
+                maxLength: 300
+                description: Nombre del motivo de cierre.
+              total:
+                anyOf:
+                  - type: integer
+                    minimum: 5
+                    maximum: 9007199254740991
+                    multipleOf: 5
+                  - type: 'null'
+                description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
+            required:
+              - clave
+              - valor
+              - total
+            additionalProperties: false
+            description: Cierres del mes con un motivo.
+          description: 'Cierres del mes por motivo: un elemento por motivo del catálogo, siempre todos y en el mismo orden.'
         calificadas:
           type: object
           properties:
@@ -12859,28 +13039,45 @@ components:
               maximum: 9007199254740991
               multipleOf: 5
             - type: 'null'
-          description: Reglas de escalamiento cumplidas en el mes con efecto `escalate`.
+          description: Reglas de escalamiento cumplidas en el mes con efecto de escalar.
         estatusAlCierre:
-          type: object
-          propertyNames:
-            $ref: '#/components/schemas/ComplaintStatus'
-          additionalProperties:
-            anyOf:
-              - type: integer
-                minimum: 5
-                maximum: 9007199254740991
-                multipleOf: 5
-              - type: 'null'
-            description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
-          required:
-            - received
-            - routing
-            - routed
-            - investigating
-            - classified
-            - archived
-            - resolved
-          description: Estatus que tenían al cerrarse el mes las denuncias recibidas en él (catálogo COMPLAINT_STATUSES).
+          minItems: 7
+          maxItems: 7
+          type: array
+          items:
+            type: object
+            properties:
+              clave:
+                type: string
+                enum:
+                  - RECIBIDA
+                  - BUSCANDO_AUTORIDAD
+                  - TURNADA
+                  - EN_INVESTIGACION
+                  - CALIFICADA
+                  - ARCHIVADA
+                  - CONCLUIDA
+                description: 'Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida).'
+              valor:
+                type: string
+                minLength: 1
+                maxLength: 300
+                description: Nombre del estatus.
+              total:
+                anyOf:
+                  - type: integer
+                    minimum: 5
+                    maximum: 9007199254740991
+                    multipleOf: 5
+                  - type: 'null'
+                description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
+            required:
+              - clave
+              - valor
+              - total
+            additionalProperties: false
+            description: Denuncias del mes con un estatus al cerrarse el mes.
+          description: 'Estatus que tenían al cerrarse el mes las denuncias recibidas en él: un elemento por estatus del catálogo, siempre todos y en el mismo orden.'
         tiemposMedianosDiasHabiles:
           type: object
           properties:
@@ -12912,6 +13109,8 @@ components:
           additionalProperties: false
           description: Medianas en días hábiles; null si hay menos de 10 observaciones.
       required:
+        - id
+        - fechaCaptura
         - mes
         - autoridad
         - entidad
@@ -12925,12 +13124,12 @@ components:
         - estatusAlCierre
         - tiemposMedianosDiasHabiles
       additionalProperties: false
-      description: 'Fila de la estadística: mes cerrado, autoridad, entidad y conducta, con indicadores ya redondeados y suprimidos. La tabla de cada mes se congela al cerrarse; los filtros solo eligen filas, nunca vuelven a sumar.'
+      description: 'Fila de la estadística: mes cerrado, autoridad, entidad y conducta, con indicadores ya redondeados y suprimidos. Los valores de catálogo van como `{ clave, valor }`, como en las APIs de la PDN. La tabla de cada mes se congela al cerrarse; los filtros solo eligen filas, nunca vuelven a sumar.'
     PdnAuthorities:
       type: array
       items:
         $ref: '#/components/schemas/PdnAuthority'
-      description: Autoridades que el nodo aloja en el directorio, por clave.
+      description: Autoridades que el nodo aloja en el directorio, sin repetidas y en orden alfabético por nombre (como `dependencias` del S2).
     PdnAuthority:
       type: object
       properties:
@@ -12984,6 +13183,19 @@ components:
           items:
             type: object
             properties:
+              id:
+                type: string
+                minLength: 1
+                maxLength: 400
+                description: 'Identificador estable de la fila: `mes|autoridad|entidad|conducta`. Sirve para el filtro `query.id`.'
+                examples:
+                  - 2026-10|authority.comptroller-queretaro|22|LGRA-52
+              fechaCaptura:
+                type: string
+                pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:00Z$
+                description: 'Fecha del corte de la fila (UTC): el primer instante del mes siguiente, cuando el mes cierra y se congela.'
+                examples:
+                  - 2026-11-01T00:00Z
               mes:
                 type: string
                 pattern: ^\d{4}-(0[1-9]|1[0-2])$
@@ -13010,96 +13222,122 @@ components:
                 additionalProperties: false
                 description: Autoridad del directorio que tenía la denuncia en su bandeja.
               entidad:
-                type: string
-                pattern: ^\d{2}$
-                description: Clave INEGI de la entidad federativa (2 dígitos).
-                examples:
-                  - '22'
-                x-catalog: STATES
-                enum:
-                  - '01'
-                  - '02'
-                  - '03'
-                  - '04'
-                  - '05'
-                  - '06'
-                  - '07'
-                  - '08'
-                  - '09'
-                  - '10'
-                  - '11'
-                  - '12'
-                  - '13'
-                  - '14'
-                  - '15'
-                  - '16'
-                  - '17'
-                  - '18'
-                  - '19'
-                  - '20'
-                  - '21'
-                  - '22'
-                  - '23'
-                  - '24'
-                  - '25'
-                  - '26'
-                  - '27'
-                  - '28'
-                  - '29'
-                  - '30'
-                  - '31'
-                  - '32'
+                type: object
+                properties:
+                  clave:
+                    type: string
+                    pattern: ^\d{2}$
+                    description: Clave INEGI de la entidad federativa (2 dígitos).
+                    examples:
+                      - '22'
+                    x-catalog: STATES
+                    enum:
+                      - '01'
+                      - '02'
+                      - '03'
+                      - '04'
+                      - '05'
+                      - '06'
+                      - '07'
+                      - '08'
+                      - '09'
+                      - '10'
+                      - '11'
+                      - '12'
+                      - '13'
+                      - '14'
+                      - '15'
+                      - '16'
+                      - '17'
+                      - '18'
+                      - '19'
+                      - '20'
+                      - '21'
+                      - '22'
+                      - '23'
+                      - '24'
+                      - '25'
+                      - '26'
+                      - '27'
+                      - '28'
+                      - '29'
+                      - '30'
+                      - '31'
+                      - '32'
+                  valor:
+                    type: string
+                    minLength: 1
+                    maxLength: 300
+                    description: Nombre de la entidad federativa.
+                required:
+                  - clave
+                  - valor
+                additionalProperties: false
+                description: Entidad federativa de los hechos (catálogo INEGI).
               conducta:
-                type: string
-                maxLength: 64
-                description: 'Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).'
-                examples:
-                  - LGRA-52
-                x-catalog: OFFENSES
-                enum:
-                  - CPF-214
-                  - CPF-215
-                  - CPF-216
-                  - CPF-217
-                  - CPF-217-BIS
-                  - CPF-217-TER
-                  - CPF-218
-                  - CPF-219
-                  - CPF-220
-                  - CPF-221
-                  - CPF-222
-                  - CPF-222-BIS
-                  - CPF-223
-                  - CPF-224
-                  - CPF-225
-                  - LGRA-49
-                  - LGRA-50
-                  - LGRA-52
-                  - LGRA-53
-                  - LGRA-54
-                  - LGRA-55
-                  - LGRA-57
-                  - LGRA-58
-                  - LGRA-59
-                  - LGRA-60
-                  - LGRA-60-BIS
-                  - LGRA-61
-                  - LGRA-62
-                  - LGRA-63
-                  - LGRA-63-BIS
-                  - LGRA-64
-                  - LGRA-64-BIS
-                  - LGRA-64-QUATER
-                  - LGRA-64-TER
-                  - LGRA-66
-                  - LGRA-67
-                  - LGRA-68
-                  - LGRA-69
-                  - LGRA-70
-                  - LGRA-71
-                  - LGRA-72
-                  - LGRA-73
-                  - SIN-CLASIFICAR
+                type: object
+                properties:
+                  clave:
+                    type: string
+                    maxLength: 64
+                    description: 'Clave de la conducta: ley y artículo (LGRA o Código Penal Federal).'
+                    examples:
+                      - LGRA-52
+                    x-catalog: OFFENSES
+                    enum:
+                      - CPF-214
+                      - CPF-215
+                      - CPF-216
+                      - CPF-217
+                      - CPF-217-BIS
+                      - CPF-217-TER
+                      - CPF-218
+                      - CPF-219
+                      - CPF-220
+                      - CPF-221
+                      - CPF-222
+                      - CPF-222-BIS
+                      - CPF-223
+                      - CPF-224
+                      - CPF-225
+                      - LGRA-49
+                      - LGRA-50
+                      - LGRA-52
+                      - LGRA-53
+                      - LGRA-54
+                      - LGRA-55
+                      - LGRA-57
+                      - LGRA-58
+                      - LGRA-59
+                      - LGRA-60
+                      - LGRA-60-BIS
+                      - LGRA-61
+                      - LGRA-62
+                      - LGRA-63
+                      - LGRA-63-BIS
+                      - LGRA-64
+                      - LGRA-64-BIS
+                      - LGRA-64-QUATER
+                      - LGRA-64-TER
+                      - LGRA-66
+                      - LGRA-67
+                      - LGRA-68
+                      - LGRA-69
+                      - LGRA-70
+                      - LGRA-71
+                      - LGRA-72
+                      - LGRA-73
+                      - SIN-CLASIFICAR
+                  valor:
+                    type: string
+                    minLength: 1
+                    maxLength: 300
+                    description: Término legal de la conducta.
+                required:
+                  - clave
+                  - valor
+                additionalProperties: false
+                description: 'Conducta denunciada (catálogo OFFENSES: ley y artículo).'
               recibidas:
                 anyOf:
                   - type: integer
@@ -13131,7 +13369,7 @@ components:
                   - aTiempo
                   - vencidas
                 additionalProperties: false
-                description: Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera `routing`), de las denuncias que esperaban en esta autoridad.
+                description: Turnos hechos en el mes desde el buzón general (TURN_SEMAPHORE, espera de turno), de las denuncias que esperaban en esta autoridad.
               aceptadas:
                 type: object
                 properties:
@@ -13155,27 +13393,44 @@ components:
                   - aTiempo
                   - vencidas
                 additionalProperties: false
-                description: Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera `acceptance`).
+                description: Aceptaciones hechas en el mes por esta autoridad (TURN_SEMAPHORE, espera de aceptación).
               archivadas:
-                type: object
-                propertyNames:
-                  $ref: '#/components/schemas/ClosureReason'
-                additionalProperties:
-                  anyOf:
-                    - type: integer
-                      minimum: 5
-                      maximum: 9007199254740991
-                      multipleOf: 5
-                    - type: 'null'
-                  description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
-                required:
-                  - attended
-                  - channeled
-                  - inadmissible
-                  - insufficient_information
-                  - joined
-                  - other
-                description: Cierres del mes por motivo (catálogo CLOSURE_REASONS).
+                minItems: 6
+                maxItems: 6
+                type: array
+                items:
+                  type: object
+                  properties:
+                    clave:
+                      type: string
+                      enum:
+                        - ATENDIDA
+                        - CANALIZADA
+                        - IMPROCEDENTE
+                        - INFORMACION_INSUFICIENTE
+                        - ACUMULADA
+                        - OTRO_MOTIVO
+                      description: 'Motivo de cierre: ATENDIDA (Atendido), CANALIZADA (Canalizado), IMPROCEDENTE (Improcedente), INFORMACION_INSUFICIENTE (Información insuficiente), ACUMULADA (Acumulado), OTRO_MOTIVO (Otro).'
+                    valor:
+                      type: string
+                      minLength: 1
+                      maxLength: 300
+                      description: Nombre del motivo de cierre.
+                    total:
+                      anyOf:
+                        - type: integer
+                          minimum: 5
+                          maximum: 9007199254740991
+                          multipleOf: 5
+                        - type: 'null'
+                      description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
+                  required:
+                    - clave
+                    - valor
+                    - total
+                  additionalProperties: false
+                  description: Cierres del mes con un motivo.
+                description: 'Cierres del mes por motivo: un elemento por motivo del catálogo, siempre todos y en el mismo orden.'
               calificadas:
                 type: object
                 properties:
@@ -13207,28 +13462,45 @@ components:
                     maximum: 9007199254740991
                     multipleOf: 5
                   - type: 'null'
-                description: Reglas de escalamiento cumplidas en el mes con efecto `escalate`.
+                description: Reglas de escalamiento cumplidas en el mes con efecto de escalar.
               estatusAlCierre:
-                type: object
-                propertyNames:
-                  $ref: '#/components/schemas/ComplaintStatus'
-                additionalProperties:
-                  anyOf:
-                    - type: integer
-                      minimum: 5
-                      maximum: 9007199254740991
-                      multipleOf: 5
-                    - type: 'null'
-                  description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
-                required:
-                  - received
-                  - routing
-                  - routed
-                  - investigating
-                  - classified
-                  - archived
-                  - resolved
-                description: Estatus que tenían al cerrarse el mes las denuncias recibidas en él (catálogo COMPLAINT_STATUSES).
+                minItems: 7
+                maxItems: 7
+                type: array
+                items:
+                  type: object
+                  properties:
+                    clave:
+                      type: string
+                      enum:
+                        - RECIBIDA
+                        - BUSCANDO_AUTORIDAD
+                        - TURNADA
+                        - EN_INVESTIGACION
+                        - CALIFICADA
+                        - ARCHIVADA
+                        - CONCLUIDA
+                      description: 'Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida).'
+                    valor:
+                      type: string
+                      minLength: 1
+                      maxLength: 300
+                      description: Nombre del estatus.
+                    total:
+                      anyOf:
+                        - type: integer
+                          minimum: 5
+                          maximum: 9007199254740991
+                          multipleOf: 5
+                        - type: 'null'
+                      description: Conteo redondeado al azar a un múltiplo de 5 (con semilla fija por mes); null si el redondeo da menos de 5 (suprimido).
+                  required:
+                    - clave
+                    - valor
+                    - total
+                  additionalProperties: false
+                  description: Denuncias del mes con un estatus al cerrarse el mes.
+                description: 'Estatus que tenían al cerrarse el mes las denuncias recibidas en él: un elemento por estatus del catálogo, siempre todos y en el mismo orden.'
               tiemposMedianosDiasHabiles:
                 type: object
                 properties:
@@ -13266,6 +13538,8 @@ components:
                 examples:
                   - node.queretaro
             required:
+              - id
+              - fechaCaptura
               - mes
               - autoridad
               - entidad

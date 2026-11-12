@@ -13,7 +13,12 @@ import {
   PdnScopeSchema,
   Sha256HexSchema,
 } from '@sigilo/contracts';
-import type { PdnScope, PdnTokenError, PdnTokenResponse } from '@sigilo/contracts';
+import type {
+  PdnScope,
+  PdnTokenError,
+  PdnTokenErrorBody,
+  PdnTokenResponse,
+} from '@sigilo/contracts';
 import { fromBase64Url, randomBytes, toBase64Url } from '@sigilo/core';
 import { hashPassword, parsePasswordHash, verifyPassword } from '../security/passwords.ts';
 import { createRateLimiter } from '../security/rate-limiter.ts';
@@ -90,7 +95,7 @@ export function loadOAuthClients(path: string): OAuthClient[] {
 /** Resultado del punto de emisión: estatus HTTP y cuerpo (RFC 6749, secciones 5.1 y 5.2). */
 export type TokenOutcome =
   | { status: 200; body: PdnTokenResponse }
-  | { status: 400 | 401 | 429; body: PdnTokenError; basicChallenge: boolean };
+  | { status: 400 | 401 | 429; body: PdnTokenErrorBody; basicChallenge: boolean };
 
 /** Parámetros de la petición de token ya leídos del cuerpo y de la cabecera. */
 export interface TokenInput {

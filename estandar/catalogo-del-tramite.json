@@ -1,5 +1,5 @@
 {
-  "standardVersion": "0.2.0",
+  "standardVersion": "0.3.0",
   "managementStates": [
     {
       "key": "received_in_inbox",
