@@ -24,7 +24,7 @@ estable que comparten el validador, [verificaciones.json](verificaciones.json) y
   «Seguridad de la Información» y arts. 56 a 61; LGPDPPSO (DOF 20-03-2025), principios de
   finalidad, proporcionalidad y responsabilidad; planteamientos de la SESNA (S-02 a S-07 de
   [requisitos.md](../docs/requisitos.md)).
-- Estado en SIGILO v0.9.1: **cumple**, **parcial** o **brecha**.
+- Estado en SIGILO (software 1.1.0): **cumple**, **parcial** o **brecha**.
 
 ## Verificaciones
 
@@ -78,8 +78,9 @@ estable que comparten el validador, [verificaciones.json](verificaciones.json) y
   HTTP; `no_aplica` en `localhost`.
 - **Fundamento.** Bases de la PDN, confidencialidad; ASVS V14.4.5. Sin HSTS, una red hostil degrada
   la conexión a HTTP y lee la denuncia.
-- **SIGILO.** **Parcial.** Se envía solo si se configura `SIGILO_HSTS_MAX_AGE`; no está activa por
-  omisión ni tiene valor mínimo (`apps/server/src/config.ts`).
+- **SIGILO.** **Cumple** en la instalación: `./sigilo instalar` define `SIGILO_HTTPS=1` (un año con
+  `includeSubDomains`) y el nodo y el enrutador rechazan un `max-age` menor que un año
+  (`apps/server/src/config.ts`). En desarrollo, por HTTP local, no se envía.
 
 ### PRV-04 Protección contra marcos
 
@@ -338,9 +339,11 @@ estable que comparten el validador, [verificaciones.json](verificaciones.json) y
   metadatos.
 - **Fundamento.** SESNA S-03 («el relato y las pruebas identifican»); LGPDPPSO, proporcionalidad.
   Una ventanilla alternativa o una carga directa a la API se salta la limpieza del navegador.
-- **SIGILO.** **Brecha.** El servidor solo comprueba bytes mágicos y tamaño
-  (`apps/server/src/services/evidence-service.ts`); la limpieza está solo en el navegador
-  (Huella Cero, modelo de amenazas A08).
+- **SIGILO.** **Parcial.** El nodo acepta solo contenedores cifrados hacia la autoridad y rechaza
+  cualquier otra cosa, incluido el JPEG del procedimiento
+  (`apps/server/src/services/evidence-service.ts`). Por lo mismo, no ve la imagen y no puede
+  comprobar sus metadatos: la limpieza está solo en el navegador (Huella Cero, modelo de amenazas
+  A08), y el panel revisa el tipo al descifrar.
 
 ### PRV-21 Denuncia sin datos personales
 
@@ -451,8 +454,7 @@ protegida. Significa que no se encontraron los fallos que se pueden ver desde fu
 
 ## Estado de SIGILO
 
-| Estado  | Verificaciones                                                                                 |
-| ------- | ---------------------------------------------------------------------------------------------- |
-| Cumple  | PRV-01, PRV-02, PRV-04 a PRV-19 (PRV-10 sin prueba E2E propia), PRV-21, PRV-22, API-01, API-02 |
-| Parcial | PRV-03 (HSTS opcional), PRV-23 (solo en el navegador)                                          |
-| Brecha  | PRV-20 (el servidor no revisa metadatos)                                                       |
+| Estado  | Verificaciones                                                                                            |
+| ------- | --------------------------------------------------------------------------------------------------------- |
+| Cumple  | PRV-01 a PRV-19 (PRV-03 con la instalación; PRV-10 sin prueba E2E propia), PRV-21, PRV-22, API-01, API-02 |
+| Parcial | PRV-20 (el nodo no ve la imagen cifrada; limpia el navegador), PRV-23 (solo en el navegador)              |
