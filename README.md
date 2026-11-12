@@ -238,7 +238,7 @@ npx playwright install chromium       # una sola vez
 npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
 ```
 
-Hay 1,559 pruebas unitarias en 177 archivos, 34 del proceso de datos en Python y 98 de extremo a
+Hay 1,603 pruebas unitarias en 181 archivos, 34 del proceso de datos en Python y 103 de extremo a
 extremo;
 la [integración continua](.github/workflows/ci.yml) las corre en cada push con Node 22.18 y la
 versión más reciente, junto con `npm audit` de las dependencias de producción.
