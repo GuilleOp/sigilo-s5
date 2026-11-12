@@ -7,6 +7,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Agregado
 
+- Tabla de funciones de cada nodo (`FunctionTable`, formato 1): qué institución cumple cada
+  función en su entidad, por orden de gobierno, por ente y por gravedad. La firma el nodo y viaja
+  en el directorio cofirmado; con ella se propone la autoridad, el panel muestra quién sigue y
+  «¿Quién atiende tu denuncia en tu estado?» la publica.
+- Ventanilla única en la SESNA: el enrutador sirve la web en perfil «ventanilla»; los nodos, solo
+  el panel (perfil «panel»). Sin nodo común: la demo tiene nodo propio del Estado Ejemplo (8783).
+
 - Ayudas automáticas al escribir el relato: cuatro partes (qué pasó, cuándo, dónde, qué efecto
   tuvo) que se marcan solas y conductas sugeridas por las palabras, todo en el navegador.
 - «Ninguna se parece» (`SIN-CLASIFICAR`): la denuncia llega al buzón general, que la clasifica; aviso

@@ -1,8 +1,21 @@
 # Guía: conecta tu estado a la red S5 (borrador)
 
-Para el equipo técnico de una Secretaría Ejecutiva del Sistema Estatal Anticorrupción (SESEA) que
-quiere operar un **nodo estatal** de la red «un S5, muchas llaves» ([ADR 0005](adr/0005-estandar-s5-federado.md)).
-Si tu entidad no opera nodo, sus autoridades se alojan en el **nodo común** y solo se hace el paso 1.
+Para el equipo técnico de una Secretaría Ejecutiva del Sistema Estatal Anticorrupción (SESEA), o de
+la secretaría de buen gobierno o contraloría del estado, que va a operar el **nodo de su estado** en
+la red «un S5, muchas llaves» ([ADR 0005](adr/0005-estandar-s5-federado.md)).
+
+Así está repartida la red:
+
+- **La SESNA** monta la **única ventanilla nacional** (la web donde denuncian ciudadanos y personas
+  servidoras públicas) junto con el enrutador ciego. No tiene llaves: no puede leer denuncias.
+- **Cada estado monta su propio nodo.** No hay nodo común: ningún estado vive en el nodo de otro.
+  Si tu estado no monta su nodo, la ventanilla **no puede enviar** las denuncias sobre sus entes
+  estatales y municipales, y lo dice así a quien denuncia. Las de entes federales sí llegan: las
+  atiende el nodo federal.
+- **El nodo federal** aloja solo autoridades federales y lo opera la Secretaría Anticorrupción y
+  Buen Gobierno.
+- Tu nodo **no tiene ventanilla pública**: solo el panel de tus autoridades y las rutas de API que
+  necesita el enrutador. Las denuncias te llegan cifradas desde la ventanilla.
 
 > Borrador del prototipo para el Datatón 2026. No es el sistema oficial. Todo lo que aparece aquí
 > usa datos y llaves sintéticos; la operación con llaves reales, módulos de hardware y testigos
@@ -14,22 +27,31 @@ Si tu entidad no opera nodo, sus autoridades se alojan en el **nodo común** y s
   Node.js 22.18 o posterior. SIGILO, Node y Docker Engine son software libre y gratuito; nada se
   registra con terceros. Docker Desktop (macOS y Windows) tiene su propia licencia, que pide
   suscripción a organizaciones grandes: revísala, o usa Docker Engine en Linux.
-- Un usuario normal del equipo (no root) y los puertos 8781, 8782, 8790, 8791 y 8792 libres en
-  `127.0.0.1` para la red de demostración.
+- Un usuario normal del equipo (no root) y los puertos 8781, 8782, 8783, 8790, 8791 y 8792 libres
+  en `127.0.0.1` para la red de demostración.
 - Una persona responsable de cada autoridad que custodiará su llave privada.
-- Saber qué autoridades de tu entidad reciben denuncias y de qué entes.
+- Saber qué institución de tu entidad cumple cada función (sección 2): quién recibe y turna, quién
+  investiga a cada ente, quién substancia, quién resuelve, quién supervisa, la fiscalía y el CPC.
+
+## En orden
+
+1. Levanta el nodo de tu estado (sección 5) con tu buzón general y tu operación.
+2. Da de alta tus autoridades (sección 1) y genera sus llaves (sección 3).
+3. **Declara tu tabla de funciones** y fírmala con la llave de tu nodo (sección 2).
+4. La operación de la ventanilla agrega todo al directorio y los testigos lo cofirman (sección 4).
 
 ## El alta en cinco pasos
 
-Así se da de alta una institución (por ejemplo, la contraloría de un estado sin nodo propio, que
-usará el nodo común):
+Así se da de alta una institución de un estado que **ya tiene nodo** (por ejemplo, el órgano
+interno de control de una secretaría estatal). Una institución de un estado sin nodo no puede pedir
+el alta: primero su estado monta su nodo.
 
 | Paso | Quién                     | Qué                                                                                                                                 | Estado                                      |
 | ---- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| 1    | La institución            | Llena «Solicitar alta de mi institución» (`/solicitar-alta`, enlace en la entrada del panel)                                        | Construido                                  |
+| 1    | La institución            | Llena «Solicitar alta de mi institución» en la ventanilla (`/solicitar-alta`); la solicitud va al nodo de su estado                 | Construido                                  |
 | 2    | La institución            | En la misma página crea sus llaves: descarga la privada; solo el candado viaja con la solicitud                                     | Construido                                  |
 | 3    | Quien opera el nodo       | En la bandeja «Solicitudes de alta» (cuenta de operación) llama a la institución, confirma la huella y aprueba o rechaza con motivo | Construido                                  |
-| 4    | Quien opera la ventanilla | Agrega la entrada propuesta al directorio, lo firma y los testigos lo cofirman (sección 3)                                          | Manual: la bandeja entrega la entrada lista |
+| 4    | Quien opera la ventanilla | Agrega la entrada propuesta al directorio, lo firma y los testigos lo cofirman (sección 4)                                          | Manual: la bandeja entrega la entrada lista |
 | 5    | Quien opera el nodo       | Crea las cuentas de la lista; cada persona pone su contraseña y firma la carta responsiva                                           | Manual: hoy con `npm run accounts:generate` |
 
 La cuenta de operación del nodo (función `operation`) entra al panel sin archivo de llave: no ve
@@ -46,7 +68,7 @@ Cada autoridad es una entrada del directorio (`DirectoryAuthority` en `estandar/
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
 | `id`                       | `authority.` más un nombre corto en minúsculas: `authority.contraloria-queretaro`                   |
 | `name`                     | Nombre oficial completo                                                                             |
-| `nodeId`                   | Tu nodo (`node.<estado>`) o el nodo común                                                           |
+| `nodeId`                   | Tu nodo (`node.<estado>`): ninguna autoridad estatal vive en el nodo de otro estado                 |
 | `governmentLevel`          | `estatal` o `municipal`                                                                             |
 | `stateCode`                | Clave INEGI de dos dígitos de tu entidad                                                            |
 | `role`                     | `investigating` (investiga faltas), `supervisory` (recibe escalamientos) o `prosecution` (fiscalía) |
@@ -54,15 +76,53 @@ Cada autoridad es una entrada del directorio (`DirectoryAuthority` en `estandar/
 | `supervisorId`             | La autoridad que recibe el sobre de escalamiento si esta no actúa (ADR 0007), o `null`              |
 | `validFrom` / `validUntil` | Vigencia de sus llaves                                                                              |
 
-Con esa competencia el navegador propone la autoridad de cada denuncia y explica por qué
-(`proposeCompetentAuthority` en `packages/red`). Revisa los casos de tu entidad: un ente estatal
-debe ir a la contraloría; un ente con órgano interno de control propio, a ese órgano; un ente
-municipal sin órgano municipal en el directorio cae, como respaldo, en la contraloría estatal.
+La competencia sirve para ofrecer alternativas a quien denuncia; quién investiga a cada ente lo
+decide tu tabla de funciones (sección 2).
+
+Registra también tu **buzón general** (papel `inbox`): recibe lo que tu tabla no asigna y una
+persona lo turna. Su llave es la de `keys.json` de tu nodo.
 
 Registra también a tus **observadores** (CPC, entidad de fiscalización, organizaciones o academia)
 con su llave de firma. Pueden ser testigos de la bitácora nacional y del directorio.
 
-## 2. Genera llaves
+## 2. Declara tu tabla de funciones
+
+La tabla de funciones (`FunctionTable` en `estandar/diccionario-de-datos.md`) dice qué institución
+cumple cada función en tu estado. Con ella la ventanilla propone a quién va cada denuncia, el panel
+muestra quién sigue en el trámite y la página pública «¿Quién atiende tu denuncia en tu estado?» la
+enseña a cualquiera.
+
+| Función        | Clave            | Quién puede ser                                                          |
+| -------------- | ---------------- | ------------------------------------------------------------------------ |
+| Buzón general  | `intake`         | Tu buzón general (autoridad del directorio con papel `inbox`)            |
+| Operación      | `operation`      | Quien opera el nodo y da de alta autoridades (SESEA o contraloría)       |
+| Investigación  | `investigation`  | Autoridad del directorio con papel `investigating`: recibe cifrado       |
+| Substanciación | `substantiation` | Una autoridad o una institución                                          |
+| Resolución     | `resolution`     | Una autoridad o una institución (la falta grave la resuelve el tribunal) |
+| Supervisión    | `supervision`    | El superior que recibe escalamientos (autoridad `supervisory`) u otra    |
+| Vía penal      | `prosecution`    | La fiscalía anticorrupción (autoridad `prosecution` o institución)       |
+| Observador     | `observer`       | Tu CPC (observador del directorio) u otra institución                    |
+
+Cada función es una lista de reglas. Cada regla dice a qué órdenes de gobierno aplica (`estatal`,
+`municipal`), si aplica solo a ciertos entes del catálogo (`entityIds`) y, si hace falta, a qué
+gravedad (`severity`). La regla que nombra al ente gana sobre la de todo su orden. Ejemplo en
+lenguaje llano:
+
+- Investigación: entes estatales → Contraloría; municipales sin OIC propio → Contraloría (una regla
+  general para el orden municipal); la Secretaría de Salud → su OIC (una regla con su `entityId`).
+- Resolución: falta no grave → Contraloría; falta grave → Tribunal de Justicia Administrativa.
+
+Si una denuncia no encaja en ninguna regla de investigación, llega a tu buzón general y una persona
+la turna. Tu tabla solo cubre entes estatales y municipales de tu entidad (los federales los atiende
+el nodo federal) y solo puede nombrar autoridades de tu propio nodo.
+
+**Fírmala con la llave de tu nodo** (`signFunctionTable` en `packages/red`, con tu llave de firma
+del directorio) y entrégala a la operación de la ventanilla, que la pone en el directorio
+(`functionTables`). Cada cambio sube su `version`. La operación no puede cambiarla sin tu firma: el
+navegador rechaza un directorio con una tabla que no lleva la firma de su nodo. La red de
+demostración trae la tabla de cada nodo en `demoFunctionTables` (`packages/red/src/demo-network.ts`).
+
+## 3. Genera llaves
 
 Cada autoridad genera **en su propio equipo** un par X25519 (cifrado) y un par Ed25519 (firma) y
 entrega solo las públicas. El nodo genera su llave de firma (la que firma su bitácora y su
@@ -79,7 +139,7 @@ registro) y su llave X25519 de red (la que abre los sobres que llegan del enruta
    tiene, tampoco quien opera el nodo. Si se pierde, se genera otro par y se cambia el candado.
 3. Envía por oficio su **candado**, la llave pública (`candado-<keyId>.json`: `keyId`,
    `boxPublicKey` y `signingPublicKey`), a la operación de la ventanilla única, que lo copia en la
-   entrada de su autoridad del directorio (paso 1) antes de firmar (paso 3).
+   entrada de su autoridad del directorio (sección 1) antes de firmar (sección 4).
 4. Confirman por teléfono la **huella** que muestra la pantalla (16 caracteres en grupos de 4): los
    primeros 16 caracteres hexadecimales del SHA-256 de `boxPublicKey` seguida de `signingPublicKey`
    (los bytes, no el texto base64url). Cubre las dos llaves; si no coincide, el candado no se
@@ -107,7 +167,8 @@ Para practicar, `npm run red:demo` genera todo sintético en `.red-demo/` (no se
   enrutador/relay-secrets.json         secretos del buzón de cada nodo
   nodos/<nodo>/data/directory.json     directorio firmado y network-trust.json (raíz fijada)
   nodos/<nodo>/credenciales.json       usuarios y contraseñas sintéticas del panel
-  nodos/<nodo>/web/pinned-keys.json    llaves públicas que fija la web del nodo
+  nodos/<nodo>/web/pinned-keys.json    llaves públicas que fija la web del nodo (perfil panel)
+  ventanilla/web/network-trust.json    raíz de confianza que fija la ventanilla única (SESNA)
   nodos/<nodo>/node.env                red, fuentes sintéticas, índice y reloj simulado
   autoridades/<id>.json                llave privada de cada autoridad (la importa su panel)
   evaluador/ e indice/                 llave del evaluador OPRF; directorio del índice
@@ -118,16 +179,16 @@ Para practicar, `npm run red:demo` genera todo sintético en `.red-demo/` (no se
 Los archivos con llaves privadas quedan con permisos `0600`. Nunca se copian a las imágenes: entran
 como volúmenes al arrancar.
 
-## 3. Firma del directorio
+## 4. Firma del directorio
 
-La operación de la ventanilla única agrega tus entradas, sube el número de versión (`serial`),
+La operación de la ventanilla única agrega tus entradas y tu tabla de funciones firmada, sube el número de versión (`serial`),
 pone el digesto de la versión anterior en `previousDigest` y firma. Después **cada testigo, por
 separado y con su propia llave**, recalcula el digesto y cofirma (`cosignDirectory`). La versión
 vale con m de n cofirmas de los testigos de la versión anterior; en la demostración, 2 de 3
 (CPC Querétaro, Universidad Ejemplo y el nodo Querétaro). El enrutador se niega a arrancar con un
 directorio que no verifica, que retrocede o que salta una versión.
 
-## 4. Levanta tu nodo
+## 5. Levanta tu nodo
 
 Primero practica con la red completa de demostración. Desde la raíz del repositorio, con Docker en
 marcha:
@@ -150,17 +211,22 @@ docker compose up -d --wait   # en Linux con UID distinto de 1000: SIGILO_UID=$(
 npm run demo:seed             # opcional: el escenario de docs/demo-escenario.md
 ```
 
-| Servicio                 | Dirección                                    |
-| ------------------------ | -------------------------------------------- |
-| Enrutador                | <http://127.0.0.1:8790/api/v1/red/directory> |
-| Nodo Querétaro (con web) | <http://127.0.0.1:8781/>                     |
-| Nodo Federal (con web)   | <http://127.0.0.1:8782/>                     |
-| Evaluador OPRF           | <http://127.0.0.1:8791/>                     |
-| Índice de coincidencias  | <http://127.0.0.1:8792/>                     |
+| Servicio                             | Dirección                                    |
+| ------------------------------------ | -------------------------------------------- |
+| Ventanilla única y enrutador (SESNA) | <http://127.0.0.1:8790/>                     |
+| Directorio firmado                   | <http://127.0.0.1:8790/api/v1/red/directory> |
+| Nodo Querétaro (solo panel)          | <http://127.0.0.1:8781/autoridad>            |
+| Nodo Federal (solo panel)            | <http://127.0.0.1:8782/autoridad>            |
+| Nodo Estado Ejemplo (solo panel)     | <http://127.0.0.1:8783/autoridad>            |
+| Evaluador OPRF                       | <http://127.0.0.1:8791/>                     |
+| Índice de coincidencias              | <http://127.0.0.1:8792/>                     |
 
-Para tu estado, copia el servicio `nodo-queretaro` de `compose.yaml` con otro nombre, otro puerto y
-tu carpeta de llaves. La imagen del nodo es el servidor de referencia `apps/server` tal cual, con
-la web en el mismo origen y las llaves de tu nodo fijadas al construir. Si tu nodo usa otro
+Para tu estado, copia el servicio `nodo-ejemplo` de `compose.yaml` con otro nombre, otro puerto y
+tu carpeta de llaves, y agrega su dirección interna a `SIGILO_ROUTER_NODE_URLS` del enrutador y a
+`SIGILO_WITNESS_NODE_URLS` de los testigos. La imagen del nodo es el servidor de referencia
+`apps/server` tal cual, con la web en el mismo origen en **perfil panel** (argumento
+`SIGILO_WEB_PROFILE: panel`): solo `/autoridad`; las demás rutas dicen dónde está la ventanilla
+única (`SIGILO_VENTANILLA_URL`). Las llaves de tu nodo se fijan al construir. Si tu nodo usa otro
 software, debe cumplir el Estándar S5 (`estandar/openapi.yaml`) y puedes revisarlo con
 `npm run validate`.
 
@@ -179,10 +245,11 @@ Antes de abrir tu nodo, comprueba desde fuera del contenedor que su web no pide 
 que envía las cabeceras de seguridad:
 
 ```sh
-npm run validate -- http://127.0.0.1:8781 --modo pasivo --formulario /denunciar
+npm run validate -- http://127.0.0.1:8790 --modo pasivo --formulario /denunciar
 ```
 
-Con la red de demostración da 10 `cumple`, 0 `no_cumple`, 1 `advertencia` (PRV-10, heurística: el
+(es la ventanilla, donde está el formulario; tu nodo en perfil panel no lo tiene). Con la red de
+demostración da 10 `cumple`, 0 `no_cumple`, 1 `advertencia` (PRV-10, heurística: el
 código incluye el texto `draft-2020-12` de JSON Schema, no un borrador de la denuncia) y el resto
 `no_aplica` en modo pasivo.
 
@@ -205,12 +272,12 @@ omitidas) y lo suma con los demás. Para ver si se sumó o por qué se descartó
 curl -s http://127.0.0.1:8790/api/v1/red/national/open-data | jq '.nodes[] | {nodeId, status, rejection}'
 ```
 
-## 5. Recibir denuncias por la red
+## 6. Recibir denuncias por la red
 
 El servidor de referencia ya monta el buzón de red (`POST /api/v1/red/inbox`) y se registra ante el
 enrutador al arrancar: las denuncias de la ventanilla única llegan cifradas a tu nodo a través del
-enrutador ciego, que no puede leerlas. El escenario de demostración lo usa (Marta y la persona de
-Querétaro envían por la ventanilla única). El contrato, para otras implementaciones del nodo, está
+enrutador ciego, que no puede leerlas. El escenario de demostración lo usa: todas las denuncias
+llegan por la ventanilla única. El contrato, para otras implementaciones del nodo, está
 en [`apps/enrutador/README.md`](../apps/enrutador/README.md#integración-con-el-nodo).
 
 ## Seguridad operativa

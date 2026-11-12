@@ -51,9 +51,11 @@ especificación cuando se publique. El panel de SIGILO muestra el código en la 
 titula la lista según la función de la cuenta: «Bandeja general de turnado» (recepción),
 «Denuncias asignadas» (investigación) o «Denuncias de tu institución» (supervisión).
 
-En la red, la ventanilla única propone la autoridad competente con el directorio. Si no encuentra
-ninguna, no rechaza la denuncia: la envía al buzón general del nodo de la entidad (o del nodo común),
-donde queda como `received_in_inbox` (`SIN_TURNAR`) y la recepción la turna, igual que la bandeja
+En la red, la ventanilla única propone la autoridad competente con la tabla de funciones que firmó
+el nodo de la entidad (o el nodo federal, para un ente federal). Si la tabla no nombra a nadie, no
+rechaza la denuncia: la envía al buzón general de ese nodo. No hay nodo común: si la entidad no
+tiene nodo, la denuncia sobre un ente estatal o municipal no se envía y se dice por qué. En el buzón
+queda como `received_in_inbox` (`SIN_TURNAR`) y la recepción la turna, igual que la bandeja
 general del S5. Es el canal único con protocolos de recepción y turno de las Bases de la PDN
 (arts. 56 y 58). Al integrar, el buzón general del S5 se publica en el directorio con el papel
 `inbox` y la misma llave que su nodo usa como autoridad en `keys.json`.
