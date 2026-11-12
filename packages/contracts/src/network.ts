@@ -46,6 +46,12 @@ export const NETWORK_ROUTES = {
   nodeInbox: `${NETWORK_API_PREFIX}/inbox`,
   /** `GET`: reto de prueba de trabajo del enrutador para dejar una denuncia en la cola de entrega. */
   queueChallenge: `${NETWORK_API_PREFIX}/queue/challenge`,
+  /** `GET` en el nodo: su identificador y versiones, para la salud de la red. */
+  nodeHealth: `${NETWORK_API_PREFIX}/health`,
+  /** `GET`: salud de cada nodo del directorio vista por el enrutador (sin datos de denuncias). */
+  networkHealth: `${NETWORK_API_PREFIX}/health/nodes`,
+  /** `GET`: la misma salud en una página HTML sencilla para la operación. */
+  networkHealthView: `${NETWORK_API_PREFIX}/health/nodes.html`,
 } as const;
 
 /**
@@ -788,3 +794,102 @@ export const NationalOpenDataSchema = z
       'Corte nacional de datos abiertos: suma por entidad, conducta, mes y estatus de los CSV públicos de los nodos. Solo números: ninguna denuncia, folio ni persona. No está firmado; cualquiera puede rehacerlo con los CSV de cada nodo.',
   });
 export type NationalOpenData = z.infer<typeof NationalOpenDataSchema>;
+
+/** Versión `mayor.menor.parche` del software de un nodo. */
+export const SoftwareVersionSchema = z
+  .string()
+  .regex(/^\d{1,6}\.\d{1,6}\.\d{1,6}$/u, 'Versión inválida')
+  .meta({ description: 'Versión mayor.menor.parche.', examples: ['1.0.1'] });
+
+/** Momento redondeado al minuto, en UTC (AAAA-MM-DDTHH:MMZ). */
+export const MinuteDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$/u, 'Hora inválida')
+  .meta({
+    description: 'Fecha y hora redondeada al minuto, en UTC (AAAA-MM-DDTHH:MMZ).',
+    examples: ['2026-11-09T17:05Z'],
+  });
+
+export const NodeHealthReportSchema = z
+  .object({
+    v: z.literal(1).meta({ description: 'Versión del formato.' }),
+    nodeId: NodeIdSchema,
+    softwareVersion: SoftwareVersionSchema.meta({
+      description:
+        'Versión del software del nodo (el servidor de referencia u otra implementación).',
+    }),
+    standardVersion: SoftwareVersionSchema.meta({
+      description: 'Versión del Estándar S5 que implementa.',
+    }),
+  })
+  .strict()
+  .meta({
+    description: 'Lo que el nodo dice de sí mismo al enrutador: identificador y versiones.',
+  });
+export type NodeHealthReport = z.infer<typeof NodeHealthReportSchema>;
+
+/** Por qué el enrutador no entrega a un nodo, o por qué conviene revisarlo. */
+export const NODE_HEALTH_WARNINGS = [
+  'unreachable',
+  'not-registered',
+  'below-minimum-version',
+  'unknown-version',
+] as const;
+
+export const NetworkHealthNodeSchema = z
+  .object({
+    nodeId: NodeIdSchema,
+    name: z.string().min(1).max(200).meta({ description: 'Nombre del nodo en el directorio.' }),
+    status: z.enum(['up', 'down', 'unknown']).meta({
+      description:
+        'up: respondió la última consulta; down: no respondió o dijo ser otro nodo; unknown: aún no se consulta.',
+    }),
+    softwareVersion: SoftwareVersionSchema.nullable().meta({
+      description: 'Versión del software que reportó por última vez, o null.',
+    }),
+    standardVersion: SoftwareVersionSchema.nullable().meta({
+      description: 'Versión del Estándar que reportó por última vez, o null.',
+    }),
+    lastCheckAt: MinuteDateSchema.nullable().meta({ description: 'Última consulta, o null.' }),
+    lastContactAt: MinuteDateSchema.nullable().meta({
+      description: 'Última vez que respondió, o null si nunca.',
+    }),
+    registered: z
+      .boolean()
+      .meta({ description: 'Si se registró ante el enrutador y acepta sobres.' }),
+    deliverable: z.boolean().meta({
+      description:
+        'Si el enrutador le entrega sobres ahora: registrado y, si hay versión mínima, con versión conocida y no menor.',
+    }),
+    warning: z.enum(NODE_HEALTH_WARNINGS).nullable().meta({
+      description:
+        'unreachable (no respondió), not-registered, below-minimum-version (no se le entrega: actualizar el nodo), unknown-version (hay mínima y aún no se conoce su versión); null si todo bien.',
+    }),
+    queued: z.number().int().nonnegative().meta({
+      description: 'Sobres cerrados que esperan en la cola de entrega para este nodo.',
+    }),
+  })
+  .strict()
+  .meta({ description: 'Salud de un nodo: arriba o abajo, versiones, último contacto y cola.' });
+export type NetworkHealthNode = z.infer<typeof NetworkHealthNodeSchema>;
+
+export const NetworkHealthSchema = z
+  .object({
+    v: z.literal(1).meta({ description: 'Versión del formato.' }),
+    checkedAt: MinuteDateSchema.nullable().meta({
+      description: 'Última vuelta de consultas, o null antes de la primera.',
+    }),
+    minimumSoftwareVersion: SoftwareVersionSchema.nullable().meta({
+      description:
+        'Versión mínima del software de los nodos: a un nodo con versión menor no se le entregan sobres. null si no hay mínima.',
+    }),
+    nodes: z.array(NetworkHealthNodeSchema).meta({
+      description: 'Todos los nodos del directorio, en su orden.',
+    }),
+  })
+  .strict()
+  .meta({
+    description:
+      'Salud de la red para la operación (la SESNA): solo nodos, versiones y conteos de la cola; ninguna denuncia, autoridad ni contenido.',
+  });
+export type NetworkHealth = z.infer<typeof NetworkHealthSchema>;

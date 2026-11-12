@@ -5,6 +5,7 @@ import {
   CORROBORATION_ROUTES,
   NETWORK_ROUTES,
   NationalOpenDataSchema,
+  NodeHealthReportSchema,
   RELAY_V1_REJECTION_MESSAGE,
   ROUTES,
   SubmitComplaintResponseSchema,
@@ -17,7 +18,9 @@ import {
   sealRoutedRequest,
   verifySignedDirectory,
 } from '@sigilo/red';
+import { STANDARD_VERSION } from '@sigilo/contracts/standard';
 import { createTestServer } from '../test-support/harness.ts';
+import { SERVER_SOFTWARE_VERSION } from '../version.ts';
 import {
   createTestNetwork,
   sealedRelay,
@@ -165,6 +168,20 @@ describe('pasos del mismo origen para la web', () => {
       body: JSON.stringify(SEALED),
     });
     expect(relay.status).toBe(404);
+  });
+
+  it('sirve su salud al enrutador: identificador y versiones, sin datos de denuncias', async () => {
+    const { app } = createTestServer();
+    expect((await app.request(NETWORK_ROUTES.nodeHealth)).status).toBe(404);
+    const network = createTestNetwork();
+    const response = await network.queretaro.app.request(NETWORK_ROUTES.nodeHealth);
+    expect(response.status).toBe(200);
+    expect(NodeHealthReportSchema.parse(await response.json())).toEqual({
+      v: 1,
+      nodeId: 'node.queretaro',
+      softwareVersion: SERVER_SOFTWARE_VERSION,
+      standardVersion: STANDARD_VERSION,
+    });
   });
 
   it('sirve el directorio firmado tal cual y verifica con la raíz fijada', async () => {

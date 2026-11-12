@@ -36,6 +36,8 @@ O toda la red con `npm run demo:todo` (o `docker compose build && docker compose
 | `SIGILO_ROUTER_COLLECT_INTERVAL_SECONDS` | `600`                 | Cada cuánto recoge cabezas, emite la cabeza nacional y hace el corte |
 | `SIGILO_ROUTER_CLOCK_FILE`               | vacío                 | Solo demostración (`SIGILO_DEMO=1`): reloj simulado del corte        |
 | `SIGILO_ROUTER_HSTS_MAX_AGE`             | sin HSTS              | `max-age` cuando se publica detrás de HTTPS                          |
+| `SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS`  | `60`                  | Cada cuánto consulta la salud de cada nodo                           |
+| `SIGILO_ROUTER_MIN_NODE_VERSION`         | sin mínima            | `mayor.menor.parche`: a un nodo con versión menor no se le entrega   |
 | `SIGILO_ROUTER_QUEUE_POW_BITS`           | `18`                  | Dificultad del reto propio de la cola de entrega (0 a 24)            |
 | `SIGILO_ROUTER_QUEUE_INTERVAL_SECONDS`   | `15`                  | Cada cuánto revisa la cola (cada sobre lleva su siguiente intento)   |
 | `SIGILO_ROUTER_QUEUE_TTL_DAYS`           | `7`                   | Días que un sobre espera antes de vencer y borrarse sin abrir        |
@@ -55,6 +57,9 @@ Todas bajo `/api/v1/red`; el detalle está en `estandar/openapi.yaml`.
 | `GET /directory`                             | Directorio firmado y cofirmado                               |
 | `POST /relay`                                | Sobre opaco (v2) hacia un nodo; responde el sobre de vuelta  |
 | `GET /queue/challenge`                       | Reto propio para dejar una denuncia en la cola de entrega    |
+| `GET /health/nodes`                          | Salud de cada nodo (JSON), para la operación                 |
+| `GET /health/nodes.html`                     | La misma salud en una tabla HTML sencilla                    |
+| `GET /health` (en cada **nodo**)             | Identificador y versiones del nodo; lo consulta el enrutador |
 | `POST /nodes/{nodeId}/registration`          | Registro firmado del nodo (secuencia creciente)              |
 | `POST /nodes/{nodeId}/heads`                 | El nodo publica su cabeza firmada                            |
 | `GET /national/head`                         | Última cabeza nacional con m cofirmas (`404` si aún no hay)  |
@@ -105,6 +110,27 @@ Límites: 500 sobres y 64 MiB por nodo (configurable); al llenarse, `429`. Nada 
 queda en registros: la línea agregada por vuelta solo suma `queue: { queued, delivered,
 rejected, expired, retried }`.
 
+## Salud de los nodos y versión mínima
+
+`src/node-health.ts`. Cada `SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS` el enrutador consulta a la vez
+`GET /api/v1/red/health` de cada nodo del directorio (`NodeHealthReport`: identificador, versión
+del software y del Estándar) y publica en `GET /api/v1/red/health/nodes` (`NetworkHealth`) y en
+`GET /api/v1/red/health/nodes.html` (tabla sin estilos ni scripts), por nodo:
+
+- **Estado**: `up` (respondió), `down` (no respondió o dijo ser otro nodo) o `unknown` (sin consultar).
+- **Versiones** que reportó por última vez, **última consulta** y **último contacto** (al minuto).
+- Si está **registrado**, si **se le entregan** sobres y cuántos sobres cerrados **esperan en la
+  cola**.
+- Un **aviso**: `unreachable`, `not-registered`, `below-minimum-version` o `unknown-version`.
+
+Con `SIGILO_ROUTER_MIN_NODE_VERSION`, el enrutador **no entrega** a un nodo cuya versión de
+software sea menor (o todavía desconocida): un sobre normal recibe relleno, uno con cola queda
+guardado hasta que el nodo se actualice (o venza), y el contador `outdated` lo suma. El aviso es
+claro y sale una vez por nodo mientras siga por debajo: «el nodo X tiene la versión a.b.c, menor
+que la mínima d.e.f; el enrutador no le entrega sobres hasta que se actualice». La salud no
+contiene denuncias, autoridades ni contenido: solo nodos, versiones y conteos; es pública como el
+directorio (la autenticación de la operación, si se agrega, la puede cerrar).
+
 ## Corte nacional de datos abiertos
 
 `src/open-data-aggregator.ts`. En cada vuelta, después de recoger las cabezas, el enrutador
@@ -142,15 +168,15 @@ reloj real.
 El diseño sigue la idea de Oblivious HTTP (RFC 9458): el enrutador conoce quién se conecta pero no
 qué pide; el nodo conoce qué se pide pero no quién se conecta.
 
-| Ve (en memoria, mientras atiende la petición)                                          | ¿Se guarda o registra?                                                                  |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| El nodo destino (`node`): a lo más, el estado; nunca la autoridad ni el OIC            | No                                                                                      |
-| El tramo de tamaño del sobre: 4 KiB, 64 KiB, 1 MiB o 16 MiB                            | No                                                                                      |
-| Si la persona pidió la cola (`deferral`) cuando el nodo no respondió                   | Solo si el nodo no responde: el sobre cerrado, su nodo, el día y el siguiente intento   |
-| El `keyId` del sobre (es la llave pública del nodo, que ya es pública)                 | No                                                                                      |
-| La hora de llegada y cuánto tarda el nodo en responder                                 | No                                                                                      |
-| La dirección IP y las cabeceras HTTP de la conexión (el sistema operativo las entrega) | No: el código no las lee y no las reenvía                                               |
-| Si la entrega funcionó                                                                 | Solo contadores agregados por vuelta: entregados, no registrados, fallidos, sin destino |
+| Ve (en memoria, mientras atiende la petición)                                          | ¿Se guarda o registra?                                                                      |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| El nodo destino (`node`): a lo más, el estado; nunca la autoridad ni el OIC            | No                                                                                          |
+| El tramo de tamaño del sobre: 4 KiB, 64 KiB, 1 MiB o 16 MiB                            | No                                                                                          |
+| Si la persona pidió la cola (`deferral`) cuando el nodo no respondió                   | Solo si el nodo no responde: el sobre cerrado, su nodo, el día y el siguiente intento       |
+| El `keyId` del sobre (es la llave pública del nodo, que ya es pública)                 | No                                                                                          |
+| La hora de llegada y cuánto tarda el nodo en responder                                 | No                                                                                          |
+| La dirección IP y las cabeceras HTTP de la conexión (el sistema operativo las entrega) | No: el código no las lee y no las reenvía                                                   |
+| Si la entrega funcionó                                                                 | Solo contadores agregados por vuelta: entregados, no registrados, desactualizados, fallidos |
 
 | No ve                                                                                      |
 | ------------------------------------------------------------------------------------------ |
@@ -228,18 +254,21 @@ El servidor de referencia (`apps/server`) ya cumple este contrato (`src/routes/n
    (unos 22.4 MB, `MAX_RELAY_BODY_BYTES` en `apps/enrutador/src/app.ts`). La prueba de conformidad del servidor deberá sumar
    `NETWORK_OPERATIONS` con `servedBy: 'node'`.
 
-3. **Registro.** Al arrancar, y cuando el buzón esté listo, `createNodeNetworkClient({ routerUrl,
+3. **Salud.** Servir `GET NETWORK_ROUTES.nodeHealth` (`/api/v1/red/health`) con
+   `NodeHealthReport` (`nodeId`, `softwareVersion`, `standardVersion`); sin ella el nodo aparece
+   `down` y, si hay versión mínima, no recibe sobres.
+4. **Registro.** Al arrancar, y cuando el buzón esté listo, `createNodeNetworkClient({ routerUrl,
 nodeId, signingPrivateKey }).register({ sequence, standardVersion, acceptsRelay: true })`, con
    una secuencia creciente (por ejemplo, segundos Unix). Hasta registrarse, el enrutador responde
    relleno a los sobres para ese nodo.
-4. **Cabeza.** Después de cada cierre diario, `publishHead(ledger.head())`. Es opcional: el
+5. **Cabeza.** Después de cada cierre diario, `publishHead(ledger.head())`. Es opcional: el
    enrutador también la recoge.
-5. **Varias autoridades por nodo.** `keys.json` lleva el buzón general del nodo; las demás
+6. **Varias autoridades por nodo.** `keys.json` lleva el buzón general del nodo; las demás
    autoridades usan sus llaves del directorio verificado. Las privadas, para su panel, están en
    `.red-demo/autoridades/`.
-6. **Testigo propio.** El nodo Querétaro es testigo y cofirma desde su tarea periódica con
+7. **Testigo propio.** El nodo Querétaro es testigo y cofirma desde su tarea periódica con
    `runWitnessOnce` de `@sigilo/red/witness`, el mismo código del proceso testigo.
-7. **Web.** Para la ventanilla única, la web fijará `network-trust.json` (se genera junto a
+8. **Web.** Para la ventanilla única, la web fijará `network-trust.json` (se genera junto a
    `pinned-keys.json`), verificará el directorio con `verifySignedDirectory`, propondrá la
    autoridad con `proposeCompetentAuthority` y cifrará con `sealRoutedRequest`. Como la web no
    hace peticiones a otros orígenes, el directorio firmado debe servirse en el mismo origen (un

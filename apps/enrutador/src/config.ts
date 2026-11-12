@@ -26,6 +26,10 @@ export interface RouterConfig {
   /** Cada cuánto se recogen las cabezas de los nodos y se emite la cabeza nacional, en segundos. */
   collectIntervalSeconds: number;
   hstsMaxAgeSeconds: number | null;
+  /** Cada cuánto se consulta la salud de los nodos, en segundos. */
+  healthIntervalSeconds: number;
+  /** Versión mínima del software de los nodos (`mayor.menor.parche`), o `null`. */
+  minimumNodeVersion: string | null;
   /** Cola de entrega: reto propio, cada cuánto se reintenta y sus límites por nodo. */
   queue: {
     powBits: number;
@@ -39,6 +43,8 @@ export interface RouterConfig {
 const DEFAULT_PORT = 8790;
 const DEFAULT_COLLECT_INTERVAL_SECONDS = 600;
 const DEFAULT_QUEUE_INTERVAL_SECONDS = 15;
+const DEFAULT_HEALTH_INTERVAL_SECONDS = 60;
+const VERSION_PATTERN = /^\d{1,6}\.\d{1,6}\.\d{1,6}$/u;
 const DEFAULT_QUEUE_POW_BITS = 18;
 const DEFAULT_QUEUE_TTL_DAYS = 7;
 const DEFAULT_QUEUE_MAX_PER_NODE = 500;
@@ -133,6 +139,18 @@ export function loadRouterConfig(env: NodeJS.ProcessEnv): RouterConfig {
     );
   }
   if (queue.powBits > 24) throw new Error('SIGILO_ROUTER_QUEUE_POW_BITS debe ser a lo más 24.');
+  const healthIntervalSeconds = parseInteger(
+    'SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS',
+    env.SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS,
+    DEFAULT_HEALTH_INTERVAL_SECONDS,
+  );
+  if (healthIntervalSeconds < 1) {
+    throw new Error('SIGILO_ROUTER_HEALTH_INTERVAL_SECONDS debe ser mayor que 0.');
+  }
+  const minimum = env.SIGILO_ROUTER_MIN_NODE_VERSION ?? '';
+  if (minimum !== '' && !VERSION_PATTERN.test(minimum)) {
+    throw new Error('SIGILO_ROUTER_MIN_NODE_VERSION debe tener la forma mayor.menor.parche.');
+  }
   return {
     host,
     port,
@@ -140,6 +158,8 @@ export function loadRouterConfig(env: NodeJS.ProcessEnv): RouterConfig {
     nodeUrls: parseNodeUrls(env.SIGILO_ROUTER_NODE_URLS),
     collectIntervalSeconds: interval,
     hstsMaxAgeSeconds: hsts === '' ? null : parseInteger('SIGILO_ROUTER_HSTS_MAX_AGE', hsts, 0),
+    healthIntervalSeconds,
+    minimumNodeVersion: minimum === '' ? null : minimum,
     queue,
   };
 }

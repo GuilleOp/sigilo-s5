@@ -4768,6 +4768,122 @@ paths:
                 error:
                   code: internal
                   message: Error interno del servidor.
+  /api/v1/red/health/nodes:
+    servers:
+      - url: http://127.0.0.1:8790
+        description: Enrutador en local (`npm run dev:enrutador` o `docker compose up`).
+      - url: https://red.example.org
+        description: Ejemplo de un enrutador publicado (dominio reservado para ejemplos).
+    get:
+      operationId: getNetworkHealth
+      tags:
+        - Red
+      summary: Salud de los nodos de la red
+      description: 'Para la operación (la SESNA): de cada nodo del directorio, si respondió la última consulta a su `getNodeHealth`, su versión de software y del Estándar, el último contacto, si está registrado, si se le entregan sobres y cuántos sobres cerrados esperan en la cola. Si se configura una versión mínima, a un nodo con versión menor (o desconocida) no se le entregan sobres: los que pidieron la cola esperan, y `warning` lo dice. No contiene denuncias, autoridades ni contenido. `GET /api/v1/red/health/nodes.html` muestra lo mismo en una tabla.'
+      security: []
+      responses:
+        '200':
+          description: Salud de la red.
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkHealth'
+              examples:
+                sintetico:
+                  summary: Ejemplo sintético
+                  description: También en `ejemplos/get-network-health.response.json`.
+                  value:
+                    v: 1
+                    checkedAt: 2026-11-09T17:05Z
+                    minimumSoftwareVersion: 1.0.0
+                    nodes:
+                      - nodeId: node.queretaro
+                        name: Nodo estatal Querétaro
+                        status: up
+                        softwareVersion: 1.0.1
+                        standardVersion: 0.2.0
+                        lastCheckAt: 2026-11-09T17:05Z
+                        lastContactAt: 2026-11-09T17:05Z
+                        registered: true
+                        deliverable: true
+                        warning: null
+                        queued: 0
+                      - nodeId: node.federal
+                        name: Nodo Federal
+                        status: down
+                        softwareVersion: 1.0.1
+                        standardVersion: 0.2.0
+                        lastCheckAt: 2026-11-09T17:05Z
+                        lastContactAt: 2026-11-09T15:40Z
+                        registered: true
+                        deliverable: true
+                        warning: unreachable
+                        queued: 3
+        '500':
+          description: '`internal`: Error interno, sin detalles.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: internal
+                  message: Error interno del servidor.
+  /api/v1/red/health/nodes.html:
+    servers:
+      - url: http://127.0.0.1:8790
+        description: Enrutador en local (`npm run dev:enrutador` o `docker compose up`).
+      - url: https://red.example.org
+        description: Ejemplo de un enrutador publicado (dominio reservado para ejemplos).
+    get:
+      operationId: viewNetworkHealth
+      tags:
+        - Red
+      summary: Salud de los nodos en una página sencilla
+      description: La misma información de `getNetworkHealth` en una tabla HTML sin estilos ni scripts, para que la operación la consulte en un navegador.
+      security: []
+      responses:
+        '200':
+          description: Página HTML en UTF-8. Tabla con nodo, estado, versiones, último contacto, sobres en cola y aviso.
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            text/html:
+              schema:
+                type: string
+              example: <!doctype html><html lang="es-MX">…<table>…</table>…</html>
+        '500':
+          description: '`internal`: Error interno, sin detalles.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: internal
+                  message: Error interno del servidor.
   /api/v1/red/nodes/{nodeId}/registration:
     servers:
       - url: http://127.0.0.1:8790
@@ -5740,6 +5856,68 @@ paths:
                 entidad,conducta,mes_recepcion,estatus,denuncias
                 22,LGRA-52,2026-10,investigating,10
                 suprimidas,,,,5
+        '404':
+          description: '`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: not_found
+                  message: No encontrado.
+        '500':
+          description: '`internal`: Error interno, sin detalles.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: internal
+                  message: Error interno del servidor.
+  /api/v1/red/health:
+    get:
+      operationId: getNodeHealth
+      tags:
+        - Red
+      summary: Salud del nodo
+      description: La sirve cada nodo. Su identificador y las versiones de su software y del Estándar, para que el enrutador sepa si está arriba y si cumple la versión mínima. Sin datos de denuncias.
+      security: []
+      responses:
+        '200':
+          description: Identificador y versiones.
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeHealthReport'
+              examples:
+                sintetico:
+                  summary: Ejemplo sintético
+                  description: También en `ejemplos/get-node-health.response.json`.
+                  value:
+                    v: 1
+                    nodeId: node.queretaro
+                    softwareVersion: 1.0.1
+                    standardVersion: 0.2.0
         '404':
           description: '`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).'
           headers:
@@ -11182,6 +11360,167 @@ components:
         - count
       additionalProperties: false
       description: 'Celda del corte nacional: entidad, conducta, mes y estatus.'
+    NodeHealthReport:
+      type: object
+      properties:
+        v:
+          type: number
+          const: 1
+          description: Versión del formato.
+        nodeId:
+          type: string
+          pattern: ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$
+          description: Identificador estable del nodo.
+          examples:
+            - node.queretaro
+        softwareVersion:
+          type: string
+          pattern: ^\d{1,6}\.\d{1,6}\.\d{1,6}$
+          description: Versión del software del nodo (el servidor de referencia u otra implementación).
+          examples:
+            - 1.0.1
+        standardVersion:
+          type: string
+          pattern: ^\d{1,6}\.\d{1,6}\.\d{1,6}$
+          description: Versión del Estándar S5 que implementa.
+          examples:
+            - 1.0.1
+      required:
+        - v
+        - nodeId
+        - softwareVersion
+        - standardVersion
+      additionalProperties: false
+      description: 'Lo que el nodo dice de sí mismo al enrutador: identificador y versiones.'
+    NetworkHealth:
+      type: object
+      properties:
+        v:
+          type: number
+          const: 1
+          description: Versión del formato.
+        checkedAt:
+          anyOf:
+            - type: string
+              pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$
+              description: Fecha y hora redondeada al minuto, en UTC (AAAA-MM-DDTHH:MMZ).
+              examples:
+                - 2026-11-09T17:05Z
+            - type: 'null'
+          description: Última vuelta de consultas, o null antes de la primera.
+        minimumSoftwareVersion:
+          anyOf:
+            - type: string
+              pattern: ^\d{1,6}\.\d{1,6}\.\d{1,6}$
+              description: Versión mayor.menor.parche.
+              examples:
+                - 1.0.1
+            - type: 'null'
+          description: 'Versión mínima del software de los nodos: a un nodo con versión menor no se le entregan sobres. null si no hay mínima.'
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NetworkHealthNode'
+          description: Todos los nodos del directorio, en su orden.
+      required:
+        - v
+        - checkedAt
+        - minimumSoftwareVersion
+        - nodes
+      additionalProperties: false
+      description: 'Salud de la red para la operación (la SESNA): solo nodos, versiones y conteos de la cola; ninguna denuncia, autoridad ni contenido.'
+    NetworkHealthNode:
+      type: object
+      properties:
+        nodeId:
+          type: string
+          pattern: ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$
+          description: Identificador estable del nodo.
+          examples:
+            - node.queretaro
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Nombre del nodo en el directorio.
+        status:
+          type: string
+          enum:
+            - up
+            - down
+            - unknown
+          description: 'up: respondió la última consulta; down: no respondió o dijo ser otro nodo; unknown: aún no se consulta.'
+        softwareVersion:
+          anyOf:
+            - type: string
+              pattern: ^\d{1,6}\.\d{1,6}\.\d{1,6}$
+              description: Versión mayor.menor.parche.
+              examples:
+                - 1.0.1
+            - type: 'null'
+          description: Versión del software que reportó por última vez, o null.
+        standardVersion:
+          anyOf:
+            - type: string
+              pattern: ^\d{1,6}\.\d{1,6}\.\d{1,6}$
+              description: Versión mayor.menor.parche.
+              examples:
+                - 1.0.1
+            - type: 'null'
+          description: Versión del Estándar que reportó por última vez, o null.
+        lastCheckAt:
+          anyOf:
+            - type: string
+              pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$
+              description: Fecha y hora redondeada al minuto, en UTC (AAAA-MM-DDTHH:MMZ).
+              examples:
+                - 2026-11-09T17:05Z
+            - type: 'null'
+          description: Última consulta, o null.
+        lastContactAt:
+          anyOf:
+            - type: string
+              pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$
+              description: Fecha y hora redondeada al minuto, en UTC (AAAA-MM-DDTHH:MMZ).
+              examples:
+                - 2026-11-09T17:05Z
+            - type: 'null'
+          description: Última vez que respondió, o null si nunca.
+        registered:
+          type: boolean
+          description: Si se registró ante el enrutador y acepta sobres.
+        deliverable:
+          type: boolean
+          description: 'Si el enrutador le entrega sobres ahora: registrado y, si hay versión mínima, con versión conocida y no menor.'
+        warning:
+          anyOf:
+            - type: string
+              enum:
+                - unreachable
+                - not-registered
+                - below-minimum-version
+                - unknown-version
+            - type: 'null'
+          description: 'unreachable (no respondió), not-registered, below-minimum-version (no se le entrega: actualizar el nodo), unknown-version (hay mínima y aún no se conoce su versión); null si todo bien.'
+        queued:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: Sobres cerrados que esperan en la cola de entrega para este nodo.
+      required:
+        - nodeId
+        - name
+        - status
+        - softwareVersion
+        - standardVersion
+        - lastCheckAt
+        - lastContactAt
+        - registered
+        - deliverable
+        - warning
+        - queued
+      additionalProperties: false
+      description: 'Salud de un nodo: arriba o abajo, versiones, último contacto y cola.'
     CorroborationEvaluatorKey:
       type: object
       properties:

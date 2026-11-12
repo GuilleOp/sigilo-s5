@@ -166,8 +166,18 @@ describe('enrutador ciego', () => {
   it('cuenta los resultados de forma agregada, sin destino', async () => {
     const router = createTestRouter();
     await post(router, (await seal(router, 'authority.oic-iffe', 'node.federal')).relay);
-    expect(router.relay.drainCounters()).toEqual({ delivered: 0, 'not-registered': 1, failed: 0 });
-    expect(router.relay.drainCounters()).toEqual({ delivered: 0, 'not-registered': 0, failed: 0 });
+    expect(router.relay.drainCounters()).toEqual({
+      delivered: 0,
+      'not-registered': 1,
+      outdated: 0,
+      failed: 0,
+    });
+    expect(router.relay.drainCounters()).toEqual({
+      delivered: 0,
+      'not-registered': 0,
+      outdated: 0,
+      failed: 0,
+    });
   });
 });
 

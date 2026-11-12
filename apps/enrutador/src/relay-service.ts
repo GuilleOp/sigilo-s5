@@ -20,7 +20,7 @@ import type { FetchLike } from '@sigilo/red';
 import { readInteger } from './database.ts';
 
 /** Resultado de un reenvío, solo para los contadores agregados (nunca el destino). */
-export type RelayOutcome = 'delivered' | 'not-registered' | 'failed';
+export type RelayOutcome = 'delivered' | 'not-registered' | 'outdated' | 'failed';
 
 /**
  * Resultado de un intento de entrega al buzón del nodo: entregado (con la respuesta cifrada),
@@ -30,7 +30,7 @@ export type RelayOutcome = 'delivered' | 'not-registered' | 'failed';
 export type DeliveryResult =
   | { kind: 'delivered'; response: RelayResponse }
   | { kind: 'rejected' }
-  | { kind: 'unavailable'; reason: 'not-registered' | 'failed' };
+  | { kind: 'unavailable'; reason: 'not-registered' | 'outdated' | 'failed' };
 
 /** Contadores del enrutador desde el último vaciado: cuántos sobres por resultado, sin más datos. */
 export type RelayCounters = Record<RelayOutcome, number>;
@@ -56,6 +56,8 @@ export interface RelayService {
   register(registration: NodeRegistration, today: string): NodeRegistrationReceipt | null;
   /** Devuelve y vacía los contadores agregados. */
   drainCounters(): RelayCounters;
+  /** Si el nodo se registró y acepta sobres. */
+  isRegistered(nodeId: string): boolean;
 }
 
 /** Dependencias del reenvío. */
@@ -71,13 +73,18 @@ export interface RelayDeps {
   relaySecret?: (node: DirectoryNode) => Uint8Array | null;
   /** Tiempo máximo de espera del nodo, en milisegundos. */
   timeoutMs?: number;
+  /**
+   * Si la versión del nodo permite entregarle (la versión mínima del monitor de salud). Sin esta
+   * opción, no se revisa la versión.
+   */
+  meetsMinimumVersion?: (node: DirectoryNode) => boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /** Crea el servicio de reenvío. */
 export function createRelayService(deps: RelayDeps): RelayService {
-  const counters: RelayCounters = { delivered: 0, 'not-registered': 0, failed: 0 };
+  const counters: RelayCounters = { delivered: 0, 'not-registered': 0, outdated: 0, failed: 0 };
   const acceptsRelay = (nodeId: string): boolean => {
     const row = deps.db
       .prepare('SELECT accepts_relay FROM node_registrations WHERE node_id = ?')
@@ -90,6 +97,11 @@ export function createRelayService(deps: RelayDeps): RelayService {
   };
   const deliver = async (node: DirectoryNode, relay: RelayRequest): Promise<DeliveryResult> => {
     if (!acceptsRelay(node.id)) return { kind: 'unavailable', reason: 'not-registered' };
+    // Seguridad: un nodo con software menor a la versión mínima no recibe sobres; los que pidieron
+    // la cola esperan a que se actualice.
+    if (deps.meetsMinimumVersion !== undefined && !deps.meetsMinimumVersion(node)) {
+      return { kind: 'unavailable', reason: 'outdated' };
+    }
     try {
       // Seguridad: la petición al nodo se arma desde cero. Solo lleva el tipo de contenido y el
       // sobre ya validado: ni IP, ni agente de usuario, ni idioma, ni cookies, ni X-Forwarded-For.
@@ -120,6 +132,7 @@ export function createRelayService(deps: RelayDeps): RelayService {
   };
   return {
     deliver,
+    isRegistered: acceptsRelay,
     async forward(node, relay, onUnavailable) {
       const result = await deliver(node, relay);
       if (result.kind === 'delivered') {
@@ -160,6 +173,7 @@ export function createRelayService(deps: RelayDeps): RelayService {
       const snapshot = { ...counters };
       counters.delivered = 0;
       counters['not-registered'] = 0;
+      counters.outdated = 0;
       counters.failed = 0;
       return snapshot;
     },

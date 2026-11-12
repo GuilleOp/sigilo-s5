@@ -260,6 +260,7 @@ al integrar su corrección; el resumen está en [historial-de-seguridad.md](hist
 | G11 | Entregar sobres al buzón de red de un nodo sin pasar por el enrutador                        | A9, A5  | STRIDE S, D  | El buzón de red acepta solo peticiones del enrutador (autenticación del enrutador o red interna), con la misma respuesta uniforme                                                     | Baja       | M         |
 | G12 | La operación del enrutador cuenta denuncias por autoridad (OIC) leyendo el encabezado        | A9      | LINDDUN L, D | Sobre v2: el encabezado dice solo el nodo; la autoridad va cifrada y el nodo la entrega solo si la aloja; el sobre v1 se rechaza                                                      | Media      | M         |
 | G13 | Llenar la cola de entrega o colar denuncias sin trabajo por la entrega diferida              | A2, A9  | STRIDE D, S  | Reto propio del enrutador de un solo uso; topes de sobres y bytes por nodo; el nodo acepta lo diferido solo con la etiqueta HMAC, solo denuncias con folio y con tope por hora        | Media      | M         |
+| G14 | Un nodo con software viejo (con fallas conocidas) sigue recibiendo denuncias                 | A9      | STRIDE T, I  | Versión mínima en el enrutador: no entrega a un nodo con versión menor o desconocida, avisa y la salud lo publica; lo que pidió la cola espera                                        | Media-baja | M         |
 
 Notas:
 
@@ -274,6 +275,10 @@ Notas:
   si el nodo sirve el tramo que la une con la anterior. Residual (riesgo 18): la primera cabeza que
   ve un testigo nuevo no tiene con qué compararse, y un nodo que no sirve su bitácora deja de
   avanzar en la bitácora nacional.
+- **G10.** Una versión vieja del directorio sigue bien firmada y cofirmada. La raíz de confianza
+  admite `minDirectorySerial` y `maxDirectoryAgeDays`, y el directorio, `validUntil`. Residual
+  (riesgo 19): una web construida antes de una revocación acepta copias viejas hasta su
+  `validUntil` o hasta que se reconstruya con el serial nuevo.
 - **G12.** Con el sobre v1 el enrutador leía `to` (la autoridad) y podía llevar, sin guardar
   nada, un conteo de denuncias por OIC. Con el sobre v2 ve el nodo (estado), el tramo de tamaño,
   la hora y la conexión, nada más; el seguimiento, las respuestas del buzón, la inconformidad y la
@@ -287,10 +292,10 @@ Notas:
   diferida: el tope por hora del nodo (`MAX_DEFERRED_PER_HOUR`) lo acota. Residual: lo que vence
   a los 7 días sin que el nodo vuelva se pierde; la persona no recibe aviso (su folio no aparece
   en «Mi denuncia») y la web lo advierte al dejarla en la cola.
-- **G10.** Una versión vieja del directorio sigue bien firmada y cofirmada. La raíz de confianza
-  admite `minDirectorySerial` y `maxDirectoryAgeDays`, y el directorio, `validUntil`. Residual
-  (riesgo 19): una web construida antes de una revocación acepta copias viejas hasta su
-  `validUntil` o hasta que se reconstruya con el serial nuevo.
+- **G14.** La versión la declara el propio nodo en `GET /api/v1/red/health`: un nodo puede
+  mentir. La mínima sirve para detener a tiempo los nodos que no se han actualizado, no contra
+  uno malicioso (que ya es A9). La salud se publica sin autenticación: revela qué nodo está caído
+  y cuántos sobres esperan para él, nunca qué autoridad ni qué denuncia.
 
 ## Riesgos residuales principales
 

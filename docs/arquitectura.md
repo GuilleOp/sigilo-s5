@@ -293,6 +293,12 @@ flowchart LR
   folio y 8 palabras desde el inicio y ve su comprobante después en «Mi denuncia». El nodo acepta
   la entrega diferida solo con la etiqueta HMAC del enrutador, solo para denuncias con folio y con
   tope por hora, sin pedir su prueba de trabajo. Límites por nodo: 500 sobres y 64 MiB.
+- **Salud de los nodos y versión mínima.** El enrutador consulta cada minuto
+  `GET /api/v1/red/health` de cada nodo (identificador y versiones) y publica para la operación
+  `GET /api/v1/red/health/nodes` (JSON) y `.../health/nodes.html` (tabla): arriba o abajo,
+  versiones, último contacto, registro, si se le entrega y sobres en cola; nada de denuncias. Con
+  `SIGILO_ROUTER_MIN_NODE_VERSION`, a un nodo con software menor (o desconocido) no se le entrega:
+  lo que pidió la cola espera, y el enrutador lo avisa una vez por nodo.
 - **Bitácora nacional.** Entradas encadenadas por hash con cada cabeza firmada de nodo y cada
   versión del directorio. El enrutador recoge las cabezas en `GET /api/v1/ledger/head` de cada
   nodo (o el nodo las publica) y rechaza las que retroceden o se bifurcan. La cabeza nacional la

@@ -26,6 +26,8 @@ import type { DirectoryStore } from './directory-store.ts';
 import { ApiFailure, errorResponse, readJson, readRawJson, securityHeaders } from './http.ts';
 import { NationalLedgerRejection } from './national-ledger-service.ts';
 import type { NationalLedgerService } from './national-ledger-service.ts';
+import { networkHealthHtml } from './node-health.ts';
+import type { NodeHealthMonitor } from './node-health.ts';
 import { nationalOpenDataCsv } from './open-data-aggregator.ts';
 import type { OpenDataAggregator } from './open-data-aggregator.ts';
 import type { QueuePow } from './queue-pow.ts';
@@ -42,6 +44,8 @@ export interface RouterAppDeps {
    * y `queueChallenge` responde `404`.
    */
   queue?: { store: RelayQueue; pow: QueuePow };
+  /** Salud de los nodos; sin ella, sus rutas responden `404`. */
+  health?: Pick<NodeHealthMonitor, 'snapshot'>;
   /** Corte nacional de datos abiertos; sin él, sus rutas responden `404`. */
   openData?: Pick<OpenDataAggregator, 'latest'>;
   now: () => Date;
@@ -207,6 +211,14 @@ export function createRouterApp(deps: RouterAppDeps): Hono {
     if (proof === null) throw new ApiFailure('not_found');
     return c.json(proof);
   });
+
+  // Salud de los nodos para la operación: nodos, versiones y conteos de la cola, sin denuncias.
+  const health = () => {
+    if (deps.health === undefined) throw new ApiFailure('not_found');
+    return deps.health.snapshot();
+  };
+  app.get(NETWORK_ROUTES.networkHealth, (c) => c.json(health()));
+  app.get(NETWORK_ROUTES.networkHealthView, (c) => c.html(networkHealthHtml(health())));
 
   // Corte nacional de datos abiertos: solo números ya publicados por cada nodo.
   const latestOpenData = () => {

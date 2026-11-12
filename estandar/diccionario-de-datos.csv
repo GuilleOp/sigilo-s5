@@ -539,6 +539,25 @@ NationalOpenDataCell,offenseCode,offenseCode,cadena,hasta 64 caracteres,sí,Clav
 NationalOpenDataCell,month,month,cadena,patrón ^\d{4}-(0[1-9]|1[0-2])$,sí,"Mes de recepción (AAAA-MM), ya cerrado.",,2026-10
 NationalOpenDataCell,status,status,cadena (ComplaintStatus),,sí,Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.,received (Recibida); routing (Buscando a la autoridad que debe atenderla); routed (Turnada a la autoridad competente); investigating (En investigación); classified (Revisada: la autoridad decidió si la falta es grave); archived (Archivada); resolved (Concluida),investigating
 NationalOpenDataCell,count,count,entero,mínimo 1,sí,Suma de los conteos publicados por los nodos (ya redondeados): múltiplo del redondeo y al menos la celda mínima.,,10
+NodeHealthReport,v,v,número,valor fijo 1,sí,Versión del formato.,,1
+NodeHealthReport,nodeId,nodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable del nodo.,,node.queretaro
+NodeHealthReport,softwareVersion,softwareVersion,cadena,"patrón ^\d{1,6}\.\d{1,6}\.\d{1,6}$",sí,Versión del software del nodo (el servidor de referencia u otra implementación).,,1.0.1
+NodeHealthReport,standardVersion,standardVersion,cadena,"patrón ^\d{1,6}\.\d{1,6}\.\d{1,6}$",sí,Versión del Estándar S5 que implementa.,,0.2.0
+NetworkHealth,v,v,número,valor fijo 1,sí,Versión del formato.,,1
+NetworkHealth,checkedAt,checkedAt,valor,,sí,"Última vuelta de consultas, o null antes de la primera.",,2026-11-09T17:05Z
+NetworkHealth,minimumSoftwareVersion,minimumSoftwareVersion,valor,,sí,Versión mínima del software de los nodos: a un nodo con versión menor no se le entregan sobres. null si no hay mínima.,,1.0.0
+NetworkHealth,nodes,nodes,arreglo de NetworkHealthNode,,sí,"Todos los nodos del directorio, en su orden.",,
+NetworkHealthNode,nodeId,nodeId,cadena,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,sí,Identificador estable del nodo.,,node.queretaro
+NetworkHealthNode,name,name,cadena,de 1 a 200 caracteres,sí,Nombre del nodo en el directorio.,,Nodo estatal Querétaro
+NetworkHealthNode,status,status,cadena,,sí,up: respondió la última consulta; down: no respondió o dijo ser otro nodo; unknown: aún no se consulta.,up; down; unknown,up
+NetworkHealthNode,softwareVersion,softwareVersion,valor,,sí,"Versión del software que reportó por última vez, o null.",,1.0.1
+NetworkHealthNode,standardVersion,standardVersion,valor,,sí,"Versión del Estándar que reportó por última vez, o null.",,0.2.0
+NetworkHealthNode,lastCheckAt,lastCheckAt,valor,,sí,"Última consulta, o null.",,2026-11-09T17:05Z
+NetworkHealthNode,lastContactAt,lastContactAt,valor,,sí,"Última vez que respondió, o null si nunca.",,2026-11-09T17:05Z
+NetworkHealthNode,registered,registered,booleano,,sí,Si se registró ante el enrutador y acepta sobres.,,true
+NetworkHealthNode,deliverable,deliverable,booleano,,sí,"Si el enrutador le entrega sobres ahora: registrado y, si hay versión mínima, con versión conocida y no menor.",,true
+NetworkHealthNode,warning,warning,valor,,sí,"unreachable (no respondió), not-registered, below-minimum-version (no se le entrega: actualizar el nodo), unknown-version (hay mínima y aún no se conoce su versión); null si todo bien.",,null
+NetworkHealthNode,queued,queued,entero,mínimo 0,sí,Sobres cerrados que esperan en la cola de entrega para este nodo.,,0
 CorroborationEvaluatorKey,suite,suite,cadena,valor fijo ristretto255-SHA512/VOPRF,sí,"Suite OPRF de RFC 9497: ristretto255-SHA512, modo VOPRF (0x01).",,ristretto255-SHA512/VOPRF
 CorroborationEvaluatorKey,epoch,epoch,entero,mínimo 1,sí,Época de la llave. Cambia solo al rotarla por compromiso; las etiquetas de épocas distintas no coinciden.,,1
 CorroborationEvaluatorKey,keyId,keyId,cadena,patrón ^[0-9a-f]{16}$,sí,Primeros 16 hexadecimales del SHA-256 de la llave pública OPRF.,,7c2e9a4b1d0f3856

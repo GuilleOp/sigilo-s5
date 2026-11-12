@@ -1,0 +1,33 @@
+{
+  "v": 1,
+  "checkedAt": "2026-11-09T17:05Z",
+  "minimumSoftwareVersion": "1.0.0",
+  "nodes": [
+    {
+      "nodeId": "node.queretaro",
+      "name": "Nodo estatal Querétaro",
+      "status": "up",
+      "softwareVersion": "1.0.1",
+      "standardVersion": "0.2.0",
+      "lastCheckAt": "2026-11-09T17:05Z",
+      "lastContactAt": "2026-11-09T17:05Z",
+      "registered": true,
+      "deliverable": true,
+      "warning": null,
+      "queued": 0
+    },
+    {
+      "nodeId": "node.federal",
+      "name": "Nodo Federal",
+      "status": "down",
+      "softwareVersion": "1.0.1",
+      "standardVersion": "0.2.0",
+      "lastCheckAt": "2026-11-09T17:05Z",
+      "lastContactAt": "2026-11-09T15:40Z",
+      "registered": true,
+      "deliverable": true,
+      "warning": "unreachable",
+      "queued": 3
+    }
+  ]
+}

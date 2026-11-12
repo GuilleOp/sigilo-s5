@@ -22,7 +22,10 @@ import {
   responseToRoutedReply,
   routedRequestToFetch,
 } from '@sigilo/red';
+import type { NodeHealthReport } from '@sigilo/contracts';
+import { STANDARD_VERSION } from '@sigilo/contracts/standard';
 import type { AppContext } from '../context.ts';
+import { SERVER_SOFTWARE_VERSION } from '../version.ts';
 import { errorResponse } from '../http/errors.ts';
 import { hostedAuthorities } from '../network/network-context.ts';
 import { createSlidingCounter } from '../security/proof-of-work.ts';
@@ -176,6 +179,18 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
         return errorResponse(c, 'internal');
       }
     },
+  );
+
+  // Salud del nodo para el enrutador: solo su identificador y sus versiones.
+  app.get(NETWORK_ROUTES.nodeHealth, (c) =>
+    network === undefined
+      ? errorResponse(c, 'not_found')
+      : c.json({
+          v: 1,
+          nodeId: network.nodeId,
+          softwareVersion: SERVER_SOFTWARE_VERSION,
+          standardVersion: STANDARD_VERSION,
+        } satisfies NodeHealthReport),
   );
 
   // Paso del reto de la cola de entrega del enrutador (si el nodo destino no responde).

@@ -12,6 +12,7 @@ import { openRouterDatabase } from './database.ts';
 import { loadDirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
 import { createOpenDataAggregator } from './open-data-aggregator.ts';
+import { createNodeHealthMonitor } from './node-health.ts';
 import { createQueuePow } from './queue-pow.ts';
 import { createRelayQueue } from './relay-queue.ts';
 import { createRelayService } from './relay-service.ts';
@@ -38,6 +39,8 @@ function start(): void {
     nodeUrl,
     fetch: doFetch,
     relaySecret: (node) => relaySecrets.get(node.id) ?? null,
+    // El monitor se crea después; se consulta en cada entrega.
+    meetsMinimumVersion: (node) => health.meetsMinimumVersion(node),
   });
   // Cola de entrega: sobres cerrados para nodos que no responden, con el reto propio del enrutador.
   const queueStore = createRelayQueue({
@@ -54,6 +57,16 @@ function start(): void {
     },
   });
   const queuePow = createQueuePow({ bits: config.queue.powBits, now });
+  // Salud de los nodos y versión mínima: arriba o abajo, versiones, último contacto y cola.
+  const health = createNodeHealthMonitor({
+    directory: directory.directory,
+    nodeUrl,
+    fetch: doFetch,
+    now,
+    minimumVersion: config.minimumNodeVersion,
+    isRegistered: relay.isRegistered,
+    queued: (nodeId) => queueStore.stats(nodeId).count,
+  });
   const openData = createOpenDataAggregator({
     directory: directory.directory,
     national,
@@ -66,6 +79,7 @@ function start(): void {
     national,
     relay,
     queue: { store: queueStore, pow: queuePow },
+    health,
     openData,
     now,
     hstsMaxAgeSeconds: config.hstsMaxAgeSeconds,
@@ -106,6 +120,13 @@ function start(): void {
   };
   void collect();
   const timer = setInterval(() => void collect(), config.collectIntervalSeconds * 1000);
+  const checkHealth = (): void => {
+    health.check().catch(() => {
+      console.error('No se pudo completar la consulta de salud de los nodos.');
+    });
+  };
+  checkHealth();
+  const healthTimer = setInterval(checkHealth, config.healthIntervalSeconds * 1000);
   // Reintentos de la cola con espera exponencial; cada sobre lleva su siguiente intento.
   const queueTimer = setInterval(() => {
     queueStore.deliverDue().catch(() => {
@@ -119,6 +140,7 @@ function start(): void {
   const shutdown = (): void => {
     clearInterval(timer);
     clearInterval(queueTimer);
+    clearInterval(healthTimer);
     server.close(() => {
       db.close();
       process.exit(0);

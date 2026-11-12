@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Hono } from 'hono';
-import { LEDGER_GENESIS_HASH, ROUTES } from '@sigilo/contracts';
+import { LEDGER_GENESIS_HASH, NETWORK_ROUTES, ROUTES } from '@sigilo/contracts';
 import type { LedgerEvent, NetworkTrustAnchor, SignedAuthorityDirectory } from '@sigilo/contracts';
 import { keyIdFor, randomBytes, signLedgerHead } from '@sigilo/core';
 import {
@@ -26,6 +26,8 @@ import { loadDirectoryStore } from './directory-store.ts';
 import type { DirectoryStore } from './directory-store.ts';
 import { createNationalLedgerService } from './national-ledger-service.ts';
 import type { NationalLedgerService } from './national-ledger-service.ts';
+import { createNodeHealthMonitor } from './node-health.ts';
+import type { NodeHealthMonitor } from './node-health.ts';
 import { createQueuePow } from './queue-pow.ts';
 import { createRelayQueue } from './relay-queue.ts';
 import type { RelayQueue, RelayQueueLimits } from './relay-queue.ts';
@@ -73,6 +75,12 @@ export interface TestRouter {
   relay: RelayService;
   /** Cola de entrega (reto de dificultad 0). */
   queue: RelayQueue;
+  /** Monitor de salud de los nodos. */
+  health: NodeHealthMonitor;
+  /** Versión de software que reporta cada nodo falso en su salud (se puede cambiar). */
+  nodeVersions: Record<DemoNodeId, string>;
+  /** Avisos del monitor de salud. */
+  warnings: string[];
   /** Reloj del enrutador (se puede mover). */
   setNow(date: Date): void;
   /** Apaga o prende un nodo falso: apagado, la conexión falla. */
@@ -102,6 +110,8 @@ export function createTestRouter(
     withRelaySecrets?: boolean;
     /** Límites de la cola de entrega. */
     queueLimits?: Partial<RelayQueueLimits>;
+    /** Versión mínima del software de los nodos. */
+    minimumNodeVersion?: string;
   } = {},
 ): TestRouter {
   const network = options.network ?? createTestNetwork();
@@ -169,11 +179,28 @@ export function createTestRouter(
     ]),
   );
   const down = new Set<string>();
+  const nodeVersions: Record<DemoNodeId, string> = {
+    'node.queretaro': '1.0.1',
+    'node.federal': '1.0.1',
+  };
+  const warnings: string[] = [];
+  let health: NodeHealthMonitor | null = null;
   const nodeFetch: FetchLike = async (input, init) => {
     const request = new Request(input, init);
     const body = await request.clone().text();
     captured.push({ url: request.url, headers: Object.fromEntries(request.headers), body });
     if (down.has(new URL(request.url).origin)) throw new TypeError('fetch failed');
+    const nodeId = (Object.keys(NODE_URLS) as DemoNodeId[]).find(
+      (id) => NODE_URLS[id] === new URL(request.url).origin,
+    );
+    if (nodeId !== undefined && new URL(request.url).pathname === NETWORK_ROUTES.nodeHealth) {
+      return Response.json({
+        v: 1,
+        nodeId,
+        softwareVersion: nodeVersions[nodeId],
+        standardVersion: '0.2.0',
+      });
+    }
     const handler = inboxes.get(new URL(request.url).origin);
     if (handler === undefined) return new Response('', { status: 502 });
     return handler(request);
@@ -185,6 +212,7 @@ export function createTestRouter(
     ...(options.withRelaySecrets === true
       ? { relaySecret: (node) => secrets[node.id as DemoNodeId] ?? null }
       : {}),
+    meetsMinimumVersion: (node) => health?.meetsMinimumVersion(node) ?? true,
   });
   let current = new Date(`${TEST_DAY}T12:00:00Z`);
   const now = (): Date => new Date(current.getTime());
@@ -197,11 +225,22 @@ export function createTestRouter(
     operatorKeyId: keyIdFor(network.keys.operator.publicKey),
     ...(options.queueLimits === undefined ? {} : { limits: options.queueLimits }),
   });
+  health = createNodeHealthMonitor({
+    directory: directory.directory,
+    nodeUrl: (node) => node.baseUrl,
+    fetch: nodeFetch,
+    now,
+    minimumVersion: options.minimumNodeVersion ?? null,
+    isRegistered: relay.isRegistered,
+    queued: (nodeId) => queue.stats(nodeId).count,
+    warn: (message) => warnings.push(message),
+  });
   const app = createRouterApp({
     directory,
     national,
     relay,
     queue: { store: queue, pow: createQueuePow({ bits: 0, now }) },
+    health,
     now,
   });
   return {
@@ -213,6 +252,9 @@ export function createTestRouter(
     national,
     relay,
     queue,
+    health,
+    nodeVersions,
+    warnings,
     setNow(date) {
       current = date;
     },

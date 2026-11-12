@@ -20,7 +20,10 @@ import {
   NationalOpenDataCellSchema,
   NationalOpenDataNodeSchema,
   NationalOpenDataSchema,
+  NetworkHealthNodeSchema,
+  NetworkHealthSchema,
   NetworkTrustAnchorSchema,
+  NodeHealthReportSchema,
   NodeHeadAcceptanceSchema,
   NodeRegistrationReceiptSchema,
   NodeRegistrationSchema,
@@ -42,7 +45,9 @@ import type {
   NationalLedgerEntry,
   NationalLedgerPage,
   NationalOpenData,
+  NetworkHealth,
   NetworkTrustAnchor,
+  NodeHealthReport,
   NodeHeadAcceptance,
   NodeRegistration,
   NodeRegistrationReceipt,
@@ -85,6 +90,9 @@ export const NETWORK_COMPONENTS = {
   NationalOpenData: NationalOpenDataSchema,
   NationalOpenDataNode: NationalOpenDataNodeSchema,
   NationalOpenDataCell: NationalOpenDataCellSchema,
+  NodeHealthReport: NodeHealthReportSchema,
+  NetworkHealth: NetworkHealthSchema,
+  NetworkHealthNode: NetworkHealthNodeSchema,
 } as const satisfies Record<string, z.ZodType>;
 
 export type NetworkComponentName = keyof typeof NETWORK_COMPONENTS;
@@ -352,6 +360,47 @@ const nationalOpenData: NationalOpenData = {
   suppressed: 5,
 };
 
+const nodeHealthReport: NodeHealthReport = {
+  v: 1,
+  nodeId: 'node.queretaro',
+  softwareVersion: '1.0.1',
+  standardVersion: '0.2.0',
+};
+
+const networkHealth: NetworkHealth = {
+  v: 1,
+  checkedAt: '2026-11-09T17:05Z',
+  minimumSoftwareVersion: '1.0.0',
+  nodes: [
+    {
+      nodeId: 'node.queretaro',
+      name: 'Nodo estatal Querétaro',
+      status: 'up',
+      softwareVersion: '1.0.1',
+      standardVersion: '0.2.0',
+      lastCheckAt: '2026-11-09T17:05Z',
+      lastContactAt: '2026-11-09T17:05Z',
+      registered: true,
+      deliverable: true,
+      warning: null,
+      queued: 0,
+    },
+    {
+      nodeId: 'node.federal',
+      name: 'Nodo Federal',
+      status: 'down',
+      softwareVersion: '1.0.1',
+      standardVersion: '0.2.0',
+      lastCheckAt: '2026-11-09T17:05Z',
+      lastContactAt: '2026-11-09T15:40Z',
+      registered: true,
+      deliverable: true,
+      warning: 'unreachable',
+      queued: 3,
+    },
+  ],
+};
+
 /** Ejemplos sintéticos del grupo; cumplen los esquemas pero no son criptográficamente válidos. */
 export const NETWORK_EXAMPLES = {
   'get-network-directory.response': signedDirectory,
@@ -360,6 +409,8 @@ export const NETWORK_EXAMPLES = {
   'get-queue-challenge.response': { token: 'cmV0by1maWN0aWNpby1kZS1sYS1jb2xh.firma', bits: 18 },
   'relay-queue-receipt.content': queueReceipt,
   'relay-deferral.content': deferral,
+  'get-node-health.response': nodeHealthReport,
+  'get-network-health.response': networkHealth,
   'register-node.request': registration,
   'register-node.response': registrationReceipt,
   'publish-node-head.request': nodeHead,
@@ -486,6 +537,47 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
       status: 200,
       description: 'Reto vigente.',
       body: { kind: 'json', component: 'PowChallenge', example: 'get-queue-challenge.response' },
+    },
+    errors: [],
+  },
+  {
+    operationId: 'getNetworkHealth',
+    method: 'get',
+    path: NETWORK_ROUTES.networkHealth,
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Salud de los nodos de la red',
+    description:
+      'Para la operación (la SESNA): de cada nodo del directorio, si respondió la última consulta a su `getNodeHealth`, su versión de software y del Estándar, el último contacto, si está registrado, si se le entregan sobres y cuántos sobres cerrados esperan en la cola. Si se configura una versión mínima, a un nodo con versión menor (o desconocida) no se le entregan sobres: los que pidieron la cola esperan, y `warning` lo dice. No contiene denuncias, autoridades ni contenido. `GET /api/v1/red/health/nodes.html` muestra lo mismo en una tabla.',
+    security: 'none',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Salud de la red.',
+      body: { kind: 'json', component: 'NetworkHealth', example: 'get-network-health.response' },
+    },
+    errors: [],
+  },
+  {
+    operationId: 'viewNetworkHealth',
+    method: 'get',
+    path: NETWORK_ROUTES.networkHealthView,
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Salud de los nodos en una página sencilla',
+    description:
+      'La misma información de `getNetworkHealth` en una tabla HTML sin estilos ni scripts, para que la operación la consulte en un navegador.',
+    security: 'none',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Página HTML en UTF-8.',
+      body: {
+        kind: 'text',
+        mediaType: 'text/html',
+        description: 'Tabla con nodo, estado, versiones, último contacto, sobres en cola y aviso.',
+        example: '<!doctype html><html lang="es-MX">…<table>…</table>…</html>',
+      },
     },
     errors: [],
   },
@@ -734,6 +826,24 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
         example:
           'entidad,conducta,mes_recepcion,estatus,denuncias\n22,LGRA-52,2026-10,investigating,10\nsuprimidas,,,,5\n',
       },
+    },
+    errors: ['not_found'],
+  },
+  {
+    operationId: 'getNodeHealth',
+    method: 'get',
+    path: NETWORK_ROUTES.nodeHealth,
+    tag: 'Red',
+    servedBy: 'node',
+    summary: 'Salud del nodo',
+    description:
+      'La sirve cada nodo. Su identificador y las versiones de su software y del Estándar, para que el enrutador sepa si está arriba y si cumple la versión mínima. Sin datos de denuncias.',
+    security: 'none',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Identificador y versiones.',
+      body: { kind: 'json', component: 'NodeHealthReport', example: 'get-node-health.response' },
     },
     errors: ['not_found'],
   },
