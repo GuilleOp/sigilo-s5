@@ -318,7 +318,7 @@ async function main(): Promise<void> {
   say('                        Oaxaca http://127.0.0.1:8783/autoridad');
   say('  Cuentas del panel:    .red-demo/nodos/<nodo>/credenciales.json');
   say('  Llave del panel:      .red-demo/autoridades/<id>.json (la de la autoridad de la cuenta)');
-  say('  Llave del buzón:      .red-demo/nodos/<nodo>/data/authority-demo-key.json');
+  say('  Llave del buzón:      .red-demo/nodos/<nodo>/llaves-demo/authority-demo-key.json');
   say('  Folios y recibos:     .red-demo/semilla.json');
   say('  Corte nacional:       http://127.0.0.1:8790/api/v1/red/national/open-data (cada minuto)');
   say('  Guion: docs/demo.md. Para bajarla y limpiar: npm run demo:apagar');

@@ -158,7 +158,7 @@ llaves. Con una conexión lenta o un equipo modesto, cuenta de 3 a 10 minutos la
 | Enrutador                  | <http://127.0.0.1:8790/api/v1/red/directory>                                                                  |
 | Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json` (usuario y contraseña)                                             |
 | Llave que importa el panel | Cada autoridad, la suya: `.red-demo/autoridades/<id>.json` (`<id>` es el `authorityId` de la cuenta)          |
-| Llave del buzón general    | `.red-demo/nodos/<nodo>/data/authority-demo-key.json` (solo las cuentas `buzon.*` de cada nodo)               |
+| Llave del buzón general    | `.red-demo/nodos/<nodo>/llaves-demo/authority-demo-key.json` (solo las cuentas `buzon.*`; fuera del volumen)  |
 | Folios y recibos sembrados | `.red-demo/semilla.json` (8 palabras sintéticas por caso; `solicitudes`: alta pendiente y su huella)          |
 | Solicitud de alta          | <http://127.0.0.1:8790/solicitar-alta> (va al nodo de la entidad); bandeja con `operacion.<nodo>` en su panel |
 | Foto con EXIF sintético    | `.red-demo/fixtures/cotizacion-con-exif.jpg`                                                                  |
@@ -202,7 +202,7 @@ Lo que se ve, comprobado con la red en Docker:
   de no grave con dos o más señales del auditor»; las demás, en «Falta grave sin iniciar el
   procedimiento a los 30 días». Al final van los avisos de «Turnado vencido» de las denuncias que
   pasaron 2 días hábiles sin turnar o sin aceptar, sin copia que abrir. «Abrir» pide la segunda
-  llave (`apps/server/data/supervisor-demo-key.json` o la de `.red-demo/`), recibe el sobre
+  llave (`apps/server/data/supervisor-demo-key.json` o `.red-demo/nodos/federal/llaves-demo/`), recibe el sobre
   (`POST /api/v1/authority/escalations/{folio}/envelope`), lo abre en el navegador y lo compara
   con el registro público: muestra los hechos y las pruebas, nunca la identidad. El detalle completo
   sigue siendo de la autoridad que tiene la denuncia.
@@ -257,7 +257,7 @@ duplica los casos y regresa el reloj al día 0: para repetir, usa `npm run demo:
   corresponde a … en el directorio firmado»).** Se importó la llave de otra cuenta. Cada cuenta
   entra con la de su autoridad: `.red-demo/autoridades/<id>.json`, con el `authorityId` de la cuenta
   en `credenciales.json`; las cuentas del buzón general, con
-  `.red-demo/nodos/<nodo>/data/authority-demo-key.json` de ese nodo. Todas cambian en cada
+  `.red-demo/nodos/<nodo>/llaves-demo/authority-demo-key.json` de ese nodo. Todas cambian en cada
   `demo:todo`.
 - **«No pudimos verificar el directorio firmado de la red…».** La web no pudo descargar o verificar
   el directorio; mientras tanto solo entra la llave del buzón. Revisa que el enrutador esté en
