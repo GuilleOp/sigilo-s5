@@ -2,6 +2,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
+import { HTTP_SERVER_OPTIONS } from '@sigilo/red';
 import { loadEvaluatorConfig, loadEvaluatorKeys } from './config.ts';
 import { EVALUATOR_SCHEMA, openDatabase } from './database.ts';
 import { createEvaluatorApp } from './evaluator-app.ts';
@@ -22,11 +23,20 @@ function start(): void {
       : { maxDailyEvaluations: config.maxDailyEvaluations }),
   });
   const app = createEvaluatorApp({ evaluator, hstsMaxAgeSeconds: config.hstsMaxAgeSeconds });
-  const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
-    process.stdout.write(
-      `Evaluador OPRF de SIGILO (época ${keys.key.epoch}, llave ${keys.key.keyId}) en http://${config.host}:${info.port}\n`,
-    );
-  });
+  // H12: tiempos límite de cabeceras y peticiones, menores que los de Node.
+  const server = serve(
+    {
+      fetch: app.fetch,
+      hostname: config.host,
+      port: config.port,
+      serverOptions: HTTP_SERVER_OPTIONS,
+    },
+    (info) => {
+      process.stdout.write(
+        `Evaluador OPRF de SIGILO (época ${keys.key.epoch}, llave ${keys.key.keyId}) en http://${config.host}:${info.port}\n`,
+      );
+    },
+  );
   const shutdown = (): void => {
     server.close(() => {
       db.close();

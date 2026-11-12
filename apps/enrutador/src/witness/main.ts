@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { Base64UrlSchema, NetworkTrustAnchorSchema, WitnessIdSchema } from '@sigilo/contracts';
 import { fromBase64Url, keyIdFor } from '@sigilo/core';
-import { signingPublicKeyOf } from '@sigilo/red';
+import { signingPublicKeyOf, withOutboundDefaults } from '@sigilo/red';
 import { parseNodeUrls } from '../config.ts';
 import { runWitnessOnce } from './witness.ts';
 
@@ -49,7 +49,7 @@ function start(): void {
         signingPrivateKey,
         trust,
         statePath: join(dataDir, 'witness-state.json'),
-        fetch: (input, init) => fetch(input, init),
+        fetch: withOutboundDefaults((input, init) => fetch(input, init)),
         nodeUrl: (node) => nodeUrls[node.id] ?? node.baseUrl,
       });
       process.stdout.write(`${JSON.stringify({ witness: key.witnessId, outcome })}\n`);
