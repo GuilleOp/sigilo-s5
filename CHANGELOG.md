@@ -5,6 +5,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Agregado
+
+- Estándar S5 0.3.0, con su propio registro de cambios (`estandar/CHANGELOG.md`): perfil de
+  conexión con la PDN y un documento por grupo en OpenAPI 3.0.3 (`estandar/oas/`), el completo
+  también en 3.0.3, diccionarios con el formato oficial de la PDN y catálogos en pares CSV y JSON.
+- El enrutador sirve Swagger UI (versión fija de `swagger-ui-dist`, sin CDN) en `/estandar/swagger/`.
+- Perfil «conexión PDN» del validador (`npm run validate:pdn`) con los casos de ValidAPI.
+- Sección «Conexión oficial con la PDN» en `docs/guia-conecta-tu-estado.md`.
+
+### Cambiado
+
+- Rutas de la PDN del nodo: errores `resError` con `code` = estatus HTTP (en `/oauth/token`,
+  además de los campos de RFC 6749), token de renovación de 720 s, filas con `id` y `fechaCaptura`
+  y catálogos `{ clave, valor }` en español, filtros vacíos ignorados y página vacía después de la
+  última.
+
 ## [1.1.0] - 2026-11-12
 
 Una sola ventanilla nacional en la SESNA, un nodo por estado (sin nodo común), tabla de funciones

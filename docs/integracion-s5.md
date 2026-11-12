@@ -234,20 +234,28 @@ PDN; OAuth 2.1 lo desaconseja), `client_credentials` (recomendado; el que usa el
 `refresh_token` (de un solo uso, solo tras `password`). El cliente se autentica con
 `Authorization: Basic` o con `client_id` y `client_secret` en el cuerpo. La respuesta trae
 `access_token`, `token_type: "Bearer"`, `expires_in`, `scope` y, con `password`,
-`refresh_token` y `refresh_token_expires_in`. Errores de RFC 6749 (`invalid_client`,
-`invalid_grant`, `invalid_scope`, `unsupported_grant_type`...). El token es un JWT HS256 que solo
-verifica el nodo que lo emitió: `iss` = `aud` = id del nodo, `sub` = cliente, `scope`, `iat`,
-`exp`, `jti`.
+`refresh_token` y `refresh_token_expires_in`. El token de acceso vive 300 s y el de renovación
+720 s (7 minutos más, dentro de la regla de ValidAPI de 5 a 10 minutos más) y es de un solo uso.
+Los errores llevan los campos de RFC 6749 (`error`: `invalid_client`, `invalid_grant`,
+`invalid_scope`, `unsupported_grant_type`...; `error_description`) y, además, `code` (el estatus
+HTTP, numérico) y `message`, como el `resError` de la PDN: los clientes OAuth leen los primeros y
+ValidAPI los segundos. El token es un JWT HS256 que solo verifica el nodo que lo emitió: `iss` =
+`aud` = id del nodo, `sub` = cliente, `scope`, `iat`, `exp`, `jti`.
 
 **Estadística.** `POST /v1/denuncias/estadisticas` con
 `{ "sort": { "mes": "desc" }, "page": 1, "pageSize": 10, "query": { "mesDesde": "2026-09", "entidad": "22" } }`
 y respuesta `{ "pagination": { "pageSize", "page", "totalRows", "hasNextPage" }, "results": [...] }`.
-`pageSize` es 10 por omisión y 200 como máximo; una página fuera de rango o un campo desconocido
-responden `400` con `{ "code", "message" }`. Filtros: `mes`, `mesDesde`, `mesHasta`, `entidad`,
-`autoridad`, `conducta` y `estatus`. Cada fila (mes cerrado, autoridad, entidad, conducta) trae
-`recibidas`, `turnadas` y `aceptadas` (`aTiempo` y `vencidas` según el semáforo de turnado),
-`archivadas` por motivo, `calificadas` (`graves`, `noGraves`), `escalamientos`,
-`estatusAlCierre` y `tiemposMedianosDiasHabiles` (turno, aceptación, archivo). Reglas de
+`pageSize` es 10 por omisión, de 1 a 200; fuera de rango, `page` menor que 1 o un campo
+desconocido responden `400` con `{ "code": 400, "message" }` (`code` es el estatus HTTP). Como
+pide ValidAPI, una página después de la última responde `200` con `results: []`, un filtro con
+cadena vacía se ignora y un `id` que no existe da `results: []`. Filtros: `id`, `mes`, `mesDesde`,
+`mesHasta`, `entidad`, `autoridad`, `conducta` y `estatus` (clave en español, como `TURNADA`).
+Cada fila (mes cerrado, autoridad, entidad, conducta) trae `id` (`mes|autoridad|entidad|conducta`),
+`fechaCaptura` (el cierre del mes), `entidad` y `conducta` como `{ clave, valor }`, `recibidas`,
+`turnadas` y `aceptadas` (`aTiempo` y `vencidas` según el semáforo de turnado), `archivadas` por
+motivo y `estatusAlCierre` (arreglos de `{ clave, valor, total }` con claves en español, como
+`ATENDIDA` o `EN_INVESTIGACION`), `calificadas` (`graves`, `noGraves`), `escalamientos` y
+`tiemposMedianosDiasHabiles` (turno, aceptación, archivo). Reglas de
 protección, las mismas del CSV de datos abiertos: solo meses cerrados, cada mes congelado una sola
 vez, conteos redondeados al azar a múltiplos de 5 y suprimidos (`null`) bajo 5, medianas solo con
 10 observaciones o más, y filtros que solo eligen filas ya publicadas (ninguna consulta vuelve a
@@ -258,13 +266,14 @@ sumar, así que filtrar no reconstruye una celda suprimida).
 | Elemento                                                                                                           | Fuente                                                                                                | Estado                 |
 | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------- |
 | `POST /v1/<recurso>` con `sort`, `page` (1), `pageSize` (10, máx. 200) y `query`                                   | `PDNMX/api_docs`: `S2/oas/OAS_API_servidores_intervienen_contrataciones.json` (v1.1, `POST /v1/spic`) | Verificado             |
-| Respuesta `{ pagination: { pageSize, page, totalRows, hasNextPage }, results }`; `400` «Página inválida»           | El mismo archivo y `S3/oas/OAS_API_Servidores_Sancionados.json` (v1.1.0, `POST /v1/ssancionados`)     | Verificado             |
+| Respuesta `{ pagination: { pageSize, page, totalRows, hasNextPage }, results }`; `400` «Página inválida»           | El mismo archivo y `S3/oas/OAS_API_Servidores_Sancionados.json` (v1.1.0, `POST /v1/ssancionados`)     | Verificado, difiere    |
+| Página después de la última: `200` con `results: []`; `pageSize` fuera de 1 a 200 y `page` menor que 1: error      | Casos de ValidAPI (CPSS-05 y CPSS-06); aquí se sigue a ValidAPI, que es con lo que se prueba          | Verificado (bundle)    |
 | Catálogo `GET /v1/<recurso>/dependencias` (nombre, siglas, clave)                                                  | Mismos archivos (`/v1/spic/dependencias`, `/v1/ssancionados/dependencias`); aquí solo clave y nombre  | Verificado             |
 | Error `resError` `{ code, message }`                                                                               | Mismos archivos                                                                                       | Verificado             |
 | `securitySchemes` OAuth 2.0 con flujo `password`                                                                   | Mismos archivos (`tokenUrl: /oauth`, sin scopes); aquí `/oauth/token` y con permisos                  | Verificado             |
 | `POST /oauth/token` con `grant_type=password` o `refresh_token`, cliente por Basic o en el cuerpo                  | `PDNMX/piloto_oauth2.0`, `AuthorizationServer.js` (versión del 2 de mayo de 2022)                     | Verificado             |
 | Respuesta `access_token`, `token_type: Bearer`, `expires_in`, `refresh_token`, `refresh_token_expires_in`, `scope` | El mismo archivo                                                                                      | Verificado             |
-| Errores del token de la PDN `{ code: "401", message }` y `422` por scope                                           | El mismo archivo; aquí se usan los de RFC 6749 (`error`, `error_description`)                         | Verificado, difiere    |
+| Errores del token de la PDN `{ code: "401", message }` y `422` por scope                                           | El mismo archivo; aquí van los de RFC 6749 más `code` (numérico) y `message`                          | Verificado, difiere    |
 | Que la PDN en producción use exactamente este servidor OAuth y estos tiempos de vida                               | Documentación en Google Docs enlazada desde el README de `piloto_oauth2.0`                            | No verificado          |
 | `client_credentials`                                                                                               | No aparece en las especificaciones de la PDN; se agrega por RFC 6749 §4.4 y OAuth 2.1                 | Propio                 |
 | La versión 2 del S3 (`S3/s3-v2.json`) usa `GET /items/...` con `apiKey` en `Authorization`                         | `PDNMX/api_docs`                                                                                      | Verificado, no seguido |
