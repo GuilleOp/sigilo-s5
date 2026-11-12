@@ -80,7 +80,7 @@ function swaggerInit(): string {
     '// Seguridad: sin validador en línea (validatorUrl: null) y sin «Try it out», para que la vista no',
     '// haga peticiones fuera de su origen.',
     '/* global SwaggerUIBundle, SwaggerUIStandalonePreset */',
-    "if (typeof SwaggerUIBundle === 'function' && typeof SwaggerUIStandalonePreset === 'function') {",
+    "if (typeof SwaggerUIBundle === 'function' && typeof SwaggerUIStandalonePreset !== 'undefined') {",
     `  const options = ${JSON.stringify(options)};`,
     '  SwaggerUIBundle({',
     '    ...options,',

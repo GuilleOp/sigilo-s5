@@ -109,6 +109,8 @@ COPY apps/enrutador apps/enrutador
 COPY tools/sigilo tools/sigilo
 COPY instalacion instalacion
 COPY --from=web-build /app/apps/web/dist /app/ventanilla
+# El estándar (OpenAPI, diccionarios y catálogos) para la vista de Swagger UI en /estandar/swagger/.
+COPY estandar estandar
 ENV SIGILO_ROUTER_WEB_DIST=/app/ventanilla \
     SIGILO_ROUTER_DATA_DIR=/data \
     SIGILO_ROUTER_HOST=0.0.0.0 \

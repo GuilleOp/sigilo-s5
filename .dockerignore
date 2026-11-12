@@ -15,7 +15,6 @@ apps/server/data
 apps/enrutador/data
 anchors
 e2e
-estandar
 playwright-report
 test-results
 docs
