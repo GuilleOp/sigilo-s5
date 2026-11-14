@@ -63,7 +63,7 @@
     "@apidevtools/swagger-parser": "^13.1.0",
     "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.4",
     "@types/topojson-client": "^3.1.5",
     "@types/topojson-server": "^3.0.4",

@@ -15,7 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.65.0",
     "@sigilo/contracts": "1.1.0",
     "@sigilo/core": "1.1.0",
     "ajv": "^8.20.0",
