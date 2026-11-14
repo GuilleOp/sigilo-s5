@@ -120,14 +120,10 @@ export function createAppFromContext(ctx: AppContext): Hono {
   app.notFound((c) => errorResponse(c, 'not_found'));
   // Seguridad: los errores inesperados se responden como `internal` sin detalles.
   // Las rutas de la PDN responden con su propio formato (`resError`), también en un `500`.
-  app.onError((error, c) => {
-    // Solo en las pruebas: dónde ocurrió un error inesperado, para diagnosticarlo en CI.
-    if (process.env.VITEST !== undefined && !(error instanceof ApiFailure)) {
-      console.error('[prueba] error inesperado:', error);
-    }
-    return isPdnPath(c.req.path)
+  app.onError((error, c) =>
+    isPdnPath(c.req.path)
       ? pdnInternalError(c)
-      : errorResponse(c, error instanceof ApiFailure ? error.code : 'internal');
-  });
+      : errorResponse(c, error instanceof ApiFailure ? error.code : 'internal'),
+  );
   return app;
 }
