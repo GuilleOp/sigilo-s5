@@ -48,7 +48,7 @@ jobs:
     env:
       IMAGEN: ghcr.io/guilleop/sigilo-${{ matrix.servicio }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Versión
         id: version
@@ -125,7 +125,7 @@ jobs:
             echo "Verificar: cosign verify ${IMAGEN}@${DIGEST} --certificate-identity-regexp '^https://github.com/GuilleOp/sigilo-s5/' --certificate-oidc-issuer https://token.actions.githubusercontent.com"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: digesto-${{ matrix.servicio }}
           path: digesto-${{ matrix.servicio }}.txt
