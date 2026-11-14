@@ -33,12 +33,12 @@ jobs:
       - run: npm audit signatures
       - name: SBOM de las dependencias de producción
         if: matrix.node-version == '22.18'
-        run: npm sbom --omit=dev --sbom-format cyclonedx > sbom.cdx.json
+        run: npm sbom --omit=dev --sbom-format cyclonedx > "$RUNNER_TEMP/sbom.cdx.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: matrix.node-version == '22.18'
         with:
           name: sbom
-          path: sbom.cdx.json
+          path: ${{ runner.temp }}/sbom.cdx.json
           retention-days: 30
       - run: npm run format:check
       - run: npm run lint
