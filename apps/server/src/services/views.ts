@@ -186,6 +186,9 @@ export function buildComplaintDetail(
       complaint.facts.offenseCode,
     ),
     procedure: buildProcedureView(ctx, complaint),
+    ...(complaint.referralOrigin === undefined || complaint.referralOrigin === null
+      ? {}
+      : { networkReferral: complaint.referralOrigin }),
     identityRequests: isCourtView ? [] : listIdentityRequests(ctx, complaint),
     ...optional('contextSheet', contextSheetView(ctx, complaint, mayCorroborate)),
     ...optional('conflictReview', conflictReview(ctx, complaint)),

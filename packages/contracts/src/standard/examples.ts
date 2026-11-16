@@ -10,6 +10,7 @@ import type {
   TransferComplaintRequest,
   TransferComplaintResponse,
   TransferReceiptRequest,
+  NetworkReferralRequest,
   AuthorityAccountView,
   AuthorityMessageRequest,
   AuthorityProfile,
@@ -407,6 +408,13 @@ const transferRequest: TransferComplaintRequest = {
   toAuthorityId: 'authority.oic-iffe',
   relay: { v: 2, node: 'node.federal', sealed: sealedForNode },
   note: 'Los hechos son de un ente federal: la turnamos al Órgano Interno de Control competente.',
+};
+
+const networkReferralRequest: NetworkReferralRequest = {
+  toAuthorityId: 'authority.prosecutor-anticorruption',
+  basis: 'internal_control',
+  referralFolio: 'T4VB-9KQX-2MHN',
+  evidence: [evidence],
 };
 
 const transferResponse: TransferComplaintResponse = {
@@ -911,6 +919,7 @@ export const STANDARD_EXAMPLES = {
   'transfer-complaint.request': transferRequest,
   'transfer-complaint.response': transferResponse,
   'confirm-transfer.request': transferReceipt,
+  'refer-to-network-prosecutor.request': networkReferralRequest,
   'deliver-escalation-envelope.response': escalationDelivery,
   'send-authority-message.request': authorityMessageRequest,
   'send-authority-message.response': { ...authorityMessage, sequence: 1 },

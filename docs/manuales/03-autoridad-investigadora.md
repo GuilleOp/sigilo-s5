@@ -212,9 +212,12 @@ su cargo mientras dura el procedimiento.` → «Aplicar».
 - «Quién da la vista»: «Órgano interno de control o Secretaría» (LGRA, art. 10, fr. III), «Entidad
   de fiscalización (ASF o del estado)» (art. 98) o «Cualquier persona servidora pública» (CNPP, art.
   222).
-- «Fiscalía que recibe la vista»: la lista trae las fiscalías de tu nodo («… (en este nodo)»; en la
-  demostración de Querétaro, la Fiscalía Anticorrupción del estado) y, al final, **«Otra fiscalía,
-  fuera de este nodo (por oficio)»**, que pide «Nombre de la fiscalía».
+- «Fiscalía que recibe la vista»: la lista trae primero las fiscalías de tu nodo («… (en este
+  nodo)»; en la demostración de Querétaro, la Fiscalía Anticorrupción del estado), después las
+  fiscalías de **otros nodos** del directorio firmado («… (nodo …, por la red)»; en la demostración,
+  la «Fiscalía Ficticia Especializada en Hechos de Corrupción (nodo Federal, por la red)») y, al
+  final, **«Otra fiscalía, fuera de la red (por oficio)»** («fuera de este nodo» si tu nodo no está
+  en una red), que pide «Nombre de la fiscalía».
 - Con una fiscalía del nodo, el panel lo explica: «La fiscalía recibe en su bandeja una copia de
   lectura con los hechos y las pruebas: tu navegador vuelve a cifrar las llaves de las pruebas
   hacia la llave pública de la fiscalía (tu llave nunca sale). Solo ella registra las etapas de la
@@ -229,7 +232,20 @@ su cargo mientras dura el procedimiento.` → «Aplicar».
   solo la fiscalía las avanza (si se intentan por la API, el nodo responde `403`).
 - **Si la fiscalía necesita la identidad**, te la pide con requerimiento fundado (CNPP, art. 109):
   la abres tú con las dos aprobaciones de siempre (sección de apertura de la identidad).
-- Con «Otra fiscalía, fuera de este nodo», la vista solo queda registrada: remite la denuncia y sus
+- **Con una fiscalía de otro nodo** (por ejemplo, la fiscalía federal cuando los hechos son del
+  orden federal): el panel explica «La fiscalía está en el nodo …: recibe por la red, en su bandeja,
+  una copia de lectura con los hechos y las pruebas. Tu navegador vuelve a cifrar cada prueba hacia
+  la llave pública de la fiscalía en el directorio firmado y la sube a su nodo por el enrutador
+  ciego (tu llave nunca sale). La denuncia no se turna: sigue contigo…». Al «Aplicar», el panel
+  muestra el avance («Cifrando la prueba 1 de 1…», «Entregando la vista por el enrutador ciego.»).
+  Tu nodo firma la vista y solo la registra cuando el nodo de la fiscalía acusa recibo; en el
+  trámite queda «Vista enviada al nodo … (folio de la vista: …)». Ese folio es el de la copia de la
+  fiscalía, no el de la persona. Sirve con denuncias anónimas y selladas: la identidad no viaja.
+- **Las etapas penales de una vista a otro nodo no regresan**: tu trámite se queda en «Denuncia
+  penal presentada» y la fiscalía te informa por oficio. Si el nodo de la fiscalía no responde,
+  verás «El nodo de la fiscalía no recibió la vista. No se registró nada; inténtalo de nuevo más
+  tarde.»
+- Con «Otra fiscalía, fuera de la red», la vista solo queda registrada: remite la denuncia y sus
   pruebas por oficio.
 
 ### 5.11 Recursos federales (ASF, SABG y FGR)
@@ -375,8 +391,8 @@ envíos sin valor. La persona lo ve y queda en la bitácora pública.
 
 ## 7. Limitaciones conocidas del prototipo
 
-- La vista al MP llega a la bandeja solo de una fiscalía del mismo nodo; a una fiscalía de otro
-  nodo o fuera de la red se remite por oficio.
+- La vista al MP a una fiscalía de otro nodo llega a su bandeja, pero sus etapas penales no regresan
+  a tu trámite ni al seguimiento de la persona; a una fiscalía fuera de la red se remite por oficio.
 - Los avisos a autoridades federales se registran, no se envían.
 - Turnar a otro nodo solo con denuncias anónimas.
 - Dos aprobaciones: regla del nodo, no criptográfica.

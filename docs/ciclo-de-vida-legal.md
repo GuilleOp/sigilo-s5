@@ -159,9 +159,12 @@ vista al Ministerio Público (`refer_to_prosecutor`). La fiscalía no lleva la v
 inicia la investigación de la LGRA, no le corre el plazo del art. 64 fr. II ni se da vista a sí
 misma.
 
-**La vista llega a la bandeja de la fiscalía del nodo.** El panel ofrece las fiscalías del
-directorio del nodo (`GET /authority/authorities` marca `isProsecution`) y la opción «Otra
-fiscalía, fuera de este nodo (por oficio)».
+**La vista llega a la bandeja de la fiscalía, del mismo nodo o de otro nodo de la red.** El
+selector «Fiscalía que recibe la vista» ofrece, en este orden: las fiscalías del nodo
+(`GET /authority/authorities` marca `isProsecution`), las fiscalías de otros nodos del directorio
+firmado (papel `prosecution`, vigentes; por ejemplo, la fiscalía federal especializada en hechos de
+corrupción en el nodo Federal cuando da vista una Contraloría estatal) y la opción «Otra fiscalía,
+fuera de la red (por oficio)» («fuera de este nodo» si el nodo no está en una red).
 
 - Con una fiscalía del nodo, la acción lleva `prosecutorAuthorityId` (si no es una fiscalía del
   nodo, o es la autoridad que tiene la denuncia, el nodo responde 400). Antes de registrarla, el
@@ -176,8 +179,31 @@ fiscalía, fuera de este nodo (por oficio)».
   persona denunciante. Si la investigación penal necesita la identidad, la fiscalía la pide con
   requerimiento fundado (CNPP, art. 109) a la autoridad que tiene la denuncia, que la abre con las
   dos aprobaciones de siempre.
-- Sin `prosecutorAuthorityId` (la FGR en otro nodo o una fiscalía fuera de la red), la vista se
-  registra en el trámite y la denuncia y sus pruebas se remiten por oficio.
+- **Con una fiscalía de otro nodo** (`POST /authority/complaints/{folio}/network-referral`,
+  operación `referToNetworkProsecutor`), se reutiliza el transporte del turnado entre nodos, pero
+  **no es un turnado**: la denuncia, su vía administrativa, su identidad sellada y el buzón se
+  quedan en el origen. El navegador de quien investiga (o substancia) elige al azar el folio de la
+  copia en el destino, re-cifra cada prueba guardada hacia la llave de la fiscalía en el directorio
+  firmado y la sube a su nodo por el enrutador ciego. El nodo de origen arma el paquete de la vista
+  (hechos y descriptores de las pruebas; nunca la identidad, las llaves de seguimiento ni los
+  mensajes), lo firma con su llave del directorio y lo entrega por el enrutador (operación de red
+  `receiveReferral`, que no tiene ruta v1 propia). El nodo destino verifica la firma contra el
+  directorio, que la autoridad de origen sea de ese nodo y que el destino sea su fiscalía, y crea
+  la **copia de lectura** con el folio de la vista (no el de la persona: ella sigue con su folio y
+  sus 8 palabras en el origen). La fiscalía la ve en su bandeja como una vista del mismo nodo, con
+  el aviso «Llegó por la red de …», y solo avanza la vía penal. Solo con el acuse del destino el
+  origen registra la vista: «Vista enviada al nodo … (folio de la vista: …)». Una denuncia con
+  identidad sellada también puede darse en vista: la identidad no viaja.
+- **Limitación: las etapas penales no regresan al origen.** La fiscalía las registra en su nodo;
+  el origen se queda en «Denuncia penal presentada» y la persona denunciante no ve en su
+  seguimiento los avances penales de una vista dada a otro nodo. La fiscalía los informa por
+  oficio. Sincronizarlas exigiría un canal de vuelta firmado entre nodos (trabajo futuro). La copia
+  de lectura tampoco sigue el cierre del origen: si la Contraloría cierra, la fiscalía conserva su
+  copia y puede seguir registrando la vía penal.
+- La copia no es una denuncia del nodo destino: no cuenta en sus datos abiertos, su estadística ni
+  sus reglas de escalamiento, y nadie le da seguimiento (sus llaves de seguimiento son al azar).
+- Sin `prosecutorAuthorityId` ni una fiscalía de la red (una fiscalía fuera de la red), la vista
+  se registra en el trámite y la denuncia y sus pruebas se remiten por oficio.
 - La copia de lectura sigue el trámite: si la Contraloría cierra la denuncia, la fiscalía la sigue
   viendo, pero ya no registra etapas (el trámite cerrado no admite actos).
 
@@ -335,7 +361,7 @@ competencia. La marca por ente (reglas `fundingSources` en la tabla de funciones
 | R19. Remisión a otro estado                                | ✓      | Turnado entre nodos                                                                       |
 | R20. Remisión a la Federación                              | ✓      | Turnado al nodo Federal                                                                   |
 | R21. Fondos federales en ente local                        | ◐      | Marca, aviso y guía para turnar; → reglas `fundingSources` en la tabla de funciones       |
-| R22. Vista al Ministerio Público y vía penal en paralelo   | ✓      | `refer_to_prosecutor` con `prosecutorAuthorityId`: copia de lectura en la fiscalía        |
+| R22. Vista al Ministerio Público y vía penal en paralelo   | ✓      | Copia de lectura en la fiscalía del nodo o de otro nodo (`referToNetworkProsecutor`)      |
 | R23. Denuncia penal directa                                | ✓      | La fiscalía inicia la vía penal                                                           |
 | R24. Determinaciones del MP e impugnación                  | ◐      | Etapas `prosecutor_determination` y `judicial_review`; → el tipo de determinación         |
 | R25. Salidas alternas                                      | ◐      | Etapa `alternative_exit`; → verificar artículos del CNPP                                  |

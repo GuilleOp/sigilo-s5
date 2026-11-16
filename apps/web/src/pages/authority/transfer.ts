@@ -7,6 +7,7 @@ import { SubmitComplaintResponseSchema } from '@sigilo/contracts';
 import type {
   AuthorityDirectory,
   ComplaintDetail,
+  DirectoryAuthority,
   EvidenceDescriptor,
   SubmitComplaintRequest,
 } from '@sigilo/contracts';
@@ -73,6 +74,104 @@ export function transferTargets(directory: AuthorityDirectory, ownAuthorityIds: 
   );
 }
 
+/** Pruebas re-cifradas hacia la autoridad destino y subidas a su nodo. */
+export interface ResealedEvidence {
+  evidence: EvidenceDescriptor[];
+  evidenceKeys: EscalationEvidenceKey[];
+}
+
+/**
+ * Abre cada prueba con la llave de la autoridad de la sesión, la vuelve a cifrar hacia la llave de
+ * `target` (con `targetFolio` en el AAD y la misma sal, así el compromiso no cambia) y la sube al
+ * nodo destino por el enrutador ciego. Con `skipMissing`, omite las pruebas cuyo archivo ya no está
+ * guardado (descartado o vencido); sin él, lanza `TransferBlockedError`.
+ * Seguridad: la prueba en claro solo existe en este navegador y se borra de la memoria al cifrarla.
+ */
+export async function resealEvidenceTo(input: {
+  token: string;
+  keys: AuthorityKeys;
+  authorityId: string;
+  detail: ComplaintDetail;
+  api: SigiloApi;
+  target: Pick<DirectoryAuthority, 'id' | 'keyId' | 'boxPublicKey'>;
+  targetFolio: string;
+  relayApi: ReturnType<typeof createRelayApi>;
+  proofs: ReturnType<typeof createProofProvider>;
+  progress: (message: string) => void;
+  skipMissing: boolean;
+}): Promise<ResealedEvidence> {
+  const { detail, progress, relayApi, proofs } = input;
+  const destinationKey = {
+    keyId: input.target.keyId,
+    publicKey: fromBase64Url(input.target.boxPublicKey),
+  };
+  const evidence: EvidenceDescriptor[] = [];
+  const evidenceKeys: EscalationEvidenceKey[] = [];
+  for (const [index, descriptor] of detail.evidence.entries()) {
+    progress(
+      `Cifrando la prueba ${index + 1} de ${detail.evidence.length} para la autoridad destino.`,
+    );
+    let blob: Blob;
+    try {
+      blob = await input.api.getEvidence(input.token, descriptor.evidenceId);
+    } catch {
+      if (input.skipMissing) continue;
+      throw new TransferBlockedError(
+        'Una de las pruebas ya no está guardada (se descartó o venció su retención). No se puede turnar completa.',
+      );
+    }
+    let opened;
+    try {
+      opened = await openForAuthority(
+        new Uint8Array(await blob.arrayBuffer()),
+        descriptor,
+        detail,
+        input.keys,
+        input.authorityId,
+      );
+    } catch (failure) {
+      throw new TransferBlockedError(
+        failure instanceof EvidenceUnreadableError
+          ? `No pudimos abrir una de las pruebas para volver a cifrarla: ${failure.message}`
+          : 'No pudimos abrir una de las pruebas para volver a cifrarla.',
+      );
+    }
+    // Seguridad: con la misma sal, el compromiso del contenido es el anclado aquí; la copia del
+    // destino queda ligada a la del origen sin revelar nada en la bitácora.
+    const resealed = await sealEvidence(
+      opened.plaintext,
+      destinationKey,
+      {
+        folio: input.targetFolio,
+        authorityId: input.target.id,
+        mediaType: descriptor.mediaType,
+      },
+      opened.isLegacy ? undefined : opened.salt,
+    );
+    opened.plaintext.fill(0);
+    if (!opened.isLegacy && resealed.commitment !== opened.commitment) {
+      throw new TransferBlockedError('La prueba re-cifrada no conserva su compromiso.');
+    }
+    progress(`Enviando la prueba ${index + 1} de ${detail.evidence.length} al nodo destino.`);
+    const uploaded = await sendWithProof(proofs, (proof) =>
+      relayApi.uploadEvidence(
+        new Blob([new Uint8Array(resealed.container)], { type: descriptor.mediaType }),
+        descriptor.mediaType,
+        proof,
+      ),
+    );
+    if (uploaded.sha256 !== resealed.sha256 || uploaded.sizeBytes !== resealed.container.length) {
+      throw new TransferBlockedError('El nodo destino no guardó una prueba tal como se envió.');
+    }
+    evidence.push(uploaded);
+    evidenceKeys.push({
+      evidenceId: uploaded.evidenceId,
+      fileKey: encodeFileKey(resealed.fileKey),
+    });
+  }
+  return { evidence, evidenceKeys };
+}
+
 /**
  * Turna la denuncia a una autoridad de otro nodo.
  * Seguridad: el sobre se cifra en este navegador hacia la llave del nodo destino del directorio
@@ -104,73 +203,19 @@ export async function transferToOtherNode(input: TransferInput): Promise<Transfe
 
   // El folio del destino se elige aquí, antes de volver a cifrar las pruebas: va en su AAD.
   const targetFolio = generateFolio();
-  const destinationKey = {
-    keyId: destination.authority.keyId,
-    publicKey: fromBase64Url(destination.authority.boxPublicKey),
-  };
-  const evidence: EvidenceDescriptor[] = [];
-  const evidenceKeys: EscalationEvidenceKey[] = [];
-  for (const [index, descriptor] of detail.evidence.entries()) {
-    progress(
-      `Cifrando la prueba ${index + 1} de ${detail.evidence.length} para la autoridad destino.`,
-    );
-    let blob: Blob;
-    try {
-      blob = await api.getEvidence(token, descriptor.evidenceId);
-    } catch {
-      throw new TransferBlockedError(
-        'Una de las pruebas ya no está guardada (se descartó o venció su retención). No se puede turnar completa.',
-      );
-    }
-    let opened;
-    try {
-      opened = await openForAuthority(
-        new Uint8Array(await blob.arrayBuffer()),
-        descriptor,
-        detail,
-        input.keys,
-        input.authorityId,
-      );
-    } catch (failure) {
-      throw new TransferBlockedError(
-        failure instanceof EvidenceUnreadableError
-          ? `No pudimos abrir una de las pruebas para volver a cifrarla: ${failure.message}`
-          : 'No pudimos abrir una de las pruebas para volver a cifrarla.',
-      );
-    }
-    // Seguridad: con la misma sal, el compromiso del contenido es el anclado aquí; la copia del
-    // destino queda ligada a la del origen sin revelar nada en la bitácora.
-    const resealed = await sealEvidence(
-      opened.plaintext,
-      destinationKey,
-      {
-        folio: targetFolio,
-        authorityId: destination.authority.id,
-        mediaType: descriptor.mediaType,
-      },
-      opened.isLegacy ? undefined : opened.salt,
-    );
-    opened.plaintext.fill(0);
-    if (!opened.isLegacy && resealed.commitment !== opened.commitment) {
-      throw new TransferBlockedError('La prueba re-cifrada no conserva su compromiso.');
-    }
-    progress(`Enviando la prueba ${index + 1} de ${detail.evidence.length} al nodo destino.`);
-    const uploaded = await sendWithProof(proofs, (proof) =>
-      relayApi.uploadEvidence(
-        new Blob([new Uint8Array(resealed.container)], { type: descriptor.mediaType }),
-        descriptor.mediaType,
-        proof,
-      ),
-    );
-    if (uploaded.sha256 !== resealed.sha256 || uploaded.sizeBytes !== resealed.container.length) {
-      throw new TransferBlockedError('El nodo destino no guardó una prueba tal como se envió.');
-    }
-    evidence.push(uploaded);
-    evidenceKeys.push({
-      evidenceId: uploaded.evidenceId,
-      fileKey: encodeFileKey(resealed.fileKey),
-    });
-  }
+  const { evidence, evidenceKeys } = await resealEvidenceTo({
+    token,
+    keys: input.keys,
+    authorityId: input.authorityId,
+    detail,
+    api,
+    target: destination.authority,
+    targetFolio,
+    relayApi,
+    proofs,
+    progress,
+    skipMissing: false,
+  });
 
   const request: SubmitComplaintRequest = {
     version: 1,

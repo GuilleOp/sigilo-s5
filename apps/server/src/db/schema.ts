@@ -919,6 +919,16 @@ CREATE TABLE function_table_proposals (
 CREATE INDEX function_table_proposals_by_time ON function_table_proposals (created_at);
 `;
 
+/**
+ * Migración 20: copias de lectura de las vistas al Ministerio Público que llegan de otro nodo. La
+ * copia vive en `complaints` (así la fiscalía la ve en su bandeja, la abre y avanza la vía penal
+ * como una vista del mismo nodo) con el origen firmado en `referral_origin_json`; no es una
+ * denuncia de este nodo, así que no cuenta en los datos abiertos, la estadística ni las reglas.
+ */
+const NETWORK_REFERRALS = `
+ALTER TABLE complaints ADD COLUMN referral_origin_json TEXT;
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -940,6 +950,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 17, sql: AUTHORITY_MFA },
   { version: 18, sql: FUNCTION_TABLE_PROPOSALS },
   { version: 19, sql: LEGAL_LIFECYCLE },
+  { version: 20, sql: NETWORK_REFERRALS },
 ];
 
 /** Versión más reciente del esquema. */

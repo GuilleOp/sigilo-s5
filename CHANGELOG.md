@@ -12,6 +12,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   da la vista re-cifra las llaves de las pruebas hacia la llave pública de la fiscalía; la
   fiscalía ve una copia de lectura (hechos, trámite y pruebas, sin la identidad sellada ni el
   buzón) y solo avanza la vía penal. La denuncia sigue con la Contraloría.
+- **La vista al Ministerio Público llega también a la fiscalía de otro nodo de la red** (por
+  ejemplo, de la Contraloría de Querétaro a la fiscalía federal del nodo Federal). Reutiliza el
+  transporte del turnado entre nodos sin ceder la denuncia: el navegador re-cifra las pruebas hacia
+  la llave de la fiscalía del directorio firmado y las sube a su nodo por el enrutador ciego; el nodo
+  de origen firma el paquete de la vista (hechos y pruebas, nunca la identidad sellada ni el buzón)
+  y lo entrega; el nodo destino verifica la firma y crea una copia de lectura con un folio propio de
+  la vista. El origen registra «Vista enviada al nodo … (folio de la vista: …)». Limitación: las
+  etapas penales que registra la fiscalía no regresan al origen. Migración 20
+  (`complaints.referral_origin_json`); la copia no cuenta en datos abiertos, estadística ni reglas.
 - **Contexto PDN de la dependencia** (`docs/contexto-pdn.md`): con `SIGILO_PDN_PUBLIC=1` el nodo
   consulta en vivo el directorio de entes de la PDN y el S6 (sin credenciales) para la ficha del
   panel. Solo usa datos institucionales, con caché de 24 h y sin enviar nada de la denuncia.

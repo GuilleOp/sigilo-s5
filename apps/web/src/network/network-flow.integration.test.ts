@@ -18,6 +18,7 @@ import type { AuthorityKeys } from '../crypto/authority.ts';
 import { openForAuthority, verifyEvidenceAnchor } from '../crypto/evidence.ts';
 import { createReceipt } from '../crypto/submission.ts';
 import { transferToOtherNode } from '../pages/authority/transfer.ts';
+import { networkProsecutions, referToOtherNode } from '../pages/authority/network-referral.ts';
 import { createSigiloApi } from '../services/api.ts';
 import { keyIdFor, toBase64Url } from '@sigilo/core';
 import type { DemoAuthorityId } from '@sigilo/red';
@@ -387,6 +388,109 @@ describe('ventanilla única por la red', () => {
     expect(reopened.plaintext).toEqual(opened.plaintext);
     expect(reopened.commitment).toBe(opened.commitment);
     expect(reopened.matchesAnchor).toBe(true);
+  });
+
+  it('vista a la fiscalía de otro nodo: re-cifra las pruebas hacia ella y la denuncia se queda', async () => {
+    const { network, client, directory } = await setup();
+    const comptroller = 'authority.comptroller-queretaro';
+    const fiscalia = 'authority.prosecutor-anticorruption';
+    // El selector ofrece la fiscalía federal (otro nodo), no la de Querétaro (la del mismo nodo
+    // sale del listado de autoridades del nodo).
+    const offered = networkProsecutions(directory, [comptroller]).map((item) => item.authority.id);
+    expect(offered).toContain(fiscalia);
+    expect(offered).not.toContain('authority.prosecutor-queretaro');
+    const draft = emptyDraft();
+    draft.mode = 'anonymous';
+    draft.facts = {
+      stateCode: '22',
+      municipalityCode: '',
+      entityId: 'VE-OBRAS',
+      offenseCode: 'LGRA-52',
+      periodMonth: '09',
+      periodYear: '2026',
+      accused: 'Servidor Ficticio Seis',
+      description: 'Hechos sintéticos con una foto de prueba para la vista al Ministerio Público.',
+    };
+    draft.evidence = [cleanPngItem('v')];
+    const destination = destinationFor(directory, comptroller);
+    const submitted = await submitReport(draft, UNUSED_API, () => undefined, {
+      solver: inlinePowSolver,
+      network: {
+        api: createRelayApi(
+          { authorityId: destination.authority.id, node: destination.node },
+          sameOriginRelaySender(client),
+        ),
+        keys: keysForDestination(destination),
+        authorityId: destination.authority.id,
+        authorityName: destination.authority.name,
+        nodeName: destination.node.name,
+      },
+    });
+    const panelApi = createSigiloApi(client);
+    await panelApi.applyProcedure(networkToken('queretaroIntake'), submitted.folio, {
+      action: 'accept',
+    });
+    const token = networkToken('queretaroInvestigator');
+    await panelApi.applyProcedure(token, submitted.folio, {
+      action: 'advance_stage',
+      stage: 'investigation',
+    });
+    const detail = await panelApi.getComplaint(token, submitted.folio);
+    const progress: string[] = [];
+    const state = await referToOtherNode({
+      token,
+      keys: authorityKeysOf(network, comptroller),
+      authorityId: comptroller,
+      detail,
+      directory,
+      targetAuthorityId: fiscalia,
+      basis: 'internal_control',
+      api: panelApi,
+      send: sameOriginRelaySender(client),
+      solver: inlinePowSolver,
+      onProgress: (message) => progress.push(message),
+    });
+    expect(state).toMatchObject({
+      assignedAuthorityId: comptroller,
+      criminalStage: 'criminal_complaint_filed',
+    });
+    expect(progress.join(' ')).toContain('enrutador ciego');
+    const after = await panelApi.getComplaint(token, submitted.folio);
+    const note =
+      after.procedure?.steps.find((step) => step.action === 'criminal_referral_filed')?.note ?? '';
+    const referralFolio = /folio de la vista: ([A-Z0-9-]+)/u.exec(note)?.[1];
+    if (referralFolio === undefined) throw new Error(`Sin folio de la vista: ${note}`);
+
+    // La fiscalía federal abre su copia de lectura y la prueba con su propia llave.
+    const federalApi = createSigiloApi(
+      createApiClient((input, init) =>
+        Promise.resolve(network.federal.app.request(`http://nodo-federal.invalid${input}`, init)),
+      ),
+    );
+    const fiscaliaToken = networkToken('federalProsecutor');
+    const copy = await federalApi.getComplaint(fiscaliaToken, referralFolio);
+    expect(copy.networkReferral?.fromAuthorityId).toBe(comptroller);
+    expect(copy.summary.assignedAuthorityId).toBe(comptroller);
+    const [descriptor] = copy.evidence;
+    if (descriptor === undefined) throw new Error('Sin prueba en la copia.');
+    const container = new Uint8Array(
+      await (await federalApi.getEvidence(fiscaliaToken, descriptor.evidenceId)).arrayBuffer(),
+    );
+    const opened = await openForAuthority(
+      container,
+      descriptor,
+      copy,
+      authorityKeysOf(network, fiscalia),
+      fiscalia,
+    );
+    expect(opened.matchesAnchor).toBe(true);
+    expect(opened.plaintext.subarray(0, 8)).toEqual(
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+    // El origen conserva su prueba: es una vista, no un turnado.
+    const [original] = detail.evidence;
+    if (original === undefined) throw new Error('Sin prueba en el origen.');
+    expect(network.queretaro.server.evidenceStore.read(original.evidenceId)).not.toBeNull();
   });
 
   it('nodo caído: la denuncia queda en la cola, se entrega al volver y se sigue con folio y palabras', async () => {

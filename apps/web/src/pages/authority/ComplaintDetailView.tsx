@@ -128,11 +128,23 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
           title="Vista al Ministerio Público recibida"
           testId="referral-copy-notice"
         >
-          <p>
-            Otra autoridad tiene la denuncia y lleva el procedimiento administrativo; te dio vista
-            por hechos que pueden ser delito. Ves los hechos y las pruebas cuyas llaves se
-            re-cifraron hacia tu llave pública, y registras las etapas de la vía penal.
-          </p>
+          {detail.networkReferral === undefined ? (
+            <p>
+              Otra autoridad tiene la denuncia y lleva el procedimiento administrativo; te dio vista
+              por hechos que pueden ser delito. Ves los hechos y las pruebas cuyas llaves se
+              re-cifraron hacia tu llave pública, y registras las etapas de la vía penal.
+            </p>
+          ) : (
+            <p data-testid="referral-copy-origin">
+              Llegó por la red de {detail.networkReferral.fromAuthorityName} (nodo{' '}
+              {detail.networkReferral.fromNodeName}), el{' '}
+              {formatDayDate(detail.networkReferral.sentOn)}. Esa autoridad tiene la denuncia y
+              lleva el procedimiento administrativo; te dio vista por hechos que pueden ser delito.
+              Este folio es el de tu copia de lectura, no el de la persona denunciante. Ves los
+              hechos y las pruebas, que se re-cifraron hacia tu llave pública, y registras aquí las
+              etapas de la vía penal (no se reflejan en el nodo de origen: infórmalas por oficio).
+            </p>
+          )}
           <p>
             La identidad sellada no se comparte contigo, ni los mensajes con la persona denunciante.
             Si la investigación penal la necesita, pídela a la autoridad que tiene la denuncia con

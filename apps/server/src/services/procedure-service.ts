@@ -275,11 +275,24 @@ function trackSeverity(
  * substanciación registra sus actuaciones con número de expediente. Una misma cuenta nunca
  * investiga y substancia (o juzga) la misma denuncia (LGRA art. 115).
  */
+/**
+ * Vista al Ministerio Público ya entregada a una fiscalía de otro nodo por el enrutador ciego (ver
+ * `network-referral-service.ts`): quién la recibió y el folio de su copia de lectura allá.
+ */
+export interface NetworkReferralDelivered {
+  toAuthorityId: string;
+  toAuthorityName: string;
+  toNodeId: string;
+  toNodeName: string;
+  referralFolio: string;
+}
+
 function plan(
   ctx: AppContext,
   account: AuthorityAccount,
   complaint: ComplaintRecord,
   request: ProcedureActionRequest,
+  delivered?: NetworkReferralDelivered,
 ): PlannedStep {
   const current = complaint.managementState;
   const assigned = assignedAuthorityOf(ctx, complaint);
@@ -604,6 +617,8 @@ function plan(
       // Fiscalía del nodo que la recibe en su bandeja: una autoridad de este nodo con papel de
       // fiscalía, distinta de la que tiene la denuncia. La denuncia no se reasigna.
       const target = request.prosecutorAuthorityId;
+      // A otro nodo solo se llega con la vista ya entregada por la red, nunca con este campo.
+      if (delivered !== undefined && target !== undefined) throw new ApiFailure('bad_request');
       if (
         target !== undefined &&
         (ctx.authorities.authority(target) === null ||
@@ -613,14 +628,16 @@ function plan(
         throw new ApiFailure('bad_request');
       }
       const basis = CRIMINAL_REFERRAL_BASES.find((item) => item.key === request.basis);
+      const withoutIdentity =
+        complaint.sealedIdentity === null
+          ? '.'
+          : '; la identidad sellada de la persona denunciante no se comparte con ella.';
       const delivery =
-        target === undefined
-          ? 'Esa fiscalía no está en este nodo: la denuncia y sus pruebas se le remiten por oficio.'
-          : `La fiscalía la recibe en su bandeja con los hechos y las pruebas${
-              complaint.sealedIdentity === null
-                ? '.'
-                : '; la identidad sellada de la persona denunciante no se comparte con ella.'
-            }`;
+        delivered !== undefined
+          ? `Vista enviada al nodo ${delivered.toNodeName} por la red (folio de la vista: ${delivered.referralFolio}): la fiscalía la recibe en su bandeja con los hechos y las pruebas re-cifradas hacia su llave${withoutIdentity} Las etapas de la vía penal se registran en ese nodo.`
+          : target === undefined
+            ? 'Esa fiscalía no está en este nodo: la denuncia y sus pruebas se le remiten por oficio.'
+            : `La fiscalía la recibe en su bandeja con los hechos y las pruebas${withoutIdentity}`;
       return {
         ...base,
         action: 'criminal_referral_filed',
@@ -635,6 +652,13 @@ function plan(
           referralBasis: request.basis,
           prosecutor: request.prosecutor,
           ...(target === undefined ? {} : { prosecutorAuthorityId: target }),
+          ...(delivered === undefined
+            ? {}
+            : {
+                prosecutorAuthorityId: delivered.toAuthorityId,
+                prosecutorNodeId: delivered.toNodeId,
+                referralFolio: delivered.referralFolio,
+              }),
           legalBasis: basis?.legalBasis.map(formatLegalReference).join('; '),
         }),
       };
@@ -1017,15 +1041,48 @@ function plan(
  * Lanza `not_found` si el folio no existe o la cuenta no es de la autoridad competente (ni el
  * Tribunal en sus etapas), sin distinguirlos; `forbidden`, `conflict` o `bad_request` según `plan`.
  */
+/**
+ * Comprueba, sin guardar nada, que la acción procede (las mismas validaciones que
+ * `applyProcedureAction`). Sirve antes de un paso que sale del nodo, como la vista a otro nodo.
+ */
+export function checkProcedureAction(
+  ctx: AppContext,
+  account: AuthorityAccount,
+  folio: string,
+  request: ProcedureActionRequest,
+  delivered?: NetworkReferralDelivered,
+): void {
+  const complaint = reachableComplaint(ctx, account, folio);
+  plan(ctx, account, complaint, request, delivered);
+}
+
+function reachableComplaint(
+  ctx: AppContext,
+  account: AuthorityAccount,
+  folio: string,
+): ComplaintRecord {
+  const complaint = ctx.complaints.find(folio);
+  // Seguridad: una denuncia de otra autoridad responde igual que una inexistente (SEC-17). El
+  // Tribunal solo la alcanza en sus etapas o con un recurso que él resuelve.
+  const isReachable =
+    complaint !== null &&
+    (isCompetent(ctx, account, complaint) ||
+      isCourtCompetent(ctx, account, complaint) ||
+      isProsecutionCompetent(ctx, account, complaint));
+  if (!isReachable) throw new ApiFailure('not_found');
+  return complaint;
+}
+
 export function applyProcedureAction(
   ctx: AppContext,
   account: AuthorityAccount,
   folio: string,
   request: ProcedureActionRequest,
+  delivered?: NetworkReferralDelivered,
 ): ProcedureState {
   try {
     const state = withTransaction(ctx.deps.db, () =>
-      applyInTransaction(ctx, account, folio, request),
+      applyInTransaction(ctx, account, folio, request, delivered),
     );
     // Después de guardar: al turnar o reasignar se revisa el conflicto de interés de la autoridad
     // que recibe; al cerrar con sanción, se verifica contra S3. Ambas solo informan.
@@ -1053,17 +1110,10 @@ function applyInTransaction(
   account: AuthorityAccount,
   folio: string,
   request: ProcedureActionRequest,
+  delivered?: NetworkReferralDelivered,
 ): ProcedureState {
-  const complaint = ctx.complaints.find(folio);
-  // Seguridad: una denuncia de otra autoridad responde igual que una inexistente (SEC-17). El
-  // Tribunal solo la alcanza en sus etapas o con un recurso que él resuelve.
-  const isReachable =
-    complaint !== null &&
-    (isCompetent(ctx, account, complaint) ||
-      isCourtCompetent(ctx, account, complaint) ||
-      isProsecutionCompetent(ctx, account, complaint));
-  if (!isReachable) throw new ApiFailure('not_found');
-  const planned = plan(ctx, account, complaint, request);
+  const complaint = reachableComplaint(ctx, account, folio);
+  const planned = plan(ctx, account, complaint, request, delivered);
   const now = ctx.deps.now();
   const legalOn = toMexicoCentralDay(now);
   const agreementDigest =

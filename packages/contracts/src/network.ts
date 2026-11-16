@@ -777,6 +777,7 @@ export const ROUTABLE_OPERATIONS = [
   'getTracking',
   'sendReporterMessage',
   'fileAppeal',
+  'receiveReferral',
 ] as const;
 
 export const RoutedBodySchema = z
@@ -808,9 +809,10 @@ export const RoutedRequestSchema = z
       description:
         'Autoridad destino dentro del nodo; solo la lee el nodo, que comprueba que la aloja y la entrega internamente.',
     }),
-    operationId: z
-      .enum(ROUTABLE_OPERATIONS)
-      .meta({ description: 'Operación del Estándar S5 que se pide al nodo.' }),
+    operationId: z.enum(ROUTABLE_OPERATIONS).meta({
+      description:
+        'Operación del Estándar S5 que se pide al nodo. `receiveReferral` (vista al Ministerio Público desde otro nodo, cuerpo `NetworkReferralDelivery` firmado por el nodo de origen) no tiene ruta v1 propia: solo llega por el buzón de red.',
+    }),
     query: z
       .record(z.string().max(64), z.string().max(256))
       .meta({ description: 'Parámetros de consulta de la operación.' }),

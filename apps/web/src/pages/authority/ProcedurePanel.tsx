@@ -74,6 +74,8 @@ import { PINNED_KEYS } from '../../config/pinned-keys.ts';
 import { useNetworkState } from '../../network/use-network-state.ts';
 import type { AuthoritySession } from './authority-session.ts';
 import { EvidenceKeysError, shareEvidenceKeys } from './evidence-keys.ts';
+import { networkProsecutions, referToOtherNode } from './network-referral.ts';
+import { TransferBlockedError } from './transfer.ts';
 import { ProcedureLifecycle } from './ProcedureLifecycle.tsx';
 
 interface ProcedurePanelProps {
@@ -250,7 +252,10 @@ interface Draft {
   isSigned: boolean;
   remedyOutcome: RemedyOutcome;
   referralBasis: CriminalReferralBasisKey;
-  /** Fiscalía del nodo que recibe la vista, `outside` (por oficio) o vacío (la primera del nodo). */
+  /**
+   * Fiscalía que recibe la vista: una del nodo, una de otro nodo del directorio firmado, `outside`
+   * (por oficio) o vacío (la primera del nodo; si no hay, la primera de la red).
+   */
   referralTarget: string;
   prosecutor: string;
   registryReference: string;
@@ -326,11 +331,21 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
   const targets = authorities.filter((item) => item.canReceive && item.authorityId !== current);
   // Fiscalías del nodo para la vista al Ministerio Público; si no hay, la vista va por oficio.
   const prosecutions = referralTargets(authorities, current);
+  // Fiscalías de otros nodos del directorio firmado: reciben la vista por el enrutador ciego.
+  const directory = network.kind === 'verified' ? network.directory : null;
+  const remoteProsecutions =
+    directory === null
+      ? []
+      : networkProsecutions(directory, [current ?? account.authorityId, account.authorityId]);
   const referralTarget =
     draft.referralTarget !== ''
       ? draft.referralTarget
-      : (prosecutions[0]?.authorityId ?? 'outside');
+      : (prosecutions[0]?.authorityId ?? remoteProsecutions[0]?.authority.id ?? 'outside');
   const referralProsecution = prosecutions.find((item) => item.authorityId === referralTarget);
+  const referralRemote =
+    referralProsecution === undefined
+      ? remoteProsecutions.find((item) => item.authority.id === referralTarget)
+      : undefined;
   // La fiscalía no lleva la vía administrativa: no ve sus plazos (art. 64 fr. II, prescripción…).
   const deadlines = visibleDeadlines(account, procedure);
   // Medida cautelar: durante la vista solo cabe la provisional (LGRA, arts. 126 y 127).
@@ -465,6 +480,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     if (
       action === 'refer_to_prosecutor' &&
       referralProsecution === undefined &&
+      referralRemote === undefined &&
       draft.prosecutor.trim().length < 3
     ) {
       found['referral-prosecutor'] = 'Escribe a qué fiscalía se dio vista.';
@@ -591,6 +607,18 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
               ...courtRecord(),
             };
       case 'refer_to_prosecutor':
+        if (referralRemote !== undefined) {
+          // A otro nodo: el nodo registra la vista al entregarla (ver `referToOtherNode`).
+          return {
+            action,
+            basis: draft.referralBasis,
+            prosecutor: `${referralRemote.authority.name} (${referralRemote.nodeName})`.slice(
+              0,
+              300,
+            ),
+            ...withNote,
+          };
+        }
         return referralProsecution === undefined
           ? { action, basis: draft.referralBasis, prosecutor: draft.prosecutor.trim(), ...withNote }
           : {
@@ -647,7 +675,27 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           api,
         });
       }
-      const state = await api.applyProcedure(session.token, detail.summary.folio, request);
+      // Vista a una fiscalía de otro nodo: este navegador re-cifra las pruebas hacia su llave del
+      // directorio firmado y las sube a su nodo por el enrutador; el nodo entrega la vista firmada.
+      const state =
+        request.action === 'refer_to_prosecutor' &&
+        referralRemote !== undefined &&
+        directory !== null
+          ? await referToOtherNode({
+              token: session.token,
+              keys: session.keys,
+              authorityId: account.authorityId,
+              detail,
+              directory,
+              targetAuthorityId: referralRemote.authority.id,
+              basis: request.basis,
+              ...(request.note === undefined ? {} : { note: request.note }),
+              api,
+              onProgress: (progress) => {
+                if (isMounted.current) setMessage(progress);
+              },
+            })
+          : await api.applyProcedure(session.token, detail.summary.folio, request);
       if (!isMounted.current) return;
       // Si la denuncia pasó a otra autoridad, ya no se puede volver a leer: no se recarga.
       // El Tribunal deja de ver la denuncia cuando sale de sus etapas (por ejemplo, al quedar firme
@@ -674,7 +722,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     } catch (failure) {
       if (isMounted.current) {
         setMessage(
-          failure instanceof EvidenceKeysError
+          failure instanceof EvidenceKeysError || failure instanceof TransferBlockedError
             ? failure.message
             : describeError(failure, 'No pudimos aplicar la acción. Inténtalo de nuevo.'),
         );
@@ -1159,11 +1207,13 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
               <p className="field__hint" data-testid="referral-hint">
                 La vía penal corre aparte y al mismo tiempo: la vista no detiene el procedimiento
                 administrativo, que sigue contigo.
-                {referralProsecution === undefined
-                  ? ' Esa fiscalía no está en este nodo: la denuncia y sus pruebas se le remiten por oficio.'
-                  : ' La fiscalía recibe en su bandeja una copia de lectura con los hechos y las pruebas: tu navegador vuelve a cifrar las llaves de las pruebas hacia la llave pública de la fiscalía (tu llave nunca sale). Solo ella registra las etapas de la vía penal.'}
+                {referralRemote !== undefined
+                  ? ` La fiscalía está en el nodo ${referralRemote.nodeName}: recibe por la red, en su bandeja, una copia de lectura con los hechos y las pruebas. Tu navegador vuelve a cifrar cada prueba hacia la llave pública de la fiscalía en el directorio firmado y la sube a su nodo por el enrutador ciego (tu llave nunca sale). La denuncia no se turna: sigue contigo. Solo ella registra las etapas de la vía penal, en su nodo; esas etapas no regresan aquí.`
+                  : referralProsecution === undefined
+                    ? ` Esa fiscalía no está en ${remoteProsecutions.length === 0 ? 'este nodo' : 'la red'}: la denuncia y sus pruebas se le remiten por oficio.`
+                    : ' La fiscalía recibe en su bandeja una copia de lectura con los hechos y las pruebas: tu navegador vuelve a cifrar las llaves de las pruebas hacia la llave pública de la fiscalía (tu llave nunca sale). Solo ella registra las etapas de la vía penal.'}
               </p>
-              {referralProsecution !== undefined && (
+              {(referralProsecution !== undefined || referralRemote !== undefined) && (
                 <p className="field__hint" data-testid="referral-identity-hint">
                   La identidad sellada no se comparte con la fiscalía, ni los mensajes con la
                   persona denunciante. Si la vía penal la necesita, la fiscalía la pide con
@@ -1198,9 +1248,18 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                     {item.name} (en este nodo)
                   </option>
                 ))}
-                <option value="outside">Otra fiscalía, fuera de este nodo (por oficio)</option>
+                {remoteProsecutions.map((item) => (
+                  <option key={item.authority.id} value={item.authority.id}>
+                    {item.authority.name} (nodo {item.nodeName}, por la red)
+                  </option>
+                ))}
+                <option value="outside">
+                  {remoteProsecutions.length === 0
+                    ? 'Otra fiscalía, fuera de este nodo (por oficio)'
+                    : 'Otra fiscalía, fuera de la red (por oficio)'}
+                </option>
               </SelectField>
-              {referralProsecution === undefined && (
+              {referralProsecution === undefined && referralRemote === undefined && (
                 <TextField
                   id="referral-prosecutor"
                   label="Nombre de la fiscalía"

@@ -249,16 +249,20 @@ const ResolveRemedyActionSchema = z.strictObject({
   note: PublicNoteSchema.optional(),
   courtRecord: CourtRecordSchema.optional(),
 });
-const ReferToProsecutorActionSchema = z.strictObject({
-  action: z.literal('refer_to_prosecutor'),
-  basis: z.enum(['internal_control', 'superior_audit', 'public_servant']).meta({
+/** Fundamento de la vista al Ministerio Público. */
+export const CriminalReferralBasisSchema = z
+  .enum(['internal_control', 'superior_audit', 'public_servant'])
+  .meta({
     description:
       'Fundamento: internal_control (LGRA, art. 10 fr. III), superior_audit (LGRA, art. 98) o public_servant (CNPP, art. 222).',
-  }),
+  });
+const ReferToProsecutorActionSchema = z.strictObject({
+  action: z.literal('refer_to_prosecutor'),
+  basis: CriminalReferralBasisSchema,
   prosecutor: z.string().min(3).max(300).meta({ description: 'Fiscalía que recibe la vista.' }),
   prosecutorAuthorityId: AuthorityIdSchema.optional().meta({
     description:
-      'Fiscalía del mismo nodo (autoridad con papel prosecution) que recibe la vista en su bandeja como copia de lectura: ve los hechos y las pruebas cuyas llaves se le re-cifraron, y solo avanza la vía penal. La denuncia no se reasigna. Sin este campo, la vista va por oficio a una fiscalía fuera del nodo.',
+      'Fiscalía del mismo nodo (autoridad con papel prosecution) que recibe la vista en su bandeja como copia de lectura: ve los hechos y las pruebas cuyas llaves se le re-cifraron, y solo avanza la vía penal. La denuncia no se reasigna. Sin este campo, la vista va por oficio a una fiscalía fuera del nodo; a una fiscalía de otro nodo de la red se da con `referToNetworkProsecutor`.',
   }),
   note: PublicNoteSchema.optional(),
 });

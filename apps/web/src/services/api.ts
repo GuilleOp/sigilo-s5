@@ -74,6 +74,7 @@ import type {
   SubmitComplaintResponse,
   TrackingCredentials,
   TrackingView,
+  NetworkReferralRequest,
   TransferComplaintRequest,
   TransferComplaintResponse,
   TransferReceiptRequest,
@@ -215,6 +216,12 @@ export interface SigiloApi {
   ): Promise<TransferComplaintResponse>;
   /** Comprobante del nodo destino, para que la persona vea su folio nuevo. */
   confirmTransfer(token: string, folio: string, request: TransferReceiptRequest): Promise<void>;
+  /** Vista al Ministerio Público hacia una fiscalía de otro nodo (pruebas ya re-cifradas). */
+  referToNetworkProsecutor(
+    token: string,
+    folio: string,
+    request: NetworkReferralRequest,
+  ): Promise<ProcedureState>;
   /** Denuncias escaladas a la supervisora de la sesión (solo cuentas de supervisión). */
   listEscalations(token: string): Promise<EscalationSummary[]>;
   /**
@@ -362,6 +369,11 @@ export function createSigiloApi(
     confirmTransfer: async (token, folio, request) => {
       await client.text(ROUTES.authorityTransferReceipt(folio), { bearer: token, json: request });
     },
+    referToNetworkProsecutor: (token, folio, request) =>
+      client.json(ROUTES.authorityNetworkReferral(folio), ProcedureStateSchema, {
+        bearer: token,
+        json: request,
+      }),
     listEscalations: (token) =>
       client.json(ROUTES.authorityEscalations, EscalationListSchema, { bearer: token }),
     deliverEscalation: (token, folio) =>

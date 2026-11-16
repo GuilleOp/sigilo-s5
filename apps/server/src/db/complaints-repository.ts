@@ -11,6 +11,7 @@ import {
   HpkeEnvelopeSchema,
   LegalStageSchema,
   ManagementStateSchema,
+  NetworkReferralOriginSchema,
   SignedReceiptSchema,
 } from '@sigilo/contracts';
 import type {
@@ -24,6 +25,7 @@ import type {
   HpkeEnvelope,
   LegalStage,
   ManagementState,
+  NetworkReferralOrigin,
   ReporterKeys,
   SignedReceipt,
 } from '@sigilo/contracts';
@@ -62,6 +64,11 @@ export interface ComplaintRecord {
   escalationEnvelope: HpkeEnvelope | null;
   /** Digesto de la corroboración ciega, si la persona la pidió (la etiqueta no se guarda aquí). */
   corroborationDigest: string | null;
+  /**
+   * Solo en la copia de lectura de una vista al Ministerio Público que llegó de otro nodo: su
+   * origen. La copia no es una denuncia de este nodo (no cuenta en datos abiertos ni reglas).
+   */
+  referralOrigin?: NetworkReferralOrigin | null;
 }
 
 /** Estado del trámite que cambia con cada acción de la autoridad. */
@@ -231,6 +238,9 @@ function toRecord(row: Row): ComplaintRecord {
       HpkeEnvelopeSchema.parse(JSON.parse(text)),
     ),
     corroborationDigest: readOptionalText(row, 'corroboration_digest'),
+    referralOrigin: parseOptional(readOptionalText(row, 'referral_origin_json'), (text) =>
+      NetworkReferralOriginSchema.parse(JSON.parse(text)),
+    ),
   };
 }
 
@@ -260,13 +270,14 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
        protection_requested, facts_json, sealed_identity_json, reporter_box_public_key,
        reporter_signing_public_key, auth_verifier, receipt_json, received_legal_on,
        assigned_authority, management_state, legal_stage, closure_reason, escalation_envelope_json,
-       corroboration_digest)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       corroboration_digest, criminal_stage, referral_origin_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const findStatement = db.prepare('SELECT * FROM complaints WHERE folio = ?');
   // Dentro del mismo día se ordena por folio (aleatorio) para no revelar el orden de llegada.
   const listStatement = db.prepare(
-    `SELECT ${SUMMARY_COLUMNS} FROM complaints ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
+    `SELECT ${SUMMARY_COLUMNS} FROM complaints WHERE referral_origin_json IS NULL
+     ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
   );
   // Dentro del mismo día se ordena por folio (aleatorio) para no revelar el orden de llegada.
   const listForAuthorityStatement = db.prepare(
@@ -328,14 +339,15 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
   );
   const rulesStatement = db.prepare(
     `SELECT folio FROM complaints
-     WHERE management_state <> 'closed'
-       OR closure_reason IN ('insufficient_information', 'channeled', 'inadmissible', 'joined')
+     WHERE referral_origin_json IS NULL
+       AND (management_state <> 'closed'
+         OR closure_reason IN ('insufficient_information', 'channeled', 'inadmissible', 'joined'))
      ORDER BY folio`,
   );
   const cellsStatement = db.prepare(
     `SELECT state_code, offense_code, received_month AS month, status, COUNT(*) AS total
      FROM complaints
-     WHERE received_month = ?
+     WHERE received_month = ? AND referral_origin_json IS NULL
      GROUP BY state_code, offense_code, month, status
      ORDER BY state_code, offense_code, month, status`,
   );
@@ -343,10 +355,12 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
   // Parámetros posicionales simples: el SQLite de Node 22 no acepta reutilizar `?1`.
   const monthsStatement = db.prepare(
     `WITH RECURSIVE months(month) AS (
-       SELECT MIN(received_month) FROM complaints WHERE received_month < ?
+       SELECT MIN(received_month) FROM complaints
+       WHERE received_month < ? AND referral_origin_json IS NULL
        UNION ALL
        SELECT (SELECT MIN(received_month) FROM complaints
-               WHERE received_month > months.month AND received_month < ?)
+               WHERE received_month > months.month AND received_month < ?
+                 AND referral_origin_json IS NULL)
        FROM months WHERE months.month IS NOT NULL
      )
      SELECT month FROM months WHERE month IS NOT NULL`,
@@ -382,6 +396,10 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
         record.closureReason,
         record.escalationEnvelope === null ? null : JSON.stringify(record.escalationEnvelope),
         record.corroborationDigest,
+        record.criminalStage,
+        record.referralOrigin === undefined || record.referralOrigin === null
+          ? null
+          : JSON.stringify(record.referralOrigin),
       );
     },
     find: (folio) => {

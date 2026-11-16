@@ -252,7 +252,9 @@ un recurso pendiente: primero registra su resolución y después cierra la denun
 También puedes dar vista al MP («Dar vista al Ministerio Público», ver manual 03, sección 5.10),
 igual que la investigadora: con una fiscalía de tu nodo, la recibe en su bandeja como copia de
 lectura con los hechos y las pruebas (tu navegador re-cifra sus llaves hacia ella), sin la
-identidad sellada; con una fiscalía fuera del nodo, se remite por oficio.
+identidad sellada; con una fiscalía de otro nodo, la recibe por la red como copia de lectura
+(sus etapas penales no regresan a tu trámite); con una fiscalía fuera de la red, se remite por
+oficio.
 
 ## 6. Qué hacer si algo falla
 

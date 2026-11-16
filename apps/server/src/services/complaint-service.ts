@@ -65,7 +65,15 @@ function assertRequestShape(ctx: AppContext, request: SubmitComplaintRequest): v
   }
 }
 
-function associateEvidence(ctx: AppContext, request: SubmitComplaintRequest, folio: string): void {
+/**
+ * Asocia a `folio` las pruebas ya subidas y sin denuncia (mismo digesto, tamaño y tipo), dentro de
+ * la cuota por denuncia. Lanza `bad_request` si alguna no corresponde.
+ */
+export function associateEvidence(
+  ctx: AppContext,
+  request: Pick<SubmitComplaintRequest, 'evidence'>,
+  folio: string,
+): void {
   const ids = request.evidence.map((item) => item.evidenceId);
   if (new Set(ids).size !== ids.length) throw new ApiFailure('bad_request');
   // Seguridad: cada denuncia ocupa a lo más su parte de la cuota de pruebas.

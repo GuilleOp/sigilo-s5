@@ -57,6 +57,9 @@ export const StepDetailsSchema = z.object({
   prosecutor: z.string().optional(),
   /** Fiscalía del nodo que recibió la vista en su bandeja (copia de lectura). */
   prosecutorAuthorityId: z.string().optional(),
+  /** Vista a una fiscalía de otro nodo: su nodo y el folio de la copia de lectura allá. */
+  prosecutorNodeId: z.string().optional(),
+  referralFolio: z.string().optional(),
   legalOutcome: LegalClosureReasonSchema.optional(),
   destination: ReferralDestinationSchema.optional(),
   funding: FederalFundingSchema.optional(),

@@ -31,9 +31,9 @@ Corrupción», nodo Federal).
 | ------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | Las denuncias que llegan a tu bandeja (directas o turnadas)               | Denuncias de otras autoridades que no te dieron vista               |
 | Hechos, pruebas y buzón cifrado de esas denuncias                         | La identidad sellada, salvo apertura con fundamento penal           |
-| Las vistas al MP que te da una autoridad de tu nodo (copia de lectura)    | En esas vistas: la identidad sellada y los mensajes con la persona  |
+| Las vistas al MP de tu nodo o de otro nodo de la red (copia de lectura)   | En esas vistas: la identidad sellada y los mensajes con la persona  |
 | En esas vistas: los hechos, el trámite y las pruebas re-cifradas hacia ti | El trámite administrativo de esas vistas como algo que puedas mover |
-| Las etapas penales que registras                                          | Vistas que se dieron por oficio a una fiscalía fuera de tu nodo     |
+| Las etapas penales que registras                                          | Vistas que se dieron por oficio (a una fiscalía fuera de la red)    |
 
 ## 3. Cómo entras
 
@@ -146,13 +146,39 @@ nodo responde `403`.
 - **No hay** buzón con la persona denunciante ni «Abrir la identidad sellada». Si la investigación
   penal necesita la identidad, pídela por oficio a la autoridad que te dio vista, con requerimiento
   fundado (CNPP, art. 109): ella la abre con las dos aprobaciones de siempre.
-- **La persona ve** tus etapas penales en su seguimiento, en paralelo a la administrativa.
+- **La persona ve** tus etapas penales en su seguimiento, en paralelo a la administrativa (solo en
+  las vistas de tu mismo nodo; ver 5.6).
+
+### 5.6 Vista recibida de otro nodo de la red
+
+- **Cuándo:** una autoridad de otro nodo te dio vista por la red. En la demostración, la
+  Contraloría de Querétaro (`contraloria.queretaro`, nodo Querétaro) da vista a la «Fiscalía
+  Ficticia Especializada en Hechos de Corrupción» (`fiscalia`, nodo Federal).
+- En tu bandeja aparece con un **folio propio de la vista**, marcada «Vista al Ministerio Público
+  (copia de lectura)». No es el folio de la persona denunciante: ella sigue con su folio y sus 8
+  palabras en el nodo de origen.
+- El aviso **«Vista al Ministerio Público recibida»** dice: «Llegó por la red de … (nodo …), el …
+  Esa autoridad tiene la denuncia y lleva el procedimiento administrativo… Este folio es el de tu
+  copia de lectura, no el de la persona denunciante…».
+- **Qué recibes:** los hechos y las pruebas. El navegador de quien te dio vista volvió a cifrar
+  cada prueba hacia la llave de tu fiscalía en el directorio firmado y la subió a tu nodo por el
+  enrutador ciego; tu navegador la abre con tu llave y comprueba que coincide con lo anclado. El
+  nodo de origen firmó la vista con su llave del directorio: tu nodo la rechaza si la firma no es
+  de ese nodo.
+- **Qué no recibes:** la identidad sellada, el buzón con la persona ni el trámite administrativo
+  del origen. Si necesitas la identidad, pídela por oficio a la autoridad de origen con
+  requerimiento fundado (CNPP, art. 109).
+- **Trámite:** igual que en 5.5, solo «Avanzar a la siguiente etapa legal» con las etapas «Vía
+  penal: …».
+- **Tus etapas penales no regresan al nodo de origen** (limitación del prototipo): allá la
+  denuncia queda en «Denuncia penal presentada» y la persona no ve tus avances. Infórmalos por
+  oficio a la autoridad que te dio vista.
 
 ## 6. Qué hacer si algo falla
 
 | Síntoma                                            | Qué hacer                                                                                                           |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Mi bandeja está vacía aunque un OIC dio vista      | El OIC eligió «Otra fiscalía, fuera de este nodo (por oficio)» o es de otro nodo: pídela por los medios oficiales   |
+| Mi bandeja está vacía aunque un OIC dio vista      | El OIC eligió «Otra fiscalía, fuera de la red (por oficio)»: pídela por los medios oficiales                        |
 | En una vista recibida no veo una prueba            | Quien dio la vista no pudo re-cifrar su llave hacia ti; pídele que vuelva a compartir las llaves                    |
 | No veo «Vía penal: Iniciar la investigación penal» | La denuncia ya tiene etapa administrativa; usa «El Ministerio Público inició la investigación» después de una vista |
 | No veo «Iniciar la investigación» ni «Dar vista»   | Es a propósito: tu fiscalía solo lleva la vía penal                                                                 |
@@ -161,8 +187,9 @@ nodo responde `403`.
 
 ## 7. Limitaciones conocidas del prototipo
 
-- La vista al MP solo llega a tu bandeja si te la da una autoridad de **tu mismo nodo**; las de
-  otros nodos (por ejemplo, del nodo Federal a una fiscalía estatal) siguen por oficio.
+- Una vista que llega **de otro nodo** es una copia: tus etapas penales no se reflejan en el nodo de
+  origen ni en el seguimiento de la persona; infórmalas por oficio. Si el origen cierra la
+  denuncia, tu copia sigue abierta.
 - En una vista recibida no puedes pedir la apertura de la identidad: la pide la autoridad que tiene
   la denuncia.
 - Los tipos de determinación del MP y los recursos penales todavía no están tipados.

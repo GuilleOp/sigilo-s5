@@ -313,6 +313,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /ComplaintDetail/s5References,law,Sí,Alfanumérico,String,No,Ley o código.,ComplaintDetail,hasta 300 caracteres,,
 /ComplaintDetail/s5References,article,Sí,Alfanumérico,String,No,Artículo y fracción.,ComplaintDetail,hasta 80 caracteres,,
 /ComplaintDetail,procedure,No,Objeto,Object (ProcedureView),No,"Trámite de la denuncia con su línea de tiempo, plazos y reglas.",ComplaintDetail,,,
+/ComplaintDetail,networkReferral,No,Objeto,Object (NetworkReferralOrigin),No,"Solo en la copia de lectura de una vista al Ministerio Público que llegó de otro nodo: autoridad y nodo de origen, que conservan la denuncia.",ComplaintDetail,,,
 /ComplaintDetail,identityRequests,No,Arreglo,Array of IdentityOpeningRequestView,No,Solicitudes de apertura de la identidad y sus aprobaciones.,ComplaintDetail,,,
 /ComplaintDetail,contextSheet,No,Objeto,Object,No,"Ficha de contexto con prioridad explicable: cada factor dice por qué se aplicó y de qué fuente viene. Orienta, nunca decide.",ComplaintDetail,,,
 /ComplaintDetail/contextSheet,score,Sí,Numérico,Number,No,Puntaje: suma entera de los factores.,ComplaintDetail,,,
@@ -423,6 +424,11 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /TransferReceiptRequest,transferId,Sí,Alfanumérico,String,No,Identificador aleatorio de una apertura de identidad (16 bytes en hexadecimal).,TransferReceiptRequest,patrón ^[0-9a-f]{32}$,,5b1e0c9d8a7f6e5d4c3b2a1908f7e6d5
 /TransferReceiptRequest,receipt,Sí,Objeto,Object (SignedReceipt),No,Comprobante firmado por el servidor de que la denuncia fue recibida.,TransferReceiptRequest,,,
 /TransferReceiptRequest,request,Sí,Objeto,Object (SubmitComplaintRequest),No,Envío de una denuncia. En modo sealed lleva sealedIdentity; en modo anonymous no lleva identidad ni protectionRequested = true.,TransferReceiptRequest,,,
+/NetworkReferralRequest,toAuthorityId,Sí,Alfanumérico,String,No,Identificador estable de la autoridad.,NetworkReferralRequest,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.prosecutor-anticorruption
+/NetworkReferralRequest,basis,Sí,Alfanumérico,String (enum),No,"Fundamento: internal_control (LGRA, art. 10 fr. III), superior_audit (LGRA, art. 98) o public_servant (CNPP, art. 222).",NetworkReferralRequest,,internal_control; superior_audit; public_servant,internal_control
+/NetworkReferralRequest,referralFolio,Sí,Alfanumérico,String,No,Folio público aleatorio de la denuncia: 12 caracteres Base32 de Crockford (60 bits) en tres grupos de 4. No es secuencial.,NetworkReferralRequest,patrón ^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$,,T4VB-9KQX-2MHN
+/NetworkReferralRequest,evidence,Sí,Arreglo,Array of EvidenceDescriptor,No,Descriptores que devolvió el nodo destino al subir cada prueba re-cifrada; uno por cada prueba guardada.,NetworkReferralRequest,hasta 10 elementos,,
+/NetworkReferralRequest,note,No,Alfanumérico,String,No,Nota pública de la autoridad; la persona denunciante la lee tal cual.,NetworkReferralRequest,de 1 a 2000 caracteres,,
 /ImportClosuresRequest,acts,Sí,Arreglo,Array of Object,No,Acuerdos del lote (hasta 1000).,ImportClosuresRequest,hasta 1000 elementos,,
 /ImportClosuresRequest/acts,fileNumber,Sí,Alfanumérico,String,No,Expediente del acuerdo.,ImportClosuresRequest,de 1 a 64 caracteres,,OIC-IFFE-INV-2026-014
 /ImportClosuresRequest/acts,issuedOn,Sí,Fecha en formato ISO 8601,Date,No,Día del acuerdo.,ImportClosuresRequest,patrón ^\d{4}-\d{2}-\d{2}$,,2026-10-02
@@ -715,7 +721,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /RelayQueueReceipt,signature,Sí,Alfanumérico,String,No,"Firma Ed25519 de la operación sobre ""sigilo/red/relay-queue/v1:"" + forma canónica del acuse sin este campo.",RelayQueueReceipt,patrón ^[A-Za-z0-9_-]+$,,7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg…
 /RoutedRequest,v,Sí,Numérico,Number,No,Versión del formato (2).,RoutedRequest,valor fijo 2,,2
 /RoutedRequest,to,Sí,Alfanumérico,String,No,"Autoridad destino dentro del nodo; solo la lee el nodo, que comprueba que la aloja y la entrega internamente.",RoutedRequest,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.comptroller-queretaro
-/RoutedRequest,operationId,Sí,Alfanumérico,String (enum),No,Operación del Estándar S5 que se pide al nodo.,RoutedRequest,,getPowChallenge; uploadEvidence; submitComplaint; getTracking; sendReporterMessage; fileAppeal,getPowChallenge
+/RoutedRequest,operationId,Sí,Alfanumérico,String (enum),No,"Operación del Estándar S5 que se pide al nodo. receiveReferral (vista al Ministerio Público desde otro nodo, cuerpo NetworkReferralDelivery firmado por el nodo de origen) no tiene ruta v1 propia: solo llega por el buzón de red.",RoutedRequest,,getPowChallenge; uploadEvidence; submitComplaint; getTracking; sendReporterMessage; fileAppeal; receiveReferral,getPowChallenge
 /RoutedRequest,query,Sí,Objeto,Object,No,Parámetros de consulta de la operación.,RoutedRequest,,,
 /RoutedRequest,proofOfWork,Sí,Alfanumérico,String,No,"Valor de la cabecera de prueba de trabajo, o null.",RoutedRequest,,,null
 /RoutedRequest,body,Sí,Objeto,Object,No,"Cuerpo: none (sin cuerpo), json (valor JSON) o binary (tipo de medio y bytes en Base64URL).",RoutedRequest,,,
@@ -724,6 +730,28 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /RoutedReply,v,Sí,Numérico,Number,No,Versión del formato.,RoutedReply,valor fijo 1,,1
 /RoutedReply,status,Sí,Numérico,Number,No,Estatus HTTP que dio el nodo a la operación.,RoutedReply,de 100 a 599,,200
 /RoutedReply,body,Sí,Objeto,Object,No,"Cuerpo: none (sin cuerpo), json (valor JSON) o binary (tipo de medio y bytes en Base64URL).",RoutedReply,,,
+/NetworkReferralDelivery,package,Sí,Objeto,Object (NetworkReferralPackage),No,Paquete de la vista al Ministerio Público entre nodos: hechos y pruebas re-cifradas; nunca la identidad sellada ni el buzón.,NetworkReferralDelivery,,,
+/NetworkReferralDelivery,signature,Sí,Alfanumérico,String,No,Firma Ed25519 del nodo de origen (su llave del directorio) sobre el prefijo sigilo/red/vista/v1: y la forma canónica del paquete.,NetworkReferralDelivery,patrón ^[A-Za-z0-9_-]+$,,
+/NetworkReferralPackage,v,Sí,Numérico,Number,No,Versión del formato (1).,NetworkReferralPackage,valor fijo 1,,
+/NetworkReferralPackage,referralId,Sí,Alfanumérico,String,No,Identificador aleatorio de la vista (16 bytes en hexadecimal).,NetworkReferralPackage,patrón ^[0-9a-f]{32}$,,
+/NetworkReferralPackage,referralFolio,Sí,Alfanumérico,String,No,Folio de la copia de lectura en el nodo destino; lo elige el navegador de origen al azar (va en el AAD de las pruebas re-cifradas). No es el folio de la persona denunciante ni sirve para darle seguimiento.,NetworkReferralPackage,patrón ^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$,,K7Q2-M9XP-4RTD
+/NetworkReferralPackage,fromNodeId,Sí,Alfanumérico,String,No,Identificador estable del nodo.,NetworkReferralPackage,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
+/NetworkReferralPackage,fromAuthorityId,Sí,Alfanumérico,String,No,"Autoridad de origen, que conserva la denuncia y la vía administrativa.",NetworkReferralPackage,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oic-iffe
+/NetworkReferralPackage,toAuthorityId,Sí,Alfanumérico,String,No,Fiscalía destino (papel prosecution en el directorio firmado).,NetworkReferralPackage,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oic-iffe
+/NetworkReferralPackage,sentOn,Sí,Fecha en formato ISO 8601,Date,No,Día en que se dio la vista.,NetworkReferralPackage,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
+/NetworkReferralPackage,basis,Sí,Alfanumérico,String (enum),No,"Fundamento: internal_control (LGRA, art. 10 fr. III), superior_audit (LGRA, art. 98) o public_servant (CNPP, art. 222).",NetworkReferralPackage,,internal_control; superior_audit; public_servant,
+/NetworkReferralPackage,originMode,Sí,Alfanumérico,String (enum),No,"Modo de la denuncia en el origen. La identidad sellada no viaja: si la vía penal la necesita, se pide a la autoridad de origen.",NetworkReferralPackage,,anonymous; sealed,
+/NetworkReferralPackage,facts,Sí,Objeto,Object (ComplaintFacts),No,"Hechos legibles de la denuncia. Las claves de ubicación, ente y conducta salen de catálogos públicos; el texto libre nunca se publica.",NetworkReferralPackage,,,
+/NetworkReferralPackage,evidence,Sí,Arreglo,Array of EvidenceDescriptor,No,Pruebas ya re-cifradas hacia la fiscalía destino y subidas a su nodo por el enrutador.,NetworkReferralPackage,hasta 10 elementos,,
+/NetworkReferralReceipt,referralFolio,Sí,Alfanumérico,String,No,Folio público aleatorio de la denuncia: 12 caracteres Base32 de Crockford (60 bits) en tres grupos de 4. No es secuencial.,NetworkReferralReceipt,patrón ^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$,,K7Q2-M9XP-4RTD
+/NetworkReferralReceipt,receivedOn,Sí,Fecha en formato ISO 8601,Date,No,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",NetworkReferralReceipt,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
+/NetworkReferralOrigin,referralId,Sí,Alfanumérico,String,No,Identificador aleatorio de la vista (16 bytes en hexadecimal).,NetworkReferralOrigin,patrón ^[0-9a-f]{32}$,,
+/NetworkReferralOrigin,fromNodeId,Sí,Alfanumérico,String,No,Identificador estable del nodo.,NetworkReferralOrigin,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
+/NetworkReferralOrigin,fromNodeName,Sí,Alfanumérico,String,No,Nombre del nodo de origen.,NetworkReferralOrigin,de 1 a 300 caracteres,,
+/NetworkReferralOrigin,fromAuthorityId,Sí,Alfanumérico,String,No,Identificador estable de la autoridad.,NetworkReferralOrigin,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oic-iffe
+/NetworkReferralOrigin,fromAuthorityName,Sí,Alfanumérico,String,No,Nombre de la autoridad de origen en el directorio.,NetworkReferralOrigin,de 1 a 300 caracteres,,
+/NetworkReferralOrigin,sentOn,Sí,Fecha en formato ISO 8601,Date,No,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",NetworkReferralOrigin,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
+/NetworkReferralOrigin,originMode,Sí,Alfanumérico,String (enum),No,"Modo de la denuncia: anonymous (sin identidad) o sealed (identidad cifrada que solo abre la autoridad, con registro público).",NetworkReferralOrigin,,anonymous; sealed,
 /NodeRegistration,v,Sí,Numérico,Number,No,Versión del formato.,NodeRegistration,valor fijo 1,,1
 /NodeRegistration,nodeId,Sí,Alfanumérico,String,No,Identificador estable del nodo.,NodeRegistration,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
 /NodeRegistration,sequence,Sí,Numérico,Number,No,Número creciente: un registro anterior no puede reenviarse.,NodeRegistration,mínimo 1,,1794268800
