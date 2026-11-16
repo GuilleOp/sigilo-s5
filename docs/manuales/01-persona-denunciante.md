@@ -232,9 +232,10 @@ art. 209, fr. V). Al cerrar, «Estado:» dice cómo concluyó (por ejemplo, «Co
 firme»), igual que el panel de la autoridad. Si tu denuncia es «Ninguna se parece», no verás los
 plazos de falta grave hasta que la autoridad la califique.
 
-> **Limitación conocida del prototipo.** La sentencia ya no se declara firme antes de que terminen
-> los 15 días hábiles para apelar, pero el sistema los cuenta **desde que se dicta**, no desde que
-> te la notifican. Si quieres apelar, presenta tu escrito cuanto antes y avisa por el buzón.
+Cuando la autoridad (o el Tribunal) registra que te notificó la resolución o la sentencia, la
+línea de tiempo dice **«Te notificaron la resolución el …»** (o «la sentencia») y «desde ahí corren
+los plazos». Los 15 días hábiles para apelar como tercera se cuentan desde ese día, y la sentencia
+no se declara firme antes de que terminen (LGRA, arts. 206, 209 fr. V y 215).
 
 ### 5.3 Mensajes con la autoridad
 
@@ -275,8 +276,9 @@ plazos de falta grave hasta que la autoridad la califique.
 ### 5.5 Inconformidad (solo con identidad sellada)
 
 - **Contra qué:** la calificación de **no grave** o la **abstención** (LGRA, arts. 101 y 102).
-- **Plazo:** 5 días hábiles desde que la autoridad te lo **notifica por el buzón** («El plazo de 5
-  días hábiles empieza cuando la autoridad te lo notifique por el buzón.»).
+- **Plazo:** 5 días hábiles desde que la autoridad te lo **notifica** («El plazo de 5 días hábiles
+  empieza cuando la autoridad te lo notifique por el buzón.»): con su mensaje por el buzón o con la
+  notificación que registra («Te notificaron … el …»); cuenta la primera.
 - **Requisito legal:** escrito con nombre, domicilio y **firma autógrafa** ante la autoridad
   investigadora (art. 109). Sin firma «no se tendrá por presentado».
 
@@ -341,7 +343,6 @@ sistema detecta una apertura que no te mostró, te avisa y te pide guardar tu fo
   criptográfico.
 - Una denuncia sellada que pasa por el buzón general ya no se puede abrir para la investigadora.
 - Las denuncias con identidad sellada no se pueden turnar a otro nodo.
-- El plazo para apelar se cuenta desde la sentencia, no desde que te la notifican.
 - La accesibilidad está revisada con herramientas y teclado; falta probarla con lectores de pantalla
   y con personas.
 

@@ -162,7 +162,10 @@ denunciante no ve esos dos plazos hasta que califiques.
   en 5 días hábiles con escrito firmado (arts. 102, 103 y 109). El auditor revisa el acuerdo.» Si el
   auditor marca dos o más señales, se escala a la supervisión («Calificación de no grave con dos o
   más señales del auditor»; LGRA, art. 64, fr. I).
-- Envía después el mensaje de notificación por el buzón.
+- Notifícala después: con el mensaje por el buzón o con «Acción»: **«Registrar la notificación»**
+  («Día de la notificación», vacío para hoy; «A quién se notificó»: «La persona denunciante (si se
+  identificó)»). Cuenta la primera de las dos: desde ese día corren los 5 dh para inconformarse
+  (LGRA, arts. 102 y 103), y la persona lee «Te notificaron la calificación de falta no grave el …».
 
 ### 5.7 Presentar el IPRA
 
@@ -276,7 +279,7 @@ autoridad», «Nota pública para la persona» y «Turnar a otro nodo». Dentro 
   después del … (LGRA, art. 74).» (cuenta 3 años, o 7 si es grave, desde el primer día del mes de
   los hechos).
 - Desde que presentas el IPRA, el cierre ya no es un archivo: lleva su motivo legal obligatorio
-  (ver manual 04, sección 5.10).
+  (ver manual 04, sección 5.11).
 - **La persona ve:** «Archivada» con el fundamento y, si se reabre, la reapertura.
 
 ### 5.14 Abrir la identidad sellada (dos personas)
@@ -342,7 +345,7 @@ envíos sin valor. La persona lo ve y queda en la bitácora pública.
 | No sale «Abrir identidad aprobada»                         | Falta la aprobación de otra cuenta                                     |
 | «La identidad de esta denuncia se selló con otra llave…»   | Pasó por el buzón general; no se puede abrir                           |
 | «Turnar a otro nodo» se niega                              | Es sellada: reasigna dentro del nodo                                   |
-| No aparece el aviso de inconformidad para la persona       | Falta tu mensaje de notificación por el buzón                          |
+| No aparece el aviso de inconformidad para la persona       | Falta notificarla: mensaje por el buzón o «Registrar la notificación»  |
 | «Cuidado: lo anclado no coincide…»                         | No uses la prueba; avisa a supervisión                                 |
 | «Sin conexión con la PDN…»                                 | El nodo no tiene internet o la PDN no responde                         |
 | «No pudimos aplicar la acción. Inténtalo de nuevo.»        | Revisa los campos marcados («Revisa los datos marcados de la acción.») |
