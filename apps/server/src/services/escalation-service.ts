@@ -8,8 +8,12 @@ import { ApiFailure } from '../http/errors.ts';
 import { logSecurityEvent } from '../security/authority-auth.ts';
 import type { AuthorityAccount } from '../security/authority-registry.ts';
 import { ruleTriggerView } from './procedure-view.ts';
+import { isForSupervision } from './rules-engine.ts';
 
-/** Indica si la cuenta es de supervisión de la autoridad que custodia la segunda llave. */
+/**
+ * Indica si la cuenta es de supervisión de la autoridad que custodia la segunda llave. La que solo
+ * recibe avisos (`alertsTo`) no lo es: nunca recibe el sobre ni ve la denuncia por escalamiento.
+ */
 function isSupervisor(ctx: AppContext, account: AuthorityAccount): boolean {
   return (
     hasFunction(account, 'supervision') &&
@@ -30,13 +34,21 @@ export function isEscalatedTo(ctx: AppContext, account: AuthorityAccount, folio:
 }
 
 /**
- * Denuncias escaladas a la autoridad de la cuenta, sin contenido, de las más recientes a las más
- * antiguas. Lanza `forbidden` si la cuenta no es de supervisión de la autoridad supervisora.
+ * Denuncias escaladas a la autoridad de la cuenta, o con un aviso para ella, sin contenido, de las
+ * más recientes a las más antiguas. Lo ve cualquier cuenta de supervisión: la supervisora con
+ * segunda llave y la que recibe los avisos sin ella (`alertsTo`), que también ve los avisos que se
+ * registraron sin supervisora antes de configurarlo. `canOpenCopy` dice si puede pedir el sobre.
+ * Lanza `forbidden` si la cuenta no es de supervisión.
  */
 export function listEscalations(ctx: AppContext, account: AuthorityAccount): EscalationSummary[] {
-  if (!isSupervisor(ctx, account)) throw new ApiFailure('forbidden');
+  if (!hasFunction(account, 'supervision')) throw new ApiFailure('forbidden');
+  const canOpenCopy = isSupervisor(ctx, account);
+  const unaddressed = ctx.procedure
+    .listUnaddressedTriggers(ctx.authorities.alertedBy(account.authorityId))
+    .filter((trigger) => isForSupervision(trigger.effect, trigger.ruleKey));
+  const triggers = [...ctx.procedure.listEscalationsFor(account.authorityId), ...unaddressed];
   const byFolio = new Map<string, EscalationSummary>();
-  for (const trigger of ctx.procedure.listEscalationsFor(account.authorityId)) {
+  for (const trigger of triggers) {
     const existing = byFolio.get(trigger.folio);
     const view = ruleTriggerView(trigger);
     if (existing === undefined) {
@@ -45,6 +57,7 @@ export function listEscalations(ctx: AppContext, account: AuthorityAccount): Esc
         escalatedOn: trigger.triggeredOn,
         fromAuthorityId: trigger.authorityId,
         rules: [view],
+        canOpenCopy,
       });
     } else {
       existing.rules.push(view);

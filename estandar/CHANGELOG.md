@@ -9,6 +9,12 @@ rompe algo está marcado como **Incompatible**.
 
 ## [Sin publicar]
 
+### Agregado
+
+- `EscalationSummary.canOpenCopy` (obligatorio): si la cuenta puede pedir la copia cerrada con la
+  segunda llave. Es falso para la supervisión que recibe los avisos de las reglas públicas sin
+  custodiar la segunda llave; `listEscalations` ya no responde `403` a esa supervisión.
+
 ## [0.4.0] - 2026-11-16
 
 Ciclo de vida legal completo de la denuncia según la LGRA y, en la vía penal, el CNPP. Todo es

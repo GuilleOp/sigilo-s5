@@ -292,6 +292,10 @@ export const EscalationSummarySchema = z
       description:
         'Reglas que se cumplieron: de escalamiento (effect escalate, entregan el sobre) o avisos para supervisión (effect alert, como el turnado vencido, sin sobre).',
     }),
+    canOpenCopy: z.boolean().meta({
+      description:
+        'Si la cuenta puede pedir la copia cerrada con la segunda llave. Es falso para la supervisión que recibe los avisos sin custodiar la segunda llave (alertsTo): ve el aviso, nunca la copia.',
+    }),
   })
   .meta({
     description:

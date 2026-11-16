@@ -29,6 +29,11 @@ export interface EscalationGroupEntry {
   fromAuthorityId: string;
   /** Si la denuncia trae el sobre de escalamiento (alguna de sus reglas escala). */
   isEscalated: boolean;
+  /**
+   * Si la cuenta puede abrir la copia: solo la supervisora con segunda llave. La supervisión que
+   * recibe los avisos sin segunda llave (`alertsTo`) ve la denuncia escalada sin copia.
+   */
+  canOpenCopy: boolean;
   /** Nombres de las otras reglas que se cumplieron para la misma denuncia. */
   otherRules: string[];
 }
@@ -77,6 +82,7 @@ export function groupEscalations(items: readonly EscalationSummary[]): Escalatio
         on: rule.on,
         fromAuthorityId: item.fromAuthorityId,
         isEscalated,
+        canOpenCopy: isEscalated && item.canOpenCopy,
         otherRules: [
           ...new Set(
             item.rules.filter((other) => other.ruleKey !== rule.ruleKey).map((other) => other.name),

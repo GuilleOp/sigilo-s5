@@ -24,6 +24,13 @@ export interface AuthorityRegistry {
   listAuthorities(): AuthorityProfile[];
   /** Supervisora de una autoridad, o `null` si no tiene. */
   supervisorOf(authorityId: string): string | null;
+  /**
+   * Autoridad cuya supervisión recibe los avisos de `authorityId` sin segunda llave (`alertsTo`;
+   * puede ser ella misma), o `null` si no se configuró.
+   */
+  alertsOf(authorityId: string): string | null;
+  /** Autoridades cuyos avisos recibe `authorityId` por `alertsTo` (puede incluirse a sí misma). */
+  alertedBy(authorityId: string): string[];
   /** Persona titular de la autoridad (para revisar el conflicto de interés), o `null`. */
   headOf(authorityId: string): { fullName: string; institution: string; stateCode: string } | null;
   /** Autoridades que supervisa `authorityId` (sin incluirla). */
@@ -64,7 +71,8 @@ export interface RegistryOptions {
 /**
  * Valida el archivo de cuentas y construye el registro.
  * Lanza error si el formato no es válido, si se repite un usuario, un seudónimo o una autoridad,
- * si una cuenta o una supervisión apunta a una autoridad que no existe, si el buzón general no es
+ * si una cuenta, una supervisión o un destino de avisos (`alertsTo`) apunta a una autoridad que no
+ * existe, si el buzón general no es
  * una autoridad del nodo, si hay más de una autoridad supervisora (el nodo tiene una sola segunda
  * llave) o si un digesto tiene un costo menor que el mínimo.
  * Seguridad: los mensajes nunca citan usuarios ni digestos.
@@ -99,6 +107,14 @@ export function createAuthorityRegistry(
       throw new Error('Una autoridad tiene una supervisora que no existe.');
     }
     supervisors.add(profile.supervisorId);
+  }
+  const alerts = new Map<string, string>();
+  for (const item of file.authorities) {
+    if (item.alertsTo === undefined) continue;
+    if (!authorities.has(item.alertsTo)) {
+      throw new Error('Una autoridad manda sus avisos a una autoridad que no existe.');
+    }
+    alerts.set(item.authorityId, item.alertsTo);
   }
   if (supervisors.size > 1) {
     throw new Error(
@@ -142,6 +158,9 @@ export function createAuthorityRegistry(
     authority: (authorityId) => authorities.get(authorityId) ?? null,
     listAuthorities: () => [...authorities.values()],
     supervisorOf: (authorityId) => authorities.get(authorityId)?.supervisorId ?? null,
+    alertsOf: (authorityId) => alerts.get(authorityId) ?? null,
+    alertedBy: (authorityId) =>
+      [...alerts.entries()].filter(([, target]) => target === authorityId).map(([from]) => from),
     headOf: (authorityId) => heads.get(authorityId) ?? null,
     supervisedBy: (authorityId) =>
       [...authorities.values()]

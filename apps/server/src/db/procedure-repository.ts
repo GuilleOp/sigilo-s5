@@ -120,6 +120,11 @@ export interface ProcedureRepository {
   listRuleTriggers(folio: string): StoredRuleTrigger[];
   /** Escalamientos a la supervisora, de los más recientes a los más antiguos. */
   listEscalationsFor(supervisorId: string): StoredRuleTrigger[];
+  /**
+   * Reglas registradas sin supervisora (`supervisor_id` nulo) de las autoridades dadas, de las más
+   * recientes a las más antiguas: las que se cumplieron antes de configurar `alertsTo`.
+   */
+  listUnaddressedTriggers(authorityIds: readonly string[]): StoredRuleTrigger[];
 }
 
 function parseDetails(text: string | null): StepDetails | null {
@@ -228,6 +233,11 @@ export function createProcedureRepository(db: DatabaseSync): ProcedureRepository
     `SELECT * FROM rule_triggers WHERE supervisor_id = ?
      ORDER BY triggered_on DESC, folio, rule_key`,
   );
+  const listUnaddressedStatement = db.prepare(
+    `SELECT * FROM rule_triggers
+     WHERE supervisor_id IS NULL AND authority_id IN (SELECT value FROM json_each(?))
+     ORDER BY triggered_on DESC, folio, rule_key`,
+  );
   return {
     insertStep: (folio, step) => {
       insertStepStatement.run(
@@ -287,5 +297,9 @@ export function createProcedureRepository(db: DatabaseSync): ProcedureRepository
     },
     listRuleTriggers: (folio) => listTriggersStatement.all(folio).map(toTrigger),
     listEscalationsFor: (supervisorId) => listEscalationsStatement.all(supervisorId).map(toTrigger),
+    listUnaddressedTriggers: (authorityIds) =>
+      authorityIds.length === 0
+        ? []
+        : listUnaddressedStatement.all(JSON.stringify(authorityIds)).map(toTrigger),
   };
 }

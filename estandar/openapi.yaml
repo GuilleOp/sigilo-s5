@@ -4267,6 +4267,7 @@ paths:
                           explanation: Si la autoridad no inicia el procedimiento correspondiente ante una posible falta grave en 30 días naturales, pasa a la autoridad supervisora.
                           effect: escalate
                           dueOn: '2026-12-05'
+                      canOpenCopy: true
         '401':
           description: '`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).'
           headers:
@@ -12057,11 +12058,15 @@ components:
           items:
             $ref: '#/components/schemas/RuleTriggerView'
           description: 'Reglas que se cumplieron: de escalamiento (effect escalate, entregan el sobre) o avisos para supervisión (effect alert, como el turnado vencido, sin sobre).'
+        canOpenCopy:
+          type: boolean
+          description: 'Si la cuenta puede pedir la copia cerrada con la segunda llave. Es falso para la supervisión que recibe los avisos sin custodiar la segunda llave (alertsTo): ve el aviso, nunca la copia.'
       required:
         - folio
         - escalatedOn
         - fromAuthorityId
         - rules
+        - canOpenCopy
       additionalProperties: false
       description: Denuncia escalada a la supervisora por una regla pública, o con un aviso para supervisión (turnado vencido) que no entrega el sobre.
     EscalationDelivery:

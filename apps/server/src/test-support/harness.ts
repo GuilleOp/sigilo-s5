@@ -8,6 +8,7 @@ import {
   ROUTES,
 } from '@sigilo/contracts';
 import type {
+  AuthorityAccountsFile,
   AuthorityFunction,
   ComplaintMode,
   EvidenceDescriptor,
@@ -201,19 +202,25 @@ export function testAuthorityRegistry(): AuthorityRegistry {
   return cachedRegistry;
 }
 
+/** Autoridades del archivo de cuentas de prueba. */
+type TestAuthorities = AuthorityAccountsFile['authorities'];
+
 /**
  * Registro de prueba con las cuentas que devuelve `transform` (por ejemplo, sin la cuenta del
- * Tribunal, o con una cuenta que cambió de función). Las contraseñas son las de `testPassword`.
+ * Tribunal, o con una cuenta que cambió de función) y las autoridades que devuelve
+ * `transformAuthorities` (por ejemplo, un nodo sin segunda llave). Las contraseñas son las de
+ * `testPassword`.
  */
 export function testAuthorityRegistryWith(
   transform: (accounts: [TestAccountName, TestAccount][]) => [TestAccountName, TestAccount][],
+  transformAuthorities: (authorities: TestAuthorities) => TestAuthorities = (list) => list,
 ): AuthorityRegistry {
   const accounts = transform(Object.entries(TEST_ACCOUNTS) as [TestAccountName, TestAccount][]);
   return createAuthorityRegistry(
     {
       version: 1,
       inboxAuthorityId: TEST_AUTHORITIES.inbox,
-      authorities: [
+      authorities: transformAuthorities([
         {
           authorityId: TEST_AUTHORITIES.inbox,
           name: 'Buzón general de prueba',
@@ -239,7 +246,7 @@ export function testAuthorityRegistryWith(
           name: 'Fiscalía de prueba en hechos de corrupción',
           role: 'prosecution',
         },
-      ],
+      ]),
       accounts: accounts.map(([name, account]) => ({
         ...account,
         functions: [...account.functions],

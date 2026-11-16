@@ -91,6 +91,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Junto al plazo de 5 días hábiles para inconformarse, el seguimiento decía «faltan 29 días
   hábiles»: contaba con el reloj del dispositivo. Ahora muestra los días que cuenta el nodo, los
   mismos de «Plazos que corren».
+- En un nodo sin supervisora con segunda llave (Querétaro), la titular de la Contraloría
+  (`contraloria.titular`) veía «Tu función no permite esta acción» en «Escalamientos que recibiste»
+  y los avisos se guardaban sin destinatario. Ahora el archivo de cuentas declara en cada autoridad
+  `alertsTo`, la autoridad cuya supervisión recibe sus avisos sin copia; toda cuenta de
+  supervisión ve la lista, y `EscalationSummary.canOpenCopy` dice si puede abrir la copia (solo la
+  supervisora con segunda llave). Los avisos guardados sin destinatario aparecen sin migración.
 
 ### Quitado
 

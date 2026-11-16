@@ -2,6 +2,7 @@
 // autoridades y cuentas, sesiones con vencimiento y rechazo de caracteres invisibles (PRV-23).
 import { describe, expect, it } from 'vitest';
 import { createAuthorityRegistry, emptyAuthorityRegistry } from './authority-registry.ts';
+import { buildDemoAccounts } from './demo-accounts.ts';
 import { hasInvisibleCharacters } from './invisible-text.ts';
 import { hashPassword, parsePasswordHash, verifyPassword } from './passwords.ts';
 import { createSessionStore } from './sessions.ts';
@@ -90,6 +91,55 @@ describe('registro de autoridades y cuentas', () => {
     } catch (error) {
       expect(String(error)).not.toContain('recepcion.uno');
     }
+  });
+
+  it('lee a quién van los avisos sin segunda llave (alertsTo) y rechaza un destino inexistente', () => {
+    const authorities = [
+      { authorityId: 'authority.buzon', name: 'Buzón', alertsTo: 'authority.contraloria' },
+      {
+        authorityId: 'authority.contraloria',
+        name: 'Contraloría',
+        alertsTo: 'authority.contraloria',
+      },
+      { authorityId: 'authority.oic', name: 'OIC municipal' },
+    ];
+    const registry = createAuthorityRegistry(accountsFile({ authorities }), {
+      minScryptLogN: 10,
+    });
+    expect(registry.supervisorAuthorityId).toBeNull();
+    expect(registry.alertsOf('authority.buzon')).toBe('authority.contraloria');
+    expect(registry.alertsOf('authority.contraloria')).toBe('authority.contraloria');
+    expect(registry.alertsOf('authority.oic')).toBeNull();
+    expect(registry.alertedBy('authority.contraloria').sort()).toEqual([
+      'authority.buzon',
+      'authority.contraloria',
+    ]);
+    expect(() =>
+      createAuthorityRegistry(
+        accountsFile({
+          authorities: [
+            { ...authorities[0], alertsTo: 'authority.no-existe' },
+            ...authorities.slice(1),
+          ],
+        }),
+        { minScryptLogN: 10 },
+      ),
+    ).toThrow('avisos');
+  });
+
+  it('en la demostración de Querétaro, sin segunda llave, los avisos van a la Contraloría', () => {
+    const { file } = buildDemoAccounts({ node: 'queretaro', logN: 10 });
+    const registry = createAuthorityRegistry(file, { minScryptLogN: 10 });
+    expect(registry.supervisorAuthorityId).toBeNull();
+    expect(registry.alertsOf('authority.buzon-queretaro')).toBe('authority.comptroller-queretaro');
+    expect(registry.alertsOf('authority.comptroller-queretaro')).toBe(
+      'authority.comptroller-queretaro',
+    );
+    // La Contraloría del Ejecutivo no supervisa a los OIC municipales (CPEUM, art. 115).
+    expect(registry.alertsOf('authority.oic-el-marques')).toBeNull();
+    expect(registry.findByUsername('contraloria.titular')?.authorityId).toBe(
+      'authority.comptroller-queretaro',
+    );
   });
 
   it('sin archivo de cuentas el panel queda cerrado', () => {

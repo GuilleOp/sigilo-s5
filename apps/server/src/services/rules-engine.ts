@@ -2,6 +2,7 @@
 // cada denuncia y registra en la bitácora las que se cumplen. Una regla de escalamiento deja la
 // denuncia disponible para la autoridad supervisora, que recibe la segunda llave.
 import { ESCALATION_RULES_VERSION, findEscalationRule } from '@sigilo/contracts';
+import type { EscalationRuleKey, RuleEffect } from '@sigilo/contracts';
 import {
   evaluateEscalationRules,
   randomBytes,
@@ -14,6 +15,14 @@ import { nodeCalendar } from './calendar.ts';
 import { withTransaction } from '../db/database.ts';
 import { assignedAuthorityOf } from './procedure-service.ts';
 import { procedureSnapshot } from './procedure-view.ts';
+
+/**
+ * Indica si una regla cumplida va a la supervisión: las de escalamiento y las alertas marcadas
+ * `notifiesSupervisor` (turnado vencido).
+ */
+export function isForSupervision(effect: RuleEffect, ruleKey: EscalationRuleKey): boolean {
+  return effect === 'escalate' || findEscalationRule(ruleKey)?.notifiesSupervisor === true;
+}
 
 /** Reglas registradas por una corrida del motor. */
 export interface RulesRunResult {
@@ -55,11 +64,14 @@ export function runEscalationRules(ctx: AppContext): RulesRunResult {
       if (known.has(`${rule.key}|${rule.anchorOn}`)) continue;
       // Si la autoridad ya no es de este nodo (turnada a otro), la supervisora del nodo (H1). Una
       // alerta para supervisión (turnado vencido) también la registra, pero sin sobre: la entrega
-      // de la segunda llave sigue exigiendo una regla `escalate`.
-      const isForSupervisor =
-        rule.effect === 'escalate' || findEscalationRule(rule.key)?.notifiesSupervisor === true;
+      // de la segunda llave sigue exigiendo una regla `escalate`. Un nodo sin segunda llave manda
+      // el aviso a quien declara `alertsTo` (por ejemplo, la titular de la contraloría), que lo ve
+      // sin copia: `deliverEscalationEnvelope` solo entrega el sobre a la supervisora.
+      const isForSupervisor = isForSupervision(rule.effect, rule.key);
       const supervisorId = isForSupervisor
-        ? (ctx.authorities.supervisorOf(authorityId) ?? ctx.authorities.supervisorAuthorityId)
+        ? (ctx.authorities.supervisorOf(authorityId) ??
+          ctx.authorities.supervisorAuthorityId ??
+          ctx.authorities.alertsOf(authorityId))
         : null;
       withTransaction(ctx.deps.db, () => {
         const event = ctx.ledger.record(
@@ -93,7 +105,14 @@ export function runEscalationRules(ctx: AppContext): RulesRunResult {
         });
       });
       result.triggered += 1;
-      if (rule.effect === 'escalate' && supervisorId !== null) result.escalated += 1;
+      // Solo cuenta como escalada la que llega a la supervisora que custodia la segunda llave.
+      if (
+        rule.effect === 'escalate' &&
+        supervisorId !== null &&
+        supervisorId === ctx.authorities.supervisorAuthorityId
+      ) {
+        result.escalated += 1;
+      }
     }
   }
   return result;

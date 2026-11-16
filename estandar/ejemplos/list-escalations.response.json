@@ -12,6 +12,7 @@
         "effect": "escalate",
         "dueOn": "2026-12-05"
       }
-    ]
+    ],
+    "canOpenCopy": true
   }
 ]

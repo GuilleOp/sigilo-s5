@@ -18,12 +18,13 @@ function rule(
   };
 }
 
-function item(folio: string, rules: RuleTriggerView[]): EscalationSummary {
+function item(folio: string, rules: RuleTriggerView[], canOpenCopy = true): EscalationSummary {
   return {
     folio,
     escalatedOn: rules[0]?.on ?? '2026-11-01',
     fromAuthorityId: 'authority.oic',
     rules,
+    canOpenCopy,
   };
 }
 
@@ -55,6 +56,7 @@ describe('groupEscalations', () => {
     expect(groups[0]?.entries[0]).toMatchObject({
       folio: 'AAAA-AAAA-AAA3',
       isEscalated: true,
+      canOpenCopy: true,
       otherRules: ['Regla escalation.downgrade-signals'],
     });
     expect(groups[3]?.entries[0]?.isEscalated).toBe(false);
@@ -73,8 +75,20 @@ describe('groupEscalations', () => {
         on: '2026-11-11',
         fromAuthorityId: 'authority.oic',
         isEscalated: false,
+        canOpenCopy: false,
         otherRules: [],
       },
+    ]);
+  });
+
+  it('sin segunda llave, la denuncia escalada no ofrece abrir la copia', () => {
+    const groups = groupEscalations([
+      item('AAAA-AAAA-AAA1', [rule('escalation.grave-stalled', '2026-12-10')], false),
+      item('AAAA-AAAA-AAA2', [rule('escalation.grave-stalled', '2026-12-11')]),
+    ]);
+    expect(groups[0]?.entries.map((entry) => [entry.isEscalated, entry.canOpenCopy])).toEqual([
+      [true, false],
+      [true, true],
     ]);
   });
 });

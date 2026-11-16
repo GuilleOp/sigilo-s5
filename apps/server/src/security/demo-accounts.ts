@@ -171,9 +171,26 @@ export const DEMO_QUERETARO_INBOX_AUTHORITY = 'authority.buzon-queretaro';
 /** Tribunal de Querétaro: tiene cuentas en el nodo, pero no recibe denuncias cifradas. */
 export const DEMO_QUERETARO_COURT_AUTHORITY = 'authority.tja-queretaro';
 
+/** Contraloría de Querétaro: su titular recibe los avisos del nodo, que no tiene segunda llave. */
+export const DEMO_QUERETARO_COMPTROLLER_AUTHORITY = 'authority.comptroller-queretaro';
+
+/**
+ * Autoridades del nodo Querétaro. El nodo no tiene supervisora con segunda llave: los avisos de la
+ * unidad receptora (que es de la Contraloría) y de la Contraloría van a su titular (`alertsTo`),
+ * sin copia. Los OIC municipales no: la Contraloría del Ejecutivo no supervisa a los municipios
+ * (CPEUM, art. 115).
+ */
 const QUERETARO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
-  { authorityId: DEMO_QUERETARO_INBOX_AUTHORITY, name: QUERETARO_NAMES.receptora },
-  { authorityId: 'authority.comptroller-queretaro', name: QUERETARO_NAMES.contraloria },
+  {
+    authorityId: DEMO_QUERETARO_INBOX_AUTHORITY,
+    name: QUERETARO_NAMES.receptora,
+    alertsTo: DEMO_QUERETARO_COMPTROLLER_AUTHORITY,
+  },
+  {
+    authorityId: DEMO_QUERETARO_COMPTROLLER_AUTHORITY,
+    name: QUERETARO_NAMES.contraloria,
+    alertsTo: DEMO_QUERETARO_COMPTROLLER_AUTHORITY,
+  },
   { authorityId: 'authority.oic-municipio-queretaro', name: QUERETARO_NAMES.oicMunicipioQueretaro },
   { authorityId: 'authority.oic-el-marques', name: QUERETARO_NAMES.oicElMarques },
   { authorityId: 'authority.oic-cea-queretaro', name: QUERETARO_NAMES.oicCea },

@@ -30,6 +30,7 @@ import {
   submitComplaint,
   SYNTHETIC_AGREEMENT,
   TEST_AUTHORITIES,
+  testAuthorityRegistryWith,
   testToken,
 } from '../test-support/harness.ts';
 import type { TestServer } from '../test-support/harness.ts';
@@ -109,6 +110,7 @@ describe('motor de reglas', () => {
             dueOn: '2026-10-22',
           }),
         ],
+        canOpenCopy: true,
       },
     ]);
     // Es un aviso: la segunda llave sigue exigiendo una regla de escalamiento.
@@ -207,7 +209,11 @@ describe('segunda llave', () => {
       ).json(),
     );
     expect(summaries).toEqual([
-      expect.objectContaining({ folio, fromAuthorityId: TEST_AUTHORITIES.inbox }),
+      expect.objectContaining({
+        folio,
+        fromAuthorityId: TEST_AUTHORITIES.inbox,
+        canOpenCopy: true,
+      }),
     ]);
     const response = await deliver(server, folio);
     expect(response.status).toBe(200);
@@ -277,5 +283,126 @@ describe('segunda llave', () => {
       escalationEnvelope: truncated,
     });
     expect(short.status).toBe(400);
+  });
+});
+
+/**
+ * Nodo sin segunda llave (como Querétaro): ninguna autoridad tiene supervisora y la supervisión del
+ * buzón recibe sus avisos y los del OIC (`alertsTo`).
+ */
+function setupWithoutSecondKey() {
+  const authorities = testAuthorityRegistryWith(
+    (accounts) => accounts,
+    (list) =>
+      list.map(({ supervisorId: _ignored, ...item }) =>
+        item.authorityId === TEST_AUTHORITIES.inbox || item.authorityId === TEST_AUTHORITIES.oic
+          ? { ...item, alertsTo: TEST_AUTHORITIES.inbox }
+          : item,
+      ),
+  );
+  return createTestServer({ authorities });
+}
+
+async function listAs(server: TestServer, name: 'inboxSupervision' | 'supervisor') {
+  const response = await getAsAuthority(server.app, ROUTES.authorityEscalations, testToken(name));
+  expect(response.status).toBe(200);
+  return EscalationSummarySchema.array().parse(await response.json());
+}
+
+describe('avisos sin segunda llave (alertsTo)', () => {
+  it('la supervisión recibe el turnado vencido y la escalada sin copia', async () => {
+    const server = setupWithoutSecondKey();
+    expect(server.ctx.authorities.supervisorAuthorityId).toBeNull();
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+      offenseCode: 'LGRA-59',
+    });
+    const { folio } = await submitComplaint(server, request);
+    server.setNow(new Date('2026-10-22T18:00:00Z'));
+    expect(server.runRules()).toMatchObject({ triggered: 1, escalated: 0 });
+    expect(server.ctx.procedure.listRuleTriggers(folio)[0]?.supervisorId).toBe(
+      TEST_AUTHORITIES.inbox,
+    );
+    expect(await listAs(server, 'inboxSupervision')).toEqual([
+      {
+        folio,
+        escalatedOn: '2026-10-22',
+        fromAuthorityId: TEST_AUTHORITIES.inbox,
+        rules: [expect.objectContaining({ ruleKey: 'alert.turn-overdue', effect: 'alert' })],
+        canOpenCopy: false,
+      },
+    ]);
+    // Una regla de escalamiento también le llega, pero sigue sin copia: no custodia la llave.
+    server.setNow(DAY_31);
+    expect(server.runRules()).toMatchObject({ triggered: 1, escalated: 0 });
+    const [summary] = await listAs(server, 'inboxSupervision');
+    expect(summary?.rules.map((item) => item.ruleKey)).toEqual([
+      'escalation.grave-stalled',
+      'alert.turn-overdue',
+    ]);
+    expect(summary?.canOpenCopy).toBe(false);
+    expect((await deliver(server, folio, testToken('inboxSupervision'))).status).toBe(403);
+    // Otra cuenta de supervisión que no recibe avisos: lista vacía, no «función no permitida».
+    expect(await listAs(server, 'supervisor')).toEqual([]);
+  });
+
+  it('recupera los avisos guardados sin destinatario antes de configurar alertsTo', async () => {
+    const server = setupWithoutSecondKey();
+    const folios: string[] = [];
+    for (let index = 0; index < 3; index += 1) {
+      const request = await buildComplaintRequest(server, {
+        mode: 'anonymous',
+        reporter: createReporter(),
+      });
+      folios.push((await submitComplaint(server, request)).folio);
+    }
+    const [overdue, inactive, other] = folios as [string, string, string];
+    const base = {
+      anchorOn: '2026-10-20',
+      triggeredOn: '2026-10-22',
+      dueOn: '2026-10-22',
+      supervisorId: null,
+    } as const;
+    server.ctx.procedure.insertRuleTrigger({
+      ...base,
+      folio: overdue,
+      ruleKey: 'alert.turn-overdue',
+      effect: 'alert',
+      authorityId: TEST_AUTHORITIES.oic,
+    });
+    // Una alerta que no es para supervisión no aparece.
+    server.ctx.procedure.insertRuleTrigger({
+      ...base,
+      folio: inactive,
+      ruleKey: 'alert.inactivity-warning',
+      effect: 'alert',
+      authorityId: TEST_AUTHORITIES.oic,
+    });
+    // La de una autoridad que no manda sus avisos a esta supervisión, tampoco.
+    server.ctx.procedure.insertRuleTrigger({
+      ...base,
+      folio: other,
+      ruleKey: 'alert.turn-overdue',
+      effect: 'alert',
+      authorityId: TEST_AUTHORITIES.other,
+    });
+    expect(await listAs(server, 'inboxSupervision')).toEqual([
+      expect.objectContaining({
+        folio: overdue,
+        fromAuthorityId: TEST_AUTHORITIES.oic,
+        canOpenCopy: false,
+      }),
+    ]);
+  });
+
+  it('una cuenta sin función de supervisión sigue sin ver la lista', async () => {
+    const server = setupWithoutSecondKey();
+    const response = await getAsAuthority(
+      server.app,
+      ROUTES.authorityEscalations,
+      testToken('inboxInvestigator'),
+    );
+    expect(response.status).toBe(403);
   });
 });

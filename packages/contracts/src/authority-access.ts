@@ -478,6 +478,13 @@ export const AuthorityAccountsFileSchema = z.strictObject({
         name: z.string().min(1).max(200),
         supervisorId: AuthorityIdSchema.optional(),
         /**
+         * Autoridad (puede ser la misma) cuya supervisión recibe los avisos de las reglas públicas
+         * de esta autoridad cuando el nodo no tiene supervisora con segunda llave: por ejemplo, la
+         * persona titular de una contraloría. Recibe el aviso, nunca la copia cerrada: el sobre de
+         * escalamiento solo se entrega a la supervisora (`supervisorId`). Cada nodo lo configura.
+         */
+        alertsTo: AuthorityIdSchema.optional(),
+        /**
          * Papel de la autoridad cuando el nodo no tiene directorio de red (o no la lista): `prosecution`
          * marca a la fiscalía, la única que avanza la vía penal. Con directorio manda su `role`.
          */

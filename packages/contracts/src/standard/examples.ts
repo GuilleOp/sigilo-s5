@@ -380,6 +380,7 @@ const escalationSummary: EscalationSummary = {
   escalatedOn: '2026-12-06',
   fromAuthorityId: AUTHORITY_ID,
   rules: [ruleView],
+  canOpenCopy: true,
 };
 
 const closureRecord: ClosureRecord = {
