@@ -19,6 +19,7 @@ import { MailboxMessageSchema, MailboxSequenceSchema } from './mailbox.ts';
 import { primaryOffenseCode } from './catalogs/index.ts';
 import { AccountIdSchema } from './authority-access.ts';
 import { AuthorityIdSchema } from './network.ts';
+import { NetworkReferralOriginSchema } from './network-referral.ts';
 import { Base64UrlSchema, DayDateSchema, FolioSchema, Sha256HexSchema } from './primitives.ts';
 import {
   ClosureReasonSchema,
@@ -209,6 +210,10 @@ export const ComplaintDetailSchema = z
         'Artículos equivalentes en el catálogo de faltas del S5 (ley de responsabilidades y código penal de la entidad), con su id del S5. Los calcula el nodo.',
     }),
     procedure: ProcedureViewSchema.optional(),
+    networkReferral: NetworkReferralOriginSchema.optional().meta({
+      description:
+        'Solo en la copia de lectura de una vista al Ministerio Público que llegó de otro nodo: autoridad y nodo de origen, que conservan la denuncia.',
+    }),
     identityRequests: z
       .array(IdentityOpeningRequestViewSchema)
       .optional()

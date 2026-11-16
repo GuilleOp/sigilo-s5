@@ -129,11 +129,25 @@ export const NETWORK_ACCOUNTS = {
     authorityId: 'authority.oversight-federal',
     functions: ['supervision'],
   },
+  // Fiscalía federal: recibe por la red las vistas al Ministerio Público de otros nodos.
+  federalProsecutor: {
+    accountId: 'acct-00000000000000f7',
+    username: 'fiscalia.anticorrupcion.federal',
+    authorityId: 'authority.prosecutor-anticorruption',
+    functions: ['intake', 'investigation'],
+  },
   queretaroIntake: {
     accountId: 'acct-00000000000000e1',
     username: 'recepcion.contraloria.queretaro',
     authorityId: 'authority.comptroller-queretaro',
     functions: ['intake'],
+  },
+  // Investigación de la Contraloría de Querétaro: da vista a la fiscalía de otro nodo.
+  queretaroInvestigator: {
+    accountId: 'acct-00000000000000e2',
+    username: 'investigacion.contraloria.queretaro',
+    authorityId: 'authority.comptroller-queretaro',
+    functions: ['investigation'],
   },
   // Operación del nodo (la SESEA): altas y competencia por dependencia; nunca ve denuncias.
   queretaroOperation: {
@@ -204,6 +218,11 @@ function accountsFile(nodeId: DemoNodeId): AuthorityAccountsFile {
       {
         authorityId: supervisorId,
         name: 'Unidad Ficticia de Supervisión de Órganos Internos de Control',
+      },
+      {
+        authorityId: 'authority.prosecutor-anticorruption',
+        name: 'Fiscalía Ficticia Especializada en Hechos de Corrupción',
+        role: 'prosecution',
       },
     ],
     accounts,
@@ -504,7 +523,7 @@ export function createTestNetwork(
 export async function sendThroughRouter(
   network: TestNetwork,
   to: string,
-  operation: { operationId: 'submitComplaint' | 'getTracking'; body: unknown },
+  operation: { operationId: 'submitComplaint' | 'getTracking' | 'receiveReferral'; body: unknown },
 ): Promise<RoutedReply> {
   const relay = await sealedRelay(network, to, operation);
   const response = await network.routerApp.request(`${ROUTER_URL}${NETWORK_ROUTES.relay}`, {
@@ -520,7 +539,11 @@ export async function sendThroughRouter(
 export async function sealedRelay(
   network: TestNetwork,
   to: string,
-  operation: { operationId: 'submitComplaint' | 'getTracking'; body: unknown; folio?: string },
+  operation: {
+    operationId: 'submitComplaint' | 'getTracking' | 'receiveReferral';
+    body: unknown;
+    folio?: string;
+  },
 ) {
   const authority = network.services.directory.authorities.find((item) => item.id === to);
   const node = network.services.directory.nodes.find((item) => item.id === authority?.nodeId);

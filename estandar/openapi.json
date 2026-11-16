@@ -4634,6 +4634,230 @@
         }
       }
     },
+    "/api/v1/authority/complaints/{folio}/network-referral": {
+      "post": {
+        "operationId": "referToNetworkProsecutor",
+        "tags": ["Autoridad"],
+        "summary": "Dar vista a una fiscalía de otro nodo",
+        "description": "Vista al Ministerio Público hacia una fiscalía (papel `prosecution`) de otro nodo del directorio firmado. Antes, el navegador de quien investiga vuelve a cifrar cada prueba guardada hacia la llave de la fiscalía destino (con `referralFolio` en el AAD) y la sube a ese nodo por el enrutador ciego; aquí manda los descriptores que le devolvió. El nodo arma el paquete `NetworkReferralPackage` (hechos y pruebas; nunca la identidad sellada, las llaves de seguimiento ni los mensajes), lo firma con su llave del directorio y lo entrega por el enrutador como la operación de red `receiveReferral`. Solo con el acuse del destino registra la vista (`criminal_referral_filed`, «Vista enviada al nodo …» con el folio de la copia). La denuncia no se reasigna ni se turna: la vía administrativa sigue aquí y las etapas penales se registran en el nodo de la fiscalía (no regresan). Investigación o substanciación de la autoridad que la tiene. Responde `400` si el destino no es una fiscalía vigente de otro nodo o no hay un descriptor por cada prueba guardada, y `409` si el nodo no está en una red con enrutador, la acción no procede o el destino no recibió la vista.",
+        "security": [{ "authorityBearer": [] }],
+        "parameters": [
+          {
+            "name": "folio",
+            "in": "path",
+            "required": true,
+            "description": "Folio de la denuncia.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NetworkReferralRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/refer-to-network-prosecutor.request.json`.",
+                  "value": {
+                    "toAuthorityId": "authority.prosecutor-anticorruption",
+                    "basis": "internal_control",
+                    "referralFolio": "T4VB-9KQX-2MHN",
+                    "evidence": [
+                      {
+                        "evidenceId": "16ed88d6f3ea7c6c4841645c43cd2c79",
+                        "mediaType": "image/jpeg",
+                        "sha256": "2fba3e8225db3948a2560e78ff0f3c161472b03d83f6505ee3b124ecc19405ed",
+                        "sizeBytes": 482113
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado del trámite con la vista registrada.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProcedureState" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/apply-procedure-action.response.json`.",
+                    "value": {
+                      "folio": "K7Q2-M9XP-4RTD",
+                      "status": "resolved",
+                      "managementState": "closed",
+                      "legalStage": "investigation",
+                      "closureReason": "attended",
+                      "assignedAuthorityId": "authority.oic-iffe"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "409": {
+            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "La acción no corresponde al estado actual del trámite."
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/authority/complaints/{folio}/transfer/receipt": {
       "post": {
         "operationId": "confirmTransfer",
@@ -12325,6 +12549,10 @@
             }
           },
           "procedure": { "$ref": "#/components/schemas/ProcedureView" },
+          "networkReferral": {
+            "description": "Solo en la copia de lectura de una vista al Ministerio Público que llegó de otro nodo: autoridad y nodo de origen, que conservan la denuncia.",
+            "$ref": "#/components/schemas/NetworkReferralOrigin"
+          },
           "identityRequests": {
             "description": "Solicitudes de apertura de la identidad y sus aprobaciones.",
             "type": "array",
@@ -13093,7 +13321,7 @@
                 "description": "Fiscalía que recibe la vista."
               },
               "prosecutorAuthorityId": {
-                "description": "Fiscalía del mismo nodo (autoridad con papel prosecution) que recibe la vista en su bandeja como copia de lectura: ve los hechos y las pruebas cuyas llaves se le re-cifraron, y solo avanza la vía penal. La denuncia no se reasigna. Sin este campo, la vista va por oficio a una fiscalía fuera del nodo.",
+                "description": "Fiscalía del mismo nodo (autoridad con papel prosecution) que recibe la vista en su bandeja como copia de lectura: ve los hechos y las pruebas cuyas llaves se le re-cifraron, y solo avanza la vía penal. La denuncia no se reasigna. Sin este campo, la vista va por oficio a una fiscalía fuera del nodo; a una fiscalía de otro nodo de la red se da con `referToNetworkProsecutor`.",
                 "type": "string",
                 "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
                 "examples": ["authority.oic-iffe"]
@@ -13594,6 +13822,43 @@
         "required": ["transferId", "receipt", "request"],
         "additionalProperties": false,
         "description": "Comprobante del nodo destino de un turnado entre nodos, con la denuncia que recibió para ligarlo a la denuncia turnada."
+      },
+      "NetworkReferralRequest": {
+        "type": "object",
+        "properties": {
+          "toAuthorityId": {
+            "type": "string",
+            "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable de la autoridad.",
+            "examples": ["authority.oic-iffe"]
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["internal_control", "superior_audit", "public_servant"],
+            "description": "Fundamento: internal_control (LGRA, art. 10 fr. III), superior_audit (LGRA, art. 98) o public_servant (CNPP, art. 222)."
+          },
+          "referralFolio": {
+            "type": "string",
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$",
+            "description": "Folio público aleatorio de la denuncia: 12 caracteres Base32 de Crockford (60 bits) en tres grupos de 4. No es secuencial.",
+            "examples": ["K7Q2-M9XP-4RTD"]
+          },
+          "evidence": {
+            "maxItems": 10,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EvidenceDescriptor" },
+            "description": "Descriptores que devolvió el nodo destino al subir cada prueba re-cifrada; uno por cada prueba guardada."
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+          }
+        },
+        "required": ["toAuthorityId", "basis", "referralFolio", "evidence"],
+        "additionalProperties": false,
+        "description": "Vista al Ministerio Público hacia una fiscalía de otro nodo, con las pruebas ya re-cifradas y subidas al nodo destino."
       },
       "ImportClosuresRequest": {
         "type": "object",
@@ -16051,9 +16316,10 @@
               "submitComplaint",
               "getTracking",
               "sendReporterMessage",
-              "fileAppeal"
+              "fileAppeal",
+              "receiveReferral"
             ],
-            "description": "Operación del Estándar S5 que se pide al nodo."
+            "description": "Operación del Estándar S5 que se pide al nodo. `receiveReferral` (vista al Ministerio Público desde otro nodo, cuerpo `NetworkReferralDelivery` firmado por el nodo de origen) no tiene ruta v1 propia: solo llega por el buzón de red."
           },
           "query": {
             "type": "object",
@@ -16149,6 +16415,164 @@
         "required": ["v", "status", "body"],
         "additionalProperties": false,
         "description": "Respuesta del nodo dentro del sobre de vuelta."
+      },
+      "NetworkReferralDelivery": {
+        "type": "object",
+        "properties": {
+          "package": { "$ref": "#/components/schemas/NetworkReferralPackage" },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo de origen (su llave del directorio) sobre el prefijo `sigilo/red/vista/v1:` y la forma canónica del paquete."
+          }
+        },
+        "required": ["package", "signature"],
+        "additionalProperties": false,
+        "description": "Cuerpo de la operación de red receiveReferral: el paquete de la vista firmado por el nodo de origen."
+      },
+      "NetworkReferralPackage": {
+        "type": "object",
+        "properties": {
+          "v": { "type": "number", "const": 1, "description": "Versión del formato (1)." },
+          "referralId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "description": "Identificador aleatorio de la vista (16 bytes en hexadecimal)."
+          },
+          "referralFolio": {
+            "type": "string",
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$",
+            "description": "Folio de la copia de lectura en el nodo destino; lo elige el navegador de origen al azar (va en el AAD de las pruebas re-cifradas). No es el folio de la persona denunciante ni sirve para darle seguimiento.",
+            "examples": ["K7Q2-M9XP-4RTD"]
+          },
+          "fromNodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "examples": ["node.queretaro"]
+          },
+          "fromAuthorityId": {
+            "type": "string",
+            "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Autoridad de origen, que conserva la denuncia y la vía administrativa.",
+            "examples": ["authority.oic-iffe"]
+          },
+          "toAuthorityId": {
+            "type": "string",
+            "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Fiscalía destino (papel prosecution en el directorio firmado).",
+            "examples": ["authority.oic-iffe"]
+          },
+          "sentOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día en que se dio la vista.",
+            "examples": ["2026-11-05"]
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["internal_control", "superior_audit", "public_servant"],
+            "description": "Fundamento: internal_control (LGRA, art. 10 fr. III), superior_audit (LGRA, art. 98) o public_servant (CNPP, art. 222)."
+          },
+          "originMode": {
+            "description": "Modo de la denuncia en el origen. La identidad sellada no viaja: si la vía penal la necesita, se pide a la autoridad de origen.",
+            "$ref": "#/components/schemas/ComplaintMode"
+          },
+          "facts": { "$ref": "#/components/schemas/ComplaintFacts" },
+          "evidence": {
+            "maxItems": 10,
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EvidenceDescriptor" },
+            "description": "Pruebas ya re-cifradas hacia la fiscalía destino y subidas a su nodo por el enrutador."
+          }
+        },
+        "required": [
+          "v",
+          "referralId",
+          "referralFolio",
+          "fromNodeId",
+          "fromAuthorityId",
+          "toAuthorityId",
+          "sentOn",
+          "basis",
+          "originMode",
+          "facts",
+          "evidence"
+        ],
+        "additionalProperties": false,
+        "description": "Paquete de la vista al Ministerio Público entre nodos: hechos y pruebas re-cifradas; nunca la identidad sellada ni el buzón."
+      },
+      "NetworkReferralReceipt": {
+        "type": "object",
+        "properties": {
+          "referralFolio": {
+            "type": "string",
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$",
+            "description": "Folio público aleatorio de la denuncia: 12 caracteres Base32 de Crockford (60 bits) en tres grupos de 4. No es secuencial.",
+            "examples": ["K7Q2-M9XP-4RTD"]
+          },
+          "receivedOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+            "examples": ["2026-11-05"]
+          }
+        },
+        "required": ["referralFolio", "receivedOn"],
+        "additionalProperties": false,
+        "description": "Acuse del nodo destino: folio de la copia de lectura y día de recepción."
+      },
+      "NetworkReferralOrigin": {
+        "type": "object",
+        "properties": {
+          "referralId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "description": "Identificador aleatorio de la vista (16 bytes en hexadecimal)."
+          },
+          "fromNodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "examples": ["node.queretaro"]
+          },
+          "fromNodeName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "Nombre del nodo de origen."
+          },
+          "fromAuthorityId": {
+            "type": "string",
+            "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable de la autoridad.",
+            "examples": ["authority.oic-iffe"]
+          },
+          "fromAuthorityName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "Nombre de la autoridad de origen en el directorio."
+          },
+          "sentOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+            "examples": ["2026-11-05"]
+          },
+          "originMode": { "$ref": "#/components/schemas/ComplaintMode" }
+        },
+        "required": [
+          "referralId",
+          "fromNodeId",
+          "fromNodeName",
+          "fromAuthorityId",
+          "fromAuthorityName",
+          "sentOn",
+          "originMode"
+        ],
+        "additionalProperties": false,
+        "description": "Vista recibida de otro nodo: autoridad y nodo de origen, que conservan la denuncia. Sin folio ni palabras de la persona denunciante."
       },
       "NodeRegistration": {
         "type": "object",

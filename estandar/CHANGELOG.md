@@ -19,6 +19,16 @@ rompe algo está marcado como **Incompatible**.
   reasigna; la fiscalía solo avanza la vía penal. Sin el campo, la vista sigue por oficio.
 - `AuthorityProfile.isProsecution` (opcional): la autoridad es una fiscalía y puede recibir la
   vista.
+- Operación `referToNetworkProsecutor` (`POST /authority/complaints/{folio}/network-referral`,
+  cuerpo `NetworkReferralRequest`): vista al Ministerio Público hacia una fiscalía de otro nodo del
+  directorio, con las pruebas ya re-cifradas y subidas a ese nodo. Responde el `ProcedureState`.
+- Operación de red `receiveReferral` en `RoutedRequest.operationId` (sin ruta v1 propia: solo por
+  el buzón de red). Su cuerpo es `NetworkReferralDelivery`: el `NetworkReferralPackage` (hechos,
+  descriptores de las pruebas, autoridades, día, fundamento y modo de origen; nunca la identidad
+  sellada ni el buzón) firmado por el nodo de origen con su llave del directorio. El nodo destino
+  responde `NetworkReferralReceipt` (`201`) o `400`.
+- `ComplaintDetail.networkReferral` (opcional, `NetworkReferralOrigin`): en la copia de lectura de
+  una vista que llegó de otro nodo, la autoridad y el nodo de origen.
 
 ## [0.4.0] - 2026-11-16
 

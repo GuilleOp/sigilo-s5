@@ -32,6 +32,7 @@ import { errorBody, errorResponse } from '../http/errors.ts';
 import { hostedAuthorities } from '../network/network-context.ts';
 import { requireBearer } from '../network/oauth-guard.ts';
 import { createSlidingCounter } from '../security/proof-of-work.ts';
+import { receiveNetworkReferral } from '../services/network-referral-service.ts';
 
 /**
  * Mayor sobre de red: el mismo tope que el enrutador, derivado del tramo mayor (H02). Antes eran
@@ -137,6 +138,16 @@ export function registerNetworkRoutes(app: Hono, ctx: AppContext): void {
             return true;
           },
           handle: async (routed, delivery) => {
+            // Vista al Ministerio Público desde otro nodo: no tiene ruta v1; solo llega por aquí,
+            // firmada por el nodo de origen (ver `receiveNetworkReferral`).
+            if (routed.operationId === 'receiveReferral') {
+              const reply = receiveNetworkReferral(
+                ctx,
+                routed.to,
+                routed.body.kind === 'json' ? routed.body.value : undefined,
+              );
+              return { v: 1, status: reply.status, body: { kind: 'json', value: reply.body } };
+            }
             const request = routedRequestToFetch(routed);
             ROUTED_TARGETS.set(request, routed.to);
             if (routed.folio !== undefined) {

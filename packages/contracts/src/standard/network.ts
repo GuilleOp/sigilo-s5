@@ -41,6 +41,12 @@ import {
   WitnessPolicySchema,
   WitnessSignatureSchema,
 } from '../network.ts';
+import {
+  NetworkReferralDeliverySchema,
+  NetworkReferralOriginSchema,
+  NetworkReferralPackageSchema,
+  NetworkReferralReceiptSchema,
+} from '../network-referral.ts';
 import type {
   AuthorityDirectory,
   CosignedNationalHead,
@@ -88,6 +94,10 @@ export const NETWORK_COMPONENTS = {
   RelayQueueReceipt: RelayQueueReceiptSchema,
   RoutedRequest: RoutedRequestSchema,
   RoutedReply: RoutedReplySchema,
+  NetworkReferralDelivery: NetworkReferralDeliverySchema,
+  NetworkReferralPackage: NetworkReferralPackageSchema,
+  NetworkReferralReceipt: NetworkReferralReceiptSchema,
+  NetworkReferralOrigin: NetworkReferralOriginSchema,
   NodeRegistration: NodeRegistrationSchema,
   NodeRegistrationReceipt: NodeRegistrationReceiptSchema,
   NodeHeadAcceptance: NodeHeadAcceptanceSchema,

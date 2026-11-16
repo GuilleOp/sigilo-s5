@@ -15,6 +15,7 @@ import {
   OpeningIdSchema,
   ProcedureActionRequestSchema,
   ImportClosuresRequestSchema,
+  NetworkReferralRequestSchema,
   ROUTES,
   TransferComplaintRequestSchema,
   TransferReceiptRequestSchema,
@@ -54,6 +55,7 @@ import {
 import { isProsecutionAuthority } from '../services/prosecution.ts';
 import { importClosures } from '../services/closure-import-service.ts';
 import { confirmTransfer, transferComplaint } from '../services/transfer-service.ts';
+import { referToNetworkProsecutor } from '../services/network-referral-service.ts';
 import { buildComplaintDetail } from '../services/views.ts';
 import { disabledPdnInstitution } from '../services/pdn-institution.ts';
 import { listedWithSemaphore } from '../services/turn-semaphore.ts';
@@ -281,6 +283,15 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
       return c.json(await transferComplaint(ctx, account, folio, request));
     },
   );
+
+  // Vista al Ministerio Público hacia una fiscalía de otro nodo: las pruebas ya van re-cifradas y
+  // subidas al nodo destino; aquí se firma y entrega el paquete por el enrutador ciego.
+  app.post(ROUTES.authorityNetworkReferral(':folio'), jsonBodyLimit, async (c) => {
+    const account = requireFunction(ctx, c, ['investigation', 'substantiation']);
+    const folio = folioOf(c);
+    const request = await readJson(c, NetworkReferralRequestSchema);
+    return c.json(await referToNetworkProsecutor(ctx, account, folio, request));
+  });
 
   app.post(ROUTES.authorityTransferReceipt(':folio'), jsonBodyLimit, async (c) => {
     const account = requireFunction(ctx, c, ['intake']);

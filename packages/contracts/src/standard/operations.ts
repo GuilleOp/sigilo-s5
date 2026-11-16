@@ -12,6 +12,7 @@ import {
   TransferComplaintRequestSchema,
   TransferComplaintResponseSchema,
   TransferReceiptRequestSchema,
+  NetworkReferralRequestSchema,
   AuthorityAccountViewSchema,
   AuthorityFunctionSchema,
   AuthorityMessageRequestSchema,
@@ -174,6 +175,7 @@ export const STANDARD_COMPONENTS = {
   TransferComplaintRequest: TransferComplaintRequestSchema,
   TransferComplaintResponse: TransferComplaintResponseSchema,
   TransferReceiptRequest: TransferReceiptRequestSchema,
+  NetworkReferralRequest: NetworkReferralRequestSchema,
   ImportClosuresRequest: ImportClosuresRequestSchema,
   ImportClosuresResponse: ImportClosuresResponseSchema,
   AuditSummary: AuditSummarySchema,
@@ -1031,6 +1033,32 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
       'conflict',
       'payload_too_large',
     ],
+  },
+  {
+    operationId: 'referToNetworkProsecutor',
+    method: 'post',
+    path: templated(ROUTES.authorityNetworkReferral, 'folio'),
+    tag: 'Autoridad',
+    summary: 'Dar vista a una fiscalía de otro nodo',
+    description:
+      'Vista al Ministerio Público hacia una fiscalía (papel `prosecution`) de otro nodo del directorio firmado. Antes, el navegador de quien investiga vuelve a cifrar cada prueba guardada hacia la llave de la fiscalía destino (con `referralFolio` en el AAD) y la sube a ese nodo por el enrutador ciego; aquí manda los descriptores que le devolvió. El nodo arma el paquete `NetworkReferralPackage` (hechos y pruebas; nunca la identidad sellada, las llaves de seguimiento ni los mensajes), lo firma con su llave del directorio y lo entrega por el enrutador como la operación de red `receiveReferral`. Solo con el acuse del destino registra la vista (`criminal_referral_filed`, «Vista enviada al nodo …» con el folio de la copia). La denuncia no se reasigna ni se turna: la vía administrativa sigue aquí y las etapas penales se registran en el nodo de la fiscalía (no regresan). Investigación o substanciación de la autoridad que la tiene. Responde `400` si el destino no es una fiscalía vigente de otro nodo o no hay un descriptor por cada prueba guardada, y `409` si el nodo no está en una red con enrutador, la acción no procede o el destino no recibió la vista.',
+    security: 'authorityBearer',
+    parameters: [FOLIO_PARAMETER],
+    requestBody: {
+      kind: 'json',
+      component: 'NetworkReferralRequest',
+      example: 'refer-to-network-prosecutor.request',
+    },
+    success: {
+      status: 200,
+      description: 'Estado del trámite con la vista registrada.',
+      body: {
+        kind: 'json',
+        component: 'ProcedureState',
+        example: 'apply-procedure-action.response',
+      },
+    },
+    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden', 'not_found', 'conflict'],
   },
   {
     operationId: 'confirmTransfer',

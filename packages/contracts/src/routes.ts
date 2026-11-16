@@ -48,6 +48,8 @@ export const ROUTES = {
   authorityTransfer: (folio: string) => `${COMPLAINT(folio)}/transfer`,
   /** `POST`: comprobante del nodo destino de un turnado, para avisar a la persona. */
   authorityTransferReceipt: (folio: string) => `${COMPLAINT(folio)}/transfer/receipt`,
+  /** `POST`: vista al Ministerio Público hacia una fiscalía de otro nodo, por el enrutador ciego. */
+  authorityNetworkReferral: (folio: string) => `${COMPLAINT(folio)}/network-referral`,
   /** `POST`: la autoridad descarta los archivos de las pruebas de la denuncia (queda en la bitácora). */
   authorityEvidenceDiscard: (folio: string) => `${COMPLAINT(folio)}/evidence/discard`,
   /** `POST`: llaves de los archivos de prueba re-cifradas hacia otra autoridad del nodo. */

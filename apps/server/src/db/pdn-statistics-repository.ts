@@ -107,10 +107,11 @@ export function createPdnStatisticsRepository(db: DatabaseSync): PdnStatisticsRe
   );
   const complaintsStatement = db.prepare(
     `SELECT folio, received_on, received_legal_on, state_code, offense_code FROM complaints
-     WHERE substr(received_on, 1, 7) = ?
+     WHERE referral_origin_json IS NULL
+       AND (substr(received_on, 1, 7) = ?
         OR folio IN (SELECT folio FROM procedure_steps WHERE substr(step_on, 1, 7) = ?)
         OR folio IN (SELECT folio FROM qualifications WHERE substr(on_day, 1, 7) = ?)
-        OR folio IN (SELECT folio FROM rule_triggers WHERE substr(triggered_on, 1, 7) = ?)
+        OR folio IN (SELECT folio FROM rule_triggers WHERE substr(triggered_on, 1, 7) = ?))
      ORDER BY folio`,
   );
   const stepsStatement = db.prepare(
@@ -128,6 +129,7 @@ export function createPdnStatisticsRepository(db: DatabaseSync): PdnStatisticsRe
   const statusStatement = db.prepare(
     `SELECT s.folio, s.status FROM status_changes s JOIN complaints c ON c.folio = s.folio
      WHERE substr(c.received_on, 1, 7) = ? AND s.changed_on <= ?
+       AND c.referral_origin_json IS NULL
      ORDER BY s.folio, s.position`,
   );
   const insertStatement = db.prepare(

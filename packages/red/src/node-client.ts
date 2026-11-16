@@ -102,6 +102,9 @@ const OPERATION_TARGETS: Readonly<
   getTracking: { method: 'POST', path: ROUTES.tracking },
   sendReporterMessage: { method: 'POST', path: ROUTES.trackingMessages },
   fileAppeal: { method: 'POST', path: ROUTES.trackingAppeal },
+  // Sin ruta v1 propia: el buzón del nodo la atiende antes de traducirla (vista al Ministerio
+  // Público desde otro nodo). Si llegara aquí, la ruta no existe y responde 404.
+  receiveReferral: { method: 'POST', path: '/api/v1/red/vistas' },
 };
 
 /**
