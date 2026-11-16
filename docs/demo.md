@@ -280,6 +280,34 @@ Con un solo nodo (sin Docker), lo mismo con las credenciales de
 pruebas, pasa el mismo archivo:
 `SIGILO_TEST_CLOCK_FILE=/tmp/sigilo-reloj npm run demo:codigo -- supervision-oic`.
 
+### Adelantar el reloj simulado (firmeza y otros plazos)
+
+La firmeza espera a que venzan los plazos de los recursos: la sentencia del Tribunal, 15 días
+hábiles de apelación (y 10 de revisión); la resolución no grave, 15 de revocación (LGRA, art. 206).
+El panel no ofrece «Declarar la sentencia firme» hasta entonces y dice desde qué día procede. Para
+mostrarlo en la demostración, adelanta el reloj simulado común de la red:
+
+```sh
+npm run demo:reloj              # muestra el día simulado
+npm run demo:reloj -- +16dh     # adelanta 16 días hábiles (calendario oficial)
+npm run demo:reloj -- +22d      # o 22 días naturales
+```
+
+- Escribe `.red-demo/reloj/desfase` (milisegundos sobre el reloj real) de forma atómica. Los nodos,
+  el índice y el enrutador lo montan en `/reloj` (solo lectura) y lo leen **en cada consulta**
+  (`createOffsetClock`): **no hace falta reiniciar** los contenedores.
+- Solo adelanta. Regresar el reloj confundiría la bitácora, que ya publicó los días cerrados; para
+  empezar de cero, `npm run demo:todo`.
+- Con el salto, la sesión del panel puede vencer: vuelve a entrar. Los códigos de 6 dígitos siguen
+  saliendo de `npm run demo:codigo`, que usa el mismo desfase.
+- `+16dh` cuenta con los días inhábiles oficiales. Si un nodo declaró días inhábiles locales
+  (`dias-inhabiles.json`), usa la fecha que muestra el panel («Podrás hacerlo a partir del …»).
+- Con un solo nodo (sin Docker), escribe los milisegundos en el archivo de
+  `SIGILO_TEST_CLOCK_FILE`.
+
+Un recurso presentado y resuelto también permite la firmeza sin esperar: así se muestra la rama de
+la apelación sin mover el reloj.
+
 ### Paso a paso, sin el comando único
 
 ```sh

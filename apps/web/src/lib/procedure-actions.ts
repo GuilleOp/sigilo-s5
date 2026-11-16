@@ -14,18 +14,22 @@ import {
   LEGAL_CLOSURE_REASONS,
   PRECAUTIONARY_RULE,
   REMEDY_KINDS,
+  remedyKindForFilingDeadline,
+  STAGE_WAIT_TEXTS,
   transitionsFrom,
 } from '@sigilo/contracts';
 import type {
   AdministrativeStage,
   AuthorityAccountView,
   ComplaintDetail,
+  DeadlineView,
   LegalClosureReasonOption,
   LegalStage,
   ProcedureFunction,
   ProcedureView,
   RemedyKind,
   RemedyKindOption,
+  StageTransition,
 } from '@sigilo/contracts';
 
 /** Cómo actúa la cuenta para un acto de una función: con la suya o como registro del Tribunal. */
@@ -84,6 +88,78 @@ function isBlocked(procedure: ProcedureView | undefined, to: LegalStage): boolea
   );
 }
 
+/**
+ * Plazo de `transition.afterDeadlines` que sigue abierto (el que vence más tarde), o `null`. Usa
+ * los plazos que ya calculó el nodo con su reloj y su calendario. Si el recurso de ese plazo se
+ * presentó en la etapa y ya se resolvió, no hay que esperar (LGRA, art. 206). El nodo decide.
+ */
+export function openWaitFor(
+  procedure: ProcedureView | undefined,
+  transition: Pick<StageTransition, 'afterDeadlines'>,
+): DeadlineView | null {
+  const keys = transition.afterDeadlines ?? [];
+  if (procedure === undefined || keys.length === 0) return null;
+  const open = procedure.deadlines.filter(
+    (deadline) => keys.includes(deadline.key) && deadline.status !== 'overdue',
+  );
+  const latest = open.reduce<DeadlineView | null>(
+    (best, item) => (best === null || item.dueOn > best.dueOn ? item : best),
+    null,
+  );
+  if (latest === null) return null;
+  const kinds = keys.map(remedyKindForFilingDeadline);
+  const hasResolvedRemedy = (procedure.remedies ?? []).some(
+    (remedy) =>
+      kinds.includes(remedy.kind) &&
+      remedy.status === 'resolved' &&
+      remedy.filedOn >= latest.startsOn,
+  );
+  return hasResolvedRemedy ? null : latest;
+}
+
+/** Paso que la cuenta dará cuando venza un plazo, con el aviso de hasta cuándo corre. */
+export interface StageWait {
+  key: AdministrativeStage;
+  label: string;
+  /** Qué sigue abierto («La sentencia todavía puede apelarse»). */
+  text: string;
+  dueOn: string;
+}
+
+/** Pasos que la cuenta podría dar, pero que esperan a que venza un plazo legal. */
+export function stageWaits(
+  account: Pick<AuthorityAccountView, 'functions'>,
+  detail: ComplaintDetail,
+): StageWait[] {
+  const procedure = detail.procedure;
+  if ((detail.summary.managementState ?? 'received_in_inbox') !== 'accepted') return [];
+  const waits: StageWait[] = [];
+  for (const transition of transitionsFrom(administrativeStage(procedure))) {
+    if (isBlocked(procedure, transition.to)) continue;
+    if (actingMode(account, transition.fn, procedure) === null) continue;
+    const wait = openWaitFor(procedure, transition);
+    if (wait === null) continue;
+    waits.push({
+      key: transition.to,
+      label: transition.label,
+      text: STAGE_WAIT_TEXTS[wait.key] ?? `Todavía corre el plazo «${wait.name}»`,
+      dueOn: wait.dueOn,
+    });
+  }
+  return waits;
+}
+
+/** Indica si hay un recurso sin resolver: mientras tanto no se cierra la denuncia. */
+export function hasPendingRemedy(procedure: ProcedureView | undefined): boolean {
+  return (procedure?.remedies ?? []).some((remedy) => remedy.status !== 'resolved');
+}
+
+/** Desde que se presenta el informe, el cierre lleva su motivo legal (LGRA, art. 100). */
+export function requiresLegalOutcome(detail: ComplaintDetail): boolean {
+  const stage = administrativeStage(detail.procedure);
+  return stage !== null && stage !== 'investigation' && stage !== 'qualification';
+}
+
 /** Etapas (administrativas y penales) a las que la cuenta puede pasar la denuncia. */
 export function stageOptions(
   account: Pick<AuthorityAccountView, 'functions'>,
@@ -99,6 +175,8 @@ export function stageOptions(
       if (!transition.severities.includes(severity)) continue;
     }
     if (isBlocked(procedure, transition.to)) continue;
+    // Firmeza e informe no presentado: esperan a que venza su plazo (se explica en el panel).
+    if (openWaitFor(procedure, transition) !== null) continue;
     const mode = actingMode(account, transition.fn, procedure);
     if (mode === null) continue;
     options.push({

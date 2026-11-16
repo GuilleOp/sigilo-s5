@@ -88,6 +88,32 @@ Encima de las dos capas corren los incidentes y los recursos, que no son etapas:
 cautelares, los cinco recursos con su efecto, la marca de recursos federales y su aviso, la
 inscripción de la sanción y el desistimiento.
 
+### Pasos y cierres que esperan un plazo
+
+Algunas transiciones llevan `afterDeadlines`: solo proceden cuando vencieron esos plazos, contados
+desde que la denuncia entró a la etapa con el mismo cálculo de días hábiles, el calendario y el
+reloj del nodo que muestran «Plazos que corren». El nodo responde `409 conflict` con el día
+(«La sentencia todavía puede apelarse hasta el 14 de enero de 2027…») y el panel no ofrece el paso:
+explica desde qué día procede.
+
+| Paso o cierre                                                             | Espera                                                                                        | Sin esperar si                                           | Fundamento         |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------ |
+| «Declarar la resolución firme» (`resolution → final`)                     | `revocation_filing`, 15 dh                                                                    | La revocación presentada ya se resolvió                  | LGRA 206, 210      |
+| «Declarar la sentencia firme» (`court_resolution → final`)                | `court_appeal_filing`, 15 dh, y `review_filing`, 10 dh                                        | La apelación o la revisión presentadas ya se resolvieron | LGRA 206, 215, 220 |
+| «Tener el informe por no presentado» (`report_prevented → investigation`) | `report_correction`, 3 dh                                                                     | —                                                        | LGRA 195           |
+| Cierre por `abstention`                                                   | Con identidad sellada, la notificación por el buzón y los 5 dh de `appeal_filing`             | Se presentó la inconformidad y se resolvió               | LGRA 101 a 103     |
+| Cierre por `expired` (caducidad)                                          | `inactivity_expiry`: 6 meses desde la última actuación                                        | —                                                        | LGRA 74            |
+| Cierre por `prescribed`                                                   | 3 años (no grave) o 7 (grave) desde el primer día del mes de los hechos, la cota más temprana | —                                                        | LGRA 74            |
+
+Además, con un recurso pendiente (presentado o admitido, sin resolver) no se puede cerrar; desde
+que se presenta el IPRA el cierre lleva su motivo legal (el archivo sin motivo es de la
+investigación, art. 100), y el cierre `sanctioned` exige la inscripción en el S3
+(`register_sanction`, art. 27), que se registra desde la firmeza.
+
+Límite conocido: los plazos de los recursos corren desde la **notificación** de la resolución, que
+el sistema no registra; se cuentan desde que se entra a la etapa, la cota mínima. Pendiente:
+registrar la notificación (`resolution_notice`) y contar desde ahí.
+
 ## Etapas, funciones, plazos y artículos
 
 «dh» = días hábiles; «dn» = días naturales. «Función» es quien da el paso; la del Tribunal la
@@ -113,7 +139,7 @@ puede registrar la substanciación si el estado no le dio cuentas (ver más abaj
 | `court_closing_arguments`  | Alegatos en el Tribunal                                       | —                                                             | Tribunal                                           | Alegatos 5 dh                                                         | LGRA 209 III               |
 | `court_instruction_closed` | Cierre de la instrucción en el Tribunal                       | —                                                             | Tribunal                                           | Resolver 30 + 30 dh                                                   | LGRA 209 IV                |
 | `court_resolution`         | Sentencia del Tribunal                                        | Dictar sentencia                                              | Tribunal                                           | Notificar 10 dh; apelación 15 dh; revisión 10 dh                      | LGRA 207, 209 IV y V       |
-| `final`                    | Resolución firme                                              | Sin recurso pendiente                                         | Substanciación (no grave) o Tribunal (grave)       | Informe de ejecución 10 días (grave)                                  | LGRA 206, 225              |
+| `final`                    | Resolución firme                                              | Vencidos los plazos de los recursos, o resueltos              | Substanciación (no grave) o Tribunal (grave)       | Informe de ejecución 10 días (grave)                                  | LGRA 206, 225              |
 | `executed`                 | Sanción ejecutada                                             | Registrar la ejecución                                        | Substanciación                                     | —                                                                     | LGRA 222, 225, 27          |
 
 Vía penal (`criminalStage`): `criminal_complaint_filed` (vista al Ministerio Público; LGRA 10 fr. III,
@@ -164,17 +190,17 @@ podía decir «faltan 29 días hábiles» junto a un plazo de 5).
 
 Van aparte de los seis motivos del S5, que se conservan para el mapeo con la bandeja de la SESNA.
 
-| Motivo legal                                                                | Motivo del S5              | Cabe en                                 | Estatus                 | Fundamento          |
-| --------------------------------------------------------------------------- | -------------------------- | --------------------------------------- | ----------------------- | ------------------- |
-| `archived`                                                                  | `insufficient_information` | Investigación o calificación            | `archived`              | LGRA 100            |
-| `abstention`                                                                | `attended`                 | Abstención, sin inconformidad pendiente | `final_no_sanction`     | LGRA 101            |
-| `prescribed`                                                                | `other`                    | Cualquier etapa                         | `prescribed_or_expired` | LGRA 74             |
-| `expired` (caducidad)                                                       | `other`                    | Después de la admisión                  | `prescribed_or_expired` | LGRA 74             |
-| `dismissed` (sobreseimiento)                                                | `other` o `inadmissible`   | Después de la admisión                  | `final_no_sanction`     | LGRA 196, 197       |
-| `incompetence` (remisión, con destino obligatorio dentro o fuera de la red) | `channeled`                | Cualquier etapa                         | `resolved`              | LGRA 14, 196 fr. II |
-| `sanctioned`                                                                | `attended`                 | Sanción ejecutada                       | `final_sanction`        | LGRA 206, 222       |
-| `responsible_no_sanction`                                                   | `attended`                 | Resolución firme                        | `final_no_sanction`     | LGRA 77, 206        |
-| `not_responsible`                                                           | `attended`                 | Resolución firme                        | `final_no_sanction`     | LGRA 206            |
+| Motivo legal                                                                | Motivo del S5              | Cabe en                                                 | Estatus                 | Fundamento          |
+| --------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------- | ----------------------- | ------------------- |
+| `archived`                                                                  | `insufficient_information` | Investigación o calificación                            | `archived`              | LGRA 100            |
+| `abstention`                                                                | `attended`                 | Abstención, vencida o resuelta la inconformidad         | `final_no_sanction`     | LGRA 101            |
+| `prescribed`                                                                | `other`                    | Cualquier etapa, corrido el plazo                       | `prescribed_or_expired` | LGRA 74             |
+| `expired` (caducidad)                                                       | `other`                    | Después de la admisión, con 6 meses sin actuación       | `prescribed_or_expired` | LGRA 74             |
+| `dismissed` (sobreseimiento)                                                | `other` o `inadmissible`   | Después de la admisión                                  | `final_no_sanction`     | LGRA 196, 197       |
+| `incompetence` (remisión, con destino obligatorio dentro o fuera de la red) | `channeled`                | Cualquier etapa                                         | `resolved`              | LGRA 14, 196 fr. II |
+| `sanctioned`                                                                | `attended`                 | Resolución firme o sanción ejecutada, inscrita en el S3 | `final_sanction`        | LGRA 27, 206, 222   |
+| `responsible_no_sanction`                                                   | `attended`                 | Resolución firme                                        | `final_no_sanction`     | LGRA 77, 206        |
+| `not_responsible`                                                           | `attended`                 | Resolución firme                                        | `final_no_sanction`     | LGRA 206            |
 
 El **desistimiento** no es un motivo de cierre: queda documentado (`record_withdrawal`) y no cierra,
 porque la investigación también es de oficio (LGRA, arts. 91 y 94).

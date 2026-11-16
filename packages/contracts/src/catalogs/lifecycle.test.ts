@@ -128,6 +128,17 @@ describe('recursos y motivos legales de cierre', () => {
     expect(REMEDY_KINDS.find((kind) => kind.key === 'appeal')?.filedBy).toContain('reporter');
   });
 
+  it('la firmeza espera los plazos de los recursos y el informe no presentado, el de corrección', () => {
+    expect(findTransition('resolution', 'final')?.afterDeadlines).toEqual(['revocation_filing']);
+    expect(findTransition('court_resolution', 'final')?.afterDeadlines).toEqual([
+      'court_appeal_filing',
+      'review_filing',
+    ]);
+    expect(findTransition('report_prevented', 'investigation')?.afterDeadlines).toEqual([
+      'report_correction',
+    ]);
+  });
+
   it('cada motivo legal tiene su fundamento, su estatus y su etapa', () => {
     expect(LEGAL_CLOSURE_REASONS.map((reason) => reason.key)).toEqual(
       LegalClosureReasonSchema.options,
@@ -141,7 +152,9 @@ describe('recursos y motivos legales de cierre', () => {
     expect(at('expired', 'investigation')).toBe(false);
     expect(at('expired', 'summoned')).toBe(true);
     expect(at('prescribed', null)).toBe(true);
-    expect(at('sanctioned', 'final')).toBe(false);
+    // La sanción firme se cierra con sanción desde la firmeza; el nodo exige la inscripción en el S3.
+    expect(at('sanctioned', 'resolution')).toBe(false);
+    expect(at('sanctioned', 'final')).toBe(true);
     expect(at('sanctioned', 'executed')).toBe(true);
     expect(findLegalClosureReason('incompetence')?.requiresDestination).toBe(true);
   });

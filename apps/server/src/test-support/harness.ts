@@ -420,6 +420,8 @@ export interface ComplaintOptions {
   evidence?: EvidenceDescriptor[];
   stateCode?: string;
   offenseCode?: string;
+  /** Mes de los hechos (`AAAA-MM`); por omisión, 2026-08. */
+  occurredPeriod?: string;
   /** Agrega la segunda llave: el sobre de escalamiento hacia la supervisora de prueba. */
   withEscalation?: boolean;
 }
@@ -444,7 +446,7 @@ export async function buildComplaintRequest(
       stateCode: options.stateCode ?? '22',
       entityId: 'VE-OBRAS',
       offenseCode: options.offenseCode ?? 'LGRA-52',
-      occurredPeriod: '2026-08',
+      occurredPeriod: options.occurredPeriod ?? '2026-08',
       accused: 'Titular de la unidad sintética de compras',
       description: 'Descripción sintética de hechos para pruebas automatizadas del servidor.',
     },

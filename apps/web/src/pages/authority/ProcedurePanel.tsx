@@ -46,11 +46,14 @@ import {
   administrativeStage,
   canRequestPrecautionary,
   closingFunction,
+  hasPendingRemedy,
   legalClosureOptions,
   precautionaryDecisionMode,
   remedyFilingOptions,
   remedyResolutionOptions,
+  requiresLegalOutcome,
   stageOptions,
+  stageWaits,
 } from '../../lib/procedure-actions.ts';
 import type { ActingMode } from '../../lib/procedure-actions.ts';
 import { api } from '../../services/api.ts';
@@ -160,7 +163,13 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
   }
   if (state === 'accepted') {
     if (stageOptions(account, detail).length > 0) actions.add('advance_stage');
-    if (actingMode(account, closingFunction(detail), procedure) !== null) actions.add('close');
+    // Con un recurso pendiente no se cierra: primero se registra su resolución (el panel lo dice).
+    if (
+      actingMode(account, closingFunction(detail), procedure) !== null &&
+      !hasPendingRemedy(procedure)
+    ) {
+      actions.add('close');
+    }
     if (stage === 'court_received' && actingMode(account, 'court', procedure) !== null) {
       actions.add('order_reclassification');
     }
@@ -174,8 +183,9 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
     ) {
       actions.add('refer_to_prosecutor');
     }
+    // La sanción firme se inscribe en el S3 (LGRA, art. 27), antes o después de ejecutarse.
     if (
-      stage === 'executed' &&
+      (stage === 'final' || stage === 'executed') &&
       procedure?.sanctionRegistered === undefined &&
       hasFunction(account, 'substantiation')
     ) {
@@ -189,6 +199,13 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
     actions.add('record_withdrawal');
   }
   return [...actions];
+}
+
+/** Día siguiente a `day` (AAAA-MM-DD). */
+function nextDay(day: string): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 /** Datos del formulario de cada acción. */
@@ -281,6 +298,13 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
   const targets = authorities.filter((item) => !item.isInbox && item.authorityId !== current);
   const selectedStage = stages.find((item) => item.key === draft.stage);
   const legalOutcomes = legalClosureOptions(detail);
+  const isLegalOutcomeRequired = requiresLegalOutcome(detail);
+  const waits = stageWaits(account, detail);
+  const canCloseLater =
+    detail.summary.managementState === 'accepted' &&
+    hasPendingRemedy(procedure) &&
+    actingMode(account, closingFunction(detail), procedure) !== null;
+  const isSanctionUnregistered = procedure?.sanctionRegistered === undefined;
   const legalOutcome =
     draft.legalOutcome === '' ? undefined : findLegalClosureReason(draft.legalOutcome);
   const selectedResolution = resolutions.find((item) => item.kind.key === draft.remedyKind);
@@ -360,6 +384,14 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
         found['court-basis'] =
           'Escribe el fundamento de la actuación del Tribunal (al menos 20 caracteres).';
       }
+    }
+    if (action === 'close' && isLegalOutcomeRequired && legalOutcome === undefined) {
+      found['procedure-legal-outcome'] =
+        'Elige el motivo legal: desde que se presentó el informe, el cierre lo lleva.';
+    }
+    if (action === 'close' && legalOutcome?.key === 'sanctioned' && isSanctionUnregistered) {
+      found['procedure-legal-outcome'] =
+        'Primero registra la inscripción de la sanción en el S3 (LGRA, art. 27).';
     }
     if (action === 'close' && legalOutcome?.requiresDestination === true) {
       if (draft.destinationName.trim().length < 3) {
@@ -593,6 +625,22 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
             </p>
           )}
           <DeadlineList deadlines={procedure.deadlines} testId="procedure-deadlines" />
+          {(waits.length > 0 || canCloseLater) && (
+            <ul className="field__hint" data-testid="procedure-waits">
+              {waits.map((wait) => (
+                <li key={wait.key}>
+                  «{wait.label}»: {wait.text} hasta el {formatDayDate(wait.dueOn)}. Podrás hacerlo a
+                  partir del {formatDayDate(nextDay(wait.dueOn))} si nadie presenta el recurso, o al
+                  registrar la resolución del recurso presentado (LGRA, art. 206).
+                </li>
+              ))}
+              {canCloseLater && (
+                <li>
+                  «Cerrar con fundamento»: hay un recurso pendiente. Primero registra su resolución.
+                </li>
+              )}
+            </ul>
+          )}
           {procedure.rules.length > 0 && (
             <ul className="rule-list" data-testid="procedure-rules">
               {procedure.rules.map((rule) => (
@@ -788,8 +836,13 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
             <>
               <SelectField
                 id="procedure-legal-outcome"
-                label="Motivo legal (opcional)"
-                hint="El motivo legal va aparte del motivo del S5 y dice el fundamento del cierre."
+                label={isLegalOutcomeRequired ? 'Motivo legal' : 'Motivo legal (opcional)'}
+                error={errors['procedure-legal-outcome']}
+                hint={
+                  isLegalOutcomeRequired
+                    ? 'Desde que se presentó el informe, el cierre lleva su motivo legal, aparte del motivo del S5.'
+                    : 'El motivo legal va aparte del motivo del S5 y dice el fundamento del cierre.'
+                }
                 value={draft.legalOutcome}
                 onChange={(event) => {
                   const value = event.target.value as LegalClosureReason | '';
@@ -801,10 +854,18 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                 }}
                 data-testid="procedure-legal-outcome"
               >
-                <option value="">Sin motivo legal</option>
+                <option value="">
+                  {isLegalOutcomeRequired ? 'Elige el motivo legal' : 'Sin motivo legal'}
+                </option>
                 {legalOutcomes.map((item) => (
-                  <option key={item.key} value={item.key}>
-                    {item.name}
+                  <option
+                    key={item.key}
+                    value={item.key}
+                    disabled={item.key === 'sanctioned' && isSanctionUnregistered}
+                  >
+                    {item.key === 'sanctioned' && isSanctionUnregistered
+                      ? `${item.name} (primero registra la inscripción en el S3)`
+                      : item.name}
                   </option>
                 ))}
               </SelectField>

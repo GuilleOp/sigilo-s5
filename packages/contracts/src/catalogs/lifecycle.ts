@@ -39,6 +39,12 @@ export interface StageTransition {
   /** Solo con esta calificación vigente (rama no grave o grave). */
   severities?: readonly QualificationSeverity[];
   requires?: readonly TransitionRequirement[];
+  /**
+   * Plazos que deben haber vencido para dar el paso, contados desde que la denuncia entró a la etapa
+   * de origen con el calendario del nodo. Si el plazo es para presentar un recurso y ese recurso se
+   * presentó en la etapa y ya se resolvió, el paso procede sin esperar (LGRA, art. 206).
+   */
+  afterDeadlines?: readonly DeadlineKey[];
   /** Qué dice el botón del panel. */
   label: string;
   legalBasis: readonly LegalReference[];
@@ -119,6 +125,7 @@ export const ADMINISTRATIVE_TRANSITIONS: readonly StageTransition[] = [
     fn: 'substantiation',
     action: 'report_not_filed',
     requires: ['legalBasis'],
+    afterDeadlines: ['report_correction'],
     label: 'Tener el informe por no presentado (no se corrigió)',
     legalBasis: [LGRA('195')],
   },
@@ -234,6 +241,7 @@ export const ADMINISTRATIVE_TRANSITIONS: readonly StageTransition[] = [
     to: 'final',
     fn: 'substantiation',
     action: 'stage_advanced',
+    afterDeadlines: ['revocation_filing'],
     label: 'Declarar la resolución firme',
     legalBasis: [LGRA('206')],
   },
@@ -242,6 +250,7 @@ export const ADMINISTRATIVE_TRANSITIONS: readonly StageTransition[] = [
     to: 'final',
     fn: 'court',
     action: 'stage_advanced',
+    afterDeadlines: ['court_appeal_filing', 'review_filing'],
     label: 'Declarar la sentencia firme',
     legalBasis: [LGRA('206')],
   },
@@ -306,6 +315,19 @@ export const CRIMINAL_TRANSITIONS: readonly CriminalTransition[] = [
   { from: 'intermediate_stage', to: 'alternative_exit', label: 'Solución alterna' },
   { from: 'trial', to: 'sentence', label: 'Sentencia' },
 ];
+
+/** Qué sigue abierto mientras corre un plazo de `afterDeadlines`, para el aviso «hasta el …». */
+export const STAGE_WAIT_TEXTS: Readonly<Partial<Record<DeadlineKey, string>>> = {
+  revocation_filing: 'La resolución todavía puede impugnarse con el recurso de revocación',
+  court_appeal_filing: 'La sentencia todavía puede apelarse',
+  review_filing: 'Todavía se puede pedir la revisión de la sentencia',
+  report_correction: 'La autoridad investigadora todavía puede corregir el informe',
+};
+
+/** Recurso que se presenta dentro del plazo `key` (revocación, apelación…), o `undefined`. */
+export function remedyKindForFilingDeadline(key: DeadlineKey): RemedyKind | undefined {
+  return REMEDY_KINDS.find((kind) => kind.filingDeadline === key)?.key;
+}
 
 /** Transiciones administrativas que salen de `from`. */
 export function transitionsFrom(from: AdministrativeStage | null): readonly StageTransition[] {
@@ -609,10 +631,11 @@ export const LEGAL_CLOSURE_REASONS: readonly LegalClosureReasonOption[] = [
   {
     key: 'sanctioned',
     name: 'Resolución firme con sanción',
-    explanation: 'La resolución que sanciona quedó firme y la sanción se ejecutó.',
+    explanation:
+      'La resolución que sanciona quedó firme (o la sanción ya se ejecutó) y la sanción está inscrita en el registro de sancionados (S3, LGRA art. 27).',
     s5Reasons: ['attended'],
     status: 'final_sanction',
-    stages: ['executed'],
+    stages: ['final', 'executed'],
     legalBasis: [LGRA('206'), LGRA('222')],
   },
   {

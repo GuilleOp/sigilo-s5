@@ -14073,7 +14073,7 @@
               },
               "message": {
                 "type": "string",
-                "description": "Mensaje fijo en español; nunca incluye datos de la solicitud."
+                "description": "Mensaje fijo en español; nunca incluye datos de la solicitud. Un `conflict` por un plazo legal abierto dice hasta qué día corre (por ejemplo, «La sentencia todavía puede apelarse hasta el …»)."
               }
             },
             "required": ["code", "message"],
