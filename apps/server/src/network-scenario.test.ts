@@ -200,6 +200,10 @@ describe('red del escenario de la demostración', () => {
     // Llega turnada al OIC con la alerta de conflicto (S1 sintético: intereses en común).
     let view = await detail(federal, 'iffeIntake', folio);
     expect(view.procedure?.managementState).toBe('routed');
+    // La recepción no dice «buzón general»: la ventanilla única la envió directo.
+    const received = view.procedure?.steps.find((step) => step.action === 'received');
+    expect(received?.explanation).toContain('la envió directo a la autoridad competente');
+    expect(received?.explanation).not.toContain('buzón general');
     expect(view.conflictReview?.requiresResponse).toBe(true);
     expect(view.conflictReview?.alerts.length).toBeGreaterThan(0);
     expect(view.contextSheet?.level).toBeDefined();

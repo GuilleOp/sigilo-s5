@@ -4,8 +4,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ProcedureView, QualificationView } from '@sigilo/contracts';
 import { describeRemaining, isLongSpan } from './deadline-text.ts';
+import type { ProcedureStep } from '@sigilo/contracts';
 import {
   appealWindow,
+  isCurrentShown,
   NON_SERIOUS_HEADLINE,
   nextStep,
   procedureHeadline,
@@ -208,5 +210,70 @@ describe('textos del trámite', () => {
     expect(next?.deadline?.key).toBe('serious_offense_start');
     expect(procedureHeadline(procedure()).isStateExplanation).toBeUndefined();
     expect(nextStep(procedure({ managementState: 'closed' }))).toBeNull();
+  });
+
+  it('en las etapas del Tribunal, lo que sigue lo hace el Tribunal (LGRA, art. 209 fr. V)', () => {
+    const accepted: ProcedureStep = {
+      on: '2026-11-05',
+      legalOn: '2026-11-05',
+      action: 'accepted',
+      managementState: 'accepted',
+      title: 'Aceptada por Órgano Interno de Control Ficticio',
+      explanation: '',
+    };
+    const at = (legalStage: ProcedureView['legalStage']) =>
+      nextStep(procedure({ managementState: 'accepted', legalStage, steps: [accepted] }))?.who;
+    expect(at('court_resolution')).toBe('el Tribunal de Justicia Administrativa');
+    expect(at('case_file_sent')).toBe('el Tribunal de Justicia Administrativa');
+    expect(at('summoned')).toBe('la autoridad substanciadora');
+    expect(at('investigation')).toBe('Órgano Interno de Control Ficticio');
+  });
+
+  it('cerrada: el título dice cómo concluyó, como la lista del panel', () => {
+    const view = procedure({
+      managementState: 'closed',
+      managementStateName: 'Cerrada',
+      legalStage: 'executed',
+      legalStageName: 'Sanción ejecutada',
+      closure: {
+        on: '2027-01-14',
+        legalOn: '2027-01-14',
+        reason: 'attended',
+        reasonName: 'Atendida',
+        reasonExplanation: 'Se atendió.',
+        legalBasis: 'LGRA, art. 206 (sintético).',
+        agreement: AGREEMENT,
+        legalOutcome: 'sanctioned',
+        legalOutcomeName: 'Resolución firme con sanción',
+        legalOutcomeExplanation: 'La resolución que sanciona quedó firme.',
+      },
+    });
+    expect(procedureHeadline(view).title).toBe('Concluida con sanción firme');
+    expect(isCurrentShown(view)).toBe(true);
+  });
+
+  it('no repite la etapa vigente con la píldora «ahora» si ya es el último sello', () => {
+    const stage = (legalStage: ProcedureStep['legalStage'], on: string): ProcedureStep => ({
+      on,
+      legalOn: on,
+      action: 'stage_advanced',
+      managementState: 'accepted',
+      ...(legalStage === undefined ? {} : { legalStage }),
+      title: 'Etapa',
+      explanation: '',
+    });
+    const view = procedure({
+      managementState: 'accepted',
+      legalStage: 'court_resolution',
+      steps: [
+        stage('court_instruction_closed', '2026-12-01'),
+        stage('court_resolution', '2026-12-20'),
+      ],
+    });
+    expect(isCurrentShown(view)).toBe(true);
+    // El sello de la etapa vigente no está: la píldora sí hace falta.
+    expect(
+      isCurrentShown({ ...view, steps: [stage('court_instruction_closed', '2026-12-01')] }),
+    ).toBe(false);
   });
 });

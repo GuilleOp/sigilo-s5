@@ -147,7 +147,23 @@ function authorityName(ctx: AppContext, authorityId: string): string {
   return ctx.authorities.authority(authorityId)?.name ?? 'otra autoridad';
 }
 
-function stepView(ctx: AppContext, step: StoredStep, audience: ProcedureAudience): ProcedureStep {
+/** La ventanilla única la turnó sola al recibirla: el paso siguiente es un turnado del sistema. */
+function wentStraightToAuthority(step: StoredStep, next: StoredStep | undefined): boolean {
+  return (
+    step.action === 'received' &&
+    next !== undefined &&
+    next.action === 'routed' &&
+    next.actorId === null &&
+    next.legalOn === step.legalOn
+  );
+}
+
+function stepView(
+  ctx: AppContext,
+  step: StoredStep,
+  audience: ProcedureAudience,
+  next?: StoredStep,
+): ProcedureStep {
   const state = findManagementState(step.managementState);
   const criminal = criminalStageOfStep(step);
   const stageKey = criminal ?? step.legalStage;
@@ -201,6 +217,12 @@ function stepView(ctx: AppContext, step: StoredStep, audience: ProcedureAudience
     titles[step.action] = `Registro de actuación del Tribunal: ${titles[step.action]}`;
   }
   const explanations: Partial<Record<StoredStep['action'], string>> = {
+    ...(wentStraightToAuthority(step, next)
+      ? {
+          received:
+            'Tu denuncia llegó al nodo y la ventanilla única la envió directo a la autoridad competente según el directorio de la red.',
+        }
+      : {}),
     stage_advanced: stage?.explanation ?? '',
     closed: reason?.explanation ?? '',
     conflict_excused:
@@ -487,7 +509,7 @@ export function buildProcedureView(
     steps: ctx.procedure
       .listSteps(complaint.folio)
       .filter((step) => isVisibleTo(step, audience))
-      .map((step) => stepView(ctx, step, audience)),
+      .map((step, index, visible) => stepView(ctx, step, audience, visible[index + 1])),
     deadlines: deadlineViews(ctx, complaint, today),
     rules: ctx.procedure.listRuleTriggers(complaint.folio).map(ruleTriggerView),
   };
