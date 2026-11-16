@@ -9,12 +9,19 @@ import { SanctionCheckViewSchema, SanctionClaimSchema } from './context-view.ts'
 import { DayDateSchema, FolioSchema, Sha256HexSchema } from './primitives.ts';
 import {
   ClosureReasonSchema,
+  CriminalStageSchema,
   DeadlineKeySchema,
   DeadlineStatusSchema,
   EscalationRuleKeySchema,
+  FederalFundingSchema,
+  LegalClosureReasonSchema,
   LegalStageSchema,
   ManagementStateSchema,
+  PrecautionaryOutcomeSchema,
   ProcedureActionSchema,
+  RemedyFiledBySchema,
+  RemedyKindSchema,
+  RemedyOutcomeSchema,
   RuleEffectSchema,
   QualificationSeveritySchema,
   TurnSemaphoreStatusSchema,
@@ -121,13 +128,53 @@ export const QualificationInputSchema = z
   });
 export type QualificationInput = z.infer<typeof QualificationInputSchema>;
 
+/**
+ * Registro de una actuación del Tribunal que hace la autoridad substanciadora cuando el estado no
+ * dio cuentas al Tribunal: el número de expediente y el fundamento de lo que el Tribunal resolvió.
+ * En la línea de tiempo se lee «Registro de actuación del Tribunal».
+ */
+export const CourtRecordSchema = z
+  .strictObject({
+    fileNumber: z
+      .string()
+      .min(3)
+      .max(80)
+      .regex(/^[\p{L}\p{N}][\p{L}\p{N} /.\-_º°]*$/u, 'Número de expediente inválido')
+      .meta({ description: 'Número de expediente del Tribunal.' }),
+    legalBasis: LegalBasisTextSchema,
+  })
+  .meta({
+    description:
+      'Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento.',
+  });
+export type CourtRecord = z.infer<typeof CourtRecordSchema>;
+
 const AdvanceStageActionSchema = z.strictObject({
   action: z.literal('advance_stage'),
   stage: LegalStageSchema,
   note: PublicNoteSchema.optional(),
   /** Al pasar a `qualification`: la calificación, que el auditor revisa (AUD-01 y AUD-03). */
   qualification: QualificationInputSchema.optional(),
+  /** Fundamento, cuando la transición lo exige (prevención, abstención, devolución…). */
+  legalBasis: LegalBasisTextSchema.optional(),
+  /** Acuerdo en versión pública, cuando la transición lo exige (abstención). */
+  agreement: AgreementTextSchema.optional(),
+  /** Si la substanciación registra una actuación del Tribunal. */
+  courtRecord: CourtRecordSchema.optional(),
 });
+
+/** Destino de una remisión por incompetencia: una autoridad de la red o una institución de fuera. */
+export const ReferralDestinationSchema = z
+  .strictObject({
+    kind: z.enum(['network', 'outside']).meta({
+      description:
+        'network: autoridad de la red (por ejemplo, otro nodo); outside: institución sin nodo.',
+    }),
+    name: z.string().min(3).max(300).meta({ description: 'Nombre de la autoridad de destino.' }),
+  })
+  .meta({ description: 'A quién se remitió el asunto (LGRA, arts. 14 y 196 fr. II).' });
+export type ReferralDestination = z.infer<typeof ReferralDestinationSchema>;
+
 const CloseActionSchema = z.strictObject({
   action: z.literal('close'),
   reason: ClosureReasonSchema,
@@ -135,6 +182,87 @@ const CloseActionSchema = z.strictObject({
   agreement: AgreementTextSchema,
   /** Sanción declarada (cierre con sanción): el nodo la verifica contra S3. */
   sanction: SanctionClaimSchema.optional(),
+  /** Motivo legal del cierre, con sus requisitos en `LEGAL_CLOSURE_REASONS`. */
+  legalOutcome: LegalClosureReasonSchema.optional(),
+  /** Destino obligatorio con el motivo legal `incompetence`. */
+  destination: ReferralDestinationSchema.optional(),
+  courtRecord: CourtRecordSchema.optional(),
+});
+const OrderReclassificationActionSchema = z.strictObject({
+  action: z.literal('order_reclassification'),
+  legalBasis: LegalBasisTextSchema,
+  note: PublicNoteSchema.optional(),
+  courtRecord: CourtRecordSchema.optional(),
+});
+const RequestPrecautionaryActionSchema = z.strictObject({
+  action: z.literal('request_precautionary'),
+  measure: z.string().min(10).max(2000).meta({
+    description:
+      'Medida que se pide (LGRA, art. 124). Es privada del nodo: la persona denunciante solo ve que se pidió una medida.',
+  }),
+  legalBasis: LegalBasisTextSchema,
+});
+const DecidePrecautionaryActionSchema = z.strictObject({
+  action: z.literal('decide_precautionary'),
+  outcome: PrecautionaryOutcomeSchema,
+  legalBasis: LegalBasisTextSchema,
+  courtRecord: CourtRecordSchema.optional(),
+});
+const FileRemedyActionSchema = z.strictObject({
+  action: z.literal('file_remedy'),
+  kind: RemedyKindSchema,
+  filedBy: RemedyFiledBySchema,
+  signed: z.literal(true).meta({
+    description:
+      'La autoridad declara que recibió el escrito con firma autógrafa (LGRA, art. 109). Sin firma no hay recurso.',
+  }),
+  legalBasis: LegalBasisTextSchema.optional(),
+  note: PublicNoteSchema.optional(),
+  courtRecord: CourtRecordSchema.optional(),
+});
+const ResolveRemedyActionSchema = z.strictObject({
+  action: z.literal('resolve_remedy'),
+  kind: RemedyKindSchema,
+  outcome: RemedyOutcomeSchema,
+  legalBasis: LegalBasisTextSchema,
+  note: PublicNoteSchema.optional(),
+  courtRecord: CourtRecordSchema.optional(),
+});
+const ReferToProsecutorActionSchema = z.strictObject({
+  action: z.literal('refer_to_prosecutor'),
+  basis: z.enum(['internal_control', 'superior_audit', 'public_servant']).meta({
+    description:
+      'Fundamento: internal_control (LGRA, art. 10 fr. III), superior_audit (LGRA, art. 98) o public_servant (CNPP, art. 222).',
+  }),
+  prosecutor: z.string().min(3).max(300).meta({ description: 'Fiscalía que recibe la vista.' }),
+  note: PublicNoteSchema.optional(),
+});
+const FlagFederalFundsActionSchema = z.strictObject({
+  action: z.literal('flag_federal_funds'),
+  funding: FederalFundingSchema,
+  note: PublicNoteSchema.optional(),
+});
+const SendFederalNoticeActionSchema = z.strictObject({
+  action: z.literal('send_federal_notice'),
+  recipients: z
+    .array(z.enum(['asf', 'sabg', 'fgr']))
+    .min(1)
+    .max(3)
+    .refine((items) => new Set(items).size === items.length, 'Destinatario repetido')
+    .meta({ description: 'Autoridades federales a las que se da vista o aviso.' }),
+  legalBasis: LegalBasisTextSchema,
+});
+const RegisterSanctionActionSchema = z.strictObject({
+  action: z.literal('register_sanction'),
+  registryReference: z.string().min(3).max(200).meta({
+    description:
+      'Referencia de la inscripción en el sistema de sancionados (S3). Solo se registra el acto; no hay integración con el S3.',
+  }),
+  legalBasis: LegalBasisTextSchema,
+});
+const RecordWithdrawalActionSchema = z.strictObject({
+  action: z.literal('record_withdrawal'),
+  note: PublicNoteSchema,
 });
 const RespondConflictActionSchema = z.strictObject({
   action: z.literal('respond_conflict'),
@@ -160,10 +288,20 @@ export const ProcedureActionRequestSchema = z
     AdvanceStageActionSchema,
     CloseActionSchema,
     RespondConflictActionSchema,
+    OrderReclassificationActionSchema,
+    RequestPrecautionaryActionSchema,
+    DecidePrecautionaryActionSchema,
+    FileRemedyActionSchema,
+    ResolveRemedyActionSchema,
+    ReferToProsecutorActionSchema,
+    FlagFederalFundsActionSchema,
+    SendFederalNoticeActionSchema,
+    RegisterSanctionActionSchema,
+    RecordWithdrawalActionSchema,
   ])
   .meta({
     description:
-      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
+      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification, request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
   });
 export type ProcedureActionRequest = z.infer<typeof ProcedureActionRequestSchema>;
 
@@ -174,11 +312,42 @@ export const ProcedureStateSchema = z
     status: ComplaintStatusSchema,
     managementState: ManagementStateSchema,
     legalStage: LegalStageSchema.optional(),
+    criminalStage: CriminalStageSchema.optional(),
     closureReason: ClosureReasonSchema.optional(),
     assignedAuthorityId: AuthorityIdSchema,
   })
-  .meta({ description: 'Estado del trámite: estatus, flujo de gestión, etapa y autoridad.' });
+  .meta({
+    description:
+      'Estado del trámite: estatus, flujo de gestión, etapa administrativa, etapa penal (en paralelo) y autoridad.',
+  });
 export type ProcedureState = z.infer<typeof ProcedureStateSchema>;
+
+/**
+ * Datos del acto registrados con el paso. La vista de la persona denunciante omite lo reservado
+ * (la medida cautelar concreta y quién recurrió, salvo que haya sido ella).
+ */
+export const ProcedureStepRecordSchema = z
+  .object({
+    recordedForCourt: z.literal(true).optional().meta({
+      description:
+        'Registro de actuación del Tribunal: lo capturó otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal.',
+    }),
+    courtFileNumber: z.string().optional().meta({ description: 'Expediente del Tribunal.' }),
+    legalBasis: z.string().optional().meta({ description: 'Fundamento del acto.' }),
+    remedyKind: RemedyKindSchema.optional(),
+    remedyOutcome: RemedyOutcomeSchema.optional(),
+    remedyFiledBy: RemedyFiledBySchema.optional(),
+    precautionaryOutcome: PrecautionaryOutcomeSchema.optional(),
+    criminalStage: CriminalStageSchema.optional(),
+    legalOutcome: LegalClosureReasonSchema.optional(),
+    destination: ReferralDestinationSchema.optional(),
+    funding: FederalFundingSchema.optional(),
+    recipients: z.array(z.enum(['asf', 'sabg', 'fgr'])).optional(),
+    prosecutor: z.string().optional(),
+    registryReference: z.string().optional(),
+  })
+  .meta({ description: 'Datos del acto registrados con el paso.' });
+export type ProcedureStepRecord = z.infer<typeof ProcedureStepRecordSchema>;
 
 /** Paso de la línea de tiempo, con su explicación en lenguaje sencillo. */
 export const ProcedureStepSchema = z
@@ -192,6 +361,7 @@ export const ProcedureStepSchema = z
     title: z.string().meta({ description: 'Qué pasó, en pocas palabras.' }),
     explanation: z.string().meta({ description: 'Qué significa, en lenguaje sencillo.' }),
     note: PublicNoteSchema.optional(),
+    record: ProcedureStepRecordSchema.optional(),
   })
   .meta({ description: 'Paso del trámite en la línea de tiempo.' });
 export type ProcedureStep = z.infer<typeof ProcedureStepSchema>;
@@ -231,23 +401,39 @@ export const ClosureViewSchema = z
     legalBasis: LegalBasisTextSchema,
     agreement: AgreementTextSchema,
     sanctionCheck: SanctionCheckViewSchema.optional(),
+    legalOutcome: LegalClosureReasonSchema.optional(),
+    legalOutcomeName: z.string().optional().meta({ description: 'Nombre del motivo legal.' }),
+    legalOutcomeExplanation: z.string().optional(),
+    destination: ReferralDestinationSchema.optional(),
   })
   .meta({ description: 'Cierre del trámite con fundamento y acuerdo en versión pública.' });
 export type ClosureView = z.infer<typeof ClosureViewSchema>;
 
-/** Inconformidad de la persona denunciante contra la calificación de no grave (LGRA, arts. 102 a 110). */
+/**
+ * Aviso de inconformidad de la persona denunciante (LGRA, arts. 102 a 110). La inconformidad cuenta
+ * cuando la autoridad registra el escrito con firma autógrafa (`signedOn`); solo entonces corre el
+ * plazo de la Sala.
+ */
 export const AppealViewSchema = z
   .object({
-    filedOn: DayDateSchema,
+    filedOn: DayDateSchema.meta({ description: 'Día del aviso en línea.' }),
     legalOn: LegalDaySchema,
-    reasons: z
-      .string()
-      .meta({ description: 'Motivos por los que estima indebida la calificación.' }),
+    reasons: z.string().meta({
+      description: 'Motivos por los que estima indebida la calificación o la abstención.',
+    }),
+    filingDueOn: LegalDaySchema.optional().meta({
+      description:
+        'Último día para entregar el escrito firmado ante la autoridad investigadora (LGRA, arts. 103 y 109).',
+    }),
+    signedOn: LegalDaySchema.optional().meta({
+      description: 'Día en que la autoridad registró el escrito con firma autógrafa.',
+    }),
     resolutionDueOn: LegalDaySchema.optional().meta({
-      description: 'Plazo de la Sala para resolver: 30 días hábiles (LGRA, art. 107).',
+      description:
+        'Plazo de la Sala para resolver: 30 días hábiles (LGRA, art. 107), desde el escrito firmado.',
     }),
   })
-  .meta({ description: 'Recurso de inconformidad presentado contra la calificación.' });
+  .meta({ description: 'Aviso de inconformidad y, si ya llegó, el escrito firmado.' });
 export type AppealView = z.infer<typeof AppealViewSchema>;
 
 /** Calificación de la falta con su acuerdo, y la inconformidad si la hubo. */
@@ -270,6 +456,67 @@ export const QualificationViewSchema = z
   })
   .meta({ description: 'Calificación de la falta (LGRA, arts. 100 y 102).' });
 export type QualificationView = z.infer<typeof QualificationViewSchema>;
+
+/** Recurso del trámite con su situación. */
+export const RemedyViewSchema = z
+  .object({
+    kind: RemedyKindSchema,
+    name: z.string(),
+    filedOn: LegalDaySchema,
+    filedBy: RemedyFiledBySchema.optional().meta({
+      description:
+        'Quién lo presentó. En el seguimiento solo aparece si fue la propia persona denunciante.',
+    }),
+    status: z.enum(['pending', 'admitted', 'resolved']),
+    outcome: RemedyOutcomeSchema.optional(),
+    outcomeName: z.string().optional(),
+    resolvedOn: LegalDaySchema.optional(),
+    resolutionDueOn: LegalDaySchema.optional(),
+    effect: z.string().meta({ description: 'Efecto del recurso en el trámite.' }),
+  })
+  .meta({ description: 'Recurso presentado y su resultado.' });
+export type RemedyView = z.infer<typeof RemedyViewSchema>;
+
+/** Inconformidad posible o en curso contra la calificación de no grave o la abstención. */
+export const InconformityViewSchema = z
+  .object({
+    against: z.enum(['non_serious', 'abstention']),
+    notifiedOn: LegalDaySchema.optional(),
+    filingDueOn: LegalDaySchema.optional(),
+    filingRemaining: z.number().int().optional().meta({
+      description:
+        'Días hábiles que faltan para entregar el escrito, contados por el nodo con su reloj y su calendario.',
+    }),
+    filingStatus: DeadlineStatusSchema.optional(),
+    notice: AppealViewSchema.optional(),
+    signedOn: LegalDaySchema.optional(),
+    resolutionDueOn: LegalDaySchema.optional(),
+    outcome: RemedyOutcomeSchema.optional(),
+  })
+  .meta({ description: 'Inconformidad: plazo, aviso, escrito firmado y resultado.' });
+export type InconformityView = z.infer<typeof InconformityViewSchema>;
+
+/** Abstención de la autoridad (LGRA, art. 101) con su acuerdo. */
+export const AbstentionViewSchema = z
+  .object({
+    legalOn: LegalDaySchema,
+    legalBasis: z.string(),
+    agreement: z.string(),
+    explanation: z.string(),
+  })
+  .meta({ description: 'Abstención con su fundamento y acuerdo en versión pública.' });
+export type AbstentionView = z.infer<typeof AbstentionViewSchema>;
+
+/** Recursos federales en un ente local y lo que la regla ofrece (B10). */
+export const FederalFundsViewSchema = z
+  .object({
+    funding: FederalFundingSchema,
+    fundingName: z.string(),
+    flaggedOn: LegalDaySchema,
+    noticeSentOn: LegalDaySchema.optional(),
+  })
+  .meta({ description: 'La denuncia involucra recursos federales: guía de la regla.' });
+export type FederalFundsView = z.infer<typeof FederalFundsViewSchema>;
 
 /** Regla pública que se cumplió: escalamiento o alerta. */
 export const RuleTriggerViewSchema = z
@@ -294,8 +541,34 @@ export const ProcedureViewSchema = z
     explanation: z.string().meta({ description: 'Qué significa el estado actual.' }),
     legalStage: LegalStageSchema.optional(),
     legalStageName: z.string().optional().meta({ description: 'Nombre de la etapa legal.' }),
+    criminalStage: CriminalStageSchema.optional().meta({
+      description: 'Etapa de la vía penal, que corre en paralelo a la administrativa.',
+    }),
+    criminalStageName: z.string().optional(),
     closure: ClosureViewSchema.optional(),
     qualification: QualificationViewSchema.optional(),
+    abstention: AbstentionViewSchema.optional(),
+    inconformity: InconformityViewSchema.optional(),
+    remedies: z.array(RemedyViewSchema).optional().meta({ description: 'Recursos presentados.' }),
+    precautionary: z
+      .object({
+        requestedOn: LegalDaySchema,
+        decidedOn: LegalDaySchema.optional(),
+        outcome: PrecautionaryOutcomeSchema.optional(),
+      })
+      .optional()
+      .meta({
+        description: 'Última medida cautelar pedida y su resultado, sin la medida concreta.',
+      }),
+    federalFunds: FederalFundsViewSchema.optional(),
+    courtRecording: z.boolean().optional().meta({
+      description:
+        'Solo en el panel: el estado no dio cuentas al Tribunal y la substanciación registra sus actuaciones.',
+    }),
+    sanctionRegistered: z
+      .object({ legalOn: LegalDaySchema, registryReference: z.string() })
+      .optional()
+      .meta({ description: 'Inscripción de la sanción en el S3, registrada como acto.' }),
     steps: z
       .array(ProcedureStepSchema)
       .meta({ description: 'Pasos del más antiguo al más reciente.' }),

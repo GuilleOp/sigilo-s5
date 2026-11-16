@@ -76,6 +76,7 @@ export const ACCOUNT_FUNCTION_NAMES: Readonly<Record<AuthorityFunction, string>>
   supervision: 'Supervisión',
   substantiation: 'Substanciación y resolución',
   operation: 'Operación del nodo (solo solicitudes de alta)',
+  court: 'Tribunal (solo sus etapas y los recursos que resuelve)',
 };
 
 function capitalized(text: string): string {

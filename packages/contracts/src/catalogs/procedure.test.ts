@@ -54,10 +54,15 @@ describe('cobertura de claves', () => {
       'Acumulado',
       'Otro',
     ]);
-    expect(ADMINISTRATIVE_STAGES).toHaveLength(8);
+    // Etapas de la LGRA con sus dos ramas (no grave y Tribunal), firmeza y ejecución.
+    expect(ADMINISTRATIVE_STAGES).toHaveLength(20);
     expect(CRIMINAL_STAGES.map((stage) => stage.name)).toEqual([
-      'Investigación',
+      'Denuncia penal presentada (vista al Ministerio Público)',
+      'Investigación penal',
+      'Determinación del Ministerio Público',
+      'Control judicial de la determinación',
       'Etapa intermedia',
+      'Solución alterna',
       'Juicio',
       'Sentencia',
     ]);
@@ -150,11 +155,61 @@ describe('plazos legales', () => {
       ['serious_offense_start', 30, undefined, 'natural_days', 'LGRA, art. 64, fracc. II'],
       ['archive_notification', 10, undefined, 'business_days', 'LGRA, art. 100'],
       ['information_request', 5, 15, 'business_days', 'LGRA, art. 96'],
-      ['appeal_filing', 5, undefined, 'business_days', 'LGRA, art. 103'],
+      [
+        'appeal_filing',
+        5,
+        undefined,
+        'business_days',
+        'LGRA, art. 103; LGRA, art. 104; LGRA, art. 109',
+      ],
       ['appeal_resolution', 30, undefined, 'business_days', 'LGRA, art. 107'],
       ['prescription_non_serious', 3, undefined, 'years', 'LGRA, art. 74'],
       ['prescription_serious', 7, undefined, 'years', 'LGRA, art. 74'],
       ['inactivity_expiry', 6, undefined, 'months', 'LGRA, art. 74'],
+      ['report_correction', 3, undefined, 'business_days', 'LGRA, art. 195'],
+      ['report_admission', 3, undefined, 'business_days', 'LGRA, art. 208, fracc. I'],
+      ['initial_hearing_window', 15, undefined, 'business_days', 'LGRA, art. 208, fracc. III'],
+      ['parties_summons', 72, undefined, 'hours', 'LGRA, art. 208, fracc. IV'],
+      [
+        'evidence_admission',
+        15,
+        undefined,
+        'business_days',
+        'LGRA, art. 208, fracc. VIII; LGRA, art. 209, fracc. II',
+      ],
+      [
+        'closing_arguments',
+        5,
+        undefined,
+        'business_days',
+        'LGRA, art. 208, fracc. IX; LGRA, art. 209, fracc. III',
+      ],
+      [
+        'resolution_term',
+        30,
+        60,
+        'business_days',
+        'LGRA, art. 208, fracc. X; LGRA, art. 209, fracc. IV',
+      ],
+      [
+        'resolution_notice',
+        10,
+        undefined,
+        'business_days',
+        'LGRA, art. 208, fracc. XI; LGRA, art. 209, fracc. V',
+      ],
+      ['court_referral', 3, undefined, 'business_days', 'LGRA, art. 209, fracc. I'],
+      ['reclassification', 3, undefined, 'business_days', 'LGRA, art. 209, fracc. II'],
+      ['precautionary_hearing', 5, undefined, 'business_days', 'LGRA, art. 126'],
+      ['precautionary_decision', 5, undefined, 'business_days', 'LGRA, art. 127'],
+      ['claim_filing', 5, undefined, 'business_days', 'LGRA, art. 213; LGRA, art. 214'],
+      ['claim_resolution', 5, undefined, 'business_days', 'LGRA, art. 214'],
+      ['revocation_filing', 15, undefined, 'business_days', 'LGRA, art. 210'],
+      ['revocation_resolution', 30, undefined, 'business_days', 'LGRA, art. 210; LGRA, art. 211'],
+      ['court_appeal_filing', 15, undefined, 'business_days', 'LGRA, art. 215; LGRA, art. 216'],
+      ['review_filing', 10, undefined, 'business_days', 'LGRA, art. 220; LGRA, art. 221'],
+      ['execution_report', 10, undefined, 'business_days', 'LGRA, art. 225'],
+      ['prosecutor_determination_challenge', 10, undefined, 'natural_days', 'CNPP, art. 258'],
     ]);
   });
 
@@ -181,7 +236,7 @@ describe('búsquedas', () => {
   it('encuentra por clave y devuelve undefined si no existe', () => {
     expect(findClosureReason('joined')?.name).toBe('Acumulado');
     expect(findLegalStage('report_filed')?.name).toBe(
-      'Envío del Informe de Presunta Responsabilidad Administrativa',
+      'Informe de Presunta Responsabilidad Administrativa presentado',
     );
     expect(findComplaintStatus('investigating')?.legalStage).toBe('investigation');
     expect(findProcedureActor('inbox_operator')?.name).toBe('Operadora del buzón general');

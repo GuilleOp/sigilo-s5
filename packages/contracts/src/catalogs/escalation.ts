@@ -57,9 +57,11 @@ export type RuleRequirement = 'conflict_alert' | 'archive_signals' | 'downgrade_
 
 /**
  * Hecho que deja sin efecto una regla si ocurre a más tardar el día del vencimiento:
- * `investigation_started` (la etapa de investigación), `qualified` (la calificación, que
- * interrumpe la prescripción), `archive_notified` (aviso por el buzón después del archivo) o
- * `closed` (cierre; con `reasons`, solo esos motivos).
+ * `investigation_started` (el acuerdo de inicio, que se registra al entrar a la etapa de
+ * investigación; para el art. 64 fr. II de la LGRA es una lectura prudente de «iniciar el
+ * procedimiento correspondiente», no confirmada por un criterio del Tribunal), `qualified` (la
+ * calificación, que interrumpe la prescripción), `archive_notified` (aviso por el buzón después
+ * del archivo) o `closed` (cierre; con `reasons`, solo esos motivos).
  */
 export type RuleSatisfier =
   | { fact: 'investigation_started' }
@@ -112,10 +114,17 @@ const PRESCRIPTION_BASIS: readonly LegalReference[] = [{ law: 'LGRA', article: '
  * ellas cabe la caducidad de la instancia por inactividad (LGRA, art. 74).
  */
 export const POST_ADMISSION_STAGES: readonly LegalStage[] = [
-  'case_file_sent',
+  'report_admitted',
+  'summoned',
+  'initial_hearing',
   'evidence_hearing',
   'closing_arguments',
   'instruction_closed',
+  'case_file_sent',
+  'court_received',
+  'court_evidence_hearing',
+  'court_closing_arguments',
+  'court_instruction_closed',
 ];
 
 function prescriptionAlert(key: EscalationRuleKey, months: number): EscalationRule {
@@ -137,7 +146,7 @@ export const ESCALATION_RULES: readonly EscalationRule[] = [
     key: 'escalation.grave-stalled',
     name: 'Falta grave sin iniciar el procedimiento a los 30 días',
     explanation:
-      'Si la denuncia trata de una posible falta grave, una falta de particulares o un hecho de corrupción y la autoridad no inicia el procedimiento correspondiente dentro de los 30 días naturales siguientes a conocerla, pasa automáticamente a la autoridad supervisora.',
+      'Si la denuncia trata de una posible falta grave, una falta de particulares o un hecho de corrupción y la autoridad no inicia el procedimiento correspondiente dentro de los 30 días naturales siguientes a conocerla, pasa automáticamente a la autoridad supervisora. La regla se tiene por cumplida con el acuerdo de inicio que registra la autoridad (LGRA, art. 64 fr. II): la ley no precisa qué acto cuenta como «iniciar», y esta es una lectura prudente, no confirmada por un criterio del Tribunal.',
     effect: 'escalate',
     anchor: 'received',
     term: { unit: 'natural_days', amount: 30 },
@@ -245,9 +254,9 @@ export const ESCALATION_RULES: readonly EscalationRule[] = [
   },
   {
     key: 'alert.turn-overdue',
-    name: 'Turnado vencido',
+    name: 'Meta de turnado del S5 vencida',
     explanation:
-      'Si la denuncia cumple 2 días hábiles en el buzón general sin turnarse, o turnada sin que la autoridad la acepte, la supervisión recibe un aviso para revisarla (semáforo de turnado del S5). Es un aviso: la denuncia sigue con quien la tiene y la supervisión no recibe la copia cerrada con la segunda llave.',
+      'Si la denuncia cumple 2 días hábiles en el buzón general sin turnarse, o turnada sin que la autoridad la acepte, la supervisión recibe un aviso para revisarla (semáforo de turnado del S5). Es una meta de servicio del S5, no un plazo legal: la ley no fija plazo para turnar. Es un aviso: la denuncia sigue con quien la tiene y la supervisión no recibe la copia cerrada con la segunda llave.',
     effect: 'alert',
     anchor: 'turn_pending',
     term: { unit: TURN_SEMAPHORE.unit, amount: TURN_SEMAPHORE.overdueAfter },

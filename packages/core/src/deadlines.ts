@@ -170,6 +170,9 @@ export function computeDueDate(
       return addCalendarMonths(start, term.amount);
     case 'years':
       return addCalendarMonths(start, term.amount * 12);
+    case 'hours':
+      // Los plazos en horas (72 horas, LGRA art. 208 fr. IV) se cuentan en días completos.
+      return addNaturalDays(start, Math.ceil(term.amount / 24));
   }
 }
 

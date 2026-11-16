@@ -15,7 +15,10 @@ export const ManagementStateSchema = z
   });
 export type ManagementState = z.infer<typeof ManagementStateSchema>;
 
-/** Los seis motivos de cierre del S5. */
+/**
+ * Los seis motivos de cierre del S5. El motivo legal (archivo, abstención, prescripción…) va aparte,
+ * en `LegalClosureReasonSchema`, para no romper el mapeo con la bandeja de la SESNA.
+ */
 export const ClosureReasonSchema = z
   .enum(['attended', 'channeled', 'inadmissible', 'insufficient_information', 'joined', 'other'])
   .meta({
@@ -24,30 +27,84 @@ export const ClosureReasonSchema = z
   });
 export type ClosureReason = z.infer<typeof ClosureReasonSchema>;
 
+/**
+ * Motivo legal del cierre, con su fundamento en el catálogo `LEGAL_CLOSURE_REASONS`: archivo por
+ * falta de elementos (LGRA, art. 100), abstención (art. 101), prescripción y caducidad (art. 74),
+ * sobreseimiento (arts. 196 y 197), incompetencia o remisión (arts. 14 y 196 fr. II, con destino
+ * obligatorio, dentro o fuera de la red) y resolución firme (art. 206) con o sin sanción.
+ */
+export const LegalClosureReasonSchema = z
+  .enum([
+    'archived',
+    'abstention',
+    'prescribed',
+    'expired',
+    'dismissed',
+    'incompetence',
+    'sanctioned',
+    'responsible_no_sanction',
+    'not_responsible',
+  ])
+  .meta({
+    description:
+      'Motivo legal del cierre (aparte del motivo del S5). Nombres, fundamento y requisitos en LEGAL_CLOSURE_REASONS.',
+  });
+export type LegalClosureReason = z.infer<typeof LegalClosureReasonSchema>;
+
 /** Vía legal: falta administrativa (LGRA) o hecho de corrupción (delito, proceso penal). */
 export const LegalTrackSchema = z.enum(['administrative', 'criminal']).meta({
   description: 'Vía legal: administrative (falta administrativa) o criminal (hecho de corrupción).',
 });
 export type LegalTrack = z.infer<typeof LegalTrackSchema>;
 
-/** Etapas del procedimiento de responsabilidad administrativa (LGRA), en orden. */
+/**
+ * Etapas del procedimiento de responsabilidad administrativa (LGRA). El orden es el de lectura; las
+ * transiciones válidas (con sus dos ramas después de la audiencia inicial: no grave ante la
+ * substanciadora y resolutora, grave o de particulares ante el Tribunal) están en
+ * `ADMINISTRATIVE_TRANSITIONS`.
+ */
 export const AdministrativeStageSchema = z
   .enum([
     'investigation',
     'qualification',
     'report_filed',
-    'case_file_sent',
+    'report_prevented',
+    'abstention',
+    'report_admitted',
+    'summoned',
+    'initial_hearing',
     'evidence_hearing',
     'closing_arguments',
     'instruction_closed',
     'resolution',
+    'case_file_sent',
+    'court_received',
+    'court_evidence_hearing',
+    'court_closing_arguments',
+    'court_instruction_closed',
+    'court_resolution',
+    'final',
+    'executed',
   ])
   .meta({ description: 'Etapa del procedimiento de responsabilidad administrativa (LGRA).' });
 export type AdministrativeStage = z.infer<typeof AdministrativeStageSchema>;
 
-/** Etapas del proceso penal acusatorio por hechos de corrupción, en orden. */
+/**
+ * Etapas del proceso penal por hechos de corrupción. Corren en una capa aparte
+ * (`criminalStage`), en paralelo a la administrativa: las vías son autónomas (CPEUM, art. 109;
+ * LGRA, art. 14). Transiciones en `CRIMINAL_TRANSITIONS`.
+ */
 export const CriminalStageSchema = z
-  .enum(['criminal_investigation', 'intermediate_stage', 'trial', 'sentence'])
+  .enum([
+    'criminal_complaint_filed',
+    'criminal_investigation',
+    'prosecutor_determination',
+    'judicial_review',
+    'intermediate_stage',
+    'alternative_exit',
+    'trial',
+    'sentence',
+  ])
   .meta({ description: 'Etapa del proceso penal por hechos de corrupción (CNPP, art. 211).' });
 export type CriminalStage = z.infer<typeof CriminalStageSchema>;
 
@@ -78,11 +135,12 @@ export type ProcedureActor = z.infer<typeof ProcedureActorSchema>;
 
 /**
  * Unidad de un plazo. `natural_days` cuenta todos los días; `business_days` salta sábados, domingos
- * y los días inhábiles del calendario; `months` y `years` son de calendario.
+ * y los días inhábiles del calendario; `months` y `years` son de calendario; `hours` (72 horas del
+ * art. 208 fr. IV de la LGRA) se cuenta en días completos: 24 horas por día natural.
  */
 export const DeadlineUnitSchema = z
-  .enum(['natural_days', 'business_days', 'months', 'years'])
-  .meta({ description: 'Unidad del plazo: días naturales, días hábiles, meses o años.' });
+  .enum(['natural_days', 'business_days', 'months', 'years', 'hours'])
+  .meta({ description: 'Unidad del plazo: días naturales, días hábiles, meses, años u horas.' });
 export type DeadlineUnit = z.infer<typeof DeadlineUnitSchema>;
 
 /** Plazos legales del catálogo `DEADLINE_RULES`. */
@@ -96,8 +154,31 @@ export const DeadlineKeySchema = z
     'prescription_non_serious',
     'prescription_serious',
     'inactivity_expiry',
+    'report_correction',
+    'report_admission',
+    'initial_hearing_window',
+    'parties_summons',
+    'evidence_admission',
+    'closing_arguments',
+    'resolution_term',
+    'resolution_notice',
+    'court_referral',
+    'reclassification',
+    'precautionary_hearing',
+    'precautionary_decision',
+    'claim_filing',
+    'claim_resolution',
+    'revocation_filing',
+    'revocation_resolution',
+    'court_appeal_filing',
+    'review_filing',
+    'execution_report',
+    'prosecutor_determination_challenge',
   ])
-  .meta({ description: 'Plazo legal del catálogo DEADLINE_RULES.' });
+  .meta({
+    description:
+      'Plazo legal del catálogo DEADLINE_RULES. appeal_filing y appeal_resolution son los de la inconformidad (LGRA, arts. 103 y 107); la apelación es court_appeal_filing.',
+  });
 export type DeadlineKey = z.infer<typeof DeadlineKeySchema>;
 
 /** Plazo concreto: cantidad entera positiva en una unidad. */
@@ -150,10 +231,23 @@ export const ProcedureActionSchema = z
     'conflict_justified',
     'transferred',
     'appeal_filed',
+    'abstention_declared',
+    'report_not_filed',
+    'returned_by_court',
+    'reclassification_ordered',
+    'precautionary_requested',
+    'precautionary_decided',
+    'remedy_filed',
+    'remedy_resolved',
+    'criminal_referral_filed',
+    'federal_funds_flagged',
+    'federal_notice_sent',
+    'sanction_registered',
+    'withdrawal_received',
   ])
   .meta({
     description:
-      'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo o inconformidad de la persona denunciante.',
+      'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, reclasificación, medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento.',
   });
 export type ProcedureAction = z.infer<typeof ProcedureActionSchema>;
 
@@ -161,6 +255,59 @@ export type ProcedureAction = z.infer<typeof ProcedureActionSchema>;
 export const QualificationSeveritySchema = z.enum(['serious', 'non_serious']).meta({
   description: 'Calificación de la falta: serious (grave) o non_serious (no grave).',
 });
+
+/**
+ * Recurso (LGRA): inconformidad contra la calificación de no grave o la abstención (arts. 102 a
+ * 110), reclamación (213 y 214), revocación (210 a 212), apelación (215 a 219) y revisión (220 y
+ * 221). Plazos, quién lo resuelve y su efecto en el trámite en `REMEDY_KINDS`.
+ */
+export const RemedyKindSchema = z
+  .enum(['inconformity', 'claim', 'revocation', 'appeal', 'review'])
+  .meta({
+    description:
+      'Recurso: inconformity (inconformidad), claim (reclamación), revocation (revocación), appeal (apelación) o review (revisión). Detalle en REMEDY_KINDS.',
+  });
+export type RemedyKind = z.infer<typeof RemedyKindSchema>;
+
+/**
+ * Resultado de un recurso: `admitted` (procedente: se admite y sigue pendiente de resolver),
+ * `inadmissible` (improcedente o no presentado, por ejemplo sin firma autógrafa), `confirmed`
+ * (se confirma el acto), `revoked` (se revoca o deja sin efecto) o `modified` (se modifica).
+ */
+export const RemedyOutcomeSchema = z
+  .enum(['admitted', 'inadmissible', 'confirmed', 'revoked', 'modified'])
+  .meta({
+    description:
+      'Resultado del recurso: admitted (procedente, sigue en trámite), inadmissible (improcedente), confirmed (confirmada), revoked (revocada) o modified (modificada).',
+  });
+export type RemedyOutcome = z.infer<typeof RemedyOutcomeSchema>;
+
+/** Quién presenta el recurso. La persona denunciante puede ser tercera (LGRA, art. 116 fr. IV). */
+export const RemedyFiledBySchema = z
+  .enum(['reporter', 'accused', 'investigating_authority', 'other_party'])
+  .meta({
+    description:
+      'Quién presentó el recurso: reporter (la persona denunciante, también como tercera), accused (la persona señalada), investigating_authority (la autoridad investigadora) u other_party.',
+  });
+export type RemedyFiledBy = z.infer<typeof RemedyFiledBySchema>;
+
+/** Resultado del incidente de medidas cautelares (LGRA, arts. 123 a 129). */
+export const PrecautionaryOutcomeSchema = z.enum(['granted', 'provisional', 'denied']).meta({
+  description:
+    'Medida cautelar: granted (concedida), provisional (concedida provisionalmente, art. 127) o denied (negada).',
+});
+export type PrecautionaryOutcome = z.infer<typeof PrecautionaryOutcomeSchema>;
+
+/**
+ * Origen del dinero cuando la denuncia involucra recursos federales en un ente local:
+ * aportaciones (Ramo 33) o convenios y subsidios federales (Ley de Coordinación Fiscal, art. 49;
+ * LFRCF, art. 47).
+ */
+export const FederalFundingSchema = z.enum(['aportaciones', 'convenio_federal']).meta({
+  description:
+    'Recursos federales en un ente local: aportaciones (Ramo 33) o convenio_federal (convenios y subsidios). Regla en FEDERAL_FUNDS_RULE.',
+});
+export type FederalFunding = z.infer<typeof FederalFundingSchema>;
 export type QualificationSeverity = z.infer<typeof QualificationSeveritySchema>;
 
 /**
