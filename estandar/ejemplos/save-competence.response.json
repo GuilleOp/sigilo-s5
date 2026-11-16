@@ -1,0 +1,94 @@
+{
+  "version": 4,
+  "changes": [
+    {
+      "kind": "changed",
+      "scope": "entity",
+      "entityId": "PDN-22-7232",
+      "text": "Fiscalía General del Estado: de pendiente a OIC Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)."
+    }
+  ],
+  "problems": [],
+  "proposal": {
+    "version": 4,
+    "signedOn": "2026-11-16",
+    "signedBy": "acct-5f0c2a9d1e7b3c44",
+    "changes": [
+      {
+        "kind": "changed",
+        "scope": "entity",
+        "entityId": "PDN-22-7232",
+        "text": "Fiscalía General del Estado: de pendiente a OIC Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)."
+      }
+    ],
+    "signedTable": {
+      "table": {
+        "format": 2,
+        "nodeId": "node.queretaro",
+        "stateCode": "22",
+        "version": 4,
+        "issuedOn": "2026-11-16",
+        "functions": {
+          "intake": [
+            {
+              "governmentLevels": ["estatal", "municipal"],
+              "entityIds": [],
+              "holder": { "kind": "authority", "authorityId": "authority.buzon-queretaro" }
+            }
+          ],
+          "operation": [
+            {
+              "governmentLevels": ["estatal", "municipal"],
+              "entityIds": [],
+              "holder": {
+                "kind": "institution",
+                "name": "Secretaría Ejecutiva del Sistema Estatal Anticorrupción de Querétaro (ficticia)"
+              }
+            }
+          ],
+          "investigation": [
+            {
+              "governmentLevels": ["estatal"],
+              "entityIds": [],
+              "holder": { "kind": "authority", "authorityId": "authority.comptroller-queretaro" },
+              "legalBasis": "LGRA, arts. 3, fr. II, y 10"
+            }
+          ],
+          "substantiation": [],
+          "resolution": [],
+          "court": [
+            {
+              "governmentLevels": ["estatal", "municipal"],
+              "entityIds": [],
+              "instance": "first",
+              "holder": {
+                "kind": "institution",
+                "name": "Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)"
+              }
+            }
+          ],
+          "supervision": [],
+          "prosecution": [],
+          "observer": []
+        },
+        "entities": [
+          {
+            "entityId": "PDN-22-7283",
+            "status": "assigned",
+            "holder": { "kind": "authority", "authorityId": "authority.oic-municipio-queretaro" },
+            "legalBasis": "CPEUM, art. 109, fr. III"
+          },
+          {
+            "entityId": "PDN-22-7232",
+            "status": "assigned",
+            "holder": {
+              "kind": "institution",
+              "name": "Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)"
+            }
+          }
+        ]
+      },
+      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+    }
+  }
+}

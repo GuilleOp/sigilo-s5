@@ -45,7 +45,7 @@ export const DEMO_AUTHORITY_INDICATORS: readonly AuthorityIndicators[] = [
   },
   {
     authorityId: 'authority.comptroller-queretaro',
-    name: 'Contraloría Estatal Ficticia de Querétaro',
+    name: 'Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)',
     received: 85,
     archived: 25,
     overdue: 5,

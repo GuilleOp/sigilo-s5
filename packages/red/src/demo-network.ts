@@ -1,7 +1,8 @@
 // Red sintética del escenario de la demostración (docs/demo-escenario.md, sección 2): un nodo por
-// entidad (Querétaro y Oaxaca) y el nodo federal, sin nodo común; autoridades (con el
-// buzón general de cada nodo), la tabla de funciones de cada nodo firmada por él, observadores y
-// testigos 2 de 3, con llaves generadas al momento. Nada es real.
+// entidad (Querétaro y Oaxaca) y el nodo federal, sin nodo común; autoridades (con el buzón de la
+// autoridad receptora de cada nodo), la tabla de funciones de cada nodo firmada por él (la de
+// Querétaro, en el formato 2, con la competencia por dependencia), observadores y testigos 2 de 3,
+// con llaves generadas al momento. Las autoridades y las personas son ficticias.
 import type {
   AuthorityCompetence,
   AuthorityDirectory,
@@ -16,6 +17,14 @@ import { generateBoxKeyPair, generateSigningKeyPair } from '@sigilo/core';
 import type { KeyPair } from '@sigilo/core';
 import { DIRECTORY_GENESIS_DIGEST, encodePublicKey } from './directory.ts';
 import { signFunctionTable } from './function-table.ts';
+import {
+  QUERETARO_CEA_ENTE,
+  QUERETARO_EL_MARQUES_ENTES,
+  QUERETARO_MUNICIPIO_QUERETARO_ENTES,
+  QUERETARO_NAMES,
+  queretaroEntityAssignments,
+} from './demo-queretaro.ts';
+import { FEDERAL_NAMES, federalEntityAssignments } from './demo-federal.ts';
 
 export const DEMO_NODE_IDS = ['node.queretaro', 'node.federal', 'node.oaxaca'] as const;
 export type DemoNodeId = (typeof DEMO_NODE_IDS)[number];
@@ -26,7 +35,13 @@ export const DEMO_AUTHORITY_IDS = [
   'authority.oic-dfps',
   'authority.prosecutor-anticorruption',
   'authority.comptroller-queretaro',
+  'authority.oic-municipio-queretaro',
+  'authority.oic-el-marques',
+  'authority.oic-cea-queretaro',
+  'authority.prosecutor-queretaro',
+  'authority.esfe-queretaro',
   'authority.comptroller-oaxaca',
+  'authority.asf-federal',
   'authority.buzon-federal',
   'authority.buzon-queretaro',
   'authority.buzon-oaxaca',
@@ -34,8 +49,10 @@ export const DEMO_AUTHORITY_IDS = [
 export type DemoAuthorityId = (typeof DEMO_AUTHORITY_IDS)[number];
 
 /**
- * Buzón general de cada nodo: recibe lo que no tiene autoridad competente en el directorio y una
- * persona lo turna (Bases de la PDN, arts. 56 y 58). Su llave es la de `keys.json` del nodo.
+ * Buzón de la autoridad receptora de cada nodo: recibe lo que no tiene autoridad competente en el
+ * directorio y una persona lo turna (Bases de la PDN, arts. 56 y 58; LGRA art. 14). En Querétaro es
+ * la unidad receptora de la Secretaría de la Contraloría, no la SESEA: la SESEA solo opera el nodo.
+ * Su llave es la de `keys.json` del nodo.
  */
 export const DEMO_INBOX_AUTHORITY_IDS: Readonly<Record<DemoNodeId, DemoAuthorityId>> = {
   'node.federal': 'authority.buzon-federal',
@@ -152,13 +169,86 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
     supervisorId: null,
   },
   'authority.comptroller-queretaro': {
-    name: 'Contraloría Estatal Ficticia de Querétaro',
+    name: QUERETARO_NAMES.contraloria,
     nodeId: 'node.queretaro',
     governmentLevel: 'estatal',
     stateCode: '22',
     role: 'investigating',
     competence: {
       governmentLevels: ['estatal'],
+      stateCodes: ['22'],
+      entityIds: [],
+      laws: ['LGRA'],
+    },
+    supervisorId: null,
+  },
+  // Órganos internos de control municipales: cada municipio tiene el suyo (CPEUM art. 109 fr. III).
+  'authority.oic-municipio-queretaro': {
+    name: QUERETARO_NAMES.oicMunicipioQueretaro,
+    nodeId: 'node.queretaro',
+    governmentLevel: 'municipal',
+    stateCode: '22',
+    role: 'investigating',
+    competence: {
+      governmentLevels: ['municipal'],
+      stateCodes: ['22'],
+      entityIds: [...QUERETARO_MUNICIPIO_QUERETARO_ENTES],
+      laws: ['LGRA'],
+    },
+    supervisorId: null,
+  },
+  'authority.oic-el-marques': {
+    name: QUERETARO_NAMES.oicElMarques,
+    nodeId: 'node.queretaro',
+    governmentLevel: 'municipal',
+    stateCode: '22',
+    role: 'investigating',
+    competence: {
+      governmentLevels: ['municipal'],
+      stateCodes: ['22'],
+      entityIds: [...QUERETARO_EL_MARQUES_ENTES],
+      laws: ['LGRA'],
+    },
+    supervisorId: null,
+  },
+  'authority.oic-cea-queretaro': {
+    name: QUERETARO_NAMES.oicCea,
+    nodeId: 'node.queretaro',
+    governmentLevel: 'estatal',
+    stateCode: '22',
+    role: 'investigating',
+    competence: {
+      governmentLevels: ['estatal'],
+      stateCodes: ['22'],
+      entityIds: [QUERETARO_CEA_ENTE],
+      laws: ['LGRA'],
+    },
+    supervisorId: null,
+  },
+  'authority.prosecutor-queretaro': {
+    name: QUERETARO_NAMES.fiscalia,
+    nodeId: 'node.queretaro',
+    governmentLevel: 'estatal',
+    stateCode: '22',
+    role: 'prosecution',
+    competence: {
+      governmentLevels: ['estatal', 'municipal'],
+      stateCodes: ['22'],
+      entityIds: [],
+      laws: ['CPF'],
+    },
+    supervisorId: null,
+  },
+  // La ESFE investiga faltas graves que detecta al fiscalizar, pero desecha las denuncias sin
+  // nombre y firma (LFSRCQ arts. 50 y 51): la tabla la marca y nunca se le envía una anónima.
+  'authority.esfe-queretaro': {
+    name: QUERETARO_NAMES.esfe,
+    nodeId: 'node.queretaro',
+    governmentLevel: 'estatal',
+    stateCode: '22',
+    role: 'investigating',
+    competence: {
+      governmentLevels: ['estatal', 'municipal'],
       stateCodes: ['22'],
       entityIds: [],
       laws: ['LGRA'],
@@ -181,6 +271,15 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
   },
   // Buzones generales: no se proponen por competencia; reciben lo que no encuentra autoridad. El
   // federal atiende solo a los entes federales; el de cada estado, a los de su entidad.
+  'authority.asf-federal': {
+    name: FEDERAL_NAMES.asf,
+    nodeId: 'node.federal',
+    governmentLevel: 'federal',
+    stateCode: null,
+    role: 'investigating',
+    competence: { governmentLevels: ['federal'], stateCodes: [], entityIds: [], laws: ['LGRA'] },
+    supervisorId: null,
+  },
   'authority.buzon-federal': {
     name: 'Buzón general ficticio del nodo Federal',
     nodeId: 'node.federal',
@@ -196,7 +295,7 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
     supervisorId: 'authority.oversight-federal',
   },
   'authority.buzon-queretaro': {
-    name: 'Buzón general ficticio del nodo Querétaro',
+    name: QUERETARO_NAMES.receptora,
     nodeId: 'node.queretaro',
     governmentLevel: 'estatal',
     stateCode: '22',
@@ -228,7 +327,12 @@ const DEMO_AUTHORITIES: Readonly<Record<DemoAuthorityId, DemoAuthoritySpec>> = {
 const STATE_LEVELS: GovernmentLevel[] = ['estatal', 'municipal'];
 const FEDERAL_LEVELS: GovernmentLevel[] = ['federal'];
 
-type RuleExtra = Partial<Pick<FunctionRule, 'entityIds' | 'severity' | 'legalBasis'>>;
+type RuleExtra = Partial<
+  Pick<
+    FunctionRule,
+    'entityIds' | 'severity' | 'legalBasis' | 'requiresIdentifiedReporter' | 'instance'
+  >
+>;
 
 function rule(
   governmentLevels: GovernmentLevel[],
@@ -241,6 +345,8 @@ function rule(
     ...(extra.severity === undefined ? {} : { severity: extra.severity }),
     holder,
     ...(extra.legalBasis === undefined ? {} : { legalBasis: extra.legalBasis }),
+    ...(extra.requiresIdentifiedReporter === undefined ? {} : { requiresIdentifiedReporter: true }),
+    ...(extra.instance === undefined ? {} : { instance: extra.instance }),
   };
 }
 
@@ -261,10 +367,14 @@ function institutionRule(
 }
 
 /**
- * Tabla de funciones que declara cada nodo de la demostración. Querétaro y Oaxaca cubren
- * sus entes estatales y municipales («municipales sin OIC → Contraloría»); el federal, los entes
- * federales, cada uno con su OIC («ente X → su OIC») y sin regla general: un ente federal sin OIC en
- * el directorio va al buzón federal, que lo turna.
+ * Tabla de funciones que declara cada nodo de la demostración. Querétaro firma el formato 2: la
+ * SESEA solo opera el nodo; la unidad receptora de la Contraloría recibe y turna; cada dependencia
+ * tiene su órgano interno de control (o «sin OIC designado → la Contraloría», o pendiente) y ningún
+ * municipio va a la Contraloría; el tribunal y la fiscalía tienen su función, y la ESFE solo recibe
+ * denuncias identificadas. Oaxaca y el federal siguen en el formato 1: Oaxaca cubre sus entes
+ * estatales (los municipales van a su buzón, que los turna) y el federal, los entes federales, cada
+ * uno con su OIC («ente X → su OIC») y sin regla general: un ente federal sin OIC en el directorio
+ * va al buzón federal, que lo turna.
  */
 export function demoFunctionTables(issuedOn: string): Record<DemoNodeId, FunctionTable> {
   const table = (
@@ -272,90 +382,144 @@ export function demoFunctionTables(issuedOn: string): Record<DemoNodeId, Functio
     stateCode: string | null,
     functions: FunctionTable['functions'],
   ): FunctionTable => ({ format: 1, nodeId, stateCode, version: 1, issuedOn, functions });
+  const STATE: GovernmentLevel[] = ['estatal'];
+  const MUNICIPAL: GovernmentLevel[] = ['municipal'];
   return {
-    'node.queretaro': table('node.queretaro', '22', {
-      intake: [authorityRule(STATE_LEVELS, 'authority.buzon-queretaro')],
-      operation: [
-        institutionRule(
-          STATE_LEVELS,
-          'Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro',
-        ),
-      ],
-      investigation: [
-        authorityRule(STATE_LEVELS, 'authority.comptroller-queretaro', {
-          legalBasis: 'LGRA, arts. 3, fr. II, y 10',
-        }),
-      ],
-      substantiation: [
-        institutionRule(
-          STATE_LEVELS,
-          'Dirección Ficticia de Responsabilidades de la Contraloría de Querétaro',
-          { legalBasis: 'LGRA, art. 3, fr. III' },
-        ),
-      ],
-      resolution: [
-        institutionRule(STATE_LEVELS, 'Contraloría Estatal Ficticia de Querétaro (resolutora)', {
-          severity: 'non_serious',
-          legalBasis: 'LGRA, art. 10',
-        }),
-        institutionRule(STATE_LEVELS, 'Tribunal de Justicia Administrativa Ficticio de Querétaro', {
-          severity: 'serious',
-          legalBasis: 'LGRA, art. 12',
-        }),
-      ],
-      supervision: [
-        institutionRule(STATE_LEVELS, 'Titular de la Contraloría Estatal Ficticia de Querétaro'),
-      ],
-      prosecution: [institutionRule(STATE_LEVELS, 'Fiscalía Anticorrupción Ficticia de Querétaro')],
-      observer: [rule(STATE_LEVELS, { kind: 'observer', observerId: 'observer.cpc-queretaro' })],
-    }),
-    'node.federal': table('node.federal', null, {
-      intake: [authorityRule(FEDERAL_LEVELS, 'authority.buzon-federal')],
-      operation: [
-        institutionRule(
-          FEDERAL_LEVELS,
-          'Secretaría Anticorrupción y Buen Gobierno Ficticia (operación del nodo federal)',
-        ),
-      ],
-      investigation: [
-        authorityRule(FEDERAL_LEVELS, 'authority.oic-iffe', { entityIds: ['VE-INSTITUTO'] }),
-        authorityRule(FEDERAL_LEVELS, 'authority.oic-dfps', { entityIds: ['VE-PROGRAMAS'] }),
-      ],
-      substantiation: [
-        authorityRule(FEDERAL_LEVELS, 'authority.oic-iffe', {
-          entityIds: ['VE-INSTITUTO'],
-          legalBasis: 'Área de responsabilidades del OIC (LGRA, art. 3, fr. III)',
-        }),
-        authorityRule(FEDERAL_LEVELS, 'authority.oic-dfps', {
-          entityIds: ['VE-PROGRAMAS'],
-          legalBasis: 'Área de responsabilidades del OIC (LGRA, art. 3, fr. III)',
-        }),
-      ],
-      resolution: [
-        authorityRule(FEDERAL_LEVELS, 'authority.oic-iffe', {
-          entityIds: ['VE-INSTITUTO'],
-          severity: 'non_serious',
-          legalBasis: 'LGRA, art. 10',
-        }),
-        authorityRule(FEDERAL_LEVELS, 'authority.oic-dfps', {
-          entityIds: ['VE-PROGRAMAS'],
-          severity: 'non_serious',
-          legalBasis: 'LGRA, art. 10',
-        }),
-        institutionRule(FEDERAL_LEVELS, 'Tribunal Federal Ficticio de Justicia Administrativa', {
-          severity: 'serious',
-          legalBasis: 'LGRA, art. 12',
-        }),
-      ],
-      supervision: [authorityRule(FEDERAL_LEVELS, 'authority.oversight-federal')],
-      prosecution: [authorityRule(FEDERAL_LEVELS, 'authority.prosecutor-anticorruption')],
-      observer: [
-        institutionRule(
-          FEDERAL_LEVELS,
-          'Comité de Participación Ciudadana Ficticio del Sistema Nacional Anticorrupción',
-        ),
-      ],
-    }),
+    'node.queretaro': {
+      ...table('node.queretaro', '22', {
+        intake: [
+          authorityRule(STATE_LEVELS, 'authority.buzon-queretaro', {
+            legalBasis: 'Bases de la PDN, arts. 56 y 58; LGRA, art. 14; LRAEQ, art. 11',
+          }),
+        ],
+        operation: [institutionRule(STATE_LEVELS, QUERETARO_NAMES.sesea)],
+        investigation: [
+          authorityRule(STATE, 'authority.comptroller-queretaro', {
+            legalBasis: 'LGRA, arts. 3, fr. II, y 10; LRAEQ, arts. 2, fr. I, y 7',
+          }),
+          authorityRule(STATE_LEVELS, 'authority.esfe-queretaro', {
+            severity: 'serious',
+            requiresIdentifiedReporter: true,
+            legalBasis: 'LRAEQ, art. 8; LFSRCQ, arts. 50 y 51: solo denuncias con nombre y firma',
+          }),
+        ],
+        substantiation: [
+          institutionRule(STATE, QUERETARO_NAMES.responsabilidades, {
+            legalBasis: 'LGRA, arts. 3, fr. III, y 115; LRAEQ, art. 2, fr. II',
+          }),
+          institutionRule(MUNICIPAL, QUERETARO_NAMES.areaResponsabilidadesQueretaro, {
+            entityIds: [...QUERETARO_MUNICIPIO_QUERETARO_ENTES],
+            legalBasis: 'LGRA, arts. 3, fr. III, y 115',
+          }),
+          institutionRule(MUNICIPAL, QUERETARO_NAMES.areaResponsabilidadesElMarques, {
+            entityIds: [...QUERETARO_EL_MARQUES_ENTES],
+            legalBasis: 'LGRA, arts. 3, fr. III, y 115',
+          }),
+        ],
+        resolution: [
+          institutionRule(STATE, `${QUERETARO_NAMES.contraloria}, como autoridad resolutora`, {
+            severity: 'non_serious',
+            legalBasis: 'LGRA, arts. 3, fr. IV, y 10',
+          }),
+          institutionRule(STATE_LEVELS, QUERETARO_NAMES.sala, {
+            severity: 'serious',
+            legalBasis: 'LGRA, art. 12; LRAEQ, art. 9; LOTJAEQ, art. 23',
+          }),
+        ],
+        court: [
+          institutionRule(STATE_LEVELS, QUERETARO_NAMES.sala, {
+            instance: 'first',
+            legalBasis: 'LGRA, arts. 12 y 209; LOTJAEQ, art. 23',
+          }),
+          institutionRule(STATE_LEVELS, QUERETARO_NAMES.cuartaSeccion, {
+            instance: 'appeal',
+            legalBasis: 'LGRA, arts. 215 a 221; LOTJAEQ, art. 15',
+          }),
+        ],
+        supervision: [institutionRule(STATE_LEVELS, QUERETARO_NAMES.titularContraloria)],
+        prosecution: [
+          authorityRule(STATE_LEVELS, 'authority.prosecutor-queretaro', {
+            legalBasis: 'LRAEQ, art. 7, fr. III; CPQ, arts. 259 a 273',
+          }),
+        ],
+        observer: [rule(STATE_LEVELS, { kind: 'observer', observerId: 'observer.cpc-queretaro' })],
+      }),
+      format: 2,
+      entities: queretaroEntityAssignments({
+        comptroller: 'authority.comptroller-queretaro',
+        oicMunicipioQueretaro: 'authority.oic-municipio-queretaro',
+        oicElMarques: 'authority.oic-el-marques',
+        oicCea: 'authority.oic-cea-queretaro',
+      }),
+    },
+    'node.federal': {
+      ...table('node.federal', null, {
+        intake: [
+          authorityRule(FEDERAL_LEVELS, 'authority.buzon-federal', {
+            legalBasis: 'Bases de la PDN, arts. 56 y 58; LGRA, art. 14',
+          }),
+        ],
+        operation: [institutionRule(FEDERAL_LEVELS, FEDERAL_NAMES.sabgOperation)],
+        // La ASF investiga las faltas graves que detecta al fiscalizar y sí admite denuncias sin
+        // nombre (LFRCF, art. 60): no lleva la marca de denuncia identificada.
+        investigation: [
+          authorityRule(FEDERAL_LEVELS, 'authority.asf-federal', {
+            severity: 'serious',
+            legalBasis: 'LGRA, art. 11; LFRCF, arts. 47, 60 y 66 Bis',
+          }),
+        ],
+        substantiation: [
+          institutionRule(FEDERAL_LEVELS, FEDERAL_NAMES.iffeResponsabilidades, {
+            entityIds: ['VE-INSTITUTO'],
+            legalBasis: 'LGRA, arts. 3, fr. III, y 115',
+          }),
+          institutionRule(FEDERAL_LEVELS, FEDERAL_NAMES.dfpsResponsabilidades, {
+            entityIds: ['VE-PROGRAMAS'],
+            legalBasis: 'LGRA, arts. 3, fr. III, y 115',
+          }),
+        ],
+        resolution: [
+          authorityRule(FEDERAL_LEVELS, 'authority.oic-iffe', {
+            entityIds: ['VE-INSTITUTO'],
+            severity: 'non_serious',
+            legalBasis: 'LGRA, art. 10',
+          }),
+          authorityRule(FEDERAL_LEVELS, 'authority.oic-dfps', {
+            entityIds: ['VE-PROGRAMAS'],
+            severity: 'non_serious',
+            legalBasis: 'LGRA, art. 10',
+          }),
+          institutionRule(FEDERAL_LEVELS, 'Tribunal Federal Ficticio de Justicia Administrativa', {
+            severity: 'serious',
+            legalBasis: 'LGRA, art. 12',
+          }),
+        ],
+        court: [
+          institutionRule(FEDERAL_LEVELS, FEDERAL_NAMES.tfjaSala, {
+            instance: 'first',
+            legalBasis: 'LGRA, arts. 12 y 209; LOTFJA, arts. 37 y 38',
+          }),
+          institutionRule(FEDERAL_LEVELS, FEDERAL_NAMES.tfjaTerceraSeccion, {
+            instance: 'appeal',
+            legalBasis: 'LGRA, arts. 215 a 221; LOTFJA, art. 13',
+          }),
+        ],
+        supervision: [authorityRule(FEDERAL_LEVELS, 'authority.oversight-federal')],
+        prosecution: [
+          authorityRule(FEDERAL_LEVELS, 'authority.prosecutor-anticorruption', {
+            legalBasis: 'Ley de la FGR, art. 13, fr. V; CPF, Título Décimo',
+          }),
+        ],
+        observer: [
+          institutionRule(
+            FEDERAL_LEVELS,
+            'Comité de Participación Ciudadana Ficticio del Sistema Nacional Anticorrupción',
+          ),
+        ],
+      }),
+      format: 2,
+      entities: federalEntityAssignments(),
+    },
     'node.oaxaca': table('node.oaxaca', '20', {
       intake: [authorityRule(STATE_LEVELS, 'authority.buzon-oaxaca')],
       operation: [
@@ -364,8 +528,10 @@ export function demoFunctionTables(issuedOn: string): Record<DemoNodeId, Functio
           'Secretaría de la Contraloría Ficticia de Oaxaca (operación del nodo)',
         ),
       ],
+      // Solo los entes estatales: cada municipio tiene su OIC (CPEUM art. 109 fr. III); mientras
+      // no estén en el directorio, sus denuncias van al buzón de Oaxaca, que las turna.
       investigation: [
-        authorityRule(STATE_LEVELS, 'authority.comptroller-oaxaca', {
+        authorityRule(['estatal'], 'authority.comptroller-oaxaca', {
           legalBasis: 'LGRA, arts. 3, fr. II, y 10',
         }),
       ],

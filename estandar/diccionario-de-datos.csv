@@ -176,7 +176,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /AuthoritySessionInfo,absoluteTimeoutSeconds,Sí,Numérico,Number,No,Segundos tras los que vence la sesión aunque haya actividad.,AuthoritySessionInfo,,,28800
 /AuthorityAccountView,accountId,Sí,Alfanumérico,String,No,Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.,AuthorityAccountView,,,acct-5f0c2a9d1e7b3c44
 /AuthorityAccountView,authorityId,Sí,Alfanumérico,String,No,Identificador estable de la autoridad.,AuthorityAccountView,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oic-iffe
-/AuthorityAccountView,functions,Sí,Arreglo,Array of AuthorityFunction,No,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.",AuthorityAccountView,hasta 2 elementos,,
+/AuthorityAccountView,functions,Sí,Arreglo,Array of AuthorityFunction,No,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision, operation y court nunca se combinan.",AuthorityAccountView,hasta 2 elementos,,
 /AuthorityProfile,authorityId,Sí,Alfanumérico,String,No,Identificador estable de la autoridad.,AuthorityProfile,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oic-iffe
 /AuthorityProfile,name,Sí,Alfanumérico,String,No,Nombre de la autoridad.,AuthorityProfile,de 1 a 200 caracteres,,Órgano Interno de Control Ficticio
 /AuthorityProfile,supervisorId,No,Alfanumérico,String,No,"Autoridad supervisora que recibe los escalamientos, si tiene.",AuthorityProfile,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oversight-federal
@@ -411,7 +411,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /OffenseSeverity,(valor),Sí,Alfanumérico,String (enum),Sí,"Gravedad de la conducta: non_serious (falta no grave), serious (grave), private_party (de particulares) o crime (delito).",OffenseSeverity,,non_serious; serious; private_party; crime,
 /EscalationRuleKey,(valor),Sí,Alfanumérico,String (enum),Sí,Regla pública de escalamiento o de alerta del catálogo ESCALATION_RULES.,EscalationRuleKey,,escalation.grave-stalled; escalation.archive-unnotified; escalation.conflict; escalation.archive-signals; escalation.downgrade-signals; escalation.declined-serious; escalation.conflict-justified; escalation.transfer-unconfirmed; alert.turn-overdue; alert.prescription-12m; alert.prescription-6m; alert.prescription-3m; alert.inactivity-warning; alert.inactivity-expiry; alert.expiry-warning; alert.expiry-reached,escalation.grave-stalled
 /RuleEffect,(valor),Sí,Alfanumérico,String (enum),Sí,Efecto de la regla: escalate (entrega el sobre de escalamiento a la supervisora) o alert (solo avisa).,RuleEffect,,escalate; alert,escalate
-/AuthorityFunction,(valor),Sí,Alfanumérico,String (enum),Sí,"Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta).",AuthorityFunction,,intake; investigation; supervision; substantiation; operation,intake
+/AuthorityFunction,(valor),Sí,Alfanumérico,String (enum),Sí,"Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (tribunal: faltas graves, de particulares y alzada).",AuthorityFunction,,intake; investigation; supervision; substantiation; operation; court,intake
 /AccountId,(valor),Sí,Alfanumérico,String,No,Seudónimo estable y aleatorio de una cuenta de la autoridad; nunca su nombre. Es el actor que queda en la bitácora.,AccountId,patrón ^acct-[0-9a-f]{16}$,,acct-5f0c2a9d1e7b3c44
 /RegistrationRequest,institutionName,Sí,Alfanumérico,String,No,Nombre oficial de la institución.,RegistrationRequest,de 2 a 300 caracteres,,Secretaría de la Contraloría Ficticia de Oaxaca
 /RegistrationRequest,stateCode,Sí,Alfanumérico,String,No,Entidad de la institución; null si es federal.,RegistrationRequest,,,20
@@ -425,7 +425,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /RegistrationRequest/applicant,appointment,Sí,Alfanumérico,String,No,Número y fecha del oficio de nombramiento.,RegistrationRequest,de 2 a 200 caracteres,,Oficio SCF/001/2026 del 2 de enero de 2026
 /RegistrationRequest,people,Sí,Arreglo,Array of Object,No,Personas de la institución que tendrán cuenta.,RegistrationRequest,hasta 12 elementos,,
 /RegistrationRequest/people,fullName,Sí,Alfanumérico,String,No,Nombre de la persona que tendrá cuenta.,RegistrationRequest,de 2 a 120 caracteres,,Persona Ficticia Uno
-/RegistrationRequest/people,functions,Sí,Arreglo,Array of AuthorityFunction,No,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.",RegistrationRequest,hasta 2 elementos,,
+/RegistrationRequest/people,functions,Sí,Arreglo,Array of AuthorityFunction,No,"Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision, operation y court nunca se combinan.",RegistrationRequest,hasta 2 elementos,,
 /RegistrationRequest,padlock,Sí,Objeto,Object,No,"Candado de la autoridad: solo sus llaves públicas, nunca la privada.",RegistrationRequest,,,
 /RegistrationRequest/padlock,keyId,Sí,Alfanumérico,String,No,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,RegistrationRequest,patrón ^[0-9a-f]{16}$,,f7bc219ff223a248
 /RegistrationRequest/padlock,boxPublicKey,Sí,Alfanumérico,String,No,Llave pública X25519 de la autoridad.,RegistrationRequest,patrón ^[A-Za-z0-9_-]+$; hasta 64 caracteres,,NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA
@@ -441,6 +441,66 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /RegistrationView,decision,Sí,Objeto,Object,No,"Quién resolvió (seudónimo de la cuenta), qué día y, si rechazó, el motivo.",RegistrationView,,,
 /RegistrationView,directoryEntry,Sí,Valor,Valor,No,"Si se aprobó: entrada propuesta para el directorio, lista para agregarla, firmarla y que los testigos la cofirmen.",RegistrationView,,,
 /RegistrationDecision,(valor),Sí,Objeto,Object,No,Aprobar con la huella confirmada o rechazar con un motivo.,RegistrationDecision,,,
+/CompetenceView,nodeId,Sí,Alfanumérico,String,No,Identificador estable del nodo.,CompetenceView,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
+/CompetenceView,stateCode,Sí,Alfanumérico,String,No,,CompetenceView,,,22
+/CompetenceView,today,Sí,Fecha en formato ISO 8601,Date,No,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",CompetenceView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-16
+/CompetenceView,table,Sí,Objeto,Object (FunctionTable),No,Tabla vigente del nodo en el directorio.,CompetenceView,,,
+/CompetenceView,authorities,Sí,Arreglo,Array of Object,No,,CompetenceView,,,
+/CompetenceView/authorities,authorityId,Sí,Alfanumérico,String,No,Identificador estable de la autoridad.,CompetenceView,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oic-municipio-queretaro
+/CompetenceView/authorities,name,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 300 caracteres,,Órgano Interno de Control del Municipio de Quer…
+/CompetenceView/authorities,governmentLevel,Sí,Alfanumérico,String (enum),No,"Orden de gobierno: federal, estatal o municipal.",CompetenceView,,federal; estatal; municipal,municipal
+/CompetenceView/authorities,hasKeys,Sí,Booleano,Boolean,No,Sus llaves están vigentes hoy.,CompetenceView,,,true
+/CompetenceView,entities,Sí,Arreglo,Array of Object,No,,CompetenceView,,,
+/CompetenceView/entities,entityId,Sí,Alfanumérico,String,No,Clave del ente.,CompetenceView,de 1 a 64 caracteres,,PDN-22-7283
+/CompetenceView/entities,name,Sí,Alfanumérico,String,No,Nombre del ente.,CompetenceView,de 1 a 400 caracteres,,Secretaría del Ayuntamiento del Municipio de Qu…
+/CompetenceView/entities,level,Sí,Alfanumérico,String (enum),No,"Orden de gobierno: federal, estatal o municipal.",CompetenceView,,federal; estatal; municipal,municipal
+/CompetenceView/entities,municipalityCode,No,Alfanumérico,String,No,"Clave INEGI del municipio, si el catálogo la trae.",CompetenceView,patrón ^\d{3}$,,014
+/CompetenceView/entities,isFictitious,Sí,Booleano,Boolean,No,Ente ficticio de la demostración (no está en el catálogo de la PDN).,CompetenceView,,,false
+/CompetenceView/entities,group,Sí,Objeto,Object,No,"Grupo en la pantalla: centralizada, paraestatal, autónomos o municipio.",CompetenceView,,,
+/CompetenceView/entities/group,key,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 64 caracteres,,municipio:014
+/CompetenceView/entities/group,label,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 200 caracteres,,Municipio de Querétaro
+/CompetenceView/entities,status,Sí,Alfanumérico,String,No,"assigned, without_oic o pending (competencia por dependencia), o general (lo cubre una regla de todo su orden).",CompetenceView,,,assigned
+/CompetenceView/entities,source,Sí,Alfanumérico,String (enum),No,"De dónde sale: competencia por dependencia, regla del ente, regla general o nada.",CompetenceView,,entity; rule; general; none,entity
+/CompetenceView/entities,holder,Sí,Valor,Valor,No,,CompetenceView,,,
+/CompetenceView/entities,holderName,Sí,Alfanumérico,String,No,,CompetenceView,,,Órgano Interno de Control del Municipio de Quer…
+/CompetenceView/entities,legalBasis,Sí,Alfanumérico,String,No,,CompetenceView,,,"CPEUM, art. 109, fr. III"
+/CompetenceView/entities,requiresIdentifiedReporter,Sí,Booleano,Boolean,No,,CompetenceView,,,false
+/CompetenceView/entities,badge,Sí,Alfanumérico,String (enum),No,"Distintivo: keys (OIC con llaves vigentes: la denuncia le llega cifrada), named (OIC nombrado, falta su alta) o pending (pendiente: va a la autoridad receptora).",CompetenceView,,keys; named; pending,keys
+/CompetenceView,coverage,Sí,Objeto,Object,No,Cobertura de órganos internos de control de una tabla de funciones.,CompetenceView,,,
+/CompetenceView/coverage,stateCode,Sí,Alfanumérico,String,No,Entidad de la tabla; null en la federal.,CompetenceView,,,22
+/CompetenceView/coverage,tableVersion,Sí,Numérico,Number,No,,CompetenceView,mínimo 1,,3
+/CompetenceView/coverage,total,Sí,Numérico,Number,No,Dependencias del catálogo.,CompetenceView,mínimo 0,,2
+/CompetenceView/coverage,withOic,Sí,Numérico,Number,No,Con su órgano interno de control asignado.,CompetenceView,mínimo 0,,1
+/CompetenceView/coverage,withoutOic,Sí,Numérico,Number,No,"«Sin OIC designado»: la atiende otra autoridad, con fundamento.",CompetenceView,mínimo 0,,0
+/CompetenceView/coverage,general,Sí,Numérico,Number,No,Cubiertas por una regla de todo su orden de gobierno.,CompetenceView,mínimo 0,,0
+/CompetenceView/coverage,withKeys,Sí,Numérico,Number,No,Quien la atiende tiene llaves vigentes.,CompetenceView,mínimo 0,,1
+/CompetenceView/coverage,pending,Sí,Numérico,Number,No,Pendientes: sus denuncias van a la autoridad receptora.,CompetenceView,mínimo 0,,1
+/CompetenceView,proposals,Sí,Arreglo,Array of Object,No,"Versiones firmadas desde el panel, de la más reciente a la más antigua.",CompetenceView,,,
+/CompetenceView/proposals,version,Sí,Numérico,Number,No,,CompetenceView,mínimo 1,,
+/CompetenceView/proposals,signedOn,Sí,Fecha en formato ISO 8601,Date,No,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",CompetenceView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
+/CompetenceView/proposals,signedBy,Sí,Alfanumérico,String,No,Cuenta de operación que la firmó.,CompetenceView,,,acct-5f0c2a9d1e7b3c44
+/CompetenceView/proposals,changes,Sí,Arreglo,Array of Object,No,,CompetenceView,,,
+/CompetenceView/proposals/changes,kind,Sí,Alfanumérico,String (enum),No,,CompetenceView,,added; removed; changed,
+/CompetenceView/proposals/changes,scope,Sí,Alfanumérico,String,No,Función o entity.,CompetenceView,de 1 a 32 caracteres,,
+/CompetenceView/proposals/changes,entityId,No,Alfanumérico,String,No,,CompetenceView,de 1 a 64 caracteres,,
+/CompetenceView/proposals/changes,text,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 1000 caracteres,,
+/CompetenceView/proposals,signedTable,Sí,Objeto,Object (SignedFunctionTable),No,Tabla firmada por el nodo. Se entrega a la SESNA (sigilo-sesna aceptar) y entra al directorio cuando los testigos lo cofirman.,CompetenceView,,,
+/CompetenceSaveRequest,baseVersion,Sí,Numérico,Number,No,"Versión de la tabla sobre la que se editó; si cambió, responde 409.",CompetenceSaveRequest,mínimo 1,,3
+/CompetenceSaveRequest,entities,Sí,Arreglo,Array of Object,No,,CompetenceSaveRequest,hasta 5000 elementos,,
+/CompetenceSaveRequest/entities,entityId,Sí,Alfanumérico,String,No,Ente del catálogo de la PDN (o ficticio de la demostración).,CompetenceSaveRequest,de 1 a 64 caracteres,,PDN-22-7283
+/CompetenceSaveRequest/entities,status,Sí,Alfanumérico,String (enum),No,"Estado: assigned (el ente tiene su órgano interno de control, holder), without_oic (sin OIC designado: lo atiende holder, con legalBasis obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente).",CompetenceSaveRequest,,assigned; without_oic; pending,assigned
+/CompetenceSaveRequest/entities,holder,No,Objeto,Object (FunctionHolder),No,Quién investiga al ente: una autoridad del directorio (con llaves) o una institución nombrada que aún no tiene alta. Falta solo si está pendiente.,CompetenceSaveRequest,,,
+/CompetenceSaveRequest/entities,legalBasis,No,Alfanumérico,String,No,Fundamento corto (obligatorio en without_oic).,CompetenceSaveRequest,de 1 a 300 caracteres,,"CPEUM, art. 109, fr. III"
+/CompetenceSaveRequest/entities,requiresIdentifiedReporter,No,Booleano,Boolean,No,Como en la regla: quien atiende al ente no admite denuncias anónimas.,CompetenceSaveRequest,valor fijo true,,
+/CompetenceSaveRequest,dryRun,Sí,Booleano,Boolean,No,true: solo revisa y muestra los cambios; false: firma la versión.,CompetenceSaveRequest,,,false
+/CompetenceSaveResponse,version,Sí,Numérico,Number,No,Versión que tendría o tiene la tabla.,CompetenceSaveResponse,mínimo 1,,4
+/CompetenceSaveResponse,changes,Sí,Arreglo,Array of Object,No,,CompetenceSaveResponse,,,
+/CompetenceSaveResponse/changes,kind,Sí,Alfanumérico,String (enum),No,,CompetenceSaveResponse,,added; removed; changed,changed
+/CompetenceSaveResponse/changes,scope,Sí,Alfanumérico,String,No,Función o entity.,CompetenceSaveResponse,de 1 a 32 caracteres,,entity
+/CompetenceSaveResponse/changes,entityId,No,Alfanumérico,String,No,,CompetenceSaveResponse,de 1 a 64 caracteres,,PDN-22-7232
+/CompetenceSaveResponse/changes,text,Sí,Alfanumérico,String,No,,CompetenceSaveResponse,de 1 a 1000 caracteres,,Fiscalía General del Estado: de pendiente a OIC…
+/CompetenceSaveResponse,problems,Sí,Arreglo,Array of String,No,Problemas de coherencia (vacío si la tabla sirve). Con problemas no se firma.,CompetenceSaveResponse,cada elemento: hasta 1000 caracteres,,
+/CompetenceSaveResponse,proposal,Sí,Objeto,Object,No,"La versión firmada, o null si fue una revisión o tiene problemas.",CompetenceSaveResponse,,,
 /SignedAuthorityDirectory,directory,Sí,Objeto,Object (AuthorityDirectory),Sí,Directorio de autoridades: cada versión la firma la operación y la cofirman m de n testigos.,SignedAuthorityDirectory,,,
 /SignedAuthorityDirectory,digest,Sí,Alfanumérico,String,Sí,SHA-256 de la forma canónica de directory.,SignedAuthorityDirectory,patrón ^[0-9a-f]{64}$,,3b7e0f1c9a5d2e8b4f6a1c0d7e9b2a4c6f8e0d1b3a5c7e9…
 /SignedAuthorityDirectory,operatorSignature,Sí,Alfanumérico,String,Sí,"Firma Ed25519 de la operación sobre ""sigilo/red/directory/operator/v1:"" + digest.",SignedAuthorityDirectory,patrón ^[A-Za-z0-9_-]+$,,7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg…
@@ -468,7 +528,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /DirectoryNode,signingKeyId,Sí,Alfanumérico,String,Sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,DirectoryNode,patrón ^[0-9a-f]{16}$,,c3f8e2a1b0d94756
 /DirectoryNode,signingPublicKey,Sí,Alfanumérico,String,Sí,"Llave pública Ed25519 del nodo: firma la cabeza de su bitácora, su registro y, si es testigo, sus cofirmas.",DirectoryNode,patrón ^[A-Za-z0-9_-]+$,,Qm9vT0NfRmljdGljaWFfZGVfZWplbXBsb19wYXJhX2Rv
 /DirectoryAuthority,id,Sí,Alfanumérico,String,Sí,Identificador estable de la autoridad.,DirectoryAuthority,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.comptroller-queretaro
-/DirectoryAuthority,name,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,DirectoryAuthority,de 1 a 300 caracteres,,Contraloría Estatal Ficticia de Querétaro
+/DirectoryAuthority,name,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,DirectoryAuthority,de 1 a 300 caracteres,,Secretaría de la Contraloría del Poder Ejecutiv…
 /DirectoryAuthority,nodeId,Sí,Alfanumérico,String,Sí,Identificador estable del nodo.,DirectoryAuthority,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
 /DirectoryAuthority,governmentLevel,Sí,Alfanumérico,String (enum),Sí,"Orden de gobierno: federal, estatal o municipal.",DirectoryAuthority,,federal; estatal; municipal,estatal
 /DirectoryAuthority,stateCode,Sí,Alfanumérico,String,Sí,Entidad de la autoridad; null si es federal.,DirectoryAuthority,,,22
@@ -489,27 +549,39 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /DirectoryObserver,kind,Sí,Alfanumérico,String (enum),Sí,"Tipo de observador: CPC, entidad de fiscalización superior, organización de la sociedad civil o academia.",DirectoryObserver,,cpc; audit-institution; civil-society; academia,cpc
 /DirectoryObserver,signingKeyId,Sí,Alfanumérico,String,Sí,Identificador de llave: primeros 16 caracteres hexadecimales del SHA-256 de la llave pública.,DirectoryObserver,patrón ^[0-9a-f]{16}$,,c3f8e2a1b0d94756
 /DirectoryObserver,signingPublicKey,Sí,Alfanumérico,String,Sí,Llave pública Ed25519 con la que cofirma el directorio y la bitácora nacional.,DirectoryObserver,patrón ^[A-Za-z0-9_-]+$,,TGxhdmVfZmljdGljaWFfZGVfZWplbXBsb19kb3NfX19f
-/SignedFunctionTable,table,Sí,Objeto,Object (FunctionTable),Sí,"Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente. Con ella la ventanilla propone a quién va cada denuncia.",SignedFunctionTable,,,
+/SignedFunctionTable,table,Sí,Objeto,Object (FunctionTable),Sí,"Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente; en el formato 2, además, el órgano interno de control de cada dependencia. Con ella la ventanilla propone a quién va cada denuncia.",SignedFunctionTable,,,
 /SignedFunctionTable,signature,Sí,Alfanumérico,String,Sí,"Firma Ed25519 del nodo (su llave de firma del directorio) sobre ""sigilo/red/function-table/v1:"" + SHA-256 de la forma canónica de table.",SignedFunctionTable,patrón ^[A-Za-z0-9_-]+$,,7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg…
-/FunctionTable,format,Sí,Numérico,Number,Sí,Versión del formato de la tabla de funciones.,FunctionTable,valor fijo 1,,1
+/FunctionTable,format,Sí,Numérico,Number,Sí,"Versión del formato: 1 (original) o 2 (agrega el tribunal, la competencia por dependencia y la marca de denuncia identificada). Se aceptan las dos.",FunctionTable,,,2
 /FunctionTable,nodeId,Sí,Alfanumérico,String,Sí,Nodo que declara la tabla y la firma.,FunctionTable,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
 /FunctionTable,stateCode,Sí,Alfanumérico,String,Sí,Entidad que cubre la tabla; null en la tabla del nodo federal (entes del orden federal).,FunctionTable,,,22
-/FunctionTable,version,Sí,Numérico,Number,Sí,Versión de la tabla; crece en uno con cada cambio.,FunctionTable,mínimo 1,,1
-/FunctionTable,issuedOn,Sí,Fecha en formato ISO 8601,Date,Sí,Día en que el nodo firmó esta versión.,FunctionTable,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-09
+/FunctionTable,version,Sí,Numérico,Number,Sí,Versión de la tabla; crece en uno con cada cambio.,FunctionTable,mínimo 1,,3
+/FunctionTable,issuedOn,Sí,Fecha en formato ISO 8601,Date,Sí,Día en que el nodo firmó esta versión.,FunctionTable,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-12
 /FunctionTable,functions,Sí,Objeto,Object,Sí,Reglas de cada función.,FunctionTable,,,
-/FunctionTable/functions,intake,Sí,Arreglo,Array of FunctionRule,Sí,"Buzón general: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58).",FunctionTable,hasta 200 elementos,,
+/FunctionTable/functions,intake,Sí,Arreglo,Array of FunctionRule,Sí,"Buzón de la autoridad receptora: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58).",FunctionTable,hasta 200 elementos,,
 /FunctionTable/functions,operation,Sí,Arreglo,Array of FunctionRule,Sí,Quién opera el nodo y da de alta a las autoridades.,FunctionTable,hasta 200 elementos,,
 /FunctionTable/functions,investigation,Sí,Arreglo,Array of FunctionRule,Sí,"Autoridad investigadora y calificadora (LGRA, art. 3).",FunctionTable,hasta 200 elementos,,
 /FunctionTable/functions,substantiation,Sí,Arreglo,Array of FunctionRule,Sí,"Autoridad substanciadora (LGRA, art. 3).",FunctionTable,hasta 200 elementos,,
 /FunctionTable/functions,resolution,Sí,Arreglo,Array of FunctionRule,Sí,"Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3).",FunctionTable,hasta 200 elementos,,
+/FunctionTable/functions,court,No,Arreglo,Array of FunctionRule,Sí,"Formato 2. Tribunal de Justicia Administrativa: resuelve faltas graves y de particulares (primera instancia) y la apelación y la revisión (alzada) (LGRA, arts. 12, 209 y 215 a 221).",FunctionTable,hasta 200 elementos,,
 /FunctionTable/functions,supervision,Sí,Arreglo,Array of FunctionRule,Sí,Superior jerárquico que recibe los escalamientos (ADR 0007).,FunctionTable,hasta 200 elementos,,
 /FunctionTable/functions,prosecution,Sí,Arreglo,Array of FunctionRule,Sí,Vía penal: fiscalía de hechos de corrupción.,FunctionTable,hasta 200 elementos,,
 /FunctionTable/functions,observer,Sí,Arreglo,Array of FunctionRule,Sí,Observador ciudadano (CPC).,FunctionTable,hasta 200 elementos,,
+/FunctionTable,settings,No,Objeto,Object,Sí,"Formato 2. Ajustes que declara cada nodo cuando su ley se aparta de la regla nacional; sin el campo, rige la regla nacional (LGRA y CPEUM).",FunctionTable,,,
+/FunctionTable/settings,operatorReceives,No,Objeto,Object,Sí,"Quien opera el nodo (por ejemplo, la SESEA) también recibe y turna denuncias, solo si la ley del estado la faculta (por ejemplo, Michoacán). Por omisión nacional, no: la SESEA es apoyo técnico del Comité Coordinador y no es autoridad del art. 9 de la LGRA.",FunctionTable,,,
+/FunctionTable/settings/operatorReceives,legalBasis,Sí,Alfanumérico,String,Sí,Ley o lineamiento del estado que lo faculta.,FunctionTable,de 1 a 300 caracteres,,
+/FunctionTable,entities,No,Arreglo,Array of Object,Sí,"Formato 2. Competencia por dependencia: el órgano interno de control de cada ente de la entidad, «sin OIC designado → quién atiende» o pendiente. Un ente aparece una sola vez.",FunctionTable,hasta 5000 elementos,,
+/FunctionTable/entities,entityId,Sí,Alfanumérico,String,Sí,Ente del catálogo de la PDN (o ficticio de la demostración).,FunctionTable,de 1 a 64 caracteres,,PDN-22-7283
+/FunctionTable/entities,status,Sí,Alfanumérico,String (enum),Sí,"Estado: assigned (el ente tiene su órgano interno de control, holder), without_oic (sin OIC designado: lo atiende holder, con legalBasis obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente).",FunctionTable,,assigned; without_oic; pending,assigned
+/FunctionTable/entities,holder,No,Objeto,Object (FunctionHolder),Sí,Quién investiga al ente: una autoridad del directorio (con llaves) o una institución nombrada que aún no tiene alta. Falta solo si está pendiente.,FunctionTable,,,
+/FunctionTable/entities,legalBasis,No,Alfanumérico,String,Sí,Fundamento corto (obligatorio en without_oic).,FunctionTable,de 1 a 300 caracteres,,"CPEUM, art. 109, fr. III"
+/FunctionTable/entities,requiresIdentifiedReporter,No,Booleano,Boolean,Sí,Como en la regla: quien atiende al ente no admite denuncias anónimas.,FunctionTable,valor fijo true,,
 /FunctionRule,governmentLevels,Sí,Arreglo,Array of String (enum),Sí,Órdenes de gobierno de los entes a los que aplica la regla.,FunctionRule,,federal; estatal; municipal,
-/FunctionRule,entityIds,Sí,Arreglo,Array of String,Sí,"Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «municipales sin OIC»). Una regla específica gana sobre una general.",FunctionRule,hasta 1000 elementos; cada elemento: de 1 a 64 caracteres,,
+/FunctionRule,entityIds,Sí,Arreglo,Array of String,Sí,"Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden. Una regla específica gana sobre una general. El órgano interno de control de cada ente se declara, en el formato 2, en entities.",FunctionRule,hasta 1000 elementos; cada elemento: de 1 a 64 caracteres,,
 /FunctionRule,severity,No,Alfanumérico,String (enum),Sí,"Solo para faltas graves (serious) o no graves (non_serious); sin el campo, para ambas. Sirve, por ejemplo, para la resolución.",FunctionRule,,serious; non_serious,
 /FunctionRule,holder,Sí,Objeto,Object (FunctionHolder),Sí,"Quién cumple la función: autoridad, observador o institución.",FunctionRule,,,
 /FunctionRule,legalBasis,No,Alfanumérico,String,Sí,"Fundamento corto, en lenguaje claro (ley y artículo).",FunctionRule,de 1 a 300 caracteres,,
+/FunctionRule,requiresIdentifiedReporter,No,Booleano,Boolean,Sí,"Formato 2. Quien cumple la función solo admite denuncias con nombre y firma (por ejemplo, la entidad de fiscalización superior de Querétaro, LFSRCQ arts. 50 y 51): una denuncia anónima o con identidad sellada nunca se le propone ni se le ofrece.",FunctionRule,valor fijo true,,
+/FunctionRule,instance,No,Alfanumérico,String (enum),Sí,"Formato 2, solo en court: primera instancia (first: resuelve faltas graves y de particulares) o alzada (appeal: apelación y revisión, LGRA arts. 215 a 221). Sin el campo, ambas.",FunctionRule,,first; appeal,
 /FunctionHolder,(valor),Sí,Objeto,Object,Sí,"Quién cumple la función: autoridad, observador o institución.",FunctionHolder,,,
 /WitnessPolicy,threshold,Sí,Numérico,Number,Sí,Número mínimo de cofirmas válidas de testigos distintos (m).,WitnessPolicy,mínimo 1,,1
 /WitnessPolicy,witnessIds,Sí,Arreglo,Array of String,Sí,Testigos (n): observadores o nodos del directorio.,WitnessPolicy,cada elemento: patrón ^(?:node|observer)\.[a-z0-9]+(?:-[a-z0-9]+)*$,,
@@ -593,6 +665,19 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /NationalOpenData,nodes,Sí,Arreglo,Array of NationalOpenDataNode,Sí,"Todos los nodos del directorio, sumados o no, en el orden del directorio.",NationalOpenData,,,
 /NationalOpenData,cells,Sí,Arreglo,Array of NationalOpenDataCell,Sí,"Celdas nacionales ordenadas por mes, entidad, conducta y estatus.",NationalOpenData,,,
 /NationalOpenData,suppressed,Sí,Numérico,Number,Sí,Suprimidas: la suma de la fila de suprimidas de cada nodo más las celdas que quedaron bajo la celda mínima después de sumar.,NationalOpenData,mínimo 0,,5
+/NationalOpenData,oicCoverage,No,Arreglo,Array of Object,Sí,"Cobertura de órganos internos de control por entidad y de la federación, calculada con la tabla de funciones firmada de cada nodo y el catálogo de entes de la PDN.",NationalOpenData,,,
+/NationalOpenData/oicCoverage,stateCode,Sí,Alfanumérico,String,Sí,Entidad de la tabla; null en la federal.,NationalOpenData,,,
+/NationalOpenData/oicCoverage,tableVersion,Sí,Numérico,Number,Sí,,NationalOpenData,mínimo 1,,
+/NationalOpenData/oicCoverage,total,Sí,Numérico,Number,Sí,Dependencias del catálogo.,NationalOpenData,mínimo 0,,
+/NationalOpenData/oicCoverage,withOic,Sí,Numérico,Number,Sí,Con su órgano interno de control asignado.,NationalOpenData,mínimo 0,,
+/NationalOpenData/oicCoverage,withoutOic,Sí,Numérico,Number,Sí,"«Sin OIC designado»: la atiende otra autoridad, con fundamento.",NationalOpenData,mínimo 0,,
+/NationalOpenData/oicCoverage,general,Sí,Numérico,Number,Sí,Cubiertas por una regla de todo su orden de gobierno.,NationalOpenData,mínimo 0,,
+/NationalOpenData/oicCoverage,withKeys,Sí,Numérico,Number,Sí,Quien la atiende tiene llaves vigentes.,NationalOpenData,mínimo 0,,
+/NationalOpenData/oicCoverage,pending,Sí,Numérico,Number,Sí,Pendientes: sus denuncias van a la autoridad receptora.,NationalOpenData,mínimo 0,,
+/NationalOpenData/oicCoverage,nodeId,Sí,Alfanumérico,String,Sí,Identificador estable del nodo.,NationalOpenData,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
+/NationalOpenData/oicCoverage,percentWithOic,Sí,Numérico,Number,Sí,,NationalOpenData,de 0 a 100,,
+/NationalOpenData/oicCoverage,percentWithKeys,Sí,Numérico,Number,Sí,,NationalOpenData,de 0 a 100,,
+/NationalOpenData/oicCoverage,percentPending,Sí,Numérico,Number,Sí,,NationalOpenData,de 0 a 100,,
 /NationalOpenDataNode,nodeId,Sí,Alfanumérico,String,Sí,Identificador estable del nodo.,NationalOpenDataNode,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
 /NationalOpenDataNode,name,Sí,Alfanumérico,String,Sí,Nombre del nodo en el directorio.,NationalOpenDataNode,de 1 a 200 caracteres,,Nodo estatal Querétaro
 /NationalOpenDataNode,status,Sí,Alfanumérico,String (enum),Sí,included: su CSV se sumó; unreachable: no respondió (sin datos de ese nodo en este corte); rejected: su CSV no cumplió las reglas y no se sumó.,NationalOpenDataNode,,included; unreachable; rejected,included
@@ -671,7 +756,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /PdnStatisticsRow,mes,Sí,Año y mes en formato ISO 8601 (AAAA-MM),String,Sí,Mes cerrado (AAAA-MM) al que se refiere la fila.,PdnStatisticsRow,patrón ^\d{4}-(0[1-9]|1[0-2])$,,2026-10
 /PdnStatisticsRow,autoridad,Sí,Objeto,Object,Sí,Autoridad del directorio que tenía la denuncia en su bandeja.,PdnStatisticsRow,,,
 /PdnStatisticsRow/autoridad,clave,Sí,Alfanumérico,String,Sí,Identificador estable de la autoridad.,PdnStatisticsRow,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.comptroller-queretaro
-/PdnStatisticsRow/autoridad,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,PdnStatisticsRow,de 1 a 300 caracteres,,Contraloría Estatal Ficticia de Querétaro
+/PdnStatisticsRow/autoridad,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,PdnStatisticsRow,de 1 a 300 caracteres,,Secretaría de la Contraloría del Poder Ejecutiv…
 /PdnStatisticsRow,entidad,Sí,Objeto,Object,Sí,Entidad federativa de los hechos (catálogo INEGI).,PdnStatisticsRow,,,
 /PdnStatisticsRow/entidad,clave,Sí,Alfanumérico,String (enum),Sí,Clave INEGI de la entidad federativa (2 dígitos).,PdnStatisticsRow,patrón ^\d{2}$,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
 /PdnStatisticsRow/entidad,valor,Sí,Alfanumérico,String,Sí,Nombre de la entidad federativa.,PdnStatisticsRow,de 1 a 300 caracteres,,Querétaro
@@ -715,7 +800,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /NationalStatistics/rows,mes,Sí,Año y mes en formato ISO 8601 (AAAA-MM),String,Sí,Mes cerrado (AAAA-MM) al que se refiere la fila.,NationalStatistics,patrón ^\d{4}-(0[1-9]|1[0-2])$,,2026-10
 /NationalStatistics/rows,autoridad,Sí,Objeto,Object,Sí,Autoridad del directorio que tenía la denuncia en su bandeja.,NationalStatistics,,,
 /NationalStatistics/rows/autoridad,clave,Sí,Alfanumérico,String,Sí,Identificador estable de la autoridad.,NationalStatistics,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.comptroller-queretaro
-/NationalStatistics/rows/autoridad,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,NationalStatistics,de 1 a 300 caracteres,,Contraloría Estatal Ficticia de Querétaro
+/NationalStatistics/rows/autoridad,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,NationalStatistics,de 1 a 300 caracteres,,Secretaría de la Contraloría del Poder Ejecutiv…
 /NationalStatistics/rows,entidad,Sí,Objeto,Object,Sí,Entidad federativa de los hechos (catálogo INEGI).,NationalStatistics,,,
 /NationalStatistics/rows/entidad,clave,Sí,Alfanumérico,String (enum),Sí,Clave INEGI de la entidad federativa (2 dígitos).,NationalStatistics,patrón ^\d{2}$,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
 /NationalStatistics/rows/entidad,valor,Sí,Alfanumérico,String,Sí,Nombre de la entidad federativa.,NationalStatistics,de 1 a 300 caracteres,,Querétaro

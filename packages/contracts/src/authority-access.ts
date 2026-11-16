@@ -37,14 +37,17 @@ export type AccountId = z.infer<typeof AccountIdSchema>;
  *   identidades.
  * - `supervision` aprueba aperturas, ve los cierres y recibe los escalamientos.
  * - `operation` (operación del nodo) solo revisa y resuelve las solicitudes de alta de
- *   autoridades: no ve denuncias, no turna ni abre identidades, y no se combina con otra función.
+ *   autoridades y la competencia por dependencia: no ve denuncias, no turna ni abre identidades, y
+ *   no se combina con otra función.
+ * - `court` (Tribunal de Justicia Administrativa, LGRA arts. 12 y 209): resuelve faltas graves y
+ *   de particulares y la alzada. Nunca se combina con otra función.
  * Quien solo turna nunca puede abrir identidades.
  */
 export const AuthorityFunctionSchema = z
-  .enum(['intake', 'investigation', 'supervision', 'substantiation', 'operation'])
+  .enum(['intake', 'investigation', 'supervision', 'substantiation', 'operation', 'court'])
   .meta({
     description:
-      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta).',
+      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (tribunal: faltas graves, de particulares y alzada).',
   });
 export type AuthorityFunction = z.infer<typeof AuthorityFunctionSchema>;
 
@@ -60,6 +63,7 @@ export const AUTHORITY_FUNCTION_SETS: readonly (readonly AuthorityFunction[])[] 
   ['supervision'],
   ['substantiation'],
   ['operation'],
+  ['court'],
   ['intake', 'investigation'],
 ];
 
@@ -79,7 +83,7 @@ export const AuthorityFunctionsSchema = z
   .refine(isAllowedFunctionSet, 'Combinación de funciones inválida')
   .meta({
     description:
-      'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.',
+      'Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision, operation y court nunca se combinan.',
     examples: [['investigation'], ['intake', 'investigation']],
   });
 

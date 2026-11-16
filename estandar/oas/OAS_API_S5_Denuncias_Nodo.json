@@ -40,7 +40,7 @@
     { "name": "Datos abiertos", "description": "Conteos agregados con redondeo y supresión." },
     {
       "name": "Alta de autoridades",
-      "description": "Solicitud pública de alta de una institución con su candado (solo llaves públicas) y bandeja de la cuenta de operación del nodo, que aprueba con la huella confirmada por teléfono o rechaza con motivo."
+      "description": "Solicitud pública de alta de una institución con su candado (solo llaves públicas) y bandeja de la cuenta de operación del nodo, que aprueba con la huella confirmada por teléfono o rechaza con motivo. La misma cuenta asigna el órgano interno de control de cada dependencia (competencia por dependencia) y firma la versión nueva de la tabla de funciones del nodo."
     },
     {
       "name": "Llaves y retos",
@@ -5766,6 +5766,545 @@
           }
         }
       }
+    },
+    "/api/v1/operation/competence": {
+      "get": {
+        "operationId": "getCompetence",
+        "tags": ["Alta de autoridades"],
+        "summary": "Competencia por dependencia del nodo",
+        "description": "Solo para la cuenta de operación del nodo, que nunca ve denuncias. Cada dependencia de la entidad del nodo (o cada ente federal, en el nodo federal) del catálogo de entes de la PDN, con quién la investiga y su distintivo (OIC con llaves, nombrado sin alta o pendiente), las autoridades investigadoras del nodo, la cobertura y las versiones de la tabla ya firmadas desde el panel. `404` si el nodo no está en una red o no tiene tabla de funciones.",
+        "security": [{ "authorityBearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Competencia por dependencia vigente.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CompetenceView" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-competence.response.json`.",
+                    "value": {
+                      "nodeId": "node.queretaro",
+                      "stateCode": "22",
+                      "today": "2026-11-16",
+                      "table": {
+                        "format": 2,
+                        "nodeId": "node.queretaro",
+                        "stateCode": "22",
+                        "version": 3,
+                        "issuedOn": "2026-11-12",
+                        "functions": {
+                          "intake": [
+                            {
+                              "governmentLevels": ["estatal", "municipal"],
+                              "entityIds": [],
+                              "holder": {
+                                "kind": "authority",
+                                "authorityId": "authority.buzon-queretaro"
+                              }
+                            }
+                          ],
+                          "operation": [
+                            {
+                              "governmentLevels": ["estatal", "municipal"],
+                              "entityIds": [],
+                              "holder": {
+                                "kind": "institution",
+                                "name": "Secretaría Ejecutiva del Sistema Estatal Anticorrupción de Querétaro (ficticia)"
+                              }
+                            }
+                          ],
+                          "investigation": [
+                            {
+                              "governmentLevels": ["estatal"],
+                              "entityIds": [],
+                              "holder": {
+                                "kind": "authority",
+                                "authorityId": "authority.comptroller-queretaro"
+                              },
+                              "legalBasis": "LGRA, arts. 3, fr. II, y 10"
+                            }
+                          ],
+                          "substantiation": [],
+                          "resolution": [],
+                          "court": [
+                            {
+                              "governmentLevels": ["estatal", "municipal"],
+                              "entityIds": [],
+                              "instance": "first",
+                              "holder": {
+                                "kind": "institution",
+                                "name": "Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)"
+                              }
+                            }
+                          ],
+                          "supervision": [],
+                          "prosecution": [],
+                          "observer": []
+                        },
+                        "entities": [
+                          {
+                            "entityId": "PDN-22-7283",
+                            "status": "assigned",
+                            "holder": {
+                              "kind": "authority",
+                              "authorityId": "authority.oic-municipio-queretaro"
+                            },
+                            "legalBasis": "CPEUM, art. 109, fr. III"
+                          }
+                        ]
+                      },
+                      "authorities": [
+                        {
+                          "authorityId": "authority.oic-municipio-queretaro",
+                          "name": "Órgano Interno de Control del Municipio de Querétaro (ficticio)",
+                          "governmentLevel": "municipal",
+                          "hasKeys": true
+                        }
+                      ],
+                      "entities": [
+                        {
+                          "entityId": "PDN-22-7283",
+                          "name": "Secretaría del Ayuntamiento del Municipio de Querétaro",
+                          "level": "municipal",
+                          "municipalityCode": "014",
+                          "isFictitious": false,
+                          "group": { "key": "municipio:014", "label": "Municipio de Querétaro" },
+                          "status": "assigned",
+                          "source": "entity",
+                          "holder": {
+                            "kind": "authority",
+                            "authorityId": "authority.oic-municipio-queretaro"
+                          },
+                          "holderName": "Órgano Interno de Control del Municipio de Querétaro (ficticio)",
+                          "legalBasis": "CPEUM, art. 109, fr. III",
+                          "requiresIdentifiedReporter": false,
+                          "badge": "keys"
+                        },
+                        {
+                          "entityId": "PDN-22-7232",
+                          "name": "Fiscalía General del Estado",
+                          "level": "estatal",
+                          "isFictitious": false,
+                          "group": { "key": "autonomo", "label": "Poderes y organismos autónomos" },
+                          "status": "pending",
+                          "source": "none",
+                          "holder": null,
+                          "holderName": null,
+                          "legalBasis": null,
+                          "requiresIdentifiedReporter": false,
+                          "badge": "pending"
+                        }
+                      ],
+                      "coverage": {
+                        "stateCode": "22",
+                        "tableVersion": 3,
+                        "total": 2,
+                        "withOic": 1,
+                        "withoutOic": 0,
+                        "general": 0,
+                        "withKeys": 1,
+                        "pending": 1
+                      },
+                      "proposals": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "saveCompetence",
+        "tags": ["Alta de autoridades"],
+        "summary": "Revisar o firmar la competencia por dependencia",
+        "description": "Arma la versión siguiente de la tabla de funciones (formato 2) con la competencia por dependencia enviada, la revisa como la revisará la SESNA y muestra los cambios. Con `dryRun: false` y sin problemas, la firma con la llave del nodo. La versión firmada se entrega a la SESNA y entra al directorio cuando los testigos lo cofirman. `409` si la tabla vigente ya no es `baseVersion`; `400` si nombra un ente que no es de la entidad del nodo.",
+        "security": [{ "authorityBearer": [] }],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CompetenceSaveRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/save-competence.request.json`.",
+                  "value": {
+                    "baseVersion": 3,
+                    "dryRun": false,
+                    "entities": [
+                      {
+                        "entityId": "PDN-22-7283",
+                        "status": "assigned",
+                        "holder": {
+                          "kind": "authority",
+                          "authorityId": "authority.oic-municipio-queretaro"
+                        },
+                        "legalBasis": "CPEUM, art. 109, fr. III"
+                      },
+                      {
+                        "entityId": "PDN-22-7232",
+                        "status": "assigned",
+                        "holder": {
+                          "kind": "institution",
+                          "name": "Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cambios, problemas y, si se firmó, la versión firmada.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CompetenceSaveResponse" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/save-competence.response.json`.",
+                    "value": {
+                      "version": 4,
+                      "changes": [
+                        {
+                          "kind": "changed",
+                          "scope": "entity",
+                          "entityId": "PDN-22-7232",
+                          "text": "Fiscalía General del Estado: de pendiente a OIC Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)."
+                        }
+                      ],
+                      "problems": [],
+                      "proposal": {
+                        "version": 4,
+                        "signedOn": "2026-11-16",
+                        "signedBy": "acct-5f0c2a9d1e7b3c44",
+                        "changes": [
+                          {
+                            "kind": "changed",
+                            "scope": "entity",
+                            "entityId": "PDN-22-7232",
+                            "text": "Fiscalía General del Estado: de pendiente a OIC Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)."
+                          }
+                        ],
+                        "signedTable": {
+                          "table": {
+                            "format": 2,
+                            "nodeId": "node.queretaro",
+                            "stateCode": "22",
+                            "version": 4,
+                            "issuedOn": "2026-11-16",
+                            "functions": {
+                              "intake": [
+                                {
+                                  "governmentLevels": ["estatal", "municipal"],
+                                  "entityIds": [],
+                                  "holder": {
+                                    "kind": "authority",
+                                    "authorityId": "authority.buzon-queretaro"
+                                  }
+                                }
+                              ],
+                              "operation": [
+                                {
+                                  "governmentLevels": ["estatal", "municipal"],
+                                  "entityIds": [],
+                                  "holder": {
+                                    "kind": "institution",
+                                    "name": "Secretaría Ejecutiva del Sistema Estatal Anticorrupción de Querétaro (ficticia)"
+                                  }
+                                }
+                              ],
+                              "investigation": [
+                                {
+                                  "governmentLevels": ["estatal"],
+                                  "entityIds": [],
+                                  "holder": {
+                                    "kind": "authority",
+                                    "authorityId": "authority.comptroller-queretaro"
+                                  },
+                                  "legalBasis": "LGRA, arts. 3, fr. II, y 10"
+                                }
+                              ],
+                              "substantiation": [],
+                              "resolution": [],
+                              "court": [
+                                {
+                                  "governmentLevels": ["estatal", "municipal"],
+                                  "entityIds": [],
+                                  "instance": "first",
+                                  "holder": {
+                                    "kind": "institution",
+                                    "name": "Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)"
+                                  }
+                                }
+                              ],
+                              "supervision": [],
+                              "prosecution": [],
+                              "observer": []
+                            },
+                            "entities": [
+                              {
+                                "entityId": "PDN-22-7283",
+                                "status": "assigned",
+                                "holder": {
+                                  "kind": "authority",
+                                  "authorityId": "authority.oic-municipio-queretaro"
+                                },
+                                "legalBasis": "CPEUM, art. 109, fr. III"
+                              },
+                              {
+                                "entityId": "PDN-22-7232",
+                                "status": "assigned",
+                                "holder": {
+                                  "kind": "institution",
+                                  "name": "Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)"
+                                }
+                              }
+                            ]
+                          },
+                          "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: No existe el recurso, o el folio o el recibo no son correctos (sin decir cuál de los dos).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "409": {
+            "description": "`conflict`: La acción no corresponde al estado del trámite, a la etapa o a la solicitud (por ejemplo, aprobar dos veces).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "La acción no corresponde al estado actual del trámite."
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo excede el tamaño permitido o la cuota de pruebas de la denuncia.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported_media_type`: El tipo de contenido no es el que admite la ruta.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "unsupported_media_type",
+                    "message": "Tipo de contenido no admitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6893,7 +7432,7 @@
             "maxItems": 2,
             "type": "array",
             "items": { "$ref": "#/components/schemas/AuthorityFunction" },
-            "description": "Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.",
+            "description": "Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision, operation y court nunca se combinan.",
             "example": ["investigation"]
           }
         },
@@ -8733,8 +9272,8 @@
       },
       "AuthorityFunction": {
         "type": "string",
-        "enum": ["intake", "investigation", "supervision", "substantiation", "operation"],
-        "description": "Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución) u operation (operación del nodo: solo solicitudes de alta)."
+        "enum": ["intake", "investigation", "supervision", "substantiation", "operation", "court"],
+        "description": "Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (tribunal: faltas graves, de particulares y alzada)."
       },
       "AccountId": {
         "type": "string",
@@ -8826,7 +9365,7 @@
                   "maxItems": 2,
                   "type": "array",
                   "items": { "$ref": "#/components/schemas/AuthorityFunction" },
-                  "description": "Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision y operation nunca se combinan.",
+                  "description": "Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision, operation y court nunca se combinan.",
                   "example": ["investigation"]
                 }
               },
@@ -8990,6 +9529,405 @@
         ],
         "description": "Aprobar con la huella confirmada o rechazar con un motivo."
       },
+      "CompetenceView": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Identificador estable del nodo.",
+            "example": "node.queretaro"
+          },
+          "stateCode": {
+            "type": "string",
+            "pattern": "^(?:\\d{2}|state\\.[a-z0-9]+(?:-[a-z0-9]+)*)$",
+            "description": "Entidad federativa: clave INEGI de dos dígitos o clave `state.*` de una entidad sintética sin clave INEGI.",
+            "example": "22",
+            "nullable": true
+          },
+          "today": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+            "example": "2026-11-05"
+          },
+          "table": {
+            "description": "Tabla vigente del nodo en el directorio.",
+            "allOf": [{ "$ref": "#/components/schemas/FunctionTable" }]
+          },
+          "authorities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "authorityId": {
+                  "type": "string",
+                  "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "Identificador estable de la autoridad.",
+                  "example": "authority.oic-iffe"
+                },
+                "name": { "type": "string", "minLength": 1, "maxLength": 300 },
+                "governmentLevel": {
+                  "type": "string",
+                  "enum": ["federal", "estatal", "municipal"],
+                  "description": "Orden de gobierno: federal, estatal o municipal."
+                },
+                "hasKeys": { "type": "boolean", "description": "Sus llaves están vigentes hoy." }
+              },
+              "required": ["authorityId", "name", "governmentLevel", "hasKeys"],
+              "additionalProperties": false,
+              "description": "Autoridad investigadora del nodo que puede ser el OIC de un ente."
+            }
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entityId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Clave del ente."
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 400,
+                  "description": "Nombre del ente."
+                },
+                "level": {
+                  "type": "string",
+                  "enum": ["federal", "estatal", "municipal"],
+                  "description": "Orden de gobierno: federal, estatal o municipal."
+                },
+                "municipalityCode": {
+                  "description": "Clave INEGI del municipio, si el catálogo la trae.",
+                  "type": "string",
+                  "pattern": "^\\d{3}$"
+                },
+                "isFictitious": {
+                  "type": "boolean",
+                  "description": "Ente ficticio de la demostración (no está en el catálogo de la PDN)."
+                },
+                "group": {
+                  "type": "object",
+                  "properties": {
+                    "key": { "type": "string", "minLength": 1, "maxLength": 64 },
+                    "label": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "required": ["key", "label"],
+                  "additionalProperties": false,
+                  "description": "Grupo en la pantalla: centralizada, paraestatal, autónomos o municipio."
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["assigned", "without_oic", "pending"],
+                      "description": "Estado: assigned (el ente tiene su órgano interno de control, `holder`), without_oic (sin OIC designado: lo atiende `holder`, con `legalBasis` obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente)."
+                    },
+                    { "type": "string", "enum": ["general"] }
+                  ],
+                  "description": "assigned, without_oic o pending (competencia por dependencia), o general (lo cubre una regla de todo su orden)."
+                },
+                "source": {
+                  "type": "string",
+                  "enum": ["entity", "rule", "general", "none"],
+                  "description": "De dónde sale: competencia por dependencia, regla del ente, regla general o nada."
+                },
+                "holder": {
+                  "allOf": [{ "$ref": "#/components/schemas/FunctionHolder" }],
+                  "nullable": true
+                },
+                "holderName": { "type": "string", "maxLength": 300, "nullable": true },
+                "legalBasis": { "type": "string", "maxLength": 300, "nullable": true },
+                "requiresIdentifiedReporter": { "type": "boolean" },
+                "badge": {
+                  "type": "string",
+                  "enum": ["keys", "named", "pending"],
+                  "description": "Distintivo: keys (OIC con llaves vigentes: la denuncia le llega cifrada), named (OIC nombrado, falta su alta) o pending (pendiente: va a la autoridad receptora)."
+                }
+              },
+              "required": [
+                "entityId",
+                "name",
+                "level",
+                "isFictitious",
+                "group",
+                "status",
+                "source",
+                "holder",
+                "holderName",
+                "legalBasis",
+                "requiresIdentifiedReporter",
+                "badge"
+              ],
+              "additionalProperties": false,
+              "description": "Una dependencia con quién la investiga."
+            }
+          },
+          "coverage": {
+            "type": "object",
+            "properties": {
+              "stateCode": {
+                "type": "string",
+                "pattern": "^(?:\\d{2}|state\\.[a-z0-9]+(?:-[a-z0-9]+)*)$",
+                "description": "Entidad de la tabla; null en la federal.",
+                "example": "22",
+                "nullable": true
+              },
+              "tableVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Dependencias del catálogo."
+              },
+              "withOic": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Con su órgano interno de control asignado."
+              },
+              "withoutOic": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "«Sin OIC designado»: la atiende otra autoridad, con fundamento."
+              },
+              "general": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Cubiertas por una regla de todo su orden de gobierno."
+              },
+              "withKeys": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Quien la atiende tiene llaves vigentes."
+              },
+              "pending": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Pendientes: sus denuncias van a la autoridad receptora."
+              }
+            },
+            "required": [
+              "stateCode",
+              "tableVersion",
+              "total",
+              "withOic",
+              "withoutOic",
+              "general",
+              "withKeys",
+              "pending"
+            ],
+            "additionalProperties": false,
+            "description": "Cobertura de órganos internos de control de una tabla de funciones."
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                "signedOn": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+                  "example": "2026-11-05"
+                },
+                "signedBy": {
+                  "description": "Cuenta de operación que la firmó.",
+                  "allOf": [{ "$ref": "#/components/schemas/AccountId" }]
+                },
+                "changes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "type": "string", "enum": ["added", "removed", "changed"] },
+                      "scope": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32,
+                        "description": "Función o `entity`."
+                      },
+                      "entityId": { "type": "string", "minLength": 1, "maxLength": 64 },
+                      "text": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                    },
+                    "required": ["kind", "scope", "text"],
+                    "additionalProperties": false,
+                    "description": "Un cambio entre dos versiones de la tabla de funciones."
+                  }
+                },
+                "signedTable": {
+                  "description": "Tabla firmada por el nodo. Se entrega a la SESNA (`sigilo-sesna aceptar`) y entra al directorio cuando los testigos lo cofirman.",
+                  "allOf": [{ "$ref": "#/components/schemas/SignedFunctionTable" }]
+                }
+              },
+              "required": ["version", "signedOn", "signedBy", "changes", "signedTable"],
+              "additionalProperties": false,
+              "description": "Versión nueva de la tabla firmada desde el panel."
+            },
+            "description": "Versiones firmadas desde el panel, de la más reciente a la más antigua."
+          }
+        },
+        "required": [
+          "nodeId",
+          "stateCode",
+          "today",
+          "table",
+          "authorities",
+          "entities",
+          "coverage",
+          "proposals"
+        ],
+        "additionalProperties": false,
+        "description": "Pantalla «Competencia por dependencia» de la operación del nodo."
+      },
+      "CompetenceSaveRequest": {
+        "type": "object",
+        "properties": {
+          "baseVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Versión de la tabla sobre la que se editó; si cambió, responde 409."
+          },
+          "entities": {
+            "maxItems": 5000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entityId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Ente del catálogo de la PDN (o ficticio de la demostración)."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["assigned", "without_oic", "pending"],
+                  "description": "Estado: assigned (el ente tiene su órgano interno de control, `holder`), without_oic (sin OIC designado: lo atiende `holder`, con `legalBasis` obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente)."
+                },
+                "holder": {
+                  "description": "Quién investiga al ente: una autoridad del directorio (con llaves) o una institución nombrada que aún no tiene alta. Falta solo si está pendiente.",
+                  "allOf": [{ "$ref": "#/components/schemas/FunctionHolder" }]
+                },
+                "legalBasis": {
+                  "description": "Fundamento corto (obligatorio en without_oic).",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "requiresIdentifiedReporter": {
+                  "description": "Como en la regla: quien atiende al ente no admite denuncias anónimas.",
+                  "type": "boolean",
+                  "enum": [true]
+                }
+              },
+              "required": ["entityId", "status"],
+              "additionalProperties": false,
+              "description": "Competencia por dependencia (formato 2): el órgano interno de control de un ente (CPEUM art. 109 fr. III; LGRA arts. 3, 9 y 10). Gana sobre las reglas de investigación."
+            }
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "true: solo revisa y muestra los cambios; false: firma la versión."
+          }
+        },
+        "required": ["baseVersion", "entities", "dryRun"],
+        "additionalProperties": false,
+        "description": "Competencia por dependencia nueva de la tabla del nodo."
+      },
+      "CompetenceSaveResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Versión que tendría o tiene la tabla."
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": { "type": "string", "enum": ["added", "removed", "changed"] },
+                "scope": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32,
+                  "description": "Función o `entity`."
+                },
+                "entityId": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "text": { "type": "string", "minLength": 1, "maxLength": 1000 }
+              },
+              "required": ["kind", "scope", "text"],
+              "additionalProperties": false,
+              "description": "Un cambio entre dos versiones de la tabla de funciones."
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 1000 },
+            "description": "Problemas de coherencia (vacío si la tabla sirve). Con problemas no se firma."
+          },
+          "proposal": {
+            "type": "object",
+            "properties": {
+              "version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              "signedOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+                "example": "2026-11-05"
+              },
+              "signedBy": {
+                "description": "Cuenta de operación que la firmó.",
+                "allOf": [{ "$ref": "#/components/schemas/AccountId" }]
+              },
+              "changes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["added", "removed", "changed"] },
+                    "scope": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 32,
+                      "description": "Función o `entity`."
+                    },
+                    "entityId": { "type": "string", "minLength": 1, "maxLength": 64 },
+                    "text": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                  },
+                  "required": ["kind", "scope", "text"],
+                  "additionalProperties": false,
+                  "description": "Un cambio entre dos versiones de la tabla de funciones."
+                }
+              },
+              "signedTable": {
+                "description": "Tabla firmada por el nodo. Se entrega a la SESNA (`sigilo-sesna aceptar`) y entra al directorio cuando los testigos lo cofirman.",
+                "allOf": [{ "$ref": "#/components/schemas/SignedFunctionTable" }]
+              }
+            },
+            "required": ["version", "signedOn", "signedBy", "changes", "signedTable"],
+            "additionalProperties": false,
+            "description": "La versión firmada, o null si fue una revisión o tiene problemas.",
+            "nullable": true
+          }
+        },
+        "required": ["version", "changes", "problems", "proposal"],
+        "additionalProperties": false,
+        "description": "Resultado de revisar o firmar la competencia por dependencia."
+      },
       "DirectoryAuthority": {
         "type": "object",
         "properties": {
@@ -9122,6 +10060,296 @@
         "required": ["governmentLevels", "stateCodes", "entityIds", "laws"],
         "additionalProperties": false,
         "description": "Competencia declarada: con ella se propone la autoridad competente."
+      },
+      "SignedFunctionTable": {
+        "type": "object",
+        "properties": {
+          "table": { "$ref": "#/components/schemas/FunctionTable" },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Firma Ed25519 del nodo (su llave de firma del directorio) sobre \"sigilo/red/function-table/v1:\" + SHA-256 de la forma canónica de table."
+          }
+        },
+        "required": ["table", "signature"],
+        "additionalProperties": false,
+        "description": "Tabla de funciones firmada por su nodo. Viaja dentro del directorio, que firma la operación y cofirman los testigos: la operación no puede cambiarla sin la firma del estado."
+      },
+      "FunctionTable": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "anyOf": [
+              { "type": "number", "enum": [1] },
+              { "type": "number", "enum": [2] }
+            ],
+            "description": "Versión del formato: 1 (original) o 2 (agrega el tribunal, la competencia por dependencia y la marca de denuncia identificada). Se aceptan las dos."
+          },
+          "nodeId": {
+            "type": "string",
+            "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Nodo que declara la tabla y la firma.",
+            "example": "node.queretaro"
+          },
+          "stateCode": {
+            "type": "string",
+            "pattern": "^(?:\\d{2}|state\\.[a-z0-9]+(?:-[a-z0-9]+)*)$",
+            "description": "Entidad que cubre la tabla; null en la tabla del nodo federal (entes del orden federal).",
+            "example": "22",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Versión de la tabla; crece en uno con cada cambio."
+          },
+          "issuedOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Día en que el nodo firmó esta versión.",
+            "example": "2026-11-05"
+          },
+          "functions": {
+            "type": "object",
+            "properties": {
+              "intake": {
+                "minItems": 1,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Buzón de la autoridad receptora: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58)."
+              },
+              "operation": {
+                "minItems": 1,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Quién opera el nodo y da de alta a las autoridades."
+              },
+              "investigation": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Autoridad investigadora y calificadora (LGRA, art. 3)."
+              },
+              "substantiation": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Autoridad substanciadora (LGRA, art. 3)."
+              },
+              "resolution": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3)."
+              },
+              "court": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Formato 2. Tribunal de Justicia Administrativa: resuelve faltas graves y de particulares (primera instancia) y la apelación y la revisión (alzada) (LGRA, arts. 12, 209 y 215 a 221)."
+              },
+              "supervision": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Superior jerárquico que recibe los escalamientos (ADR 0007)."
+              },
+              "prosecution": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Vía penal: fiscalía de hechos de corrupción."
+              },
+              "observer": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Observador ciudadano (CPC)."
+              }
+            },
+            "required": [
+              "intake",
+              "operation",
+              "investigation",
+              "substantiation",
+              "resolution",
+              "supervision",
+              "prosecution",
+              "observer"
+            ],
+            "additionalProperties": false,
+            "description": "Reglas de cada función."
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "operatorReceives": {
+                "description": "Quien opera el nodo (por ejemplo, la SESEA) también recibe y turna denuncias, solo si la ley del estado la faculta (por ejemplo, Michoacán). Por omisión nacional, no: la SESEA es apoyo técnico del Comité Coordinador y no es autoridad del art. 9 de la LGRA.",
+                "type": "object",
+                "properties": {
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300,
+                    "description": "Ley o lineamiento del estado que lo faculta."
+                  }
+                },
+                "required": ["legalBasis"],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "description": "Formato 2. Ajustes que declara cada nodo cuando su ley se aparta de la regla nacional; sin el campo, rige la regla nacional (LGRA y CPEUM)."
+          },
+          "entities": {
+            "description": "Formato 2. Competencia por dependencia: el órgano interno de control de cada ente de la entidad, «sin OIC designado → quién atiende» o pendiente. Un ente aparece una sola vez.",
+            "maxItems": 5000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entityId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Ente del catálogo de la PDN (o ficticio de la demostración)."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["assigned", "without_oic", "pending"],
+                  "description": "Estado: assigned (el ente tiene su órgano interno de control, `holder`), without_oic (sin OIC designado: lo atiende `holder`, con `legalBasis` obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente)."
+                },
+                "holder": {
+                  "description": "Quién investiga al ente: una autoridad del directorio (con llaves) o una institución nombrada que aún no tiene alta. Falta solo si está pendiente.",
+                  "allOf": [{ "$ref": "#/components/schemas/FunctionHolder" }]
+                },
+                "legalBasis": {
+                  "description": "Fundamento corto (obligatorio en without_oic).",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "requiresIdentifiedReporter": {
+                  "description": "Como en la regla: quien atiende al ente no admite denuncias anónimas.",
+                  "type": "boolean",
+                  "enum": [true]
+                }
+              },
+              "required": ["entityId", "status"],
+              "additionalProperties": false,
+              "description": "Competencia por dependencia (formato 2): el órgano interno de control de un ente (CPEUM art. 109 fr. III; LGRA arts. 3, 9 y 10). Gana sobre las reglas de investigación."
+            }
+          }
+        },
+        "required": ["format", "nodeId", "stateCode", "version", "issuedOn", "functions"],
+        "additionalProperties": false,
+        "description": "Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente; en el formato 2, además, el órgano interno de control de cada dependencia. Con ella la ventanilla propone a quién va cada denuncia."
+      },
+      "FunctionRule": {
+        "type": "object",
+        "properties": {
+          "governmentLevels": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["federal", "estatal", "municipal"],
+              "description": "Orden de gobierno: federal, estatal o municipal."
+            },
+            "description": "Órdenes de gobierno de los entes a los que aplica la regla."
+          },
+          "entityIds": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "description": "Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden. Una regla específica gana sobre una general. El órgano interno de control de cada ente se declara, en el formato 2, en `entities`."
+          },
+          "severity": {
+            "description": "Solo para faltas graves (serious) o no graves (non_serious); sin el campo, para ambas. Sirve, por ejemplo, para la resolución.",
+            "type": "string",
+            "enum": ["serious", "non_serious"]
+          },
+          "holder": { "$ref": "#/components/schemas/FunctionHolder" },
+          "legalBasis": {
+            "description": "Fundamento corto, en lenguaje claro (ley y artículo).",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "requiresIdentifiedReporter": {
+            "description": "Formato 2. Quien cumple la función solo admite denuncias con nombre y firma (por ejemplo, la entidad de fiscalización superior de Querétaro, LFSRCQ arts. 50 y 51): una denuncia anónima o con identidad sellada nunca se le propone ni se le ofrece.",
+            "type": "boolean",
+            "enum": [true]
+          },
+          "instance": {
+            "description": "Formato 2, solo en `court`: primera instancia (first: resuelve faltas graves y de particulares) o alzada (appeal: apelación y revisión, LGRA arts. 215 a 221). Sin el campo, ambas.",
+            "type": "string",
+            "enum": ["first", "appeal"]
+          }
+        },
+        "required": ["governmentLevels", "entityIds", "holder"],
+        "additionalProperties": false,
+        "description": "Regla: a qué entes aplica y quién cumple la función para ellos."
+      },
+      "FunctionHolder": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["authority"] },
+              "authorityId": {
+                "type": "string",
+                "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "Identificador estable de la autoridad.",
+                "example": "authority.oic-iffe"
+              }
+            },
+            "required": ["kind", "authorityId"],
+            "additionalProperties": false,
+            "description": "Una autoridad del directorio, con sus llaves."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["observer"] },
+              "observerId": {
+                "type": "string",
+                "pattern": "^observer\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "Identificador estable del observador.",
+                "example": "observer.cpc-queretaro"
+              }
+            },
+            "required": ["kind", "observerId"],
+            "additionalProperties": false,
+            "description": "Un observador del directorio."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["institution"] },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300,
+                "description": "Nombre oficial de la institución."
+              }
+            },
+            "required": ["kind", "name"],
+            "additionalProperties": false,
+            "description": "Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves, quien opera el nodo o un órgano interno de control nombrado que todavía no tiene alta ni llaves)."
+          }
+        ],
+        "description": "Quién cumple la función: autoridad, observador o institución."
       },
       "RelayRequest": {
         "type": "object",

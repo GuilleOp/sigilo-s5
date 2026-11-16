@@ -1,9 +1,10 @@
 [
-  { "clave": "intake", "valor": "Buzón general: recibe y turna" },
+  { "clave": "intake", "valor": "Buzón de la autoridad receptora: recibe y turna" },
   { "clave": "operation", "valor": "Operación del nodo: da de alta autoridades" },
   { "clave": "investigation", "valor": "Investigación y calificación" },
   { "clave": "substantiation", "valor": "Substanciación" },
   { "clave": "resolution", "valor": "Resolución" },
+  { "clave": "court", "valor": "Tribunal: faltas graves, de particulares y alzada (formato 2)" },
   { "clave": "supervision", "valor": "Supervisión: superior jerárquico, recibe escalamientos" },
   { "clave": "prosecution", "valor": "Vía penal: fiscalía" },
   { "clave": "observer", "valor": "Observador: Comité de Participación Ciudadana" }

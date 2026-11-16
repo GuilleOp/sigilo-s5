@@ -72,6 +72,8 @@ export const ROUTES = {
   registrationRequests: `${API_PREFIX}/registration/requests`,
   /** `GET`: solicitudes de alta del nodo, para la cuenta de operación. */
   operationRegistrations: `${API_PREFIX}/operation/registrations`,
+  /** `GET` y `POST`: competencia por dependencia del nodo (solo la cuenta de operación). */
+  operationCompetence: `${API_PREFIX}/operation/competence`,
   /** `POST`: aprueba (con la huella confirmada por teléfono) o rechaza una solicitud de alta. */
   operationRegistrationDecision: (requestId: string) =>
     `${API_PREFIX}/operation/registrations/${requestId}/decision`,
