@@ -4,7 +4,7 @@
 // públicos reales de la PDN partidos en un fragmento por entidad (/datos/entes/<clave>.json) y las
 // pistas de la competencia por dependencia (/datos/competencia/<clave>.json).
 // Seguridad: así la web nunca pide datos a otro origen; todo sale del mismo servidor que la sirve.
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import type { Plugin } from 'vite';
 import { competenceHintsFor, parseAnonymityFragment } from '@sigilo/anonimato';
@@ -70,8 +70,15 @@ export function competenceHintFiles(): StaticFiles {
     readFileSync(join(REPO_ROOT, 'packages/contracts/src/entes/entes-pdn.json'), 'utf8'),
   ) as RealEntityCatalogFile;
   const anonymity = join(REPO_ROOT, 'datos/grupos-anonimato');
-  const index = JSON.parse(readFileSync(join(anonymity, 'indice.json'), 'utf8')) as {
-    fechaCorte: string;
+  // La imagen de Docker no copia datos/grupos-anonimato: sin él, las pistas dicen «sin datos» del
+  // S1 en todas las entidades (nunca se inventa un grupo).
+  const indexPath = join(anonymity, 'indice.json');
+  const index = (
+    existsSync(indexPath)
+      ? JSON.parse(readFileSync(indexPath, 'utf8'))
+      : { fechaCorte: null, entidades: [] }
+  ) as {
+    fechaCorte: string | null;
     entidades: { clave: string; archivo: string | null }[];
   };
   const coverage = (
