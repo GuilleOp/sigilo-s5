@@ -19,6 +19,26 @@ rompe algo está marcado como **Incompatible**.
   reasigna; la fiscalía solo avanza la vía penal. Sin el campo, la vista sigue por oficio.
 - `AuthorityProfile.isProsecution` (opcional): la autoridad es una fiscalía y puede recibir la
   vista.
+- Acción `record_reclassification` (función de investigación): después de la orden del Tribunal
+  (`order_reclassification`), la autoridad investigadora registra la otra falta grave o de
+  particulares (`offenseCode`, del catálogo `OFFENSES`), su fundamento (`legalBasis`, 20 caracteres
+  o más) y el acuerdo en versión pública (`agreement`), dentro de los 3 días hábiles del plazo
+  `reclassification` (LGRA, art. 209 fr. II). La etapa sigue en `court_received`; la
+  reclasificación queda como nueva calificación de falta grave y los 15 días hábiles del Tribunal
+  para admitir las pruebas corren desde ella. Paso nuevo `offense_reclassified` en
+  `ProcedureAction`, con `ProcedureStep.record.offenseCode` y `record.agreement`.
+- `ProcedureView.reclassification` (opcional): la orden pendiente con su último día (`orderedOn`,
+  `dueOn`, `isOverdue`) y la última falta reclasificada (`reclassifiedOn`, `offenseCode`,
+  `offenseName`, `legalBasis`, `agreement`).
+
+### Cambiado
+
+- Con una orden de reclasificar pendiente, el Tribunal no admite las pruebas
+  (`court_received` → `court_evidence_hearing` responde `409`) hasta que la investigadora registre
+  la reclasificación o venzan sus 3 días hábiles; tampoco se ordena otra reclasificación mientras
+  la primera siga pendiente.
+- El texto de la etapa `court_received` y del plazo `reclassification` dice que el Tribunal ordena
+  y la autoridad investigadora reclasifica.
 
 ## [0.4.0] - 2026-11-16
 

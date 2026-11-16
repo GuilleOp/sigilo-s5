@@ -11210,6 +11210,99 @@
             "additionalProperties": false,
             "description": "La denuncia involucra recursos federales: guía de la regla."
           },
+          "reclassification": {
+            "type": "object",
+            "properties": {
+              "orderedOn": {
+                "description": "Día de la orden del Tribunal que sigue pendiente.",
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "example": "2026-11-05"
+              },
+              "dueOn": {
+                "description": "Último día para que la autoridad investigadora registre la reclasificación (3 días hábiles).",
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "example": "2026-11-05"
+              },
+              "isOverdue": {
+                "description": "La orden sigue pendiente y venció el plazo: el Tribunal puede seguir con el procedimiento.",
+                "type": "boolean"
+              },
+              "reclassifiedOn": {
+                "description": "Día en que la investigadora registró la última reclasificación.",
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "example": "2026-11-05"
+              },
+              "offenseCode": {
+                "description": "Conducta a la que se reclasificó la falta.",
+                "type": "string",
+                "maxLength": 64,
+                "x-catalog": "OFFENSES",
+                "enum": [
+                  "CPF-214",
+                  "CPF-215",
+                  "CPF-216",
+                  "CPF-217",
+                  "CPF-217-BIS",
+                  "CPF-217-TER",
+                  "CPF-218",
+                  "CPF-219",
+                  "CPF-220",
+                  "CPF-221",
+                  "CPF-222",
+                  "CPF-222-BIS",
+                  "CPF-223",
+                  "CPF-224",
+                  "CPF-225",
+                  "LGRA-49",
+                  "LGRA-50",
+                  "LGRA-52",
+                  "LGRA-53",
+                  "LGRA-54",
+                  "LGRA-55",
+                  "LGRA-57",
+                  "LGRA-58",
+                  "LGRA-59",
+                  "LGRA-60",
+                  "LGRA-60-BIS",
+                  "LGRA-61",
+                  "LGRA-62",
+                  "LGRA-63",
+                  "LGRA-63-BIS",
+                  "LGRA-64",
+                  "LGRA-64-BIS",
+                  "LGRA-64-QUATER",
+                  "LGRA-64-TER",
+                  "LGRA-66",
+                  "LGRA-67",
+                  "LGRA-68",
+                  "LGRA-69",
+                  "LGRA-70",
+                  "LGRA-71",
+                  "LGRA-72",
+                  "LGRA-73",
+                  "SIN-CLASIFICAR"
+                ],
+                "example": "LGRA-52"
+              },
+              "offenseName": {
+                "description": "Nombre de la conducta reclasificada, del catálogo.",
+                "type": "string"
+              },
+              "legalBasis": {
+                "description": "Fundamento de la reclasificación.",
+                "type": "string"
+              },
+              "agreement": {
+                "description": "Acuerdo de reclasificación en versión pública.",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Reclasificación de la falta por orden del Tribunal (LGRA, art. 209 fr. II)."
+          },
           "courtRecording": {
             "description": "Solo en el panel: el estado no dio cuentas al Tribunal y la substanciación registra sus actuaciones.",
             "type": "boolean"
@@ -11381,6 +11474,64 @@
               "registryReference": {
                 "description": "Referencia de la inscripción de la sanción en el S3.",
                 "type": "string"
+              },
+              "offenseCode": {
+                "description": "Conducta a la que se reclasificó la falta por orden del Tribunal.",
+                "type": "string",
+                "maxLength": 64,
+                "x-catalog": "OFFENSES",
+                "enum": [
+                  "CPF-214",
+                  "CPF-215",
+                  "CPF-216",
+                  "CPF-217",
+                  "CPF-217-BIS",
+                  "CPF-217-TER",
+                  "CPF-218",
+                  "CPF-219",
+                  "CPF-220",
+                  "CPF-221",
+                  "CPF-222",
+                  "CPF-222-BIS",
+                  "CPF-223",
+                  "CPF-224",
+                  "CPF-225",
+                  "LGRA-49",
+                  "LGRA-50",
+                  "LGRA-52",
+                  "LGRA-53",
+                  "LGRA-54",
+                  "LGRA-55",
+                  "LGRA-57",
+                  "LGRA-58",
+                  "LGRA-59",
+                  "LGRA-60",
+                  "LGRA-60-BIS",
+                  "LGRA-61",
+                  "LGRA-62",
+                  "LGRA-63",
+                  "LGRA-63-BIS",
+                  "LGRA-64",
+                  "LGRA-64-BIS",
+                  "LGRA-64-QUATER",
+                  "LGRA-64-TER",
+                  "LGRA-66",
+                  "LGRA-67",
+                  "LGRA-68",
+                  "LGRA-69",
+                  "LGRA-70",
+                  "LGRA-71",
+                  "LGRA-72",
+                  "LGRA-73",
+                  "SIN-CLASIFICAR"
+                ],
+                "example": "LGRA-52"
+              },
+              "agreement": {
+                "description": "Acuerdo de reclasificación en versión pública.",
+                "type": "string",
+                "minLength": 50,
+                "maxLength": 20000
               }
             },
             "additionalProperties": false,
@@ -12914,6 +13065,84 @@
           {
             "type": "object",
             "properties": {
+              "action": { "type": "string", "enum": ["record_reclassification"] },
+              "offenseCode": {
+                "type": "string",
+                "maxLength": 64,
+                "description": "Conducta reclasificada: clave del catálogo OFFENSES de una falta grave (LGRA, arts. 51 a 64 Quáter) o de particulares (arts. 65 a 73), distinta de la vigente.",
+                "x-catalog": "OFFENSES",
+                "enum": [
+                  "CPF-214",
+                  "CPF-215",
+                  "CPF-216",
+                  "CPF-217",
+                  "CPF-217-BIS",
+                  "CPF-217-TER",
+                  "CPF-218",
+                  "CPF-219",
+                  "CPF-220",
+                  "CPF-221",
+                  "CPF-222",
+                  "CPF-222-BIS",
+                  "CPF-223",
+                  "CPF-224",
+                  "CPF-225",
+                  "LGRA-49",
+                  "LGRA-50",
+                  "LGRA-52",
+                  "LGRA-53",
+                  "LGRA-54",
+                  "LGRA-55",
+                  "LGRA-57",
+                  "LGRA-58",
+                  "LGRA-59",
+                  "LGRA-60",
+                  "LGRA-60-BIS",
+                  "LGRA-61",
+                  "LGRA-62",
+                  "LGRA-63",
+                  "LGRA-63-BIS",
+                  "LGRA-64",
+                  "LGRA-64-BIS",
+                  "LGRA-64-QUATER",
+                  "LGRA-64-TER",
+                  "LGRA-66",
+                  "LGRA-67",
+                  "LGRA-68",
+                  "LGRA-69",
+                  "LGRA-70",
+                  "LGRA-71",
+                  "LGRA-72",
+                  "LGRA-73",
+                  "SIN-CLASIFICAR"
+                ],
+                "example": "LGRA-54"
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              },
+              "agreement": {
+                "type": "string",
+                "minLength": 50,
+                "maxLength": 20000,
+                "description": "Versión pública del acuerdo de cierre, sin datos personales. Queda disponible para el auditor y para la persona denunciante."
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+              }
+            },
+            "required": ["action", "offenseCode", "legalBasis", "agreement"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
               "action": { "type": "string", "enum": ["request_precautionary"] },
               "measure": {
                 "type": "string",
@@ -13184,7 +13413,7 @@
             "additionalProperties": false
           }
         ],
-        "description": "Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification, request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
+        "description": "Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification (el Tribunal ordena reclasificar) y record_reclassification (la investigadora registra la falta reclasificada), request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
       },
       "ProcedureState": {
         "type": "object",
@@ -14237,7 +14466,7 @@
           "trial",
           "sentence"
         ],
-        "description": "Etapa legal de cualquiera de las dos vías. Nombres y explicaciones en LEGAL_STAGES.\n\n- `investigation`: Investigación. La autoridad investigadora reúne información y pruebas: pide documentos, hace requerimientos y revisa los hechos. Tu identidad sigue protegida.\n- `qualification`: Calificación de la falta. Con lo investigado, la autoridad decide si hubo una falta y si es grave o no grave. Si no encuentra elementos, archiva el expediente y debe avisarte si eres identificable. Si la califica como no grave, puedes inconformarte.\n- `report_filed`: Informe de Presunta Responsabilidad Administrativa presentado. La autoridad investigadora escribió un informe con la falta que encontró y sus pruebas, y lo entregó a la autoridad substanciadora, que es otra área. Esa autoridad tiene 3 días para revisarlo: puede pedir que se corrija, abstenerse o admitirlo.\n- `report_prevented`: Informe con observaciones (prevención). La autoridad substanciadora encontró defectos en el informe y pidió a la investigadora corregirlos en 3 días. Si no los corrige, el informe se tiene por no presentado y vuelve a la investigación; puede presentarse de nuevo mientras la falta no prescriba.\n- `abstention`: Abstención. La autoridad decidió no iniciar el procedimiento (o no sancionar) porque no hubo daño a la hacienda pública y el caso era de criterio opinable o se corrigió de forma espontánea. Si eres identificable y no estás de acuerdo, puedes inconformarte; si nadie se inconforma, el expediente se cierra.\n- `report_admitted`: Procedimiento iniciado (informe admitido). La autoridad substanciadora admitió el informe: con esto empieza el procedimiento de responsabilidad contra la persona señalada. Desde aquí el procedimiento no puede quedarse parado más de 6 meses.\n- `summoned`: Emplazamiento. Se citó en persona a la persona señalada, con copia del informe, para que se defienda en la audiencia inicial, que debe celebrarse entre 10 y 15 días hábiles después. Si te identificaste, te citan como tercera 72 horas antes.\n- `initial_hearing`: Audiencia inicial. Se celebró la audiencia inicial: la persona señalada declaró y ofreció sus pruebas, y las demás partes (también tú, si te identificaste como tercera) pudieron hablar y ofrecer las suyas. Después ya no se reciben más pruebas, salvo las supervenientes. Si la falta es no grave, sigue con la misma autoridad; si es grave, el expediente va al Tribunal.\n- `evidence_hearing`: Admisión y desahogo de pruebas. Se admiten y se revisan las pruebas de las partes. La persona señalada tiene derecho a defenderse. En faltas no graves lo hace la autoridad substanciadora y resolutora.\n- `closing_arguments`: Alegatos. Las partes presentan por escrito sus últimos argumentos, en 5 días hábiles.\n- `instruction_closed`: Cierre de la instrucción. Ya no se reciben más pruebas ni argumentos: la autoridad resolutora tiene 30 días hábiles para resolver (puede ampliarlos una vez por otros 30).\n- `resolution`: Resolución (falta no grave). El órgano interno de control o la contraloría decidió si la persona es responsable de la falta no grave y, en su caso, qué sanción le corresponde. Se te notifica para tu conocimiento. La persona sancionada puede pedir la revocación en 15 días hábiles.\n- `case_file_sent`: Envío del expediente al Tribunal. Como la falta es grave o de particulares, la autoridad substanciadora envió el expediente original al Tribunal de Justicia Administrativa, que es el único que puede sancionarla.\n- `court_received`: Recibido en el Tribunal. El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena reclasificarla en 3 días hábiles. Después admite las pruebas en 15 días hábiles.\n- `court_evidence_hearing`: Pruebas en el Tribunal. El Tribunal admite y desahoga las pruebas de las partes.\n- `court_closing_arguments`: Alegatos en el Tribunal. Las partes presentan sus últimos argumentos ante el Tribunal, en 5 días hábiles.\n- `court_instruction_closed`: Cierre de la instrucción en el Tribunal. El Tribunal cerró la instrucción y tiene 30 días hábiles para dictar sentencia (puede ampliarlos una vez por otros 30).\n- `court_resolution`: Sentencia del Tribunal. El Tribunal decidió si la persona es responsable de la falta grave o de particulares y, en su caso, la sanción. Se te notifica para tu conocimiento. Las partes pueden apelar en 15 días hábiles (tú también, como tercera, si te identificaste) y las autoridades pueden pedir la revisión en 10 días hábiles.\n- `final`: Resolución firme. La resolución quedó firme: no se recurrió a tiempo o ya se resolvieron los recursos. Desde aquí se ejecuta la sanción, si la hay.\n- `executed`: Sanción ejecutada. La sanción se ejecutó (por ejemplo, la destitución, la inhabilitación o el cobro de la sanción económica) y debe inscribirse en el sistema de servidores públicos y particulares sancionados de la Plataforma Digital Nacional.\n- `criminal_complaint_filed`: Denuncia penal presentada (vista al Ministerio Público). La autoridad que investiga vio hechos que pueden ser delito y dio vista al Ministerio Público, como manda la ley. La vía penal corre aparte y al mismo tiempo que la administrativa: una no detiene a la otra.\n- `criminal_investigation`: Investigación penal. La fiscalía investiga si los hechos son un delito y quién podría haberlo cometido.\n- `prosecutor_determination`: Determinación del Ministerio Público. La fiscalía decidió no seguir por ahora: se abstuvo de investigar, archivó temporalmente, aplicó un criterio de oportunidad o decidió no ejercer la acción penal. Si eres víctima u ofendida, puedes impugnarlo ante un juez en 10 días.\n- `judicial_review`: Control judicial de la determinación. Un juez revisa la decisión de la fiscalía porque se impugnó. Puede confirmarla o pedir que siga la investigación.\n- `intermediate_stage`: Etapa intermedia. Ante un juez de control, la fiscalía presenta su acusación y se decide qué pruebas irán a juicio.\n- `alternative_exit`: Solución alterna. El proceso terminó o se suspendió con un acuerdo reparatorio o una suspensión condicional, sin juicio.\n- `trial`: Juicio. Un tribunal escucha a las partes y revisa las pruebas en audiencia.\n- `sentence`: Sentencia. El tribunal decide si la persona acusada es culpable o inocente y, en su caso, la pena."
+        "description": "Etapa legal de cualquiera de las dos vías. Nombres y explicaciones en LEGAL_STAGES.\n\n- `investigation`: Investigación. La autoridad investigadora reúne información y pruebas: pide documentos, hace requerimientos y revisa los hechos. Tu identidad sigue protegida.\n- `qualification`: Calificación de la falta. Con lo investigado, la autoridad decide si hubo una falta y si es grave o no grave. Si no encuentra elementos, archiva el expediente y debe avisarte si eres identificable. Si la califica como no grave, puedes inconformarte.\n- `report_filed`: Informe de Presunta Responsabilidad Administrativa presentado. La autoridad investigadora escribió un informe con la falta que encontró y sus pruebas, y lo entregó a la autoridad substanciadora, que es otra área. Esa autoridad tiene 3 días para revisarlo: puede pedir que se corrija, abstenerse o admitirlo.\n- `report_prevented`: Informe con observaciones (prevención). La autoridad substanciadora encontró defectos en el informe y pidió a la investigadora corregirlos en 3 días. Si no los corrige, el informe se tiene por no presentado y vuelve a la investigación; puede presentarse de nuevo mientras la falta no prescriba.\n- `abstention`: Abstención. La autoridad decidió no iniciar el procedimiento (o no sancionar) porque no hubo daño a la hacienda pública y el caso era de criterio opinable o se corrigió de forma espontánea. Si eres identificable y no estás de acuerdo, puedes inconformarte; si nadie se inconforma, el expediente se cierra.\n- `report_admitted`: Procedimiento iniciado (informe admitido). La autoridad substanciadora admitió el informe: con esto empieza el procedimiento de responsabilidad contra la persona señalada. Desde aquí el procedimiento no puede quedarse parado más de 6 meses.\n- `summoned`: Emplazamiento. Se citó en persona a la persona señalada, con copia del informe, para que se defienda en la audiencia inicial, que debe celebrarse entre 10 y 15 días hábiles después. Si te identificaste, te citan como tercera 72 horas antes.\n- `initial_hearing`: Audiencia inicial. Se celebró la audiencia inicial: la persona señalada declaró y ofreció sus pruebas, y las demás partes (también tú, si te identificaste como tercera) pudieron hablar y ofrecer las suyas. Después ya no se reciben más pruebas, salvo las supervenientes. Si la falta es no grave, sigue con la misma autoridad; si es grave, el expediente va al Tribunal.\n- `evidence_hearing`: Admisión y desahogo de pruebas. Se admiten y se revisan las pruebas de las partes. La persona señalada tiene derecho a defenderse. En faltas no graves lo hace la autoridad substanciadora y resolutora.\n- `closing_arguments`: Alegatos. Las partes presentan por escrito sus últimos argumentos, en 5 días hábiles.\n- `instruction_closed`: Cierre de la instrucción. Ya no se reciben más pruebas ni argumentos: la autoridad resolutora tiene 30 días hábiles para resolver (puede ampliarlos una vez por otros 30).\n- `resolution`: Resolución (falta no grave). El órgano interno de control o la contraloría decidió si la persona es responsable de la falta no grave y, en su caso, qué sanción le corresponde. Se te notifica para tu conocimiento. La persona sancionada puede pedir la revocación en 15 días hábiles.\n- `case_file_sent`: Envío del expediente al Tribunal. Como la falta es grave o de particulares, la autoridad substanciadora envió el expediente original al Tribunal de Justicia Administrativa, que es el único que puede sancionarla.\n- `court_received`: Recibido en el Tribunal. El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena a la autoridad investigadora que la reclasifique, y ella tiene 3 días hábiles para registrar la falta reclasificada. Después el Tribunal admite las pruebas en 15 días hábiles.\n- `court_evidence_hearing`: Pruebas en el Tribunal. El Tribunal admite y desahoga las pruebas de las partes.\n- `court_closing_arguments`: Alegatos en el Tribunal. Las partes presentan sus últimos argumentos ante el Tribunal, en 5 días hábiles.\n- `court_instruction_closed`: Cierre de la instrucción en el Tribunal. El Tribunal cerró la instrucción y tiene 30 días hábiles para dictar sentencia (puede ampliarlos una vez por otros 30).\n- `court_resolution`: Sentencia del Tribunal. El Tribunal decidió si la persona es responsable de la falta grave o de particulares y, en su caso, la sanción. Se te notifica para tu conocimiento. Las partes pueden apelar en 15 días hábiles (tú también, como tercera, si te identificaste) y las autoridades pueden pedir la revisión en 10 días hábiles.\n- `final`: Resolución firme. La resolución quedó firme: no se recurrió a tiempo o ya se resolvieron los recursos. Desde aquí se ejecuta la sanción, si la hay.\n- `executed`: Sanción ejecutada. La sanción se ejecutó (por ejemplo, la destitución, la inhabilitación o el cobro de la sanción económica) y debe inscribirse en el sistema de servidores públicos y particulares sancionados de la Plataforma Digital Nacional.\n- `criminal_complaint_filed`: Denuncia penal presentada (vista al Ministerio Público). La autoridad que investiga vio hechos que pueden ser delito y dio vista al Ministerio Público, como manda la ley. La vía penal corre aparte y al mismo tiempo que la administrativa: una no detiene a la otra.\n- `criminal_investigation`: Investigación penal. La fiscalía investiga si los hechos son un delito y quién podría haberlo cometido.\n- `prosecutor_determination`: Determinación del Ministerio Público. La fiscalía decidió no seguir por ahora: se abstuvo de investigar, archivó temporalmente, aplicó un criterio de oportunidad o decidió no ejercer la acción penal. Si eres víctima u ofendida, puedes impugnarlo ante un juez en 10 días.\n- `judicial_review`: Control judicial de la determinación. Un juez revisa la decisión de la fiscalía porque se impugnó. Puede confirmarla o pedir que siga la investigación.\n- `intermediate_stage`: Etapa intermedia. Ante un juez de control, la fiscalía presenta su acusación y se decide qué pruebas irán a juicio.\n- `alternative_exit`: Solución alterna. El proceso terminó o se suspendió con un acuerdo reparatorio o una suspensión condicional, sin juicio.\n- `trial`: Juicio. Un tribunal escucha a las partes y revisa las pruebas en audiencia.\n- `sentence`: Sentencia. El tribunal decide si la persona acusada es culpable o inocente y, en su caso, la pena."
       },
       "ProcedureActor": {
         "type": "string",
@@ -14286,7 +14515,7 @@
           "execution_report",
           "prosecutor_determination_challenge"
         ],
-        "description": "Plazo legal del catálogo DEADLINE_RULES. appeal_filing y appeal_resolution son los de la inconformidad (LGRA, arts. 103 y 107); la apelación es court_appeal_filing.\n\n- `serious_offense_start`: Iniciar ante una posible falta grave. Cuando la autoridad conoce una conducta que podría ser falta grave, falta de particulares o acto de corrupción, tiene 30 días naturales para iniciar el procedimiento correspondiente. SIGILO lo da por cumplido con el acuerdo de inicio que registra la autoridad: es una lectura prudente, porque la ley no precisa qué acto cuenta como «iniciar».\n- `archive_notification`: Notificar el archivo. Si la autoridad archiva la investigación por falta de elementos, debe notificarlo a las personas denunciantes identificables.\n- `information_request`: Atender un requerimiento. Quien recibe un requerimiento de la autoridad investigadora debe responder en el plazo que ésta fije, de 5 a 15 días hábiles; puede ampliarse por causa justificada.\n- `appeal_filing`: Presentar la inconformidad con firma. Si la falta se calificó como no grave o la autoridad se abstuvo, la persona denunciante puede inconformarse. El escrito se entrega ante la autoridad investigadora con nombre, domicilio y firma autógrafa: sin firma no se tiene por presentado. Un aviso en línea no basta.\n- `appeal_resolution`: Resolver la inconformidad. La Sala del Tribunal tiene 30 días hábiles para resolver la inconformidad.\n- `prescription_non_serious`: Prescripción de faltas no graves. La facultad para sancionar una falta no grave prescribe en 3 años. La calificación de la falta interrumpe la prescripción.\n- `prescription_serious`: Prescripción de faltas graves. La facultad para sancionar una falta grave o una falta de particulares prescribe en 7 años. La calificación de la falta interrumpe la prescripción.\n- `inactivity_expiry`: Caducidad por inactividad. Admitido el Informe de Presunta Responsabilidad Administrativa, el procedimiento no puede detenerse más de 6 meses sin causa justificada; si ocurre, se decreta la caducidad de la instancia a solicitud del presunto infractor. No aplica durante la investigación.\n- `report_correction`: Corregir el informe (prevención). Si el Informe de Presunta Responsabilidad Administrativa tiene defectos, la autoridad investigadora tiene 3 días para corregirlos.\n- `report_admission`: Pronunciarse sobre la admisión del informe. La autoridad substanciadora tiene 3 días para admitir el informe, prevenir que se corrija o abstenerse.\n- `initial_hearing_window`: Celebrar la audiencia inicial. La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento. Este es el último día.\n- `parties_summons`: Citar a las demás partes. Las demás partes (también la persona denunciante identificada, como tercera) se citan al menos 72 horas antes de la audiencia inicial.\n- `evidence_admission`: Admitir las pruebas. Después de la audiencia inicial (en no graves) o de recibir el expediente (en el Tribunal), la autoridad tiene 15 días hábiles para admitir las pruebas.\n- `closing_arguments`: Presentar alegatos. Las partes tienen 5 días hábiles comunes para presentar sus alegatos.\n- `resolution_term`: Resolver. Cerrada la instrucción, la autoridad resolutora o el Tribunal tiene 30 días hábiles para resolver; puede ampliarlos una sola vez por otros 30, con causa justificada.\n- `resolution_notice`: Notificar la resolución. La resolución se notifica en 10 días hábiles: en persona a la persona señalada y, para su conocimiento, a la persona denunciante.\n- `court_referral`: Enviar el expediente al Tribunal. En faltas graves y de particulares, la autoridad substanciadora envía los autos originales al Tribunal en 3 días hábiles después de la audiencia inicial.\n- `reclassification`: Reclasificar la falta. Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para hacerlo.\n- `precautionary_hearing`: Vista sobre la medida cautelar. Pedida una medida cautelar, se da vista a quienes afecta para que digan lo que les convenga en 5 días hábiles.\n- `precautionary_decision`: Resolver la medida cautelar. La autoridad substanciadora o el Tribunal resuelve la medida cautelar en 5 días hábiles, por resolución interlocutoria que no admite recurso.\n- `claim_filing`: Presentar la reclamación. Contra el auto que admite, desecha o tiene por no presentado el informe, la contestación o una prueba, el que sobresee antes del cierre o el que admite o rechaza a un tercero, las partes pueden presentar reclamación en 5 días hábiles ante la autoridad que lo dictó.\n- `claim_resolution`: Resolver la reclamación. La autoridad que dictó el auto resuelve la reclamación en 5 días hábiles, sin recurso posterior.\n- `revocation_filing`: Pedir la revocación. La persona sancionada por una falta no grave puede pedir la revocación en 15 días hábiles ante la autoridad que resolvió.\n- `revocation_resolution`: Resolver la revocación. La autoridad que resolvió admite la revocación en 3 días hábiles y la resuelve en 30 días hábiles. Contra lo que resuelva cabe juicio ante el Tribunal.\n- `court_appeal_filing`: Apelar la sentencia. Contra la sentencia del Tribunal que sanciona o absuelve, las personas responsables o los terceros (también la persona denunciante identificada) pueden apelar en 15 días hábiles ante el Tribunal que resolvió.\n- `review_filing`: Pedir la revisión. Las autoridades (la Secretaría, el órgano interno de control o la entidad de fiscalización) pueden pedir la revisión de la sentencia definitiva en 10 días hábiles. Ante quién y quién la resuelve lo dicen la ley federal o la de cada estado, y lo declara cada nodo.\n- `execution_report`: Informar la ejecución. En faltas graves, el Tribunal ordena ejecutar la sanción sin que nadie lo pida, y el superior y la Secretaría informan en 10 días que la ejecutaron.\n- `prosecutor_determination_challenge`: Impugnar la determinación del Ministerio Público. La víctima u ofendida puede impugnar ante el juez de control la abstención, el archivo temporal, el criterio de oportunidad o el no ejercicio de la acción penal en 10 días."
+        "description": "Plazo legal del catálogo DEADLINE_RULES. appeal_filing y appeal_resolution son los de la inconformidad (LGRA, arts. 103 y 107); la apelación es court_appeal_filing.\n\n- `serious_offense_start`: Iniciar ante una posible falta grave. Cuando la autoridad conoce una conducta que podría ser falta grave, falta de particulares o acto de corrupción, tiene 30 días naturales para iniciar el procedimiento correspondiente. SIGILO lo da por cumplido con el acuerdo de inicio que registra la autoridad: es una lectura prudente, porque la ley no precisa qué acto cuenta como «iniciar».\n- `archive_notification`: Notificar el archivo. Si la autoridad archiva la investigación por falta de elementos, debe notificarlo a las personas denunciantes identificables.\n- `information_request`: Atender un requerimiento. Quien recibe un requerimiento de la autoridad investigadora debe responder en el plazo que ésta fije, de 5 a 15 días hábiles; puede ampliarse por causa justificada.\n- `appeal_filing`: Presentar la inconformidad con firma. Si la falta se calificó como no grave o la autoridad se abstuvo, la persona denunciante puede inconformarse. El escrito se entrega ante la autoridad investigadora con nombre, domicilio y firma autógrafa: sin firma no se tiene por presentado. Un aviso en línea no basta.\n- `appeal_resolution`: Resolver la inconformidad. La Sala del Tribunal tiene 30 días hábiles para resolver la inconformidad.\n- `prescription_non_serious`: Prescripción de faltas no graves. La facultad para sancionar una falta no grave prescribe en 3 años. La calificación de la falta interrumpe la prescripción.\n- `prescription_serious`: Prescripción de faltas graves. La facultad para sancionar una falta grave o una falta de particulares prescribe en 7 años. La calificación de la falta interrumpe la prescripción.\n- `inactivity_expiry`: Caducidad por inactividad. Admitido el Informe de Presunta Responsabilidad Administrativa, el procedimiento no puede detenerse más de 6 meses sin causa justificada; si ocurre, se decreta la caducidad de la instancia a solicitud del presunto infractor. No aplica durante la investigación.\n- `report_correction`: Corregir el informe (prevención). Si el Informe de Presunta Responsabilidad Administrativa tiene defectos, la autoridad investigadora tiene 3 días para corregirlos.\n- `report_admission`: Pronunciarse sobre la admisión del informe. La autoridad substanciadora tiene 3 días para admitir el informe, prevenir que se corrija o abstenerse.\n- `initial_hearing_window`: Celebrar la audiencia inicial. La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento. Este es el último día.\n- `parties_summons`: Citar a las demás partes. Las demás partes (también la persona denunciante identificada, como tercera) se citan al menos 72 horas antes de la audiencia inicial.\n- `evidence_admission`: Admitir las pruebas. Después de la audiencia inicial (en no graves) o de recibir el expediente (en el Tribunal), la autoridad tiene 15 días hábiles para admitir las pruebas.\n- `closing_arguments`: Presentar alegatos. Las partes tienen 5 días hábiles comunes para presentar sus alegatos.\n- `resolution_term`: Resolver. Cerrada la instrucción, la autoridad resolutora o el Tribunal tiene 30 días hábiles para resolver; puede ampliarlos una sola vez por otros 30, con causa justificada.\n- `resolution_notice`: Notificar la resolución. La resolución se notifica en 10 días hábiles: en persona a la persona señalada y, para su conocimiento, a la persona denunciante.\n- `court_referral`: Enviar el expediente al Tribunal. En faltas graves y de particulares, la autoridad substanciadora envía los autos originales al Tribunal en 3 días hábiles después de la audiencia inicial.\n- `reclassification`: Reclasificar la falta. Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para registrar la falta reclasificada, con su fundamento y su acuerdo. Mientras corre el plazo, el Tribunal no admite las pruebas; vencido, sigue con el procedimiento.\n- `precautionary_hearing`: Vista sobre la medida cautelar. Pedida una medida cautelar, se da vista a quienes afecta para que digan lo que les convenga en 5 días hábiles.\n- `precautionary_decision`: Resolver la medida cautelar. La autoridad substanciadora o el Tribunal resuelve la medida cautelar en 5 días hábiles, por resolución interlocutoria que no admite recurso.\n- `claim_filing`: Presentar la reclamación. Contra el auto que admite, desecha o tiene por no presentado el informe, la contestación o una prueba, el que sobresee antes del cierre o el que admite o rechaza a un tercero, las partes pueden presentar reclamación en 5 días hábiles ante la autoridad que lo dictó.\n- `claim_resolution`: Resolver la reclamación. La autoridad que dictó el auto resuelve la reclamación en 5 días hábiles, sin recurso posterior.\n- `revocation_filing`: Pedir la revocación. La persona sancionada por una falta no grave puede pedir la revocación en 15 días hábiles ante la autoridad que resolvió.\n- `revocation_resolution`: Resolver la revocación. La autoridad que resolvió admite la revocación en 3 días hábiles y la resuelve en 30 días hábiles. Contra lo que resuelva cabe juicio ante el Tribunal.\n- `court_appeal_filing`: Apelar la sentencia. Contra la sentencia del Tribunal que sanciona o absuelve, las personas responsables o los terceros (también la persona denunciante identificada) pueden apelar en 15 días hábiles ante el Tribunal que resolvió.\n- `review_filing`: Pedir la revisión. Las autoridades (la Secretaría, el órgano interno de control o la entidad de fiscalización) pueden pedir la revisión de la sentencia definitiva en 10 días hábiles. Ante quién y quién la resuelve lo dicen la ley federal o la de cada estado, y lo declara cada nodo.\n- `execution_report`: Informar la ejecución. En faltas graves, el Tribunal ordena ejecutar la sanción sin que nadie lo pida, y el superior y la Secretaría informan en 10 días que la ejecutaron.\n- `prosecutor_determination_challenge`: Impugnar la determinación del Ministerio Público. La víctima u ofendida puede impugnar ante el juez de control la abstención, el archivo temporal, el criterio de oportunidad o el no ejercicio de la acción penal en 10 días."
       },
       "DeadlineUnit": {
         "type": "string",
@@ -14326,6 +14555,7 @@
           "report_not_filed",
           "returned_by_court",
           "reclassification_ordered",
+          "offense_reclassified",
           "precautionary_requested",
           "precautionary_decided",
           "remedy_filed",
@@ -14336,7 +14566,7 @@
           "sanction_registered",
           "withdrawal_received"
         ],
-        "description": "Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, reclasificación, medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento."
+        "description": "Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, orden de reclasificar (reclassification_ordered) y reclasificación de la investigadora (offense_reclassified), medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento."
       },
       "OffenseSeverity": {
         "type": "string",

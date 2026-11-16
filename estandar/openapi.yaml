@@ -9811,6 +9811,92 @@ components:
             - flaggedOn
           additionalProperties: false
           description: 'La denuncia involucra recursos federales: guía de la regla.'
+        reclassification:
+          type: object
+          properties:
+            orderedOn:
+              description: Día de la orden del Tribunal que sigue pendiente.
+              type: string
+              pattern: ^\d{4}-\d{2}-\d{2}$
+              examples:
+                - '2026-11-05'
+            dueOn:
+              description: Último día para que la autoridad investigadora registre la reclasificación (3 días hábiles).
+              type: string
+              pattern: ^\d{4}-\d{2}-\d{2}$
+              examples:
+                - '2026-11-05'
+            isOverdue:
+              description: 'La orden sigue pendiente y venció el plazo: el Tribunal puede seguir con el procedimiento.'
+              type: boolean
+            reclassifiedOn:
+              description: Día en que la investigadora registró la última reclasificación.
+              type: string
+              pattern: ^\d{4}-\d{2}-\d{2}$
+              examples:
+                - '2026-11-05'
+            offenseCode:
+              description: Conducta a la que se reclasificó la falta.
+              type: string
+              maxLength: 64
+              examples:
+                - LGRA-52
+              x-catalog: OFFENSES
+              enum:
+                - CPF-214
+                - CPF-215
+                - CPF-216
+                - CPF-217
+                - CPF-217-BIS
+                - CPF-217-TER
+                - CPF-218
+                - CPF-219
+                - CPF-220
+                - CPF-221
+                - CPF-222
+                - CPF-222-BIS
+                - CPF-223
+                - CPF-224
+                - CPF-225
+                - LGRA-49
+                - LGRA-50
+                - LGRA-52
+                - LGRA-53
+                - LGRA-54
+                - LGRA-55
+                - LGRA-57
+                - LGRA-58
+                - LGRA-59
+                - LGRA-60
+                - LGRA-60-BIS
+                - LGRA-61
+                - LGRA-62
+                - LGRA-63
+                - LGRA-63-BIS
+                - LGRA-64
+                - LGRA-64-BIS
+                - LGRA-64-QUATER
+                - LGRA-64-TER
+                - LGRA-66
+                - LGRA-67
+                - LGRA-68
+                - LGRA-69
+                - LGRA-70
+                - LGRA-71
+                - LGRA-72
+                - LGRA-73
+                - SIN-CLASIFICAR
+            offenseName:
+              description: Nombre de la conducta reclasificada, del catálogo.
+              type: string
+            legalBasis:
+              description: Fundamento de la reclasificación.
+              type: string
+            agreement:
+              description: Acuerdo de reclasificación en versión pública.
+              type: string
+          additionalProperties: false
+          description: Reclasificación de la falta por orden del Tribunal (LGRA, art. 209 fr. II).
         courtRecording:
           description: 'Solo en el panel: el estado no dio cuentas al Tribunal y la substanciación registra sus actuaciones.'
           type: boolean
@@ -10000,6 +10086,62 @@ components:
             registryReference:
               description: Referencia de la inscripción de la sanción en el S3.
               type: string
+            offenseCode:
+              description: Conducta a la que se reclasificó la falta por orden del Tribunal.
+              type: string
+              maxLength: 64
+              examples:
+                - LGRA-52
+              x-catalog: OFFENSES
+              enum:
+                - CPF-214
+                - CPF-215
+                - CPF-216
+                - CPF-217
+                - CPF-217-BIS
+                - CPF-217-TER
+                - CPF-218
+                - CPF-219
+                - CPF-220
+                - CPF-221
+                - CPF-222
+                - CPF-222-BIS
+                - CPF-223
+                - CPF-224
+                - CPF-225
+                - LGRA-49
+                - LGRA-50
+                - LGRA-52
+                - LGRA-53
+                - LGRA-54
+                - LGRA-55
+                - LGRA-57
+                - LGRA-58
+                - LGRA-59
+                - LGRA-60
+                - LGRA-60-BIS
+                - LGRA-61
+                - LGRA-62
+                - LGRA-63
+                - LGRA-63-BIS
+                - LGRA-64
+                - LGRA-64-BIS
+                - LGRA-64-QUATER
+                - LGRA-64-TER
+                - LGRA-66
+                - LGRA-67
+                - LGRA-68
+                - LGRA-69
+                - LGRA-70
+                - LGRA-71
+                - LGRA-72
+                - LGRA-73
+                - SIN-CLASIFICAR
+            agreement:
+              description: Acuerdo de reclasificación en versión pública.
+              type: string
+              minLength: 50
+              maxLength: 20000
           additionalProperties: false
           description: Datos del acto registrados con el paso.
       required:
@@ -11543,6 +11685,83 @@ components:
           properties:
             action:
               type: string
+              const: record_reclassification
+            offenseCode:
+              type: string
+              maxLength: 64
+              description: 'Conducta reclasificada: clave del catálogo OFFENSES de una falta grave (LGRA, arts. 51 a 64 Quáter) o de particulares (arts. 65 a 73), distinta de la vigente.'
+              examples:
+                - LGRA-54
+              x-catalog: OFFENSES
+              enum:
+                - CPF-214
+                - CPF-215
+                - CPF-216
+                - CPF-217
+                - CPF-217-BIS
+                - CPF-217-TER
+                - CPF-218
+                - CPF-219
+                - CPF-220
+                - CPF-221
+                - CPF-222
+                - CPF-222-BIS
+                - CPF-223
+                - CPF-224
+                - CPF-225
+                - LGRA-49
+                - LGRA-50
+                - LGRA-52
+                - LGRA-53
+                - LGRA-54
+                - LGRA-55
+                - LGRA-57
+                - LGRA-58
+                - LGRA-59
+                - LGRA-60
+                - LGRA-60-BIS
+                - LGRA-61
+                - LGRA-62
+                - LGRA-63
+                - LGRA-63-BIS
+                - LGRA-64
+                - LGRA-64-BIS
+                - LGRA-64-QUATER
+                - LGRA-64-TER
+                - LGRA-66
+                - LGRA-67
+                - LGRA-68
+                - LGRA-69
+                - LGRA-70
+                - LGRA-71
+                - LGRA-72
+                - LGRA-73
+                - SIN-CLASIFICAR
+            legalBasis:
+              type: string
+              minLength: 20
+              maxLength: 1000
+              description: Fundamento legal y motivo; la persona denunciante lo ve.
+            agreement:
+              type: string
+              minLength: 50
+              maxLength: 20000
+              description: Versión pública del acuerdo de cierre, sin datos personales. Queda disponible para el auditor y para la persona denunciante.
+            note:
+              type: string
+              minLength: 1
+              maxLength: 2000
+              description: Nota pública de la autoridad; la persona denunciante la lee tal cual.
+          required:
+            - action
+            - offenseCode
+            - legalBasis
+            - agreement
+          additionalProperties: false
+        - type: object
+          properties:
+            action:
+              type: string
               const: request_precautionary
             measure:
               type: string
@@ -11832,7 +12051,7 @@ components:
             - action
             - note
           additionalProperties: false
-      description: 'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification, request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento.'
+      description: 'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification (el Tribunal ordena reclasificar) y record_reclassification (la investigadora registra la falta reclasificada), request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento.'
     ProcedureState:
       type: object
       properties:
@@ -12898,7 +13117,7 @@ components:
         - `instruction_closed`: Cierre de la instrucción. Ya no se reciben más pruebas ni argumentos: la autoridad resolutora tiene 30 días hábiles para resolver (puede ampliarlos una vez por otros 30).
         - `resolution`: Resolución (falta no grave). El órgano interno de control o la contraloría decidió si la persona es responsable de la falta no grave y, en su caso, qué sanción le corresponde. Se te notifica para tu conocimiento. La persona sancionada puede pedir la revocación en 15 días hábiles.
         - `case_file_sent`: Envío del expediente al Tribunal. Como la falta es grave o de particulares, la autoridad substanciadora envió el expediente original al Tribunal de Justicia Administrativa, que es el único que puede sancionarla.
-        - `court_received`: Recibido en el Tribunal. El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena reclasificarla en 3 días hábiles. Después admite las pruebas en 15 días hábiles.
+        - `court_received`: Recibido en el Tribunal. El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena a la autoridad investigadora que la reclasifique, y ella tiene 3 días hábiles para registrar la falta reclasificada. Después el Tribunal admite las pruebas en 15 días hábiles.
         - `court_evidence_hearing`: Pruebas en el Tribunal. El Tribunal admite y desahoga las pruebas de las partes.
         - `court_closing_arguments`: Alegatos en el Tribunal. Las partes presentan sus últimos argumentos ante el Tribunal, en 5 días hábiles.
         - `court_instruction_closed`: Cierre de la instrucción en el Tribunal. El Tribunal cerró la instrucción y tiene 30 días hábiles para dictar sentencia (puede ampliarlos una vez por otros 30).
@@ -12988,7 +13207,7 @@ components:
         - `resolution_term`: Resolver. Cerrada la instrucción, la autoridad resolutora o el Tribunal tiene 30 días hábiles para resolver; puede ampliarlos una sola vez por otros 30, con causa justificada.
         - `resolution_notice`: Notificar la resolución. La resolución se notifica en 10 días hábiles: en persona a la persona señalada y, para su conocimiento, a la persona denunciante.
         - `court_referral`: Enviar el expediente al Tribunal. En faltas graves y de particulares, la autoridad substanciadora envía los autos originales al Tribunal en 3 días hábiles después de la audiencia inicial.
-        - `reclassification`: Reclasificar la falta. Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para hacerlo.
+        - `reclassification`: Reclasificar la falta. Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para registrar la falta reclasificada, con su fundamento y su acuerdo. Mientras corre el plazo, el Tribunal no admite las pruebas; vencido, sigue con el procedimiento.
         - `precautionary_hearing`: Vista sobre la medida cautelar. Pedida una medida cautelar, se da vista a quienes afecta para que digan lo que les convenga en 5 días hábiles.
         - `precautionary_decision`: Resolver la medida cautelar. La autoridad substanciadora o el Tribunal resuelve la medida cautelar en 5 días hábiles, por resolución interlocutoria que no admite recurso.
         - `claim_filing`: Presentar la reclamación. Contra el auto que admite, desecha o tiene por no presentado el informe, la contestación o una prueba, el que sobresee antes del cierre o el que admite o rechaza a un tercero, las partes pueden presentar reclamación en 5 días hábiles ante la autoridad que lo dictó.
@@ -13046,6 +13265,7 @@ components:
         - report_not_filed
         - returned_by_court
         - reclassification_ordered
+        - offense_reclassified
         - precautionary_requested
         - precautionary_decided
         - remedy_filed
@@ -13055,7 +13275,7 @@ components:
         - federal_notice_sent
         - sanction_registered
         - withdrawal_received
-      description: 'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, reclasificación, medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento.'
+      description: 'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, orden de reclasificar (reclassification_ordered) y reclasificación de la investigadora (offense_reclassified), medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento.'
     OffenseSeverity:
       type: string
       enum:
