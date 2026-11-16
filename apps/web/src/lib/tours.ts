@@ -85,6 +85,10 @@ const AUTHORITY_INTRO: Readonly<Record<AuthorityRole, TourStep>> = {
     title: 'Tu función: operación del nodo',
     text: 'Revisas las solicitudes de alta de las instituciones. No ves denuncias.',
   },
+  court: {
+    title: 'Tu función: Tribunal',
+    text: 'Ves solo los expedientes que te envían por falta grave o de particulares y los recursos que resuelves. No ves el buzón de la persona ni su nombre.',
+  },
 };
 
 const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
@@ -111,6 +115,10 @@ const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
   operation: {
     title: 'Confirma la huella por teléfono',
     text: 'Llama a la institución y pide que te lea su huella. Solo si coincide con la que calcula tu navegador puedes aprobar.',
+  },
+  court: {
+    title: 'Tus etapas',
+    text: 'Recibes el expediente, verificas que la falta sea grave (o lo devuelves), admites pruebas, abres alegatos, cierras la instrucción y dictas sentencia. También resuelves la inconformidad, la apelación y la revisión.',
   },
 };
 

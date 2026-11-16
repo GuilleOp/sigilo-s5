@@ -1,8 +1,10 @@
 // Seguimiento del trámite para quien denuncia: qué significa el estado actual, la línea de tiempo
 // con sus etapas legales y notas públicas, los plazos con su situación, las reglas que se cumplieron
-// (escalamiento y alertas), el cierre con su fundamento, la calificación con la inconformidad y el folio
-// nuevo si la denuncia pasó a otro nodo.
-import { ADMINISTRATIVE_STAGES } from '@sigilo/contracts';
+// (escalamiento y alertas), el cierre con su fundamento y su motivo legal, la calificación o la
+// abstención con la inconformidad, la vía penal que corre en paralelo, los recursos, lo que puede
+// hacer como tercera y el folio nuevo si la denuncia pasó a otro nodo. Todo en lenguaje sencillo.
+import { findLegalStage, transitionsFrom } from '@sigilo/contracts';
+import type { AdministrativeStage } from '@sigilo/contracts';
 import type { ProcedureStep, ProcedureView, TrackingView } from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
 import { DeadlineList } from '../../components/DeadlineList.tsx';
@@ -12,6 +14,7 @@ import { AppealSection } from './AppealSection.tsx';
 import { formatDayDate, STATUS_HINTS, STATUS_LABELS } from '../../lib/format.ts';
 import { describeRemaining } from '../../lib/deadline-text.ts';
 import {
+  ABSTENTION_HEADLINE,
   appealWindow,
   isEscalated,
   NON_SERIOUS_HEADLINE,
@@ -55,7 +58,19 @@ const STAMP_LABELS: Readonly<Partial<Record<ProcedureStep['action'], string>>> =
   conflict_excused: 'Excusa',
   conflict_justified: 'Justificación',
   transferred: 'Turnada',
-  appeal_filed: 'Inconformidad',
+  appeal_filed: 'Aviso de inconformidad',
+  abstention_declared: 'Abstención',
+  report_not_filed: 'Informe no presentado',
+  returned_by_court: 'Devuelta por el Tribunal',
+  reclassification_ordered: 'Reclasificación',
+  precautionary_decided: 'Medidas',
+  remedy_filed: 'Recurso',
+  remedy_resolved: 'Recurso resuelto',
+  criminal_referral_filed: 'Vista al Ministerio Público',
+  federal_funds_flagged: 'Recursos federales',
+  federal_notice_sent: 'Aviso federal',
+  sanction_registered: 'Registro de la sanción',
+  withdrawal_received: 'Desistimiento',
 };
 
 /** Pasos cuya explicación va como nota al margen (lo que más confunde: «turnada»). */
@@ -85,13 +100,39 @@ function currentStageName(procedure: ProcedureView): string {
   return procedure.legalStageName ?? procedure.managementStateName;
 }
 
-/** Próximas etapas legales (a lo más dos), para que la persona vea lo que falta. */
+/** Pasos que no son el camino de siempre: prevenir, abstenerse, devolver o volver a investigar. */
+const DETOURS: ReadonlySet<string> = new Set(['report_prevented', 'abstention', 'investigation']);
+
+/**
+ * Próximas etapas legales del camino de siempre (a lo más dos), para que la persona vea lo que
+ * falta: con la rama de su calificación (no grave con la misma autoridad; grave en el Tribunal).
+ */
 function upcomingStages(procedure: ProcedureView): string[] {
   if (procedure.managementState === 'closed') return [];
-  const index = ADMINISTRATIVE_STAGES.findIndex((stage) => stage.key === procedure.legalStage);
-  if (procedure.legalStage !== undefined && index === -1) return [];
-  return ADMINISTRATIVE_STAGES.slice(index + 1, index + 3).map((stage) => stage.name);
+  const severity = procedure.steps.some((step) => step.action === 'returned_by_court')
+    ? 'non_serious'
+    : procedure.qualification?.severity;
+  const names: string[] = [];
+  let stage = (procedure.legalStage ?? null) as AdministrativeStage | null;
+  if (stage !== null && findLegalStage(stage)?.track !== 'administrative') return [];
+  while (names.length < 2) {
+    const next = transitionsFrom(stage).find(
+      (transition) =>
+        transition.action === 'stage_advanced' &&
+        !DETOURS.has(transition.to) &&
+        (transition.severities === undefined ||
+          severity === undefined ||
+          transition.severities.includes(severity)),
+    );
+    if (next === undefined) break;
+    names.push(findLegalStage(next.to)?.name ?? next.to);
+    stage = next.to;
+  }
+  return names;
 }
+
+/** Etapas en las que la persona identificada puede comparecer o apelar como tercera. */
+const THIRD_PARTY_HEARING: ReadonlySet<string> = new Set(['summoned', 'initial_hearing']);
 
 /** Estatus, ruta de etapas con sus plazos, reglas y cierre. */
 export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: ProcedureTimelineProps) {
@@ -145,18 +186,21 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
               </p>
             ) : appeal !== null &&
               appeal.status !== 'overdue' &&
-              headline.text === NON_SERIOUS_HEADLINE ? (
-              // La explicación completa ya va en la calificación de abajo: aquí, lo que sigue.
+              (headline.text === NON_SERIOUS_HEADLINE || headline.text === ABSTENTION_HEADLINE) ? (
+              // La explicación completa ya va en la sección de abajo: aquí, lo que sigue.
               <p data-testid="tracking-headline">
-                La autoridad calificó la conducta como falta no grave.{' '}
-                <strong>Lo que sigue:</strong> si no estás de acuerdo, puedes inconformarte desde
-                este seguimiento hasta el {formatDayDate(appeal.dueOn)} (
+                {headline.text === ABSTENTION_HEADLINE
+                  ? 'La autoridad se abstuvo de iniciar el procedimiento.'
+                  : 'La autoridad calificó la conducta como falta no grave.'}{' '}
+                <strong>Lo que sigue:</strong> si no estás de acuerdo, entrega tu escrito de
+                inconformidad firmado ante la autoridad investigadora hasta el{' '}
+                {formatDayDate(appeal.dueOn)} (
                 {describeRemaining(
                   appeal.remaining,
                   appeal.remainingUnit,
                   appeal.dueOn,
                 ).toLowerCase()}
-                ).
+                ). Aquí puedes preparar el aviso.
               </p>
             ) : (
               <p data-testid="tracking-headline">{headline.text}</p>
@@ -164,6 +208,12 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
             {procedure.legalStageName !== undefined && (
               <p className="source" data-testid="tracking-legal-stage">
                 Etapa legal actual: {procedure.legalStageName}.
+              </p>
+            )}
+            {procedure.criminalStageName !== undefined && (
+              <p className="source" data-testid="tracking-criminal-stage">
+                Vía penal, al mismo tiempo: {procedure.criminalStageName}. Corre aparte de la
+                administrativa y una no detiene a la otra.
               </p>
             )}
           </div>
@@ -198,13 +248,65 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
               </p>
             </Alert>
           )}
-          {procedure.qualification !== undefined && (
+          {(procedure.qualification !== undefined || procedure.abstention !== undefined) && (
             <AppealSection
-              qualification={procedure.qualification}
+              procedure={procedure}
               mode={view.mode}
               window={appeal}
               {...(onFileAppeal === undefined ? {} : { onFile: onFileAppeal })}
             />
+          )}
+          {view.mode === 'sealed' &&
+            procedure.legalStage !== undefined &&
+            THIRD_PARTY_HEARING.has(procedure.legalStage) && (
+              <Alert
+                tone="info"
+                title="Puedes participar como tercera"
+                testId="tracking-third-party"
+              >
+                <p>
+                  Si te identificas, eres tercera en el procedimiento: te citan a la audiencia
+                  inicial 72 horas antes y puedes hablar y ofrecer pruebas (LGRA, arts. 116 fr. IV y
+                  208 fr. IV a VI). Tu identidad sellada solo se abre si tú lo pides, y solo para
+                  eso.
+                </p>
+              </Alert>
+            )}
+          {view.mode === 'sealed' && procedure.legalStage === 'court_resolution' && (
+            <Alert tone="info" title="Puedes apelar como tercera" testId="tracking-third-party">
+              <p>
+                Si te identificas, puedes apelar la sentencia como tercera en 15 días hábiles desde
+                que te la notifiquen, con escrito firmado ante el Tribunal (LGRA, arts. 116 fr. IV,
+                215 y 216).
+              </p>
+            </Alert>
+          )}
+          {(procedure.remedies ?? []).length > 0 && (
+            <section aria-labelledby="remedies-title" data-testid="tracking-remedies">
+              <h3 id="remedies-title">Recursos</h3>
+              <ul>
+                {(procedure.remedies ?? []).map((remedy, index) => (
+                  <li key={`${remedy.kind}-${index}`}>
+                    <strong>{remedy.name}</strong>, presentado el {formatDayDate(remedy.filedOn)}
+                    {remedy.filedBy === 'reporter' ? ' (lo presentaste tú)' : ''}:{' '}
+                    {remedy.status === 'resolved'
+                      ? `resuelto${remedy.outcomeName === undefined ? '' : `: ${remedy.outcomeName.toLowerCase()}`}`
+                      : remedy.resolutionDueOn === undefined
+                        ? 'en trámite'
+                        : `en trámite; se resuelve a más tardar el ${formatDayDate(remedy.resolutionDueOn)}`}
+                    . {remedy.effect}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {procedure.federalFunds !== undefined && (
+            <p data-testid="tracking-federal-funds">
+              Tu denuncia involucra recursos federales ({procedure.federalFunds.fundingName}):
+              además de la autoridad local, pueden intervenir la Auditoría Superior de la
+              Federación, la Secretaría Anticorrupción y Buen Gobierno y la Fiscalía Anticorrupción
+              de la FGR (Ley de Coordinación Fiscal, art. 49).
+            </p>
           )}
           <h3>Etapas</h3>
           <ol className="route route--stamps" data-testid="procedure-steps">
@@ -317,6 +419,14 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
             >
               <h3 id="closure-title">Cierre: {procedure.closure.reasonName}</h3>
               <p>{procedure.closure.reasonExplanation}</p>
+              {procedure.closure.legalOutcomeName !== undefined && (
+                <p data-testid="tracking-legal-outcome">
+                  <strong>Motivo legal: {procedure.closure.legalOutcomeName}.</strong>{' '}
+                  {procedure.closure.legalOutcomeExplanation}
+                  {procedure.closure.destination !== undefined &&
+                    ` Se remitió a: ${procedure.closure.destination.name}.`}
+                </p>
+              )}
               <p>Fundamento: «{procedure.closure.legalBasis}»</p>
               <details>
                 <summary>Leer el acuerdo (versión pública)</summary>

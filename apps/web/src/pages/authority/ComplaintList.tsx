@@ -38,7 +38,7 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
             <th scope="col">Folio</th>
             <th scope="col">Conducta</th>
             <th scope="col">Estatus</th>
-            <th scope="col">Plazo de turnado</th>
+            <th scope="col">Meta de turnado del S5</th>
             <th scope="col">Recibida</th>
             <th scope="col">Entidad</th>
             <th scope="col">Modo</th>
@@ -69,7 +69,7 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
                   {STATUS_LABELS[complaint.status]}
                 </span>
               </td>
-              <td data-label="Plazo de turnado">
+              <td data-label="Meta de turnado del S5">
                 <TurnSemaphore semaphore={complaint.turnSemaphore} />
               </td>
               <td data-label="Recibida" className="complaint-list__date">

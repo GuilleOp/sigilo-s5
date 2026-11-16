@@ -19,6 +19,7 @@ const LABELS: Readonly<Record<BadgeKind, string>> = {
   substantiation: 'Substanciación y resolución',
   supervision: 'Supervisión',
   operation: 'Operación del nodo',
+  court: 'Tribunal',
 };
 
 /** Pantallas de quien denuncia: las demás públicas son de consulta. */

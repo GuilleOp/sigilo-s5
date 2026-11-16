@@ -1,9 +1,13 @@
-// Calificación de la falta e inconformidad (LGRA, arts. 100 y 102 a 110): el acuerdo, el plazo de 5
-// días hábiles y el recurso desde el seguimiento. Explica que la ley pide nombre, domicilio y firma,
-// que eso abre la identidad sellada solo para el recurso y que la firma autógrafa se completa fuera
-// del sistema. En una denuncia anónima explica por qué no está disponible.
+// Calificación de la falta o abstención, e inconformidad (LGRA, arts. 100 a 110): el acuerdo, el
+// plazo de 5 días hábiles y el aviso de inconformidad desde el seguimiento. El aviso no es el
+// recurso: la ley pide un escrito con nombre, domicilio y firma autógrafa ante la autoridad
+// investigadora y, sin firma, «no se tendrá por presentado» (art. 109). El sistema nunca dice que la
+// inconformidad se presentó hasta que la autoridad registra el escrito firmado; solo entonces corre
+// el plazo de la Sala. Explica que el aviso abre la identidad sellada solo para el recurso y, en una
+// denuncia anónima, por qué no está disponible.
 import { useRef, useState } from 'react';
-import type { ComplaintMode, QualificationView } from '@sigilo/contracts';
+import type { ComplaintMode, ProcedureView } from '@sigilo/contracts';
+import { findRemedyOutcome } from '@sigilo/contracts';
 import { TextAreaField } from '../../components/Field.tsx';
 import { DEADLINE_STATUS_LABELS, describeRemaining } from '../../lib/deadline-text.ts';
 import { focusAfterRender } from '../../lib/focus.ts';
@@ -11,27 +15,41 @@ import { formatDayDate } from '../../lib/format.ts';
 import type { AppealWindow } from '../../lib/procedure-text.ts';
 
 interface AppealSectionProps {
-  qualification: QualificationView;
+  procedure: ProcedureView;
   mode: ComplaintMode;
   window: AppealWindow | null;
-  /** Presenta la inconformidad; resuelve con un mensaje de error o `null` si salió bien. */
+  /** Da el aviso de inconformidad; resuelve con un mensaje de error o `null` si salió bien. */
   onFile?: (reasons: string) => Promise<string | null>;
 }
 
 const MIN_REASONS = 20;
 
-/** Sección de la calificación y la inconformidad. */
-export function AppealSection({ qualification, mode, window, onFile }: AppealSectionProps) {
+/** Sección de la calificación o la abstención y la inconformidad. */
+export function AppealSection({ procedure, mode, window, onFile }: AppealSectionProps) {
   const [reasons, setReasons] = useState('');
   const [hasConsent, setConsent] = useState(false);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isSending = useRef(false);
-  const isNonSerious = qualification.severity === 'non_serious';
+  const qualification = procedure.qualification;
+  const abstention = procedure.abstention;
+  const inconformity = procedure.inconformity;
+  const isAbstention = abstention !== undefined && procedure.legalStage === 'abstention';
+  const isOpenAct =
+    isAbstention ||
+    (qualification?.severity === 'non_serious' &&
+      (inconformity === undefined || inconformity.against === 'non_serious'));
+  const notice = inconformity?.notice ?? qualification?.appeal;
+  const signedOn = inconformity?.signedOn ?? qualification?.appeal?.signedOn;
+  const resolutionDueOn = inconformity?.resolutionDueOn ?? qualification?.appeal?.resolutionDueOn;
+  const filingDueOn = inconformity?.filingDueOn ?? window?.dueOn ?? notice?.filingDueOn;
+  const outcome =
+    inconformity?.outcome === undefined ? undefined : findRemedyOutcome(inconformity.outcome);
   const canFile =
-    isNonSerious &&
+    isOpenAct &&
     mode === 'sealed' &&
-    qualification.appeal === undefined &&
+    notice === undefined &&
+    signedOn === undefined &&
     window !== null &&
     window.status !== 'overdue' &&
     onFile !== undefined;
@@ -45,7 +63,7 @@ export function AppealSection({ qualification, mode, window, onFile }: AppealSec
     }
     if (!hasConsent) {
       found['appeal-consent'] =
-        'Para inconformarte necesitas aceptar que se abra tu identidad para el recurso.';
+        'Para preparar tu aviso necesitas aceptar que se abra tu identidad para el recurso.';
     }
     setErrors(found);
     const first = Object.keys(found)[0];
@@ -55,10 +73,13 @@ export function AppealSection({ qualification, mode, window, onFile }: AppealSec
       return;
     }
     isSending.current = true;
-    setMessage('Enviando tu inconformidad.');
+    setMessage('Enviando tu aviso de inconformidad.');
     const error = await onFile(reasons.trim());
     isSending.current = false;
-    setMessage(error ?? 'Listo: presentaste tu inconformidad.');
+    setMessage(
+      error ??
+        `Preparaste tu aviso. Para que cuente, entrega tu escrito firmado a mano a la autoridad investigadora${filingDueOn === undefined ? ' dentro de los 5 días hábiles' : ` antes del ${formatDayDate(filingDueOn)}`}.`,
+    );
   }
 
   return (
@@ -68,41 +89,78 @@ export function AppealSection({ qualification, mode, window, onFile }: AppealSec
       data-status={window?.status ?? 'running'}
       data-testid="tracking-appeal"
     >
-      <h3 id="appeal-title">
-        Calificación: {qualification.severityName} ({formatDayDate(qualification.legalOn)})
-      </h3>
-      <p>{qualification.explanation}</p>
-      <p>Fundamento: «{qualification.legalBasis}»</p>
-      <details>
-        <summary>Leer el acuerdo de calificación (versión pública)</summary>
-        <p className="review-text">{qualification.agreement}</p>
-      </details>
-      {qualification.appeal !== undefined && (
+      {isAbstention && abstention !== undefined ? (
+        <>
+          <h3 id="appeal-title">Abstención ({formatDayDate(abstention.legalOn)})</h3>
+          <p>{abstention.explanation}</p>
+          <p>Fundamento: «{abstention.legalBasis}»</p>
+          <details>
+            <summary>Leer el acuerdo de abstención (versión pública)</summary>
+            <p className="review-text">{abstention.agreement}</p>
+          </details>
+        </>
+      ) : (
+        qualification !== undefined && (
+          <>
+            <h3 id="appeal-title">
+              Calificación: {qualification.severityName} ({formatDayDate(qualification.legalOn)})
+            </h3>
+            <p>{qualification.explanation}</p>
+            <p>Fundamento: «{qualification.legalBasis}»</p>
+            <details>
+              <summary>Leer el acuerdo de calificación (versión pública)</summary>
+              <p className="review-text">{qualification.agreement}</p>
+            </details>
+          </>
+        )
+      )}
+      {signedOn !== undefined && (
+        <div data-testid="appeal-signed">
+          <p>
+            <strong>Inconformidad presentada con firma</strong>: la autoridad registró tu escrito el{' '}
+            {formatDayDate(signedOn)} y lo envía a la Sala del Tribunal.
+            {resolutionDueOn !== undefined &&
+              outcome === undefined &&
+              ` La Sala tiene hasta el ${formatDayDate(resolutionDueOn)} para resolverla (30 días hábiles, LGRA, art. 107).`}
+          </p>
+          {outcome !== undefined && (
+            <p data-testid="appeal-outcome">
+              Resultado de la inconformidad: <strong>{outcome.name}</strong>. {outcome.explanation}
+            </p>
+          )}
+        </div>
+      )}
+      {notice !== undefined && signedOn === undefined && (
         <div data-testid="appeal-filed">
           <p>
-            <strong>Presentaste tu inconformidad</strong> el{' '}
-            {formatDayDate(qualification.appeal.legalOn)}.
-            {qualification.appeal.resolutionDueOn !== undefined &&
-              ` La Sala tiene hasta el ${formatDayDate(qualification.appeal.resolutionDueOn)} para resolverla (30 días hábiles, LGRA, art. 107).`}
+            <strong>Preparaste tu aviso de inconformidad</strong> el {formatDayDate(notice.legalOn)}
+            . Todavía no es el recurso.
           </p>
           <p>
-            Falta tu firma autógrafa: la ley la exige y se completa fuera de este sistema, ante la
-            autoridad que te lo indique por el buzón.
+            Para que cuente, entrega tu escrito con tu nombre, domicilio y firma autógrafa a la
+            autoridad investigadora
+            {filingDueOn === undefined
+              ? ' dentro de los 5 días hábiles siguientes a la notificación'
+              : ` antes del ${formatDayDate(filingDueOn)}`}{' '}
+            (LGRA, arts. 103, 104 y 109). Sin firma no se tiene por presentado. Cuando la autoridad
+            registre que lo recibió, verás aquí el plazo de la Sala.
           </p>
         </div>
       )}
-      {isNonSerious && qualification.appeal === undefined && window !== null && (
+      {isOpenAct && signedOn === undefined && window !== null && (
         <p className="appeal__window" data-testid="appeal-window">
           <span className="status-icon" data-status={window.status} aria-hidden="true" />
-          <strong>Plazo para inconformarte: {DEADLINE_STATUS_LABELS[window.status]}.</strong> Tienes
-          5 días hábiles: hasta el {formatDayDate(window.dueOn)} (
+          <strong>
+            Plazo para entregar tu escrito firmado: {DEADLINE_STATUS_LABELS[window.status]}.
+          </strong>{' '}
+          Tienes 5 días hábiles: hasta el {formatDayDate(window.dueOn)} (
           {describeRemaining(window.remaining, window.remainingUnit, window.dueOn).toLowerCase()}).
         </p>
       )}
-      {isNonSerious && qualification.appeal === undefined && window === null && (
+      {isOpenAct && notice === undefined && signedOn === undefined && window === null && (
         <p>El plazo de 5 días hábiles empieza cuando la autoridad te lo notifique por el buzón.</p>
       )}
-      {isNonSerious && qualification.appeal === undefined && mode === 'anonymous' && (
+      {isOpenAct && signedOn === undefined && mode === 'anonymous' && (
         <p data-testid="appeal-anonymous">
           Tu denuncia es anónima, así que la inconformidad no está disponible: la ley pide el
           nombre, el domicilio y la firma de quien se inconforma (LGRA, art. 109), y en una denuncia
@@ -112,15 +170,22 @@ export function AppealSection({ qualification, mode, window, onFile }: AppealSec
       )}
       {canFile && (
         <div className="appeal__form" data-testid="appeal-form">
+          <h4>Aviso de inconformidad</h4>
           <p>
-            <strong>Antes de inconformarte, debes saber:</strong> la ley pide tu nombre, domicilio y
-            firma. Al presentarla, la autoridad investigadora podrá abrir tu identidad sellada, solo
-            para el recurso. Queda registrado quién la abrió, cuándo y para qué, y lo verás aquí. La
-            firma autógrafa se completa fuera de este sistema.
+            <strong>Antes de preparar tu aviso, debes saber:</strong> el aviso no es la
+            inconformidad. Para que cuente, entregas el escrito con tu nombre, domicilio y firma
+            autógrafa ante la autoridad investigadora (LGRA, art. 109); después, la Sala del
+            Tribunal la resuelve. Con el aviso, la autoridad investigadora podrá abrir tu identidad
+            sellada, solo para el recurso. Queda registrado quién la abrió, cuándo y para qué, y lo
+            verás aquí.
           </p>
           <TextAreaField
             id="appeal-reasons"
-            label="¿Por qué no estás de acuerdo con la calificación?"
+            label={
+              isAbstention
+                ? '¿Por qué no estás de acuerdo con la abstención?'
+                : '¿Por qué no estás de acuerdo con la calificación?'
+            }
             hint="Escribe tus motivos con tus palabras. Al menos una frase."
             rows={4}
             maxLength={5000}
@@ -154,7 +219,7 @@ export function AppealSection({ qualification, mode, window, onFile }: AppealSec
             onClick={() => void file()}
             data-testid="appeal-submit"
           >
-            Presentar mi inconformidad
+            Preparar mi aviso de inconformidad
           </button>
         </div>
       )}

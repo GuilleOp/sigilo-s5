@@ -156,9 +156,10 @@ describe('CSV de datos abiertos', () => {
 
 describe('formatos', () => {
   it('toma el nombre y la explicación de cada estatus del catálogo del trámite', () => {
-    expect(Object.keys(STATUS_LABELS)).toHaveLength(7);
+    expect(Object.keys(STATUS_LABELS)).toHaveLength(13);
     expect(STATUS_LABELS.investigating).toBe('En investigación');
     expect(STATUS_LABELS.routed).toBe('Turnada a la autoridad competente');
+    expect(STATUS_LABELS.in_court).toBe('En el Tribunal');
     expect(STATUS_HINTS.archived).toBe(
       'Se cerró por ahora; puede reabrirse si hay nuevos elementos.',
     );

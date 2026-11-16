@@ -38,7 +38,7 @@ describe('semáforo de turnado', () => {
 
   it('explica en el detalle desde cuándo espera y cuándo vence', () => {
     expect(turnSemaphoreSentence(BASE)).toBe(
-      'Espera en el buzón general a que la turnen desde el 10 de noviembre de 2026. Pasa a «por vencer» el 11 de noviembre de 2026 y vence el 12 de noviembre de 2026.',
+      'Espera en el buzón general a que la turnen desde el 10 de noviembre de 2026. Pasa a «por vencer» el 11 de noviembre de 2026 y vence el 12 de noviembre de 2026. Es la meta del S5, no un plazo legal.',
     );
     expect(
       turnSemaphoreSentence({

@@ -25,6 +25,7 @@ import { LocalLawReferences } from './LocalLawReferences.tsx';
 import { ContextSheetPanel } from './ContextSheetPanel.tsx';
 import { CorroborationPanel } from './CorroborationPanel.tsx';
 import { TransferPanel } from './TransferPanel.tsx';
+import { FederalFundsPanel } from './FederalFundsPanel.tsx';
 import { NextFunctionsPanel } from './NextFunctionsPanel.tsx';
 import { useNetworkState } from '../../network/use-network-state.ts';
 import { TurnSemaphore } from './TurnSemaphore.tsx';
@@ -102,6 +103,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
     );
   if (detail === null) return <p>Cargando denuncia.</p>;
   const { summary, facts } = detail;
+  const isCourt = session.account.functions.includes('court');
   const municipality =
     facts.municipalityCode === undefined
       ? undefined
@@ -132,7 +134,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         </dd>
         {summary.turnSemaphore !== undefined && (
           <>
-            <dt>Plazo de turnado</dt>
+            <dt>Meta de turnado del S5</dt>
             <dd>
               <TurnSemaphore semaphore={summary.turnSemaphore} variant="detail" />
             </dd>
@@ -215,21 +217,25 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         />
       )}
       <ProcedurePanel
-        key={`${summary.managementState ?? ''}-${detail.procedure?.legalStage ?? ''}`}
+        // Cada acto nuevo vuelve a pintar el formulario con las acciones que siguen.
+        key={`${summary.managementState ?? ''}-${detail.procedure?.legalStage ?? ''}-${detail.procedure?.steps.length ?? 0}`}
         session={session}
         detail={detail}
         onChanged={reload}
       />
+      {/* El Tribunal ve el expediente y su trámite; no turna, no escribe a la persona ni pide
+          aperturas de su identidad. */}
+      {!isCourt && <FederalFundsPanel session={session} detail={detail} onChanged={reload} />}
       {network.kind === 'verified' && (
         <NextFunctionsPanel detail={detail} directory={network.directory} />
       )}
-      {network.kind === 'verified' && (
+      {network.kind === 'verified' && !isCourt && (
         <TransferPanel session={session} detail={detail} directory={network.directory} />
       )}
-      {summary.mode === 'sealed' && (
+      {summary.mode === 'sealed' && !isCourt && (
         <OpenIdentityPanel session={session} detail={detail} onOpened={() => void reload()} />
       )}
-      <AuthorityMailbox session={session} detail={detail} reload={reload} />
+      {!isCourt && <AuthorityMailbox session={session} detail={detail} reload={reload} />}
     </article>
   );
 }

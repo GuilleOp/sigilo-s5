@@ -452,7 +452,8 @@ export function TrackingPage() {
   }
 
   /**
-   * Presenta la inconformidad. Seguridad: la persona aceptó abrir su identidad solo para el
+   * Da el aviso de inconformidad (no es el recurso: cuenta con el escrito firmado ante la
+   * autoridad investigadora). Seguridad: la persona aceptó abrir su identidad solo para el
    * recurso; la apertura queda en la bitácora y en este seguimiento.
    */
   async function fileAppeal(reasons: string): Promise<string | null> {
@@ -470,7 +471,7 @@ export function TrackingPage() {
       await load(session);
       return null;
     } catch (error) {
-      return describeError(error, 'No pudimos presentar tu inconformidad. Inténtalo de nuevo.');
+      return describeError(error, 'No pudimos registrar tu aviso. Inténtalo de nuevo.');
     }
   }
 

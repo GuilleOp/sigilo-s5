@@ -10,7 +10,7 @@ import {
   CRIMINAL_OPENING_GROUNDS,
   criminalOpeningBasisProblem,
   formatCriminalOpeningBasis,
-  isCriminalStage,
+  isCriminalRoute,
   MAX_RESOLUTION_REFERENCE,
 } from '@sigilo/contracts';
 import type {
@@ -62,7 +62,9 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
   const isBusyRef = useRef(false);
   const isMounted = useRef(true);
   const trimmed = legalBasis.trim();
-  const isCriminal = isCriminalStage(detail.procedure?.legalStage);
+  // Solo la denuncia que va únicamente por la vía penal exige sus fundamentos; una vista al
+  // Ministerio Público en paralelo no cambia las aperturas de la vía administrativa.
+  const isCriminal = isCriminalRoute(detail.procedure ?? {});
 
   useEffect(() => {
     isMounted.current = true;
