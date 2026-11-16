@@ -1,5 +1,8 @@
 // Paso 1: modo anónimo (recomendado) o identidad sellada, con sus datos, y la invitación a escribir
-// sin conexión para comprobar que nada sale del equipo antes de enviar.
+// sin conexión para comprobar que nada sale del equipo antes de enviar. La invitación dice si ya se
+// descargaron los catálogos de todo el país (ADR 0012), que es cuando se puede desconectar.
+import { reportPrefetchStore } from '../../../catalogs/report-prefetch.ts';
+import type { PrefetchStatus } from '../../../catalogs/report-prefetch.ts';
 import { TextAreaField, TextField } from '../../../components/Field.tsx';
 import { advisorRecommendationStore } from '../../../lib/advisor-recommendation.ts';
 import { useMemoryStore } from '../../../state/memory-store.ts';
@@ -7,6 +10,7 @@ import { reportDraftStore } from '../../../state/report-draft.ts';
 import type { ReportDraft } from '../../../state/report-draft.ts';
 import type { FieldErrors } from '../../../state/report-validation.ts';
 import { MAX_WITNESSES } from '../../../state/report-validation.ts';
+import { usageModesStore } from '../../../state/usage-modes.ts';
 
 interface ModeStepProps {
   draft: ReportDraft;
@@ -19,9 +23,22 @@ function setIdentity(field: keyof ReportDraft['identity'], value: string): void 
   reportDraftStore.set((draft) => ({ ...draft, identity: { ...draft.identity, [field]: value } }));
 }
 
+/** Estado de la descarga de los catálogos, en una frase. */
+function prefetchMessage(status: PrefetchStatus, isLowConnection: boolean): string {
+  if (status === 'ready') return 'Listo: ya descargamos los catálogos. Puedes desconectarte.';
+  if (status === 'failed') {
+    return 'No pudimos descargar todos los catálogos. Sigue con internet mientras eliges el estado y la institución; para lo demás no lo necesitas.';
+  }
+  return isLowConnection
+    ? 'Descargando los catálogos (unos 300 KB). Con poca conexión puede tardar un poco; mientras, puedes seguir llenando.'
+    : 'Descargando los catálogos…';
+}
+
 /** Elección del modo de denuncia. */
 export function ModeStep({ draft, errors }: ModeStepProps) {
   const recommended = useMemoryStore(advisorRecommendationStore);
+  const prefetch = useMemoryStore(reportPrefetchStore);
+  const { isLowConnection } = useMemoryStore(usageModesStore);
   const setMode = (mode: 'anonymous' | 'sealed'): void =>
     reportDraftStore.set((current) => ({ ...current, mode }));
   const modeError = errors['mode'];
@@ -40,8 +57,12 @@ export function ModeStep({ draft, errors }: ModeStepProps) {
   return (
     <>
       <p className="offline-tip" data-testid="offline-tip">
-        <strong>Compruébalo tú:</strong> pon tu teléfono en modo avión. Puedes llenar todo sin
-        internet y conectarte solo para enviar.
+        <strong>Compruébalo tú:</strong> abre el formulario con internet; al empezar descargamos los
+        catálogos de todo el país (unos 300 KB). Después pon tu teléfono en modo avión: puedes
+        llenarlo completo y conectarte solo para enviar.{' '}
+        <span role="status" data-testid="offline-ready" data-status={prefetch}>
+          {prefetch === 'idle' ? '' : prefetchMessage(prefetch, isLowConnection)}
+        </span>
       </p>
       <fieldset id="mode" data-group-field>
         <legend>Elige una opción</legend>

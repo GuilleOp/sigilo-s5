@@ -100,7 +100,7 @@ export const DOUBTS: readonly Doubt[] = [
   {
     question: '¿Cómo sé que esto no es una promesa más?',
     answer:
-      'No tienes que creernos. Puedes escribir tu denuncia con el teléfono en modo avión y ver que todo funciona sin internet hasta que decides enviar. Antes de enviar te mostramos exactamente lo que sale de tu equipo. Y en el registro público puedes contar cuántos nombres se han abierto.',
+      'No tienes que creernos. Abre el formulario con internet: al empezar descargamos los catálogos de todo el país (unos 300 KB). Después pon tu teléfono en modo avión y verás que puedes llenarlo completo sin internet; solo te conectas para enviar. Antes de enviar te mostramos exactamente lo que sale de tu equipo. Y en el registro público puedes contar cuántos nombres se han abierto.',
   },
 ];
 

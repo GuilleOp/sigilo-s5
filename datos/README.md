@@ -18,8 +18,9 @@ en streaming y sin descomprimirlos a disco.
 4. Los registros individuales (S3 normalizado y el subconjunto APF de S6) solo se escriben en la
    carpeta privada que indica `--privado`, que el proceso rechaza si está dentro del repositorio.
    La demostración usa datos sintéticos (`docs/datos-sinteticos.md`).
-5. El navegador de quien denuncia nunca consulta la PDN: descarga del mismo origen el fragmento
-   estático de **su** entidad, que ya declara en la denuncia.
+5. El navegador de quien denuncia nunca consulta la PDN: descarga del mismo origen los fragmentos
+   estáticos. Al empezar la denuncia pide todos (ADR 0012), así las peticiones no revelan la
+   entidad; si eso falla, solo el de **su** entidad, que ya declara en la denuncia.
 6. Los nombres de ente o área que parecen de persona o traen datos de contacto no se publican: se
    generalizan al nivel superior (área → ente → «otros entes»). La auditoría de la corrida real
    encontró «entes» de S1 capturados con el nombre completo de quien declara (a veces con «Ma.» o

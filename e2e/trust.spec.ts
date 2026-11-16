@@ -44,6 +44,10 @@ test('se escribe sin conexión, se ve lo que saldrá y se envía al reconectar',
 }) => {
   await startReport(page, 'anonymous');
   await expect(page.getByTestId('offline-tip')).toContainText('modo avión');
+  // Al empezar se descargan los catálogos de todo el país; con eso ya se puede cortar la red.
+  await expect(page.getByTestId('offline-ready')).toHaveAttribute('data-status', 'ready', {
+    timeout: 30_000,
+  });
   await context.setOffline(true);
   // Desde aquí y hasta enviar, nada puede salir del equipo.
   const requests: string[] = [];
@@ -67,16 +71,8 @@ test('se escribe sin conexión, se ve lo que saldrá y se envía al reconectar',
     'no los pedimos, y no hay cuenta',
   );
   await expectNoAccessibilityViolations(page, 'paso 4: lo que sale de tu equipo');
-  // Solo las fotos locales (blob:) y los datos en línea. La única petición que se intenta es el
-  // fragmento del catálogo de instituciones de la entidad elegida, al mismo origen: sin conexión
-  // falla (el asistente lo reintenta al reconectar) y nunca lleva nada del relato.
-  expect(
-    requests.filter(
-      (url) =>
-        !/^(blob|data):/u.test(url) &&
-        !/^http:\/\/127\.0\.0\.1:\d+\/datos\/entes\/\d{2}\.json$/u.test(url),
-    ),
-  ).toEqual([]);
+  // Solo las fotos locales (blob:) y los datos en línea: los catálogos ya estaban en memoria.
+  expect(requests.filter((url) => !/^(blob|data):/u.test(url))).toEqual([]);
 
   await context.setOffline(false);
   await continueTo(page, 'submit');

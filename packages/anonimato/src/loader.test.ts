@@ -30,6 +30,19 @@ describe('createAnonymityLoader', () => {
     expect(requests.some((url) => url.endsWith('00.json'))).toBe(false);
   });
 
+  it('con el catálogo completo en memoria consulta varias entidades', async () => {
+    const { fetch, requests } = createMemoryFetch(DEMO_FILES);
+    const loader = createAnonymityLoader({ fetch, allowsSeveralStates: true });
+    expect((await loader.loadState('17')).kind).toBe('fragment');
+    expect((await loader.loadState('00')).kind).toBe('fragment');
+    await loader.loadState('17');
+    expect(requests).toEqual([
+      '/datos/grupos-anonimato/indice.json',
+      '/datos/grupos-anonimato/17.json',
+      '/datos/grupos-anonimato/00.json',
+    ]);
+  });
+
   it('una entidad sin datos no descarga ningún fragmento', async () => {
     const { fetch, requests } = createMemoryFetch(DEMO_FILES);
     const data = await createAnonymityLoader({ fetch }).loadState('22');

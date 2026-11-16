@@ -12,7 +12,10 @@ import { WhoKnowsWhat } from '../home/WhoKnowsWhat.tsx';
 
 /** Formas de comprobarlo, en una línea cada una. */
 const CHECKS: readonly { title: string; text: string }[] = [
-  { title: 'Escribe en modo avión.', text: 'Nada sale de tu equipo hasta que envías.' },
+  {
+    title: 'Escribe en modo avión.',
+    text: 'Abre el formulario con internet y luego desconéctate: nada sale de tu equipo hasta que envías.',
+  },
   { title: 'Mira lo que se envía.', text: 'Antes de enviar te lo mostramos.' },
 ];
 

@@ -85,7 +85,8 @@ Arriba de cada página está el botón **«Accesibilidad»** («Herramientas de 
     solos.»
 
 La página **«¿De verdad es seguro? Mira cómo te cuidamos.»** (`/como-te-cuidamos`) explica que
-puedes escribir en modo avión («Nada sale de tu equipo hasta que envías.») y comprobarlo tú.
+puedes escribir en modo avión («Abre el formulario con internet y luego desconéctate: nada sale de
+tu equipo hasta que envías.») y comprobarlo tú.
 
 ## 4. Tu «bandeja»: Mi denuncia
 
@@ -110,6 +111,11 @@ El asistente dice «Denunciar, paso N de 5». Pasos: **Modo, Hechos, Pruebas, Re
 
 #### Paso 1 «Modo»: ¿Cómo quieres denunciar?
 
+- **«Compruébalo tú»**: al abrir el formulario (con internet) la web descarga los catálogos de todo
+  el país, unos 300 KB, y solo los guarda en la memoria de la pestaña. Cuando dice «Listo: ya
+  descargamos los catálogos. Puedes desconectarte.», pon el teléfono en modo avión: los pasos 1 a 4
+  (estado, institución, tamaño de tu grupo y «Tu denuncia llega a») funcionan sin internet. Si la
+  descarga falla, el aviso pide seguir con internet mientras eliges el estado y la institución.
 - **«Anónima (recomendada)»**: no das nombre. No podrás inconformarte ni apelar, porque la ley pide
   nombre y firma (LGRA, art. 109).
 - **«Identidad sellada»**: das tu nombre, pero «Tus datos se guardan bajo llave antes de salir de tu
@@ -193,7 +199,8 @@ o quítalas.»
 
 #### Paso 5 «Envío»: Envía tu denuncia
 
-1. Revisa «Se enviará a …» y pulsa **«Enviar denuncia»**.
+1. Revisa «Se enviará a …» y pulsa **«Enviar denuncia»**. Sin internet, el paso dice **«Para
+   enviar necesitas conexión»** y no envía: quita el modo avión y vuelve a pulsar.
 2. Mensajes: «Comprobando que la conexión es segura.», «Preparando tus 8 palabras.», (sellada)
    «Guardando tu nombre bajo llave…», «Enviando tu denuncia.» y «Comprobando que tu denuncia llegó
    completa.».

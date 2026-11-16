@@ -7,6 +7,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Agregado
 
+- **Modo avión de verdad** (ADR 0012): al entrar a «Denunciar» la web descarga en memoria los
+  catálogos de entes de las 33 entidades y todo el catálogo del grupo de anonimato (unos 300 KB).
+  Elegir estado e institución, estimar el grupo y ver «Tu denuncia llega a» funcionan sin red; las
+  peticiones son las mismas para cualquier entidad. Si esa descarga falla, queda la descarga bajo
+  demanda del ADR 0008. El envío sin red dice «Para enviar necesitas conexión».
+
 - **La vista al Ministerio Público llega a la bandeja de la fiscalía del nodo** (lote 3 de la
   auditoría del 16 de noviembre): el panel elige la fiscalía del directorio; el navegador de quien
   da la vista re-cifra las llaves de las pruebas hacia la llave pública de la fiscalía; la

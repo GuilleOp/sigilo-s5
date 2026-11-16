@@ -1,5 +1,7 @@
 // Carga del índice y del fragmento de UNA entidad desde el mismo origen, con fetch inyectable.
-// Seguridad: el cargador nunca pide un segundo fragmento ni rutas de otro origen (ADR 0008).
+// Seguridad: el cargador nunca pide un segundo fragmento ni rutas de otro origen (ADR 0008). La
+// excepción es el catálogo ya descargado completo en memoria (`allowsSeveralStates`, ADR 0012): ahí
+// pedir otra entidad no sale a la red.
 
 import { FEDERAL_STATE_CODE } from './normalize.ts';
 import { parseAnonymityFragment, parseAnonymityIndex } from './fragment.ts';
@@ -22,6 +24,12 @@ export interface AnonymityLoaderOptions {
   basePath?: string;
   /** Comprueba el SHA-256 del fragmento contra el índice. Activo por omisión. */
   shouldVerifyDigest?: boolean;
+  /**
+   * Permite consultar varias entidades con el mismo cargador. Solo para un `fetch` que lee el
+   * catálogo completo ya descargado en memoria (ADR 0012): entonces consultar otra entidad no hace
+   * ninguna petición que revele dónde está la persona. Por omisión, `false`.
+   */
+  allowsSeveralStates?: boolean;
 }
 
 /** Datos de la entidad: su fragmento o el aviso honesto de que no hay datos. */
@@ -32,7 +40,10 @@ export type AnonymityData =
 /** Cargador de un solo uso por denuncia. */
 export interface AnonymityLoader {
   loadIndex(): Promise<AnonymityIndex>;
-  /** Carga la entidad indicada. Lanza `Error` si ya se pidió otra entidad con este cargador. */
+  /**
+   * Carga la entidad indicada. Lanza `Error` si ya se pidió otra entidad con este cargador (salvo
+   * con `allowsSeveralStates`).
+   */
   loadState(stateCode: string): Promise<AnonymityData>;
 }
 
@@ -84,14 +95,16 @@ async function fetchJson(
 
 /**
  * Crea un cargador para una denuncia. Pide `indice.json` una vez y, como máximo, un fragmento: el
- * de la entidad declarada. Si se pide otra entidad, lanza `Error` en lugar de descargarla.
+ * de la entidad declarada. Si se pide otra entidad, lanza `Error` en lugar de descargarla (salvo
+ * con `allowsSeveralStates`, sobre el catálogo completo ya en memoria).
  */
 export function createAnonymityLoader(options: AnonymityLoaderOptions): AnonymityLoader {
   const basePath = checkBasePath(options.basePath ?? DEFAULT_BASE_PATH);
   const shouldVerify = options.shouldVerifyDigest ?? true;
   let indexPromise: Promise<AnonymityIndex> | null = null;
+  const allowsSeveralStates = options.allowsSeveralStates ?? false;
   let requestedState: string | null = null;
-  let statePromise: Promise<AnonymityData> | null = null;
+  const statePromises = new Map<string, Promise<AnonymityData>>();
 
   const loadIndex = (): Promise<AnonymityIndex> => {
     indexPromise ??= fetchJson(options.fetch, `${basePath}indice.json`).then(({ json }) =>
@@ -103,7 +116,7 @@ export function createAnonymityLoader(options: AnonymityLoaderOptions): Anonymit
   const loadState = (stateCode: string): Promise<AnonymityData> => {
     if (!/^\d{2}$/u.test(stateCode))
       return Promise.reject(new Error('La clave de entidad debe tener dos dígitos.'));
-    if (requestedState !== null && requestedState !== stateCode) {
+    if (!allowsSeveralStates && requestedState !== null && requestedState !== stateCode) {
       return Promise.reject(
         new Error(
           'Este cargador ya consultó otra entidad: solo se descarga un fragmento por denuncia.',
@@ -111,7 +124,9 @@ export function createAnonymityLoader(options: AnonymityLoaderOptions): Anonymit
       );
     }
     requestedState = stateCode;
-    statePromise ??= (async (): Promise<AnonymityData> => {
+    const known = statePromises.get(stateCode);
+    if (known !== undefined) return known;
+    const statePromise = (async (): Promise<AnonymityData> => {
       const index = await loadIndex();
       const entry = index.entries.find((item) => item.stateCode === stateCode);
       if (entry === undefined || !entry.hasData || entry.file === null) {
@@ -131,6 +146,7 @@ export function createAnonymityLoader(options: AnonymityLoaderOptions): Anonymit
         throw new Error('El fragmento descargado es de otra entidad.');
       return { kind: 'fragment', fragment, cutoffDate: index.cutoffDate };
     })();
+    statePromises.set(stateCode, statePromise);
     return statePromise;
   };
 
