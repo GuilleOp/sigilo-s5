@@ -2,9 +2,12 @@
 // verificado y los datos de la denuncia (entidad, ente y conducta), con su razonamiento en claro.
 // Manda la tabla de funciones que firmó el nodo de la entidad de los hechos (o el nodo federal,
 // para los entes federales): ahí cada estado declara quién investiga a cada ente. Si la tabla no
-// nombra a nadie, la denuncia va a su buzón general, que la turna: la ventanilla es un canal único
-// (Bases de la PDN, art. 56) con turno a la autoridad competente (art. 58). Una entidad sin tabla no
-// tiene nodo: sus denuncias estatales y municipales no pueden enviarse (no hay nodo común).
+// nombra a nadie, la denuncia va al buzón de su autoridad receptora, que la turna: la ventanilla es
+// un canal único (Bases de la PDN, art. 56) con turno a la autoridad competente (art. 58). Desde el
+// formato 2 manda la competencia por dependencia (el órgano interno de control de cada ente): si está
+// pendiente o su OIC aún no tiene llaves, va a la receptora con la nota «turnar al OIC de…», nunca a
+// otra autoridad. Una entidad sin tabla no tiene nodo: sus denuncias estatales y municipales no pueden
+// enviarse (no hay nodo común).
 import {
   findEntity,
   findOffense,
@@ -21,8 +24,16 @@ import type {
   NodeFunction,
   OffenseLaw,
 } from '@sigilo/contracts';
+import { isLawfulGeneralHolder } from './competence.ts';
 import { isAuthorityValidOn } from './directory.ts';
-import { functionTableFor, matchFunction, stateDisplayName } from './function-table.ts';
+import {
+  entityAssignmentFor,
+  functionTableFor,
+  holderName,
+  identifiedOnlyAuthorityIds,
+  matchFunction,
+  stateDisplayName,
+} from './function-table.ts';
 
 /** Datos de la denuncia con los que se propone la autoridad. Nunca incluye la narración. */
 export interface ComplaintRoutingInput {
@@ -34,6 +45,12 @@ export interface ComplaintRoutingInput {
   entityLevel?: GovernmentLevel;
   /** Nombre del ente para el razonamiento; si falta, se toma del catálogo. */
   entityName?: string;
+  /**
+   * `true` solo si quien denuncia se identificó con nombre y firma. La ventanilla no lo pide (la
+   * denuncia es anónima o con identidad sellada), así que las autoridades que solo admiten denuncias
+   * identificadas (la entidad de fiscalización de Querétaro, LFSRCQ arts. 50 y 51) nunca se proponen.
+   */
+  reporterIdentified?: boolean;
 }
 
 /** Autoridad candidata con el motivo por el que lo es. */
@@ -60,10 +77,12 @@ export interface CompetentAuthorityProposal {
   proposed: AuthorityCandidate | null;
   alternatives: AuthorityCandidate[];
   /**
-   * Si se propone por una regla de respaldo: un ente municipal sin órgano municipal propio, que la
-   * tabla (o el directorio) asigna a la autoridad estatal.
+   * `true` si va al buzón de la autoridad receptora porque el órgano interno de control del ente
+   * está pendiente, no tiene llaves o no está en la tabla: la receptora debe turnarla (`turnTo`).
    */
   isFallback: boolean;
+  /** A quién debe turnarla la autoridad receptora (por ejemplo, «el órgano interno de control de…»). */
+  turnTo: string | null;
   /**
    * `true` si la entidad de los hechos no tiene nodo en la red (no hay tabla de funciones que la
    * cubra) y el ente no es federal: nada se envía por la ventanilla.
@@ -202,10 +221,6 @@ function pushSupervisorReason(
   }
 }
 
-function lowerFirst(text: string): string {
-  return text.charAt(0).toLocaleLowerCase('es-MX') + text.slice(1);
-}
-
 /** Autoridad vigente del directorio con su nodo, o `null`. */
 function liveAuthority(
   directory: AuthorityDirectory,
@@ -228,7 +243,7 @@ function inboxCandidate(
     node,
     lawMatch: null,
     entityMatch: null,
-    reason: `${why} La enviamos al ${lowerFirst(authority.name)}, donde una persona la turna a quien corresponda.`,
+    reason: `${why} La enviamos a «${authority.name}», donde una persona la turna a quien corresponda.`,
   };
 }
 
@@ -280,6 +295,13 @@ function directoryInbox(
   return inboxCandidate(authority, node, 'No encontramos en el directorio quién la investiga.');
 }
 
+/** Órgano interno de control que debe recibirla, en una frase («el órgano interno de control de…»). */
+function oicOf(entityName: string, level: GovernmentLevel | null): string {
+  return level === 'municipal'
+    ? `el órgano interno de control del municipio de «${entityName}»`
+    : `el órgano interno de control de «${entityName}»`;
+}
+
 /** Texto de la regla de la tabla que asigna la autoridad. */
 function tableReason(
   table: FunctionTable,
@@ -296,21 +318,118 @@ function tableReason(
   return `Según la tabla de funciones que firmó ${tableName(table)}, ${authority.name} ${role} ${whom}.`;
 }
 
-/** Resultado de buscar en la tabla. */
+/**
+ * Resultado de buscar en la tabla: la autoridad, o a quién debe turnarla la receptora (`turnTo`,
+ * con su motivo) cuando el ente tiene una competencia que todavía no recibe denuncias cifradas.
+ */
 interface TableOutcome {
   candidate: AuthorityCandidate | null;
-  isFallback: boolean;
+  turn: { to: string; why: string } | null;
+}
+
+/**
+ * Competencia por dependencia del ente (formato 2): la autoridad con llaves, o a quién debe turnarla
+ * la receptora si está pendiente, si su OIC aún no tiene alta o si no admite denuncias anónimas.
+ */
+function fromEntityAssignment(
+  directory: AuthorityDirectory,
+  table: FunctionTable,
+  input: ComplaintRoutingInput,
+  entityName: string,
+  level: GovernmentLevel | null,
+  lawMatch: 'primary' | 'equivalent',
+  on: string,
+): TableOutcome | null {
+  const assignment = entityAssignmentFor(table, input.entityId);
+  if (assignment === undefined) return null;
+  const source = `la tabla de funciones que firmó ${tableName(table)}`;
+  if (assignment.holder === undefined) {
+    return {
+      candidate: null,
+      turn: {
+        to: oicOf(entityName, level),
+        why: `Según ${source}, el órgano interno de control de «${entityName}» está pendiente de designar.`,
+      },
+    };
+  }
+  const name = holderName(directory, assignment.holder);
+  const blocked =
+    assignment.requiresIdentifiedReporter === true && input.reporterIdentified !== true
+      ? `${name} solo admite denuncias con nombre y firma.`
+      : null;
+  const found =
+    assignment.holder.kind === 'authority' && blocked === null
+      ? liveAuthority(directory, assignment.holder.authorityId, on)
+      : null;
+  if (found === null) {
+    return {
+      candidate: null,
+      turn: {
+        to: blocked === null ? name : oicOf(entityName, level),
+        why:
+          blocked ??
+          `Según ${source}, a «${entityName}» lo atiende ${name}, que todavía no tiene llaves en la red.`,
+      },
+    };
+  }
+  const how =
+    assignment.status === 'without_oic'
+      ? `no tiene órgano interno de control designado: lo atiende ${found.authority.name}${assignment.legalBasis === undefined ? '' : ` (${assignment.legalBasis})`}`
+      : `su órgano interno de control es ${found.authority.name}`;
+  return {
+    candidate: {
+      ...found,
+      lawMatch,
+      entityMatch: 'specific',
+      reason: `Según ${source}, «${entityName}» ${how}.`,
+    },
+    turn: null,
+  };
+}
+
+/** Autoridad vigente que nombra la regla de la función para el ente, o `null`. */
+function ruleCandidate(
+  directory: AuthorityDirectory,
+  table: FunctionTable,
+  input: ComplaintRoutingInput,
+  level: GovernmentLevel | null,
+  fn: NodeFunction,
+  lawMatch: 'primary' | 'equivalent',
+  on: string,
+): AuthorityCandidate | null {
+  const match = matchFunction(table, fn, {
+    entityId: input.entityId,
+    level,
+    ...(input.reporterIdentified === true ? { reporterIdentified: true } : {}),
+  });
+  if (match?.rule.holder.kind !== 'authority') return null;
+  const isUnlawful =
+    match.entityMatch === 'general' &&
+    fn === 'investigation' &&
+    !isLawfulGeneralHolder(directory, match.rule.holder, level);
+  if (isUnlawful) return null;
+  const found = liveAuthority(directory, match.rule.holder.authorityId, on);
+  if (found === null) return null;
+  return {
+    ...found,
+    lawMatch,
+    entityMatch: match.entityMatch,
+    reason: tableReason(table, found.authority, match.entityMatch, level, fn),
+  };
 }
 
 /**
  * Busca en la tabla quién atiende la ley de la conducta y, si nadie, la de una conducta
- * equivalente. Solo cuenta una autoridad del directorio, vigente: una institución sin llaves no
- * puede recibir la denuncia cifrada.
+ * equivalente. En la investigación manda la competencia por dependencia del ente. Solo cuenta una
+ * autoridad del directorio, vigente: una institución sin llaves no puede recibir la denuncia
+ * cifrada. Una regla general nunca manda un ente municipal a una autoridad estatal (CPEUM art. 109
+ * fr. III), y una regla que exige denuncia identificada no aplica a una anónima.
  */
 function fromTable(
   directory: AuthorityDirectory,
   table: FunctionTable,
   input: ComplaintRoutingInput,
+  entityName: string,
   level: GovernmentLevel | null,
   laws: { primary: OffenseLaw; equivalent: OffenseLaw[] },
   on: string,
@@ -320,25 +439,26 @@ function fromTable(
     ...laws.equivalent.map((item) => [item, 'equivalent'] as const),
   ]) {
     const fn = FUNCTION_OF_LAW[law];
-    const match = matchFunction(table, fn, { entityId: input.entityId, level });
-    if (match?.rule.holder.kind !== 'authority') continue;
-    const found = liveAuthority(directory, match.rule.holder.authorityId, on);
-    if (found === null) continue;
-    const isFallback =
-      level === 'municipal' &&
-      match.entityMatch === 'general' &&
-      found.authority.governmentLevel === 'estatal';
-    return {
-      candidate: {
-        ...found,
+    if (fn === 'investigation') {
+      const outcome = fromEntityAssignment(
+        directory,
+        table,
+        input,
+        entityName,
+        level,
         lawMatch,
-        entityMatch: match.entityMatch,
-        reason: tableReason(table, found.authority, match.entityMatch, level, fn),
-      },
-      isFallback,
-    };
+        on,
+      );
+      // Seguridad: con competencia por dependencia nunca se busca otra autoridad por regla.
+      if (outcome !== null) return outcome;
+    }
+    const candidate = ruleCandidate(directory, table, input, level, fn, lawMatch, on);
+    if (candidate !== null) return { candidate, turn: null };
+    // Formato 2: una falta sin órgano interno de control no se desvía a la vía de una conducta
+    // equivalente; va a la receptora, que la turna al OIC del ente.
+    if (table.format === 2 && fn === 'investigation' && lawMatch === 'primary') break;
   }
-  return { candidate: null, isFallback: false };
+  return { candidate: null, turn: null };
 }
 
 function routeReason(candidate: AuthorityCandidate, target: string): string {
@@ -354,12 +474,16 @@ function withoutNodeReason(stateCode: string): string {
  * Propone la autoridad competente para una denuncia con el directorio ya verificado y vigente el
  * día `on` (AAAA-MM-DD). Reglas, en orden: la conducta define la ley (LGRA o CPF); el ente define
  * el orden de gobierno; si es federal manda la tabla del nodo federal y, si no, la de la entidad de
- * los hechos. En la tabla, la regla que nombra al ente gana sobre la de todo su orden, y la función
- * de la ley de la conducta (investigación o vía penal) sobre la de una equivalente. Si la tabla no
- * nombra a una autoridad, se propone su buzón general, que la turna (Bases de la PDN, arts. 56 y
- * 58). Si la entidad no tiene tabla (no tiene nodo) y el ente no es federal, no se envía nada.
- * Con un directorio sin tablas se usa la competencia declarada de cada autoridad, como antes.
- * Las supervisoras nunca se proponen. Las demás autoridades competentes quedan como alternativas.
+ * los hechos. En la tabla manda la competencia por dependencia del ente (su órgano interno de
+ * control); después, la regla que nombra al ente gana sobre la de todo su orden, y la función de la
+ * ley de la conducta (investigación o vía penal) sobre la de una equivalente. Si el OIC del ente está
+ * pendiente o no tiene llaves, o si la tabla no nombra a nadie, se propone el buzón de la autoridad
+ * receptora, que la turna (Bases de la PDN, arts. 56 y 58; LGRA art. 14), con la nota de a quién.
+ * Nunca se manda un ente municipal a una autoridad estatal (CPEUM art. 109 fr. III) ni una denuncia
+ * anónima a quien solo admite denuncias identificadas (LFSRCQ arts. 50 y 51). Si la entidad no tiene
+ * tabla (no tiene nodo) y el ente no es federal, no se envía nada. Con un directorio sin tablas se
+ * usa la competencia declarada de cada autoridad. Las supervisoras nunca se proponen. Las demás
+ * autoridades competentes quedan como alternativas.
  * Seguridad: es una propuesta; la persona confirma antes de cifrar y nada sale del navegador.
  */
 export function proposeCompetentAuthority(
@@ -374,26 +498,31 @@ export function proposeCompetentAuthority(
   const hasTables = (directory.functionTables?.length ?? 0) > 0;
   const table = functionTableFor(directory, level === 'federal' ? null : input.stateCode);
   const isStateWithoutNode = hasTables && table === undefined && level !== 'federal';
-  const none = (extra: string[], isFallback = false): CompetentAuthorityProposal => ({
+  const none = (extra: string[]): CompetentAuthorityProposal => ({
     status: 'none',
     proposed: null,
     alternatives: [],
-    isFallback,
+    isFallback: false,
+    turnTo: null,
     isStateWithoutNode,
     reasons: [...reasons, ...extra],
   });
   const inbox = (
     candidate: AuthorityCandidate,
-    extra: string[] = [],
-    isFallback = false,
+    turnTo: string | null = null,
   ): CompetentAuthorityProposal => {
-    const all = [...reasons, ...extra, candidate.reason, routeReason(candidate, 'ese buzón')];
+    const all = [...reasons, candidate.reason];
+    if (turnTo !== null) {
+      all.push(`La autoridad receptora debe turnarla a ${turnTo}; nunca a otra autoridad.`);
+    }
+    all.push(routeReason(candidate, 'ese buzón'));
     pushSupervisorReason(directory, candidate.authority, all);
     return {
       status: 'inbox',
       proposed: candidate,
       alternatives: [],
-      isFallback,
+      isFallback: turnTo !== null,
+      turnTo,
       isStateWithoutNode,
       reasons: all,
     };
@@ -408,12 +537,13 @@ export function proposeCompetentAuthority(
           : directoryInbox(directory, input, level, on)
         : tableInbox(directory, table, input, level, on, why);
     if (found !== null) {
-      const reason = `${why} La enviamos al ${lowerFirst(found.authority.name)}, donde una persona la clasifica y la turna a quien corresponda.`;
+      const reason = `${why} La enviamos a «${found.authority.name}», donde una persona la clasifica y la turna a quien corresponda.`;
       return {
         status: 'inbox',
         proposed: { ...found, reason },
         alternatives: [],
         isFallback: false,
+        turnTo: null,
         isStateWithoutNode,
         reasons: [reason],
       };
@@ -433,59 +563,41 @@ export function proposeCompetentAuthority(
   );
   if (isStateWithoutNode) return none([withoutNodeReason(input.stateCode)]);
 
-  const competent = candidatesFor(directory, input, level, laws, on);
+  // Seguridad: quien solo admite denuncias identificadas nunca aparece para una anónima.
+  const identifiedOnly =
+    table === undefined || input.reporterIdentified === true
+      ? new Set<string>()
+      : identifiedOnlyAuthorityIds(table);
+  const competent = candidatesFor(directory, input, level, laws, on).filter(
+    (item) => !identifiedOnly.has(item.authority.id),
+  );
   let proposed: AuthorityCandidate | undefined;
-  let isFallback = false;
   if (table !== undefined) {
-    const outcome = fromTable(directory, table, input, level, laws, on);
+    const outcome = fromTable(directory, table, input, entityName, level, laws, on);
     if (outcome.candidate === null) {
-      const found = tableInbox(
-        directory,
-        table,
-        input,
-        level,
-        on,
-        `La tabla de funciones de ${tableName(table)} no nombra quién investiga a ese ente.`,
-      );
-      if (found !== null) return inbox(found);
+      const turn = outcome.turn ?? {
+        to: oicOf(entityName, level),
+        why: `La tabla de funciones de ${tableName(table)} no nombra quién investiga a ese ente.`,
+      };
+      const found = tableInbox(directory, table, input, level, on, turn.why);
+      if (found !== null) return inbox(found, laws.primary === 'LGRA' ? turn.to : null);
       return none([
         `La tabla de funciones de ${tableName(table)} no tiene un buzón vigente. No se envía nada: revisa el ente o la conducta.`,
       ]);
     }
     proposed = outcome.candidate;
-    isFallback = outcome.isFallback;
-    if (isFallback) {
-      reasons.push(
-        'Ese ente municipal no tiene en la tabla un órgano de control propio: la tabla lo asigna a la autoridad estatal, que puede canalizarla.',
-      );
-    }
   } else {
-    // Directorio sin tablas de funciones: competencia declarada de cada autoridad.
-    let candidates = competent;
-    if (!candidates.some((item) => item.lawMatch === 'primary') && level === 'municipal') {
-      const fallback = candidatesFor(directory, input, 'estatal', laws, on).filter(
-        (candidate) => candidate.entityMatch === 'general',
-      );
-      if (fallback.length > 0) {
-        candidates = fallback;
-        isFallback = true;
-        reasons.push(
-          'No hay en el directorio un órgano de control municipal para ese ente: proponemos la autoridad estatal de la entidad, que puede canalizarla.',
-        );
-      }
-    }
-    proposed = candidates[0];
+    // Directorio sin tablas de funciones: competencia declarada de cada autoridad. Un ente
+    // municipal sin órgano municipal va al buzón, nunca a la autoridad estatal (CPEUM art. 109).
+    proposed = competent[0];
     if (proposed === undefined) {
       const found = directoryInbox(directory, input, level, on);
       if (found === null) {
-        return none(
-          [
-            'No encontramos en el directorio una autoridad competente ni un buzón general. No se envía nada: revisa el ente o la conducta.',
-          ],
-          isFallback,
-        );
+        return none([
+          'No encontramos en el directorio una autoridad competente ni un buzón general. No se envía nada: revisa el ente o la conducta.',
+        ]);
       }
-      return inbox(found, [], isFallback);
+      return inbox(found, laws.primary === 'LGRA' ? oicOf(entityName, level) : null);
     }
   }
   const chosen = proposed;
@@ -504,7 +616,8 @@ export function proposeCompetentAuthority(
     status: 'proposed',
     proposed: chosen,
     alternatives,
-    isFallback,
+    isFallback: false,
+    turnTo: null,
     isStateWithoutNode,
     reasons,
   };

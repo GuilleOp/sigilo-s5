@@ -877,7 +877,7 @@ CREATE TABLE authority_mfa (
 `;
 
 /**
- * Migración 18: ciclo de vida legal completo (estándar 0.4.0). La vía penal pasa a una capa aparte
+ * Migración 19: ciclo de vida legal completo (estándar 0.4.0). La vía penal pasa a una capa aparte
  * (`criminal_stage`), en paralelo a la administrativa: las denuncias que estaban en una etapa penal
  * la conservan ahí y quedan sin etapa administrativa. Las etapas de pruebas, alegatos, cierre y
  * resolución que ya se habían avanzado después de enviar el expediente al Tribunal pasan a las
@@ -901,6 +901,24 @@ ALTER TABLE closure_agreements ADD COLUMN destination_json TEXT;
 CREATE INDEX complaints_by_legal_stage ON complaints (legal_stage);
 `;
 
+/**
+ * Migración 18: versiones de la tabla de funciones que la operación del nodo firmó desde el panel
+ * «Competencia por dependencia» (formato 2), con el resumen de cambios. Se entregan a la SESNA y
+ * entran al directorio cuando los testigos lo cofirman; aquí solo queda el registro de quién firmó.
+ */
+const FUNCTION_TABLE_PROPOSALS = `
+CREATE TABLE function_table_proposals (
+  proposal_id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL,
+  signed_on TEXT NOT NULL,
+  signed_by TEXT NOT NULL,
+  signed_table TEXT NOT NULL,
+  changes_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+CREATE INDEX function_table_proposals_by_time ON function_table_proposals (created_at);
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -920,7 +938,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 15, sql: PDN_STATISTICS },
   { version: 16, sql: ENCRYPTED_EVIDENCE },
   { version: 17, sql: AUTHORITY_MFA },
-  { version: 18, sql: LEGAL_LIFECYCLE },
+  { version: 18, sql: FUNCTION_TABLE_PROPOSALS },
+  { version: 19, sql: LEGAL_LIFECYCLE },
 ];
 
 /** Versión más reciente del esquema. */

@@ -148,7 +148,7 @@ const row: PdnStatisticsRow = {
   mes: '2026-10',
   autoridad: {
     clave: 'authority.comptroller-queretaro',
-    nombre: 'Contraloría Estatal Ficticia de Querétaro',
+    nombre: 'Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)',
   },
   entidad: { clave: '22', valor: 'Querétaro' },
   conducta: { clave: 'LGRA-52', valor: 'Cohecho' },
@@ -177,7 +177,10 @@ const statisticsResponse: PdnStatisticsResponse = {
 
 const authorities: PdnAuthorities = [
   { clave: 'authority.buzon-queretaro', nombre: 'Buzón general de Querétaro' },
-  { clave: 'authority.comptroller-queretaro', nombre: 'Contraloría Estatal Ficticia de Querétaro' },
+  {
+    clave: 'authority.comptroller-queretaro',
+    nombre: 'Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)',
+  },
 ];
 
 const nationalStatistics: NationalStatistics = {

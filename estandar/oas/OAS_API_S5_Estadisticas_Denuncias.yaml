@@ -193,7 +193,7 @@ paths:
                         mes: 2026-10
                         autoridad:
                           clave: authority.comptroller-queretaro
-                          nombre: Contraloría Estatal Ficticia de Querétaro
+                          nombre: Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)
                         entidad:
                           clave: '22'
                           valor: Querétaro
@@ -384,7 +384,7 @@ paths:
                     - clave: authority.buzon-queretaro
                       nombre: Buzón general de Querétaro
                     - clave: authority.comptroller-queretaro
-                      nombre: Contraloría Estatal Ficticia de Querétaro
+                      nombre: Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)
         '401':
           description: 'Sin token o con un token vencido, de otro nodo o con firma inválida; `code` es `401` y la cabecera `WWW-Authenticate: Bearer error="invalid_token"`.'
           headers:

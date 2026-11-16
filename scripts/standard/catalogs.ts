@@ -66,11 +66,12 @@ const SEVERITY_NAMES = {
 
 /** Nombre de cada función de la tabla de funciones del nodo. */
 export const NODE_FUNCTION_NAMES: Readonly<Record<NodeFunction, string>> = {
-  intake: 'Buzón general: recibe y turna',
+  intake: 'Buzón de la autoridad receptora: recibe y turna',
   operation: 'Operación del nodo: da de alta autoridades',
   investigation: 'Investigación y calificación',
   substantiation: 'Substanciación',
   resolution: 'Resolución',
+  court: 'Tribunal: faltas graves, de particulares y alzada (formato 2)',
   supervision: 'Supervisión: superior jerárquico, recibe escalamientos',
   prosecution: 'Vía penal: fiscalía',
   observer: 'Observador: Comité de Participación Ciudadana',
@@ -82,8 +83,8 @@ export const ACCOUNT_FUNCTION_NAMES: Readonly<Record<AuthorityFunction, string>>
   investigation: 'Investigación',
   supervision: 'Supervisión',
   substantiation: 'Substanciación y resolución',
-  operation: 'Operación del nodo (solo solicitudes de alta)',
-  court: 'Tribunal (solo sus etapas y los recursos que resuelve)',
+  operation: 'Operación del nodo (solicitudes de alta y competencia por dependencia)',
+  court: 'Tribunal (sus etapas: faltas graves, de particulares y alzada; y los recursos que resuelve)',
 };
 
 function capitalized(text: string): string {

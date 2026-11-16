@@ -293,7 +293,7 @@ function main(): void {
     const accounts = buildDemoAccounts({ node: NODE_DIRS[nodeId] });
     createAuthorityRegistry(accounts.file);
     writeJson(join(dataDir, ACCOUNTS_FILE_NAME), accounts.file);
-    // Segundo factor ya inscrito de la supervisora, la operación y la fiscalía (secretos
+    // Segundo factor ya inscrito de la supervisión, la operación, el tribunal y la fiscalía (secretos
     // sintéticos junto a las credenciales; cifrados en la base con la llave mfa-key del nodo).
     const codes = provisionMfaInDataDir(dataDir, accounts.mfa);
     writeJson(join(nodeDir, 'credenciales.json'), {
@@ -385,7 +385,7 @@ function main(): void {
     `  Cuentas del panel de cada nodo: ${display(join(OUT, 'nodos', '<nodo>', 'credenciales.json'))}.`,
   );
   console.log(
-    '  Segundo factor: supervision-oic, operacion.<nodo> y fiscalia lo tienen inscrito; código vigente con npm run demo:codigo -- <usuario>. oic-programas lo inscribe al entrar.',
+    '  Segundo factor: supervision-oic, contraloria.titular, operacion.<nodo>, tja.queretaro, fiscalia y fiscalia.queretaro lo tienen inscrito; código vigente con npm run demo:codigo -- <usuario>. oic-programas lo inscribe al entrar.',
   );
   console.log('  Escenario completo: npm run demo:seed');
 }

@@ -1,0 +1,20 @@
+{
+  "baseVersion": 3,
+  "dryRun": false,
+  "entities": [
+    {
+      "entityId": "PDN-22-7283",
+      "status": "assigned",
+      "holder": { "kind": "authority", "authorityId": "authority.oic-municipio-queretaro" },
+      "legalBasis": "CPEUM, art. 109, fr. III"
+    },
+    {
+      "entityId": "PDN-22-7232",
+      "status": "assigned",
+      "holder": {
+        "kind": "institution",
+        "name": "Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)"
+      }
+    }
+  ]
+}

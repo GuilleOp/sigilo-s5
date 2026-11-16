@@ -36,20 +36,21 @@ export type AccountId = z.infer<typeof AccountIdSchema>;
  *   identidades.
  * - `supervision` aprueba aperturas, ve los cierres y recibe los escalamientos.
  * - `operation` (operación del nodo) solo revisa y resuelve las solicitudes de alta de
- *   autoridades: no ve denuncias, no turna ni abre identidades, y no se combina con otra función.
- * - `court` (Tribunal de Justicia Administrativa, LGRA arts. 12 y 209) solo actúa en las etapas del
- *   Tribunal (`COURT_STAGES`, desde que recibe el expediente hasta su sentencia), en la
- *   reclasificación, en las medidas cautelares de esas etapas y en los recursos que resuelve
- *   (inconformidad, apelación y revisión). No se combina con otra función. Si el estado no da
- *   cuentas al Tribunal, la substanciación registra sus actuaciones con número de expediente y
- *   fundamento («registro de actuación del Tribunal»).
+ *   autoridades y la competencia por dependencia: no ve denuncias, no turna ni abre identidades, y
+ *   no se combina con otra función.
+ * - `court` (Tribunal de Justicia Administrativa, LGRA arts. 12 y 209) resuelve faltas graves y de
+ *   particulares y la alzada: solo actúa en las etapas del Tribunal (`COURT_STAGES`, desde que
+ *   recibe el expediente hasta su sentencia), en la reclasificación, en las medidas cautelares de
+ *   esas etapas y en los recursos que resuelve (inconformidad, apelación y revisión). No se combina
+ *   con otra función. Si el estado no da cuentas al Tribunal, la substanciación registra sus
+ *   actuaciones con número de expediente y fundamento («registro de actuación del Tribunal»).
  * Quien solo turna nunca puede abrir identidades.
  */
 export const AuthorityFunctionSchema = z
   .enum(['intake', 'investigation', 'supervision', 'substantiation', 'operation', 'court'])
   .meta({
     description:
-      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta) o court (Tribunal: solo sus etapas y los recursos que resuelve).',
+      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (Tribunal: solo sus etapas y los recursos que resuelve: faltas graves, de particulares y alzada).',
   });
 export type AuthorityFunction = z.infer<typeof AuthorityFunctionSchema>;
 

@@ -73,6 +73,15 @@ leyes generales; cada nodo asigna quién cumple cada función. Detalle en
 - `estatusAlCierre` de la estadística de la PDN trae los estatus nuevos; los meses congelados antes
   los publican como suprimidos.
 
+### Agregado (tabla de funciones y competencia por dependencia)
+
+- Tabla de funciones en el formato 2 (`FunctionTable.format: 2`; el 1 se sigue aceptando): función
+  `court`, competencia por dependencia (`entities`), `requiresIdentifiedReporter`, `instance` y
+  `settings.operatorReceives`. Función de cuenta `court`.
+- Operaciones `getCompetence` y `saveCompetence` (`/api/v1/operation/competence`), con los esquemas
+  `CompetenceView`, `CompetenceSaveRequest` y `CompetenceSaveResponse`.
+- `NationalOpenData.oicCoverage`: cobertura de órganos internos de control por estado.
+
 ## [0.3.0] - 2026-11-12
 
 Perfil de conexión con la PDN: el grupo «PDN» se publica y se comporta como las especificaciones

@@ -275,7 +275,8 @@ export type WitnessPolicy = z.infer<typeof WitnessPolicySchema>;
 /**
  * Funciones que cada nodo declara en su tabla de funciones: buzón general (recepción y turnado),
  * operación del nodo (altas de autoridades), investigación y calificación, substanciación,
- * resolución, supervisión (superior jerárquico), vía penal (fiscalía) y observador (CPC).
+ * resolución, tribunal (faltas graves, de particulares y alzada; formato 2), supervisión (superior
+ * jerárquico), vía penal (fiscalía) y observador (CPC).
  */
 export const NODE_FUNCTIONS = [
   'intake',
@@ -283,6 +284,7 @@ export const NODE_FUNCTIONS = [
   'investigation',
   'substantiation',
   'resolution',
+  'court',
   'supervision',
   'prosecution',
   'observer',
@@ -290,9 +292,12 @@ export const NODE_FUNCTIONS = [
 
 export const NodeFunctionSchema = z.enum(NODE_FUNCTIONS).meta({
   description:
-    'Función: intake (buzón general: recibe y turna), operation (opera el nodo y da de alta autoridades), investigation (investiga y califica), substantiation (substancia), resolution (resuelve), supervision (superior: recibe escalamientos), prosecution (vía penal) u observer (observa: CPC).',
+    'Función: intake (buzón de la autoridad receptora: recibe y turna), operation (opera el nodo y da de alta autoridades), investigation (investiga y califica), substantiation (substancia), resolution (resuelve), court (Tribunal de Justicia Administrativa: resuelve faltas graves y de particulares, y la alzada de apelación y revisión; solo en el formato 2), supervision (superior: recibe escalamientos), prosecution (vía penal) u observer (observa el sistema: CPC).',
 });
 export type NodeFunction = z.infer<typeof NodeFunctionSchema>;
+
+/** Formato de la tabla de funciones que se firma hoy; el formato 1 se sigue aceptando. */
+export const CURRENT_FUNCTION_TABLE_FORMAT = 2;
 
 export const FunctionHolderSchema = z
   .discriminatedUnion('kind', [
@@ -312,7 +317,7 @@ export const FunctionHolderSchema = z
       .strict()
       .meta({
         description:
-          'Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves o quien opera el nodo).',
+          'Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves, quien opera el nodo o un órgano interno de control nombrado que todavía no tiene alta ni llaves).',
       }),
   ])
   .meta({ description: 'Quién cumple la función: autoridad, observador o institución.' });
@@ -326,7 +331,7 @@ export const FunctionRuleSchema = z
       .meta({ description: 'Órdenes de gobierno de los entes a los que aplica la regla.' }),
     entityIds: z.array(z.string().min(1).max(64)).max(1000).meta({
       description:
-        'Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «todos los entes estatales»). Una regla específica gana sobre una general.',
+        'Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «todos los entes estatales»). Una regla específica gana sobre una general. El órgano interno de control de cada ente se declara, en el formato 2, en `entities`.',
     }),
     severity: z.enum(['serious', 'non_serious']).optional().meta({
       description:
@@ -339,17 +344,101 @@ export const FunctionRuleSchema = z
       .max(300)
       .optional()
       .meta({ description: 'Fundamento corto, en lenguaje claro (ley y artículo).' }),
+    requiresIdentifiedReporter: z.literal(true).optional().meta({
+      description:
+        'Formato 2. Quien cumple la función solo admite denuncias con nombre y firma (por ejemplo, la entidad de fiscalización superior de Querétaro, LFSRCQ arts. 50 y 51): una denuncia anónima o con identidad sellada nunca se le propone ni se le ofrece.',
+    }),
+    instance: z.enum(['first', 'appeal']).optional().meta({
+      description:
+        'Formato 2, solo en `court`: primera instancia (first: resuelve faltas graves y de particulares) o alzada (appeal: apelación y revisión, LGRA arts. 215 a 221). Sin el campo, ambas.',
+    }),
   })
   .strict()
   .meta({ description: 'Regla: a qué entes aplica y quién cumple la función para ellos.' });
 export type FunctionRule = z.infer<typeof FunctionRuleSchema>;
+
+export const EntityAssignmentStatusSchema = z.enum(['assigned', 'without_oic', 'pending']).meta({
+  description:
+    'Estado: assigned (el ente tiene su órgano interno de control, `holder`), without_oic (sin OIC designado: lo atiende `holder`, con `legalBasis` obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente).',
+});
+export type EntityAssignmentStatus = z.infer<typeof EntityAssignmentStatusSchema>;
+
+export const EntityAssignmentSchema = z
+  .object({
+    entityId: z
+      .string()
+      .min(1)
+      .max(64)
+      .meta({ description: 'Ente del catálogo de la PDN (o ficticio de la demostración).' }),
+    status: EntityAssignmentStatusSchema,
+    holder: FunctionHolderSchema.optional().meta({
+      description:
+        'Quién investiga al ente: una autoridad del directorio (con llaves) o una institución nombrada que aún no tiene alta. Falta solo si está pendiente.',
+    }),
+    legalBasis: z
+      .string()
+      .min(1)
+      .max(300)
+      .optional()
+      .meta({ description: 'Fundamento corto (obligatorio en without_oic).' }),
+    requiresIdentifiedReporter: z.literal(true).optional().meta({
+      description: 'Como en la regla: quien atiende al ente no admite denuncias anónimas.',
+    }),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.status === 'pending' && value.holder !== undefined) {
+      ctx.addIssue({ code: 'custom', message: 'Un ente pendiente no nombra a nadie.' });
+    }
+    if (value.status !== 'pending' && value.holder === undefined) {
+      ctx.addIssue({ code: 'custom', message: 'Falta quién atiende al ente.' });
+    }
+    if (value.holder?.kind === 'observer') {
+      ctx.addIssue({ code: 'custom', message: 'Un observador no investiga.' });
+    }
+    if (value.status === 'without_oic' && value.legalBasis === undefined) {
+      ctx.addIssue({ code: 'custom', message: '«Sin OIC designado» exige su fundamento.' });
+    }
+  })
+  .meta({
+    description:
+      'Competencia por dependencia (formato 2): el órgano interno de control de un ente (CPEUM art. 109 fr. III; LGRA arts. 3, 9 y 10). Gana sobre las reglas de investigación.',
+  });
+export type EntityAssignment = z.infer<typeof EntityAssignmentSchema>;
+
+export const FunctionTableSettingsSchema = z
+  .object({
+    operatorReceives: z
+      .object({
+        legalBasis: z
+          .string()
+          .min(1)
+          .max(300)
+          .meta({ description: 'Ley o lineamiento del estado que lo faculta.' }),
+      })
+      .strict()
+      .optional()
+      .meta({
+        description:
+          'Quien opera el nodo (por ejemplo, la SESEA) también recibe y turna denuncias, solo si la ley del estado la faculta (por ejemplo, Michoacán). Por omisión nacional, no: la SESEA es apoyo técnico del Comité Coordinador y no es autoridad del art. 9 de la LGRA.',
+      }),
+  })
+  .strict()
+  .meta({
+    description:
+      'Formato 2. Ajustes que declara cada nodo cuando su ley se aparta de la regla nacional; sin el campo, rige la regla nacional (LGRA y CPEUM).',
+  });
+export type FunctionTableSettings = z.infer<typeof FunctionTableSettingsSchema>;
 
 const functionRules = (description: string, min = 0) =>
   z.array(FunctionRuleSchema).min(min).max(200).meta({ description });
 
 export const FunctionTableSchema = z
   .object({
-    format: z.literal(1).meta({ description: 'Versión del formato de la tabla de funciones.' }),
+    format: z.union([z.literal(1), z.literal(2)]).meta({
+      description:
+        'Versión del formato: 1 (original) o 2 (agrega el tribunal, la competencia por dependencia y la marca de denuncia identificada). Se aceptan las dos.',
+    }),
     nodeId: NodeIdSchema.meta({ description: 'Nodo que declara la tabla y la firma.' }),
     stateCode: NetworkStateKeySchema.nullable().meta({
       description:
@@ -364,7 +453,7 @@ export const FunctionTableSchema = z
     functions: z
       .object({
         intake: functionRules(
-          'Buzón general: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58).',
+          'Buzón de la autoridad receptora: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58).',
           1,
         ),
         operation: functionRules('Quién opera el nodo y da de alta a las autoridades.', 1),
@@ -373,19 +462,72 @@ export const FunctionTableSchema = z
         resolution: functionRules(
           'Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3).',
         ),
+        court: functionRules(
+          'Formato 2. Tribunal de Justicia Administrativa: resuelve faltas graves y de particulares (primera instancia) y la apelación y la revisión (alzada) (LGRA, arts. 12, 209 y 215 a 221).',
+        ).optional(),
         supervision: functionRules('Superior jerárquico que recibe los escalamientos (ADR 0007).'),
         prosecution: functionRules('Vía penal: fiscalía de hechos de corrupción.'),
         observer: functionRules('Observador ciudadano (CPC).'),
       })
       .strict()
       .meta({ description: 'Reglas de cada función.' }),
+    settings: FunctionTableSettingsSchema.optional(),
+    entities: z.array(EntityAssignmentSchema).max(5000).optional().meta({
+      description:
+        'Formato 2. Competencia por dependencia: el órgano interno de control de cada ente de la entidad, «sin OIC designado → quién atiende» o pendiente. Un ente aparece una sola vez.',
+    }),
   })
   .strict()
+  .superRefine((value, ctx) => {
+    const rules = NODE_FUNCTIONS.flatMap((fn) =>
+      (value.functions[fn] ?? []).map((rule) => ({ fn, rule })),
+    );
+    if (value.format === 1) {
+      const usesFormat2 =
+        value.functions.court !== undefined ||
+        value.entities !== undefined ||
+        value.settings !== undefined ||
+        rules.some(
+          ({ rule }) =>
+            rule.requiresIdentifiedReporter !== undefined || rule.instance !== undefined,
+        );
+      if (usesFormat2) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'El tribunal, `entities`, `settings`, `requiresIdentifiedReporter` e `instance` piden el formato 2.',
+        });
+      }
+    }
+    if (rules.some(({ fn, rule }) => fn !== 'court' && rule.instance !== undefined)) {
+      ctx.addIssue({ code: 'custom', message: '`instance` solo se usa en `court`.' });
+    }
+    const seen = new Set<string>();
+    for (const assignment of value.entities ?? []) {
+      if (seen.has(assignment.entityId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `El ente ${assignment.entityId} aparece dos veces.`,
+        });
+      }
+      seen.add(assignment.entityId);
+    }
+  })
   .meta({
     description:
-      'Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente. Con ella la ventanilla propone a quién va cada denuncia.',
+      'Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente; en el formato 2, además, el órgano interno de control de cada dependencia. Con ella la ventanilla propone a quién va cada denuncia.',
   });
 export type FunctionTable = z.infer<typeof FunctionTableSchema>;
+
+/** Reglas de una función (el tribunal no existe en el formato 1: sin reglas). */
+export function functionRulesOf(table: FunctionTable, fn: NodeFunction): readonly FunctionRule[] {
+  return table.functions[fn] ?? [];
+}
+
+/** Competencia por dependencia de la tabla (vacía en el formato 1). */
+export function entityAssignmentsOf(table: FunctionTable): readonly EntityAssignment[] {
+  return table.entities ?? [];
+}
 
 export const SignedFunctionTableSchema = z
   .object({
@@ -927,6 +1069,73 @@ export const NationalOpenDataNodeSchema = z
   .meta({ description: 'Participación de un nodo en el corte nacional.' });
 export type NationalOpenDataNode = z.infer<typeof NationalOpenDataNodeSchema>;
 
+export const CompetenceCoverageSchema = z
+  .object({
+    stateCode: NetworkStateKeySchema.nullable().meta({
+      description: 'Entidad de la tabla; null en la federal.',
+    }),
+    tableVersion: z
+      .number()
+      .int()
+      .min(1)
+      .meta({ description: 'Versión de la tabla de funciones con que se calculó.' }),
+    total: z.number().int().nonnegative().meta({ description: 'Dependencias del catálogo.' }),
+    withOic: z
+      .number()
+      .int()
+      .nonnegative()
+      .meta({ description: 'Con su órgano interno de control asignado.' }),
+    withoutOic: z
+      .number()
+      .int()
+      .nonnegative()
+      .meta({ description: '«Sin OIC designado»: la atiende otra autoridad, con fundamento.' }),
+    general: z
+      .number()
+      .int()
+      .nonnegative()
+      .meta({ description: 'Cubiertas por una regla de todo su orden de gobierno.' }),
+    withKeys: z
+      .number()
+      .int()
+      .nonnegative()
+      .meta({ description: 'Quien la atiende tiene llaves vigentes.' }),
+    pending: z
+      .number()
+      .int()
+      .nonnegative()
+      .meta({ description: 'Pendientes: sus denuncias van a la autoridad receptora.' }),
+  })
+  .strict()
+  .meta({ description: 'Cobertura de órganos internos de control de una tabla de funciones.' });
+
+/** Una fila de la cobertura de órganos internos de control por estado (datos abiertos). */
+export const OicCoverageRowSchema = CompetenceCoverageSchema.extend({
+  nodeId: NodeIdSchema,
+  percentWithOic: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .meta({ description: 'Porcentaje con su OIC asignado (entero).' }),
+  percentWithKeys: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .meta({ description: 'Porcentaje cuyo OIC tiene llaves vigentes (entero).' }),
+  percentPending: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .meta({ description: 'Porcentaje pendiente (entero).' }),
+}).meta({
+  description:
+    'Cobertura de OIC de una entidad (o de la federación): dependencias con OIC asignado, con llaves y pendientes, en número y porcentaje.',
+});
+export type OicCoverageRow = z.infer<typeof OicCoverageRowSchema>;
+
 export const NationalOpenDataSchema = z
   .object({
     v: z.literal(1).meta({ description: 'Versión del formato.' }),
@@ -955,6 +1164,10 @@ export const NationalOpenDataSchema = z
     suppressed: z.number().int().nonnegative().meta({
       description:
         'Suprimidas: la suma de la fila de suprimidas de cada nodo más las celdas que quedaron bajo la celda mínima después de sumar.',
+    }),
+    oicCoverage: z.array(OicCoverageRowSchema).optional().meta({
+      description:
+        'Cobertura de órganos internos de control por entidad y de la federación, calculada con la tabla de funciones firmada de cada nodo y el catálogo de entes de la PDN.',
     }),
   })
   .strict()

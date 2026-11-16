@@ -3,6 +3,12 @@
   { "clave": "investigation", "valor": "Investigación" },
   { "clave": "supervision", "valor": "Supervisión" },
   { "clave": "substantiation", "valor": "Substanciación y resolución" },
-  { "clave": "operation", "valor": "Operación del nodo (solo solicitudes de alta)" },
-  { "clave": "court", "valor": "Tribunal (solo sus etapas y los recursos que resuelve)" }
+  {
+    "clave": "operation",
+    "valor": "Operación del nodo (solicitudes de alta y competencia por dependencia)"
+  },
+  {
+    "clave": "court",
+    "valor": "Tribunal (sus etapas: faltas graves, de particulares y alzada; y los recursos que resuelve)"
+  }
 ]

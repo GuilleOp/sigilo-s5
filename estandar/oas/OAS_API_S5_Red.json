@@ -81,7 +81,7 @@
                         "authorities": [
                           {
                             "id": "authority.comptroller-queretaro",
-                            "name": "Contraloría Estatal Ficticia de Querétaro",
+                            "name": "Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)",
                             "nodeId": "node.queretaro",
                             "governmentLevel": "estatal",
                             "stateCode": "22",
@@ -116,7 +116,7 @@
                         "functionTables": [
                           {
                             "table": {
-                              "format": 1,
+                              "format": 2,
                               "nodeId": "node.queretaro",
                               "stateCode": "22",
                               "version": 1,
@@ -138,13 +138,13 @@
                                     "entityIds": [],
                                     "holder": {
                                       "kind": "institution",
-                                      "name": "Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro"
+                                      "name": "Secretaría Ejecutiva del Sistema Estatal Anticorrupción de Querétaro (ficticia)"
                                     }
                                   }
                                 ],
                                 "investigation": [
                                   {
-                                    "governmentLevels": ["estatal", "municipal"],
+                                    "governmentLevels": ["estatal"],
                                     "entityIds": [],
                                     "holder": {
                                       "kind": "authority",
@@ -161,8 +161,20 @@
                                     "severity": "serious",
                                     "holder": {
                                       "kind": "institution",
-                                      "name": "Tribunal de Justicia Administrativa Ficticio de Querétaro"
+                                      "name": "Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)"
                                     }
+                                  }
+                                ],
+                                "court": [
+                                  {
+                                    "governmentLevels": ["estatal", "municipal"],
+                                    "entityIds": [],
+                                    "instance": "first",
+                                    "holder": {
+                                      "kind": "institution",
+                                      "name": "Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)"
+                                    },
+                                    "legalBasis": "LGRA, arts. 12 y 209"
                                   }
                                 ],
                                 "supervision": [],
@@ -177,7 +189,19 @@
                                     }
                                   }
                                 ]
-                              }
+                              },
+                              "entities": [
+                                {
+                                  "entityId": "PDN-22-7283",
+                                  "status": "assigned",
+                                  "holder": {
+                                    "kind": "institution",
+                                    "name": "Órgano Interno de Control del Municipio de Querétaro (ficticio)"
+                                  },
+                                  "legalBasis": "CPEUM, art. 109, fr. III"
+                                },
+                                { "entityId": "PDN-22-7232", "status": "pending" }
+                              ]
                             },
                             "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
                           }
@@ -1951,7 +1975,7 @@
                           "mes": "2026-10",
                           "autoridad": {
                             "clave": "authority.comptroller-queretaro",
-                            "nombre": "Contraloría Estatal Ficticia de Querétaro"
+                            "nombre": "Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)"
                           },
                           "entidad": { "clave": "22", "valor": "Querétaro" },
                           "conducta": { "clave": "LGRA-52", "valor": "Cohecho" },
@@ -2759,9 +2783,11 @@
         "type": "object",
         "properties": {
           "format": {
-            "type": "number",
-            "description": "Versión del formato de la tabla de funciones.",
-            "enum": [1]
+            "anyOf": [
+              { "type": "number", "enum": [1] },
+              { "type": "number", "enum": [2] }
+            ],
+            "description": "Versión del formato: 1 (original) o 2 (agrega el tribunal, la competencia por dependencia y la marca de denuncia identificada). Se aceptan las dos."
           },
           "nodeId": {
             "type": "string",
@@ -2796,7 +2822,7 @@
                 "maxItems": 200,
                 "type": "array",
                 "items": { "$ref": "#/components/schemas/FunctionRule" },
-                "description": "Buzón general: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58)."
+                "description": "Buzón de la autoridad receptora: recibe lo que no tiene autoridad en la tabla y lo turna (Bases de la PDN, arts. 56 y 58)."
               },
               "operation": {
                 "minItems": 1,
@@ -2825,6 +2851,13 @@
                 "type": "array",
                 "items": { "$ref": "#/components/schemas/FunctionRule" },
                 "description": "Autoridad resolutora: la no grave la resuelve el órgano de control y la grave, el tribunal (LGRA, art. 3)."
+              },
+              "court": {
+                "minItems": 0,
+                "maxItems": 200,
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FunctionRule" },
+                "description": "Formato 2. Tribunal de Justicia Administrativa: resuelve faltas graves y de particulares (primera instancia) y la apelación y la revisión (alzada) (LGRA, arts. 12, 209 y 215 a 221)."
               },
               "supervision": {
                 "minItems": 0,
@@ -2860,11 +2893,71 @@
             ],
             "additionalProperties": false,
             "description": "Reglas de cada función."
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "operatorReceives": {
+                "description": "Quien opera el nodo (por ejemplo, la SESEA) también recibe y turna denuncias, solo si la ley del estado la faculta (por ejemplo, Michoacán). Por omisión nacional, no: la SESEA es apoyo técnico del Comité Coordinador y no es autoridad del art. 9 de la LGRA.",
+                "type": "object",
+                "properties": {
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300,
+                    "description": "Ley o lineamiento del estado que lo faculta."
+                  }
+                },
+                "required": ["legalBasis"],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "description": "Formato 2. Ajustes que declara cada nodo cuando su ley se aparta de la regla nacional; sin el campo, rige la regla nacional (LGRA y CPEUM)."
+          },
+          "entities": {
+            "description": "Formato 2. Competencia por dependencia: el órgano interno de control de cada ente de la entidad, «sin OIC designado → quién atiende» o pendiente. Un ente aparece una sola vez.",
+            "maxItems": 5000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entityId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Ente del catálogo de la PDN (o ficticio de la demostración)."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["assigned", "without_oic", "pending"],
+                  "description": "Estado: assigned (el ente tiene su órgano interno de control, `holder`), without_oic (sin OIC designado: lo atiende `holder`, con `legalBasis` obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente)."
+                },
+                "holder": {
+                  "description": "Quién investiga al ente: una autoridad del directorio (con llaves) o una institución nombrada que aún no tiene alta. Falta solo si está pendiente.",
+                  "allOf": [{ "$ref": "#/components/schemas/FunctionHolder" }]
+                },
+                "legalBasis": {
+                  "description": "Fundamento corto (obligatorio en without_oic).",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "requiresIdentifiedReporter": {
+                  "description": "Como en la regla: quien atiende al ente no admite denuncias anónimas.",
+                  "type": "boolean",
+                  "enum": [true]
+                }
+              },
+              "required": ["entityId", "status"],
+              "additionalProperties": false,
+              "description": "Competencia por dependencia (formato 2): el órgano interno de control de un ente (CPEUM art. 109 fr. III; LGRA arts. 3, 9 y 10). Gana sobre las reglas de investigación."
+            }
           }
         },
         "required": ["format", "nodeId", "stateCode", "version", "issuedOn", "functions"],
         "additionalProperties": false,
-        "description": "Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente. Con ella la ventanilla propone a quién va cada denuncia."
+        "description": "Tabla de funciones de un nodo: qué institución cumple cada función en su entidad, con reglas por orden de gobierno y, si hace falta, por ente; en el formato 2, además, el órgano interno de control de cada dependencia. Con ella la ventanilla propone a quién va cada denuncia."
       },
       "FunctionRule": {
         "type": "object",
@@ -2883,7 +2976,7 @@
             "maxItems": 1000,
             "type": "array",
             "items": { "type": "string", "minLength": 1, "maxLength": 64 },
-            "description": "Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «todos los entes estatales»). Una regla específica gana sobre una general."
+            "description": "Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «todos los entes estatales»). Una regla específica gana sobre una general. El órgano interno de control de cada ente se declara, en el formato 2, en `entities`."
           },
           "severity": {
             "description": "Solo para faltas graves (serious) o no graves (non_serious); sin el campo, para ambas. Sirve, por ejemplo, para la resolución.",
@@ -2896,6 +2989,16 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 300
+          },
+          "requiresIdentifiedReporter": {
+            "description": "Formato 2. Quien cumple la función solo admite denuncias con nombre y firma (por ejemplo, la entidad de fiscalización superior de Querétaro, LFSRCQ arts. 50 y 51): una denuncia anónima o con identidad sellada nunca se le propone ni se le ofrece.",
+            "type": "boolean",
+            "enum": [true]
+          },
+          "instance": {
+            "description": "Formato 2, solo en `court`: primera instancia (first: resuelve faltas graves y de particulares) o alzada (appeal: apelación y revisión, LGRA arts. 215 a 221). Sin el campo, ambas.",
+            "type": "string",
+            "enum": ["first", "appeal"]
           }
         },
         "required": ["governmentLevels", "entityIds", "holder"],
@@ -2947,7 +3050,7 @@
             },
             "required": ["kind", "name"],
             "additionalProperties": false,
-            "description": "Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves o quien opera el nodo)."
+            "description": "Una institución que no recibe denuncias cifradas (por ejemplo, el tribunal que resuelve las faltas graves, quien opera el nodo o un órgano interno de control nombrado que todavía no tiene alta ni llaves)."
           }
         ],
         "description": "Quién cumple la función: autoridad, observador o institución."
@@ -3441,6 +3544,104 @@
             "minimum": 0,
             "maximum": 9007199254740991,
             "description": "Suprimidas: la suma de la fila de suprimidas de cada nodo más las celdas que quedaron bajo la celda mínima después de sumar."
+          },
+          "oicCoverage": {
+            "description": "Cobertura de órganos internos de control por entidad y de la federación, calculada con la tabla de funciones firmada de cada nodo y el catálogo de entes de la PDN.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stateCode": {
+                  "type": "string",
+                  "pattern": "^(?:\\d{2}|state\\.[a-z0-9]+(?:-[a-z0-9]+)*)$",
+                  "description": "Entidad de la tabla; null en la federal.",
+                  "example": "22",
+                  "nullable": true
+                },
+                "tableVersion": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "Versión de la tabla de funciones con que se calculó."
+                },
+                "total": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Dependencias del catálogo."
+                },
+                "withOic": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Con su órgano interno de control asignado."
+                },
+                "withoutOic": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "«Sin OIC designado»: la atiende otra autoridad, con fundamento."
+                },
+                "general": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Cubiertas por una regla de todo su orden de gobierno."
+                },
+                "withKeys": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Quien la atiende tiene llaves vigentes."
+                },
+                "pending": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Pendientes: sus denuncias van a la autoridad receptora."
+                },
+                "nodeId": {
+                  "type": "string",
+                  "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "Identificador estable del nodo.",
+                  "example": "node.queretaro"
+                },
+                "percentWithOic": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Porcentaje con su OIC asignado (entero)."
+                },
+                "percentWithKeys": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Porcentaje cuyo OIC tiene llaves vigentes (entero)."
+                },
+                "percentPending": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Porcentaje pendiente (entero)."
+                }
+              },
+              "required": [
+                "stateCode",
+                "tableVersion",
+                "total",
+                "withOic",
+                "withoutOic",
+                "general",
+                "withKeys",
+                "pending",
+                "nodeId",
+                "percentWithOic",
+                "percentWithKeys",
+                "percentPending"
+              ],
+              "additionalProperties": false,
+              "description": "Cobertura de OIC de una entidad (o de la federación): dependencias con OIC asignado, con llaves y pendientes, en número y porcentaje."
+            }
           }
         },
         "required": [

@@ -50,7 +50,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /PdnStatisticsRow,mes,Sí,Año y mes en formato ISO 8601 (AAAA-MM),String,Sí,Mes cerrado (AAAA-MM) al que se refiere la fila.,PdnStatisticsRow,patrón ^\d{4}-(0[1-9]|1[0-2])$,,2026-10
 /PdnStatisticsRow,autoridad,Sí,Objeto,Object,Sí,Autoridad del directorio que tenía la denuncia en su bandeja.,PdnStatisticsRow,,,
 /PdnStatisticsRow/autoridad,clave,Sí,Alfanumérico,String,Sí,Identificador estable de la autoridad.,PdnStatisticsRow,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.comptroller-queretaro
-/PdnStatisticsRow/autoridad,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,PdnStatisticsRow,de 1 a 300 caracteres,,Contraloría Estatal Ficticia de Querétaro
+/PdnStatisticsRow/autoridad,nombre,Sí,Alfanumérico,String,Sí,Nombre de la autoridad.,PdnStatisticsRow,de 1 a 300 caracteres,,Secretaría de la Contraloría del Poder Ejecutiv…
 /PdnStatisticsRow,entidad,Sí,Objeto,Object,Sí,Entidad federativa de los hechos (catálogo INEGI).,PdnStatisticsRow,,,
 /PdnStatisticsRow/entidad,clave,Sí,Alfanumérico,String (enum),Sí,Clave INEGI de la entidad federativa (2 dígitos).,PdnStatisticsRow,patrón ^\d{2}$,Catálogo STATES: 32 entidades federativas con clave INEGI (01 a 32),22
 /PdnStatisticsRow/entidad,valor,Sí,Alfanumérico,String,Sí,Nombre de la entidad federativa.,PdnStatisticsRow,de 1 a 300 caracteres,,Querétaro

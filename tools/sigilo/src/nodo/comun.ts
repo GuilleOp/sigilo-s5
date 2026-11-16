@@ -2,7 +2,7 @@
 //   red.json              paquete de la red que entrega la SESNA (público)
 //   .env                  compose: imagen, usuario, perfil de TLS y dominio
 //   config/               nodo.env, Caddyfile, instalacion.json, tabla-de-funciones.csv,
-//                         dias-inhabiles.csv (sin secretos)
+//                         competencia-por-dependencia.csv, dias-inhabiles.csv (sin secretos)
 //   datos/        (0700)  volumen del nodo: keys.json, red-node-key.json, relay-secret.json,
 //                         oauth-clients.json, authority-accounts.json, network-trust.json,
 //                         directory.json, web-config.json, dias-inhabiles.json, sigilo.db, evidence/
@@ -30,6 +30,7 @@ export function nodePaths(ctx: Pick<Context, 'base'>) {
     caddyfile: inBase(ctx, 'config', 'Caddyfile'),
     record: inBase(ctx, 'config', 'instalacion.json'),
     tableCsv: inBase(ctx, 'config', 'tabla-de-funciones.csv'),
+    competenceCsv: inBase(ctx, 'config', 'competencia-por-dependencia.csv'),
     restDaysCsv: inBase(ctx, 'config', 'dias-inhabiles.csv'),
     data: inBase(ctx, 'datos'),
     keys: inBase(ctx, 'datos', 'keys.json'),

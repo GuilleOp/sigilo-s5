@@ -3,6 +3,7 @@
 // credenciales para entrar. Cada nodo tiene solo las autoridades de su entidad: no hay nodo común.
 import type { AuthorityAccountsFile, AuthorityFunction } from '@sigilo/contracts';
 import { randomBytes, toBase64Url, toHex } from '@sigilo/core';
+import { QUERETARO_NAMES } from '@sigilo/red';
 import { DEFAULT_SCRYPT_LOG_N, hashPassword } from './passwords.ts';
 import { generateTotpSecret, toBase32 } from './totp.ts';
 
@@ -24,9 +25,9 @@ export interface DemoCredential {
 }
 
 /**
- * Cuentas de la demostración con el segundo factor ya inscrito: la supervisora, la operación de
- * cada nodo y la fiscalía. Las demás entran solo con contraseña (el nodo de la demostración usa
- * `SIGILO_MFA=opcional`), así el recorrido principal no cambia.
+ * Cuentas de la demostración con el segundo factor ya inscrito: las de supervisión, la operación
+ * de cada nodo, el tribunal y las fiscalías. Las demás entran solo con contraseña (el nodo de la
+ * demostración usa `SIGILO_MFA=opcional`), así el recorrido principal no cambia.
  */
 export const DEMO_MFA_USERS: ReadonlySet<string> = new Set([
   'supervision-oic',
@@ -34,6 +35,9 @@ export const DEMO_MFA_USERS: ReadonlySet<string> = new Set([
   'operacion.queretaro',
   'operacion.oaxaca',
   'fiscalia',
+  'contraloria.titular',
+  'tja.queretaro',
+  'fiscalia.queretaro',
 ]);
 
 /**
@@ -147,29 +151,44 @@ export const DEMO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
     authorityId: DEMO_SUPERVISOR_AUTHORITY,
     functions: ['supervision'],
   },
+  // La fiscalía recibe lo que se le turna, lo acepta y lo investiga.
   {
     username: 'fiscalia',
     authorityId: 'authority.prosecutor-anticorruption',
-    functions: ['investigation'],
+    functions: ['intake', 'investigation'],
   },
   { username: 'tribunal.federal', authorityId: DEMO_COURT_AUTHORITY, functions: ['court'] },
 ];
 
-/** Buzón general del nodo Querétaro de la demostración. */
+/**
+ * Autoridad receptora del nodo Querétaro de la demostración: la unidad receptora de quejas y
+ * denuncias de la Secretaría de la Contraloría (ficticia). La SESEA solo opera el nodo.
+ */
 export const DEMO_QUERETARO_INBOX_AUTHORITY = 'authority.buzon-queretaro';
 
+/** Tribunal de Querétaro: tiene cuentas en el nodo, pero no recibe denuncias cifradas. */
+export const DEMO_QUERETARO_COURT_AUTHORITY = 'authority.tja-queretaro';
+
 const QUERETARO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
-  {
-    authorityId: DEMO_QUERETARO_INBOX_AUTHORITY,
-    name: 'Buzón general ficticio del nodo Querétaro',
-  },
-  {
-    authorityId: 'authority.comptroller-queretaro',
-    name: 'Contraloría Estatal Ficticia de Querétaro',
-  },
+  { authorityId: DEMO_QUERETARO_INBOX_AUTHORITY, name: QUERETARO_NAMES.receptora },
+  { authorityId: 'authority.comptroller-queretaro', name: QUERETARO_NAMES.contraloria },
+  { authorityId: 'authority.oic-municipio-queretaro', name: QUERETARO_NAMES.oicMunicipioQueretaro },
+  { authorityId: 'authority.oic-el-marques', name: QUERETARO_NAMES.oicElMarques },
+  { authorityId: 'authority.oic-cea-queretaro', name: QUERETARO_NAMES.oicCea },
+  { authorityId: 'authority.prosecutor-queretaro', name: QUERETARO_NAMES.fiscalia },
+  { authorityId: 'authority.esfe-queretaro', name: QUERETARO_NAMES.esfe },
+  { authorityId: DEMO_QUERETARO_COURT_AUTHORITY, name: QUERETARO_NAMES.sala },
 ];
 
-/** Usuarios del nodo Querétaro: el buzón general y la contraloría, que recibe e investiga. */
+/**
+ * Usuarios del nodo Querétaro. La unidad receptora de la Contraloría recibe y turna; la SESEA solo
+ * opera el nodo (altas y competencia por dependencia, sin ver denuncias). La Contraloría tiene dos
+ * personas que reciben e investigan (para la apertura de identidad de 2 de N), otra de su Dirección
+ * de Responsabilidades que substancia y nunca investiga (LGRA art. 115) y su titular, que supervisa.
+ * Los OIC de los municipios de Querétaro y El Marqués y el de la CEA reciben e investigan lo de sus
+ * entes; la Sala Especializada del tribunal y la fiscalía anticorrupción tienen la suya. La ESFE no
+ * tiene cuentas en la demostración: solo admite denuncias con nombre y firma.
+ */
 export const QUERETARO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
   {
     username: 'buzon.queretaro',
@@ -184,6 +203,42 @@ export const QUERETARO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
   {
     username: 'contraloria.queretaro',
     authorityId: 'authority.comptroller-queretaro',
+    functions: ['intake', 'investigation'],
+  },
+  {
+    username: 'contraloria.queretaro.persona2',
+    authorityId: 'authority.comptroller-queretaro',
+    functions: ['intake', 'investigation'],
+  },
+  {
+    username: 'contraloria.substanciacion',
+    authorityId: 'authority.comptroller-queretaro',
+    functions: ['substantiation'],
+  },
+  {
+    username: 'contraloria.titular',
+    authorityId: 'authority.comptroller-queretaro',
+    functions: ['supervision'],
+  },
+  {
+    username: 'oic-municipio-queretaro',
+    authorityId: 'authority.oic-municipio-queretaro',
+    functions: ['intake', 'investigation'],
+  },
+  {
+    username: 'oic-el-marques',
+    authorityId: 'authority.oic-el-marques',
+    functions: ['intake', 'investigation'],
+  },
+  {
+    username: 'oic-cea.queretaro',
+    authorityId: 'authority.oic-cea-queretaro',
+    functions: ['intake', 'investigation'],
+  },
+  { username: 'tja.queretaro', authorityId: DEMO_QUERETARO_COURT_AUTHORITY, functions: ['court'] },
+  {
+    username: 'fiscalia.queretaro',
+    authorityId: 'authority.prosecutor-queretaro',
     functions: ['intake', 'investigation'],
   },
 ];

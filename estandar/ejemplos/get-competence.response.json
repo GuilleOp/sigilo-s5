@@ -1,0 +1,113 @@
+{
+  "nodeId": "node.queretaro",
+  "stateCode": "22",
+  "today": "2026-11-16",
+  "table": {
+    "format": 2,
+    "nodeId": "node.queretaro",
+    "stateCode": "22",
+    "version": 3,
+    "issuedOn": "2026-11-12",
+    "functions": {
+      "intake": [
+        {
+          "governmentLevels": ["estatal", "municipal"],
+          "entityIds": [],
+          "holder": { "kind": "authority", "authorityId": "authority.buzon-queretaro" }
+        }
+      ],
+      "operation": [
+        {
+          "governmentLevels": ["estatal", "municipal"],
+          "entityIds": [],
+          "holder": {
+            "kind": "institution",
+            "name": "Secretaría Ejecutiva del Sistema Estatal Anticorrupción de Querétaro (ficticia)"
+          }
+        }
+      ],
+      "investigation": [
+        {
+          "governmentLevels": ["estatal"],
+          "entityIds": [],
+          "holder": { "kind": "authority", "authorityId": "authority.comptroller-queretaro" },
+          "legalBasis": "LGRA, arts. 3, fr. II, y 10"
+        }
+      ],
+      "substantiation": [],
+      "resolution": [],
+      "court": [
+        {
+          "governmentLevels": ["estatal", "municipal"],
+          "entityIds": [],
+          "instance": "first",
+          "holder": {
+            "kind": "institution",
+            "name": "Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)"
+          }
+        }
+      ],
+      "supervision": [],
+      "prosecution": [],
+      "observer": []
+    },
+    "entities": [
+      {
+        "entityId": "PDN-22-7283",
+        "status": "assigned",
+        "holder": { "kind": "authority", "authorityId": "authority.oic-municipio-queretaro" },
+        "legalBasis": "CPEUM, art. 109, fr. III"
+      }
+    ]
+  },
+  "authorities": [
+    {
+      "authorityId": "authority.oic-municipio-queretaro",
+      "name": "Órgano Interno de Control del Municipio de Querétaro (ficticio)",
+      "governmentLevel": "municipal",
+      "hasKeys": true
+    }
+  ],
+  "entities": [
+    {
+      "entityId": "PDN-22-7283",
+      "name": "Secretaría del Ayuntamiento del Municipio de Querétaro",
+      "level": "municipal",
+      "municipalityCode": "014",
+      "isFictitious": false,
+      "group": { "key": "municipio:014", "label": "Municipio de Querétaro" },
+      "status": "assigned",
+      "source": "entity",
+      "holder": { "kind": "authority", "authorityId": "authority.oic-municipio-queretaro" },
+      "holderName": "Órgano Interno de Control del Municipio de Querétaro (ficticio)",
+      "legalBasis": "CPEUM, art. 109, fr. III",
+      "requiresIdentifiedReporter": false,
+      "badge": "keys"
+    },
+    {
+      "entityId": "PDN-22-7232",
+      "name": "Fiscalía General del Estado",
+      "level": "estatal",
+      "isFictitious": false,
+      "group": { "key": "autonomo", "label": "Poderes y organismos autónomos" },
+      "status": "pending",
+      "source": "none",
+      "holder": null,
+      "holderName": null,
+      "legalBasis": null,
+      "requiresIdentifiedReporter": false,
+      "badge": "pending"
+    }
+  ],
+  "coverage": {
+    "stateCode": "22",
+    "tableVersion": 3,
+    "total": 2,
+    "withOic": 1,
+    "withoutOic": 0,
+    "general": 0,
+    "withKeys": 1,
+    "pending": 1
+  },
+  "proposals": []
+}

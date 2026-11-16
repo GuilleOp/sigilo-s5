@@ -230,7 +230,8 @@ const SANCTIONS: readonly DatedSanction[] = [
     stateCode: '22',
     sanctions: ['AMONESTACION'],
     sanctionText: 'Amonestación privada',
-    authority: 'Contraloría Estatal Ficticia de Querétaro',
+    authority:
+      'Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)',
     dayOffset: -90,
   },
 ];

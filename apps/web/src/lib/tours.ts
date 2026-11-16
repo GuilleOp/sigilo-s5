@@ -83,11 +83,11 @@ const AUTHORITY_INTRO: Readonly<Record<AuthorityRole, TourStep>> = {
   },
   operation: {
     title: 'Tu función: operación del nodo',
-    text: 'Revisas las solicitudes de alta de las instituciones. No ves denuncias.',
+    text: 'Revisas las solicitudes de alta de las instituciones y asignas el órgano interno de control de cada dependencia. No ves denuncias.',
   },
   court: {
     title: 'Tu función: Tribunal',
-    text: 'Ves solo los expedientes que te envían por falta grave o de particulares y los recursos que resuelves. No ves el buzón de la persona ni su nombre.',
+    text: 'Resuelves las faltas graves y las de particulares, y la alzada. Ves solo los expedientes que te envían y los recursos que resuelves; no investigas, no turnas ni ves el buzón de la persona ni su nombre.',
   },
 };
 
@@ -118,7 +118,7 @@ const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
   },
   court: {
     title: 'Tus etapas',
-    text: 'Recibes el expediente, verificas que la falta sea grave (o lo devuelves), admites pruebas, abres alegatos, cierras la instrucción y dictas sentencia. También resuelves la inconformidad, la apelación y la revisión.',
+    text: 'Recibes el expediente, verificas que la falta sea grave (o lo devuelves), admites pruebas, abres alegatos, cierras la instrucción y dictas sentencia. También resuelves la inconformidad, la apelación y la revisión. Nunca abres nombres sellados.',
   },
 };
 

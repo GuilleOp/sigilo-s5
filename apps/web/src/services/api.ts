@@ -1,6 +1,8 @@
 // Operaciones tipadas de la API v1. Todas las rutas salen de `ROUTES`; ninguna se escribe a mano.
 import {
   AuthorityProfileSchema,
+  CompetenceSaveResponseSchema,
+  CompetenceViewSchema,
   AuthoritySessionInfoSchema,
   ComplaintDetailSchema,
   LoginResponseSchema,
@@ -33,6 +35,9 @@ import {
 } from '@sigilo/contracts';
 import type {
   AuthorityMessageRequest,
+  CompetenceSaveRequest,
+  CompetenceSaveResponse,
+  CompetenceView,
   AuthorityProfile,
   AuthoritySessionInfo,
   LoginResponse,
@@ -131,6 +136,10 @@ export interface SigiloApi {
     requestId: string,
     decision: RegistrationDecision,
   ): Promise<RegistrationView>;
+  /** Competencia por dependencia del nodo (solo la cuenta de operación). */
+  getCompetence(token: string): Promise<CompetenceView>;
+  /** Revisa (`dryRun`) o firma la versión nueva de la tabla con la competencia por dependencia. */
+  saveCompetence(token: string, request: CompetenceSaveRequest): Promise<CompetenceSaveResponse>;
   /**
    * Primer paso del inicio de sesión: sesión abierta, falta el código del segundo factor (`code`)
    * o la cuenta debe inscribirlo (`enroll`, sesión limitada).
@@ -264,6 +273,13 @@ export function createSigiloApi(
       client.json(ROUTES.operationRegistrationDecision(requestId), RegistrationViewSchema, {
         bearer: token,
         json: decision,
+      }),
+    getCompetence: (token) =>
+      client.json(ROUTES.operationCompetence, CompetenceViewSchema, { bearer: token }),
+    saveCompetence: (token, request) =>
+      client.json(ROUTES.operationCompetence, CompetenceSaveResponseSchema, {
+        bearer: token,
+        json: request,
       }),
     login: (username, password) =>
       client.json(ROUTES.authLogin, LoginResponseSchema, { json: { username, password } }),

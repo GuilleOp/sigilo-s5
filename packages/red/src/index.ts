@@ -14,3 +14,7 @@ export * from './relay-auth.ts';
 export * from './http-defaults.ts';
 export * from './demo-network.ts';
 export * from './node-join.ts';
+export * from './competence.ts';
+export * from './demo-queretaro.ts';
+export * from './demo-federal.ts';
+export * from './competence-csv.ts';

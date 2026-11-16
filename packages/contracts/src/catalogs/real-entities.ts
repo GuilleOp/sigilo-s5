@@ -24,6 +24,9 @@ const LEVEL_BY_CODE: Readonly<Record<GovernmentLevelCode, GovernmentLevel>> = {
 /** Ruta del mismo origen donde la web publica los fragmentos de entes por entidad. */
 export const ENTITY_FRAGMENT_BASE_PATH = '/datos/entes/';
 
+/** Ruta del mismo origen con las pistas de la competencia por dependencia (S1, S2 y S3). */
+export const COMPETENCE_HINTS_BASE_PATH = '/datos/competencia/';
+
 /** Fila de un fragmento: `[id, nombre, orden, municipio | null, nombre PDN?]`. */
 export type EntityFragmentRow =
   | [string, string, GovernmentLevelCode, string | null]

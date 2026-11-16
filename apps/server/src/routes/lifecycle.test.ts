@@ -906,7 +906,7 @@ describe('separación de funciones (LGRA, art. 115)', () => {
   });
 });
 
-describe('migración 18', () => {
+describe('migración 19', () => {
   it('lleva la etapa penal a su capa y las etapas del Tribunal a las suyas', () => {
     const db = new DatabaseSync(':memory:');
     db.exec('PRAGMA foreign_keys = ON;');

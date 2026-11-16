@@ -7,7 +7,16 @@ import { functionTableFor } from '@sigilo/red';
 import { createNetworkFixture } from '../../../../../packages/red/src/test-fixtures.ts';
 import { nodeForJurisdiction } from '../../network/ventanilla-api.ts';
 import { NextFunctionsPanel } from '../authority/NextFunctionsPanel.tsx';
-import { FunctionTableCard, ruleScope, statesWithoutNode, tableTitle } from './WhoHandlesPage.tsx';
+import { QUERETARO_NAMES } from '@sigilo/red';
+import {
+  CoverageTable,
+  DependencySearch,
+  FunctionTableCard,
+  ruleScope,
+  statesWithoutNode,
+  tableEntities,
+  tableTitle,
+} from './WhoHandlesPage.tsx';
 
 const { directory } = createNetworkFixture().signed;
 
@@ -33,20 +42,70 @@ describe('página pública de las tablas de funciones', () => {
       <FunctionTableCard directory={directory} table={table('22')} />,
     );
     expect(tableTitle(table('22'))).toBe('Querétaro');
-    expect(html).toContain('Buzón general (recepción y turnado)');
+    expect(html).toContain('Autoridad receptora (recepción y turnado)');
     expect(html).toContain('Entes del orden estatal y municipal');
-    expect(html).toContain('Contraloría Estatal Ficticia de Querétaro');
-    expect(html).toContain('Tribunal de Justicia Administrativa Ficticio de Querétaro');
-    expect(html).toContain('Comité de Participación Ciudadana Ficticio de Querétaro');
+    expect(html).toContain(QUERETARO_NAMES.receptora);
+    expect(html).toContain(QUERETARO_NAMES.contraloria);
+    expect(html).toContain(QUERETARO_NAMES.sala);
+    expect(html).toContain('Tribunal (faltas graves, de particulares y alzada)');
+    expect(html).toContain('solo denuncias con nombre y firma');
     expect(html).toContain('Nodo estatal Querétaro');
+    // B05: el CPC no está entre las funciones del trámite; va aparte y no ve casos.
+    expect(html).not.toContain('Observador (CPC)');
+    expect(html).toContain('Quién vigila el sistema (no ve tu caso):</strong>');
+    expect(html).toContain('Comité de Participación Ciudadana Ficticio de Querétaro');
+    // B01: la SESEA solo opera el nodo.
+    expect(html).toContain(QUERETARO_NAMES.sesea);
+    expect(html).toContain('Operación del nodo (altas de autoridades, sin ver denuncias)');
+  });
+
+  it('busca una dependencia y dice quién es su OIC; cuenta la cobertura de cada estado', () => {
+    const tables = (directory.functionTables ?? []).map((item) => item.table);
+    const queretaro = table('22');
+    const entities = new Map([
+      [
+        '22',
+        tableEntities(queretaro, [
+          {
+            id: 'PDN-22-7283',
+            name: 'Secretaría del Ayuntamiento del Municipio de Querétaro',
+            level: 'municipal' as const,
+            stateCode: '22',
+            municipalityCode: '014',
+          },
+          {
+            id: 'PDN-22-7232',
+            name: 'Fiscalía General del Estado',
+            level: 'estatal' as const,
+            stateCode: '22',
+          },
+        ]),
+      ],
+    ]);
+    const coverage = renderToStaticMarkup(
+      <CoverageTable directory={directory} tables={tables} entities={entities} />,
+    );
+    expect(coverage).toContain('Cobertura de OIC por estado');
+    // 2 dependencias: una con OIC con llaves, una pendiente.
+    expect(coverage).toContain('<td class="numeric">2</td>');
+    expect(coverage).toContain('1 (50 %)');
+    expect(coverage).toContain('Cargando los catálogos de entes');
+    const search = renderToStaticMarkup(
+      <DependencySearch directory={directory} tables={tables} entities={entities} />,
+    );
+    expect(search).toContain('Busca tu dependencia');
+    expect(search).toContain('Federación (entes federales)');
   });
 
   it('nombra los entes de las reglas específicas y la gravedad', () => {
     const federal = table(null);
     expect(tableTitle(federal)).toBe('Entes federales (nodo federal)');
-    const [first] = federal.functions.investigation;
+    const [first] = federal.functions.substantiation;
     if (first === undefined) throw new Error('sin regla');
     expect(ruleScope(first)).toBe('Instituto Federal Ficticio de Equipamiento');
+    const [asf] = federal.functions.investigation;
+    if (asf === undefined) throw new Error('sin regla');
+    expect(ruleScope(asf)).toBe('Entes del orden federal (faltas graves)');
     const serious = federal.functions.resolution.find((rule) => rule.severity === 'serious');
     if (serious === undefined) throw new Error('sin regla');
     expect(ruleScope(serious)).toBe('Entes del orden federal (faltas graves)');

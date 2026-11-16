@@ -81,7 +81,7 @@ const INVESTIGATION_KEYS: ReadonlySet<string> = new Set([
   'report_filed',
 ]);
 
-/** Función que ejerció la cuenta en un paso anterior a la migración 18 (sin `details`). */
+/** Función que ejerció la cuenta en un paso anterior a la migración 19 (sin `details`). */
 function legacyFunction(step: StoredStep): ActingFunction | null {
   if (step.action !== 'stage_advanced' || step.legalStage === null) return null;
   if (INVESTIGATION_KEYS.has(step.legalStage)) return 'investigation';
@@ -93,7 +93,7 @@ function legacyFunction(step: StoredStep): ActingFunction | null {
 export function criminalStageOfStep(step: StoredStep): CriminalStage | null {
   const fromDetails = step.details?.criminalStage;
   if (fromDetails !== undefined) return fromDetails;
-  // Pasos anteriores a la migración 18: la etapa penal iba en `legal_stage`.
+  // Pasos anteriores a la migración 19: la etapa penal iba en `legal_stage`.
   if (step.action === 'stage_advanced' && isCriminalStage(step.legalStage)) {
     const parsed = CriminalStageSchema.safeParse(step.legalStage);
     return parsed.success ? parsed.data : null;

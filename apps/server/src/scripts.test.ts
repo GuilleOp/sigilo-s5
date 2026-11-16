@@ -146,6 +146,7 @@ describe('scripts/generate-accounts.ts', () => {
       };
       const functions = new Set(credenciales.flatMap((item) => item.functions));
       expect([...functions].sort()).toEqual([
+        'court',
         'intake',
         'investigation',
         'operation',

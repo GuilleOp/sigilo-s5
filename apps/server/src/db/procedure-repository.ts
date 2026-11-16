@@ -33,7 +33,7 @@ import { readOptionalText, readText } from './database.ts';
 import type { Row } from './database.ts';
 
 /**
- * Datos del acto que se guardan con el paso (columna `details_json`, migración 18): la función que
+ * Datos del acto que se guardan con el paso (columna `details_json`, migración 19): la función que
  * actuó (para la separación de funciones del art. 115 de la LGRA), el registro de actuación del
  * Tribunal, el recurso, la medida cautelar, la vista penal, los recursos federales y la inscripción
  * de la sanción. Privados del nodo: la vista de la persona denunciante omite lo reservado.
@@ -76,11 +76,11 @@ export interface StoredStep {
   authorityId: string;
   actorId: string | null;
   note: string | null;
-  /** Datos del acto; `null` en los pasos anteriores a la migración 18. */
+  /** Datos del acto; `null` en los pasos anteriores a la migración 19. */
   details?: StepDetails | null;
 }
 
-/** Acuerdo de cierre con su motivo legal y su destino (migración 18). */
+/** Acuerdo de cierre con su motivo legal y su destino (migración 19). */
 export interface StoredClosure extends ClosureRecord {
   legalOutcome: LegalClosureReason | null;
   destination: ReferralDestination | null;

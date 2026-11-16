@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AuthorityDirectory } from '@sigilo/contracts';
 import { proposeCompetentAuthority } from './competent-authority.ts';
+import { QUERETARO_NAMES } from './demo-queretaro.ts';
 import { FIXTURE_DAY, createNetworkFixture } from './test-fixtures.ts';
 
 const { directory } = createNetworkFixture().signed;
@@ -41,7 +42,7 @@ describe('propuesta de autoridad competente', () => {
     expect(proposal.reasons.join(' ')).toContain(
       'Según la tabla de funciones que firmó el nodo federal',
     );
-    expect(proposal.reasons.join(' ')).toContain('de ese ente de forma específica');
+    expect(proposal.reasons.join(' ')).toContain('su órgano interno de control es');
   });
 
   it('case.queretaro-routing: ente estatal en Querétaro va a la contraloría del nodo Querétaro', () => {
@@ -82,13 +83,15 @@ describe('propuesta de autoridad competente', () => {
     // La tabla federal no nombra un OIC para la Aduana: no se propone la supervisora; va al buzón.
     expect(proposal.status).toBe('inbox');
     expect(proposal.proposed?.authority.id).toBe('authority.buzon-federal');
-    const equivalent = proposeCompetentAuthority(
+    // «Sin OIC designado → la SABG», que no tiene llaves en la demostración: la receptora la
+    // turna a la SABG; una falta no se desvía a la fiscalía por su conducta equivalente.
+    const withoutOic = proposeCompetentAuthority(
       directory,
       { stateCode: '22', entityId: 'VE-ADUANA', offenseCode: 'LGRA-52' },
       FIXTURE_DAY,
     );
-    expect(equivalent.proposed?.authority.id).toBe('authority.prosecutor-anticorruption');
-    expect(equivalent.proposed?.lawMatch).toBe('equivalent');
+    expect(withoutOic.proposed?.authority.id).toBe('authority.buzon-federal');
+    expect(withoutOic.turnTo).toBe('Secretaría Anticorrupción y Buen Gobierno (ficticia)');
     const before = proposeCompetentAuthority(
       directory,
       { stateCode: '22', entityId: 'VE-FINANZAS', offenseCode: 'LGRA-54' },
@@ -112,8 +115,9 @@ describe('propuesta de autoridad competente', () => {
     expect(proposal.proposed?.lawMatch).toBeNull();
     expect(proposal.alternatives).toEqual([]);
     expect(proposal.reasons.join(' ')).toContain(
-      'La tabla de funciones de Querétaro no nombra quién investiga a ese ente. La enviamos al buzón general ficticio del nodo Querétaro, donde una persona la turna a quien corresponda.',
+      `La tabla de funciones de Querétaro no nombra quién investiga a ese ente. La enviamos a «${QUERETARO_NAMES.receptora}», donde una persona la turna a quien corresponda.`,
     );
+    expect(proposal.turnTo).toBe('el órgano interno de control de «Ente sin catálogo»');
     expect(proposal.reasons.join(' ')).not.toContain('No se envía nada');
   });
 
@@ -192,15 +196,92 @@ describe('propuesta de autoridad competente', () => {
     expect(proposal.reasons.join(' ')).toContain('No se envía nada');
   });
 
-  it('ente municipal sin órgano municipal: respaldo en la contraloría estatal', () => {
+  it('ente municipal sin OIC en la tabla: a la receptora, nunca a la Contraloría (B02)', () => {
     const proposal = proposeCompetentAuthority(
       directory,
       { stateCode: '22', entityId: 'VE-OBRAS', offenseCode: 'LGRA-52' },
       FIXTURE_DAY,
     );
+    expect(proposal.status).toBe('inbox');
     expect(proposal.isFallback).toBe(true);
-    expect(proposal.proposed?.authority.id).toBe('authority.comptroller-queretaro');
-    expect(proposal.reasons.join(' ')).toContain('órgano de control propio');
+    expect(proposal.proposed?.authority.id).toBe('authority.buzon-queretaro');
+    expect(proposal.turnTo).toBe(
+      'el órgano interno de control del municipio de «Secretaría de Obras de Villa Ejemplo»',
+    );
+    // Lo mismo en Oaxaca (formato 1) y en un directorio sin tablas: nunca a la autoridad estatal.
+    const oaxaca = proposeCompetentAuthority(
+      directory,
+      { stateCode: '20', entityId: 'VE-OBRAS', offenseCode: 'LGRA-52' },
+      FIXTURE_DAY,
+    );
+    expect(oaxaca.proposed?.authority.id).toBe('authority.buzon-oaxaca');
+    // Sin tablas no hay dónde declarar que la ESFE solo admite denuncias identificadas: un
+    // directorio así no debería incluirla (la marca vive en la tabla firmada del nodo).
+    const withoutTables = proposeCompetentAuthority(
+      {
+        ...directory,
+        functionTables: [],
+        authorities: directory.authorities.filter((item) => item.id !== 'authority.esfe-queretaro'),
+      },
+      { stateCode: '22', entityId: 'VE-OBRAS', offenseCode: 'LGRA-52' },
+      FIXTURE_DAY,
+    );
+    expect(withoutTables.proposed?.authority.id).not.toBe('authority.comptroller-queretaro');
+  });
+
+  it('si el OIC del ente no tiene llaves vigentes, va a la receptora y no a otra autoridad', () => {
+    const expired: AuthorityDirectory = {
+      ...directory,
+      authorities: directory.authorities.map((item) =>
+        item.id === 'authority.oic-cea-queretaro' ? { ...item, validUntil: '2026-11-09' } : item,
+      ),
+    };
+    const fresh = proposeCompetentAuthority(
+      directory,
+      { stateCode: '22', entityId: 'PDN-22-7109', offenseCode: 'LGRA-52' },
+      FIXTURE_DAY,
+    );
+    expect(fresh.proposed?.authority.id).toBe('authority.oic-cea-queretaro');
+    const later = proposeCompetentAuthority(
+      expired,
+      { stateCode: '22', entityId: 'PDN-22-7109', offenseCode: 'LGRA-52' },
+      '2026-11-10',
+    );
+    expect(later).toMatchObject({ status: 'inbox', isFallback: true });
+    expect(later.proposed?.authority.id).toBe('authority.buzon-queretaro');
+    expect(later.turnTo).toBe(QUERETARO_NAMES.oicCea);
+  });
+
+  it('una denuncia anónima nunca se propone ni se ofrece a la ESFE (B17)', () => {
+    const proposal = proposeCompetentAuthority(
+      directory,
+      { stateCode: '22', entityId: 'VE-FINANZAS', offenseCode: 'LGRA-54' },
+      FIXTURE_DAY,
+    );
+    const ids = [proposal.proposed, ...proposal.alternatives].map((item) => item?.authority.id);
+    expect(ids).not.toContain('authority.esfe-queretaro');
+    const identified = proposeCompetentAuthority(
+      directory,
+      {
+        stateCode: '22',
+        entityId: 'VE-FINANZAS',
+        offenseCode: 'LGRA-54',
+        reporterIdentified: true,
+      },
+      FIXTURE_DAY,
+    );
+    expect(identified.alternatives.map((item) => item.authority.id)).toContain(
+      'authority.esfe-queretaro',
+    );
+  });
+
+  it('un delito en Querétaro va a la fiscalía anticorrupción del estado', () => {
+    const proposal = proposeCompetentAuthority(
+      directory,
+      { stateCode: '22', entityId: 'VE-FINANZAS', offenseCode: 'CPF-222' },
+      FIXTURE_DAY,
+    );
+    expect(proposal.proposed?.authority.id).toBe('authority.prosecutor-queretaro');
   });
 
   it('Oaxaca tiene su propio nodo: va a su contraloría según su tabla', () => {

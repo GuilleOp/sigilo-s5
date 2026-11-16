@@ -51,7 +51,7 @@ export interface ComplaintRecord {
   /** Autoridad que tiene la denuncia; `null` en denuncias anteriores, que están en el buzón. */
   assignedAuthorityId: string | null;
   managementState: ManagementState;
-  /** Etapa de la vía administrativa (desde la migración 18 nunca es penal). */
+  /** Etapa de la vía administrativa (desde la migración 19 nunca es penal). */
   legalStage: LegalStage | null;
   /** Etapa de la vía penal, que corre en paralelo a la administrativa. */
   criminalStage: CriminalStage | null;

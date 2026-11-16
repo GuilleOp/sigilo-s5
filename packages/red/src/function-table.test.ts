@@ -1,13 +1,21 @@
 // Pruebas de la tabla de funciones de cada nodo: firma del nodo, coherencia con el directorio y
 // reglas por orden de gobierno, por ente y por gravedad.
 import { describe, expect, it } from 'vitest';
+import { FunctionTableSchema } from '@sigilo/contracts';
 import type { AuthorityDirectory, FunctionTable } from '@sigilo/contracts';
+import { FEDERAL_NAMES } from './demo-federal.ts';
+import { QUERETARO_NAMES } from './demo-queretaro.ts';
 import { directoryProblems } from './directory.ts';
 import {
   assignmentsFor,
+  entityAssignmentFor,
+  functionTableDiff,
+  functionTableDigest,
   functionTableFor,
   functionTableProblems,
+  identifiedOnlyAuthorityIds,
   matchFunction,
+  nextTableWithEntities,
   signFunctionTable,
   verifyFunctionTableSignature,
 } from './function-table.ts';
@@ -132,13 +140,13 @@ describe('tabla de funciones', () => {
   it('gana la regla del ente sobre la de su orden, y la de la gravedad sobre la general', () => {
     const federal = tableOf(directory, null);
     expect(
-      matchFunction(federal, 'investigation', { entityId: 'VE-INSTITUTO', level: 'federal' }),
+      matchFunction(federal, 'substantiation', { entityId: 'VE-INSTITUTO', level: 'federal' }),
     ).toMatchObject({
       entityMatch: 'specific',
-      rule: { holder: { authorityId: 'authority.oic-iffe' } },
+      rule: { holder: { name: FEDERAL_NAMES.iffeResponsabilidades } },
     });
     expect(
-      matchFunction(federal, 'investigation', { entityId: 'VE-ADUANA', level: 'federal' }),
+      matchFunction(federal, 'substantiation', { entityId: 'VE-ADUANA', level: 'federal' }),
     ).toBeNull();
     const queretaro = tableOf(directory, '22');
     expect(
@@ -147,10 +155,7 @@ describe('tabla de funciones', () => {
         level: 'estatal',
         severity: 'serious',
       })?.rule.holder,
-    ).toEqual({
-      kind: 'institution',
-      name: 'Tribunal de Justicia Administrativa Ficticio de Querétaro',
-    });
+    ).toEqual({ kind: 'institution', name: QUERETARO_NAMES.sala });
     // Sin calificación aún, una regla de gravedad no aplica.
     expect(
       matchFunction(queretaro, 'resolution', { entityId: 'VE-FINANZAS', level: 'estatal' }),
@@ -182,5 +187,201 @@ describe('tabla de funciones', () => {
     });
     // Oaxaca no tiene CPC en el escenario sintético: la función queda sin titular.
     expect(oaxaca[0]?.holders).toEqual([]);
+  });
+
+  it('el tribunal tiene su función, con primera instancia y alzada', () => {
+    const rows = assignmentsFor(directory, tableOf(directory, '22'), ['court'], {
+      entityId: 'VE-FINANZAS',
+      level: 'estatal',
+    });
+    expect(rows[0]?.holders.map((holder) => [holder.instance, holder.name])).toEqual([
+      ['first', QUERETARO_NAMES.sala],
+      ['appeal', QUERETARO_NAMES.cuartaSeccion],
+    ]);
+  });
+});
+
+describe('formato 2 de la tabla de funciones', () => {
+  it('se acepta el formato 1 tal cual (mismo digesto) y el 2 con la competencia por dependencia', () => {
+    const oaxaca = tableOf(directory, '20');
+    expect(oaxaca.format).toBe(1);
+    expect(oaxaca.functions.court).toBeUndefined();
+    // El formato 1 se firma y se verifica igual que antes: parsearlo no le agrega campos.
+    expect(FunctionTableSchema.parse(oaxaca)).toEqual(oaxaca);
+    expect(functionTableDigest(FunctionTableSchema.parse(oaxaca))).toBe(
+      functionTableDigest(oaxaca),
+    );
+    expect(tableOf(directory, null).format).toBe(2);
+    const queretaro = tableOf(directory, '22');
+    expect(queretaro.format).toBe(2);
+    expect(queretaro.entities?.length).toBeGreaterThan(90);
+    expect(entityAssignmentFor(queretaro, 'PDN-22-7283')).toMatchObject({
+      status: 'assigned',
+      holder: { kind: 'authority', authorityId: 'authority.oic-municipio-queretaro' },
+    });
+    expect(entityAssignmentFor(queretaro, 'PDN-22-7232')).toEqual({
+      entityId: 'PDN-22-7232',
+      status: 'pending',
+    });
+  });
+
+  it('el formato 1 no puede usar campos del 2; un ente aparece una sola vez', () => {
+    const oaxaca = tableOf(directory, '20');
+    expect(
+      FunctionTableSchema.safeParse({ ...oaxaca, functions: { ...oaxaca.functions, court: [] } })
+        .success,
+    ).toBe(false);
+    expect(FunctionTableSchema.safeParse({ ...oaxaca, entities: [] }).success).toBe(false);
+    expect(FunctionTableSchema.safeParse({ ...oaxaca, settings: {} }).success).toBe(false);
+    const queretaro = tableOf(directory, '22');
+    const first = queretaro.entities?.[0];
+    if (first === undefined) throw new Error('sin entes');
+    expect(FunctionTableSchema.safeParse({ ...queretaro, entities: [first, first] }).success).toBe(
+      false,
+    );
+    // «Sin OIC designado» exige fundamento; «pendiente» no nombra a nadie.
+    expect(
+      FunctionTableSchema.safeParse({
+        ...queretaro,
+        entities: [
+          {
+            entityId: 'PDN-22-7109',
+            status: 'without_oic',
+            holder: { kind: 'institution', name: 'X' },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      FunctionTableSchema.safeParse({
+        ...queretaro,
+        entities: [
+          {
+            entityId: 'PDN-22-7109',
+            status: 'pending',
+            holder: { kind: 'institution', name: 'X' },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('ninguna regla general manda a los municipios a una autoridad estatal (CPEUM 109 fr. III)', () => {
+    const illegal = withTable((table) => {
+      table.functions.investigation = [
+        {
+          governmentLevels: ['estatal', 'municipal'],
+          entityIds: [],
+          holder: { kind: 'authority', authorityId: 'authority.comptroller-queretaro' },
+        },
+      ];
+    });
+    expect(functionTableProblems(illegal).join(' ')).toContain('cada municipio tiene su órgano');
+  });
+
+  it('un OIC del directorio debe ser investigador de su nodo y el ente, de su entidad', () => {
+    const wrong = withTable((table) => {
+      table.entities = [
+        {
+          entityId: 'PDN-20-1',
+          status: 'assigned',
+          holder: { kind: 'authority', authorityId: 'authority.buzon-queretaro' },
+        },
+        {
+          entityId: 'PDN-22-7109',
+          status: 'assigned',
+          holder: { kind: 'authority', authorityId: 'authority.comptroller-oaxaca' },
+        },
+      ];
+    });
+    const text = functionTableProblems(wrong).join(' ');
+    expect(text).toContain('nombra un ente de otra entidad');
+    expect(text).toContain('no tiene el papel investigating');
+    expect(text).toContain('que está en otro nodo');
+  });
+
+  it('quien opera el nodo no recibe ni turna, salvo que la ley del estado lo declare', () => {
+    const operatorIntake = withTable((table) => {
+      table.functions.operation = [
+        {
+          governmentLevels: ['estatal'],
+          entityIds: [],
+          holder: { kind: 'authority', authorityId: 'authority.buzon-queretaro' },
+        },
+      ];
+    });
+    expect(functionTableProblems(operatorIntake).join(' ')).toContain('settings.operatorReceives');
+    const declared = withTable((table) => {
+      table.functions.operation = [
+        {
+          governmentLevels: ['estatal'],
+          entityIds: [],
+          holder: { kind: 'authority', authorityId: 'authority.buzon-queretaro' },
+        },
+      ];
+      table.settings = { operatorReceives: { legalBasis: 'Ley estatal ficticia, art. 1' } };
+    });
+    expect(functionTableProblems(declared).join(' ')).not.toContain('settings.operatorReceives');
+  });
+
+  it('la misma área no investiga y substancia (LGRA, art. 115)', () => {
+    const same = withTable((table) => {
+      table.functions.substantiation = [
+        {
+          governmentLevels: ['estatal'],
+          entityIds: [],
+          holder: { kind: 'authority', authorityId: 'authority.comptroller-queretaro' },
+        },
+      ];
+    });
+    expect(functionTableProblems(same).join(' ')).toContain('LGRA, art. 115');
+  });
+
+  it('la regla de la ESFE solo aplica a una denuncia identificada', () => {
+    const queretaro = tableOf(directory, '22');
+    expect(identifiedOnlyAuthorityIds(queretaro)).toEqual(new Set(['authority.esfe-queretaro']));
+    const subject = { entityId: 'VE-FINANZAS', level: 'estatal', severity: 'serious' } as const;
+    expect(matchFunction(queretaro, 'investigation', subject)?.rule.holder).toEqual({
+      kind: 'authority',
+      authorityId: 'authority.comptroller-queretaro',
+    });
+    expect(
+      matchFunction(queretaro, 'investigation', { ...subject, reporterIdentified: true })?.rule
+        .holder,
+    ).toEqual({ kind: 'authority', authorityId: 'authority.esfe-queretaro' });
+  });
+
+  it('la versión siguiente sube al formato 2, ordena los entes y deja ver los cambios', () => {
+    const oaxaca = tableOf(directory, '20');
+    const next = nextTableWithEntities(
+      oaxaca,
+      [
+        { entityId: 'PDN-20-9', status: 'pending' },
+        {
+          entityId: 'PDN-20-1',
+          status: 'assigned',
+          holder: { kind: 'institution', name: 'OIC Ficticio de Prueba' },
+        },
+      ],
+      '2026-11-20',
+    );
+    expect(next).toMatchObject({ format: 2, version: oaxaca.version + 1, issuedOn: '2026-11-20' });
+    expect(next.entities?.map((item) => item.entityId)).toEqual(['PDN-20-1', 'PDN-20-9']);
+    expect(next.functions.investigation).toEqual(oaxaca.functions.investigation);
+    const changes = functionTableDiff(oaxaca, next, directory);
+    expect(changes.map((item) => item.text)).toEqual([
+      'La tabla pasa del formato 1 al 2.',
+      'PDN-20-1: OIC OIC Ficticio de Prueba.',
+      'PDN-20-9: pendiente.',
+    ]);
+    const again = nextTableWithEntities(
+      next,
+      [{ entityId: 'PDN-20-1', status: 'pending' }],
+      '2026-11-21',
+    );
+    expect(functionTableDiff(next, again).map((item) => [item.kind, item.entityId])).toEqual([
+      ['changed', 'PDN-20-1'],
+      ['removed', 'PDN-20-9'],
+    ]);
   });
 });
