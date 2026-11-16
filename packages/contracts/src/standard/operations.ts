@@ -16,6 +16,7 @@ import {
   AuthorityFunctionSchema,
   AuthorityMessageRequestSchema,
   AuthorityProfileSchema,
+  PdnInstitutionContextSchema,
   AuthoritySessionInfoSchema,
   AuthoritySessionSchema,
   ClosureRecordSchema,
@@ -154,6 +155,7 @@ export const STANDARD_COMPONENTS = {
   AuthoritySessionInfo: AuthoritySessionInfoSchema,
   AuthorityAccountView: AuthorityAccountViewSchema,
   AuthorityProfile: AuthorityProfileSchema,
+  PdnInstitutionContext: PdnInstitutionContextSchema,
   ComplaintSummary: ComplaintSummarySchema,
   TurnSemaphore: TurnSemaphoreSchema,
   ComplaintDetail: ComplaintDetailSchema,
@@ -651,6 +653,35 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
       },
     },
     errors: ['unauthorized'],
+  },
+  {
+    operationId: 'getPdnInstitutionContext',
+    method: 'get',
+    path: ROUTES.authorityPdnInstitution('{entityId}'),
+    tag: 'Autoridad',
+    summary: 'Contexto PDN de la dependencia',
+    description:
+      'Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia.',
+    security: 'authorityBearer',
+    parameters: [
+      {
+        name: 'entityId',
+        in: 'path',
+        required: true,
+        description: 'Identificador del ente real del catálogo (PDN-EE-N).',
+        schema: { type: 'string', pattern: '^PDN-[0-9]{2}-[0-9]{1,6}$' },
+      },
+    ],
+    success: {
+      status: 200,
+      description: 'Contexto público de la institución.',
+      body: {
+        kind: 'json',
+        component: 'PdnInstitutionContext',
+        example: 'get-pdn-institution.response',
+      },
+    },
+    errors: ['unauthorized', 'bad_request'],
   },
   {
     operationId: 'listAuthorityComplaints',

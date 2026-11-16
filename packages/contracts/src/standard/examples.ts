@@ -856,6 +856,35 @@ export const STANDARD_EXAMPLES = {
   'confirm-mfa.request': { code: '781104' },
   'confirm-mfa.response': mfaConfirmResponse,
   'get-session.response': sessionInfo,
+  'get-pdn-institution.response': {
+    entityId: 'PDN-00-196',
+    status: 'live',
+    consultedAt: '2026-11-16T18:00:00.000Z',
+    directory: {
+      name: 'INSTITUTO MEXICANO DEL SEGURO SOCIAL',
+      governmentLevel: 'Federal',
+      branch: 'Ejecutivo',
+      stateCode: '00',
+      municipality: null,
+      oicControl: false,
+      tribunalControl: false,
+      reports: { s1: true, s2: true, s3: false, s6: true },
+      updatedAt: '2025-05-02T22:30:53.389Z',
+    },
+    contracting: {
+      nationalProcedures: 1060983,
+      nationalAmount: 2191658814304.28,
+      topBuyerRank: 1,
+      topBuyerAmount: 512752317381.6,
+    },
+    sources: [
+      {
+        system: 'Directorio de entes de la PDN',
+        url: 'https://cobertura.plataformadigitalnacional.org/directus/items/entes/196',
+      },
+      { system: 'S6', url: 'https://api.plataformadigitalnacional.org/s6/api/v1/summary' },
+    ],
+  },
   'list-authorities.response': [
     authorityProfile,
     {

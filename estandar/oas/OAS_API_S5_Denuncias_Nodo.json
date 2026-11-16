@@ -2090,6 +2090,131 @@
         }
       }
     },
+    "/api/v1/authority/pdn/institutions/{entityId}": {
+      "get": {
+        "operationId": "getPdnInstitutionContext",
+        "tags": ["Autoridad"],
+        "summary": "Contexto PDN de la dependencia",
+        "description": "Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia.",
+        "security": [{ "authorityBearer": [] }],
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del ente real del catálogo (PDN-EE-N).",
+            "schema": { "type": "string", "pattern": "^PDN-[0-9]{2}-[0-9]{1,6}$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contexto público de la institución.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PdnInstitutionContext" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-pdn-institution.response.json`.",
+                    "value": {
+                      "entityId": "PDN-00-196",
+                      "status": "live",
+                      "consultedAt": "2026-11-16T18:00:00.000Z",
+                      "directory": {
+                        "name": "INSTITUTO MEXICANO DEL SEGURO SOCIAL",
+                        "governmentLevel": "Federal",
+                        "branch": "Ejecutivo",
+                        "stateCode": "00",
+                        "municipality": null,
+                        "oicControl": false,
+                        "tribunalControl": false,
+                        "reports": { "s1": true, "s2": true, "s3": false, "s6": true },
+                        "updatedAt": "2025-05-02T22:30:53.389Z"
+                      },
+                      "contracting": {
+                        "nationalProcedures": 1060983,
+                        "nationalAmount": 2191658814304.28,
+                        "topBuyerRank": 1,
+                        "topBuyerAmount": 512752317381.6
+                      },
+                      "sources": [
+                        {
+                          "system": "Directorio de entes de la PDN",
+                          "url": "https://cobertura.plataformadigitalnacional.org/directus/items/entes/196"
+                        },
+                        {
+                          "system": "S6",
+                          "url": "https://api.plataformadigitalnacional.org/s6/api/v1/summary"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: La solicitud no cumple el esquema o sus parámetros no son válidos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              },
+              "WWW-Authenticate": {
+                "description": "Siempre `Bearer`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/authority/complaints": {
       "get": {
         "operationId": "listAuthorityComplaints",
@@ -7878,6 +8003,151 @@
         "required": ["authorityId", "name", "isInbox"],
         "additionalProperties": false,
         "description": "Autoridad alojada en el nodo."
+      },
+      "PdnInstitutionContext": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "description": "Identificador del ente en el catálogo (PDN-EE-N)."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["live", "cached", "unavailable", "disabled"],
+            "description": "live: consultado ahora; cached: copia guardada; unavailable: sin conexión con la PDN y sin copia; disabled: el nodo no consulta la PDN."
+          },
+          "consultedAt": {
+            "description": "Fecha y hora (ISO 8601) de la consulta a la PDN.",
+            "type": "string",
+            "nullable": true
+          },
+          "directory": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Nombre oficial en el directorio de la PDN."
+              },
+              "governmentLevel": {
+                "type": "string",
+                "description": "Ámbito: Federal, Estatal o Municipal."
+              },
+              "branch": {
+                "description": "Poder u órgano (Ejecutivo, Autónomo…).",
+                "type": "string",
+                "nullable": true
+              },
+              "stateCode": {
+                "description": "Clave INEGI de la entidad.",
+                "type": "string",
+                "nullable": true
+              },
+              "municipality": {
+                "description": "Clave del municipio, si aplica.",
+                "type": "string",
+                "nullable": true
+              },
+              "oicControl": {
+                "type": "boolean",
+                "description": "El directorio marca control de órgano interno de control."
+              },
+              "tribunalControl": {
+                "type": "boolean",
+                "description": "El directorio marca control de tribunal."
+              },
+              "reports": {
+                "type": "object",
+                "properties": {
+                  "s1": {
+                    "type": "boolean",
+                    "description": "Reporta declaraciones patrimoniales (S1)."
+                  },
+                  "s2": {
+                    "type": "boolean",
+                    "description": "Reporta servidores públicos en contrataciones (S2)."
+                  },
+                  "s3": {
+                    "type": "boolean",
+                    "description": "Reporta servidores públicos sancionados (S3)."
+                  },
+                  "s6": {
+                    "type": "boolean",
+                    "description": "Reporta contrataciones públicas (S6)."
+                  }
+                },
+                "required": ["s1", "s2", "s3", "s6"],
+                "additionalProperties": false,
+                "description": "Sistemas de la PDN a los que reporta la institución."
+              },
+              "updatedAt": {
+                "description": "Última actualización del registro en el directorio.",
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "name",
+              "governmentLevel",
+              "branch",
+              "stateCode",
+              "municipality",
+              "oicControl",
+              "tribunalControl",
+              "reports",
+              "updatedAt"
+            ],
+            "additionalProperties": false,
+            "description": "Registro del directorio de entes de la PDN.",
+            "nullable": true
+          },
+          "contracting": {
+            "type": "object",
+            "properties": {
+              "nationalProcedures": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Procedimientos de contratación en todo el S6."
+              },
+              "nationalAmount": {
+                "type": "number",
+                "description": "Monto total en todo el S6 (pesos)."
+              },
+              "topBuyerRank": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Lugar de la institución entre los 10 compradores con más monto del S6, o null si no está.",
+                "nullable": true
+              },
+              "topBuyerAmount": {
+                "description": "Monto contratado por la institución si está entre los 10.",
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "required": ["nationalProcedures", "nationalAmount", "topBuyerRank", "topBuyerAmount"],
+            "additionalProperties": false,
+            "description": "Contexto de contrataciones públicas (S6).",
+            "nullable": true
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "system": { "type": "string", "description": "Fuente: directorio de entes o S6." },
+                "url": { "type": "string", "description": "Dirección pública consultada." }
+              },
+              "required": ["system", "url"],
+              "additionalProperties": false
+            },
+            "description": "Fuentes públicas consultadas."
+          }
+        },
+        "required": ["entityId", "status", "consultedAt", "directory", "contracting", "sources"],
+        "additionalProperties": false,
+        "description": "Contexto público y agregado de la institución en la PDN. No identifica a ninguna persona."
       },
       "ComplaintSummary": {
         "type": "object",

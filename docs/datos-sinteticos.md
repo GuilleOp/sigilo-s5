@@ -6,6 +6,11 @@ El repositorio no contiene datos personales reales ni información reservada o c
 exigen las bases del Datatón. Esto aplica a código, pruebas, semillas, capturas, videos, issues y
 documentación.
 
+Los datos públicos de **instituciones** sí pueden ser reales: el catálogo de entes de la PDN, los
+municipios del INEGI y la ficha [Contexto PDN de la dependencia](contexto-pdn.md), que consulta en
+vivo el directorio de entes y el S6. Las **personas** son siempre sintéticas: no se usan nombres
+reales, ni truncados ni con la etiqueta «ficticio», porque seguirían siendo reconocibles.
+
 ## Convenciones
 
 | Tipo                   | Convención                                                                                                                                   | Ejemplo                                        |

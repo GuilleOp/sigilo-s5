@@ -23,6 +23,7 @@ import { AuditSignalsPanel } from './AuditSignalsPanel.tsx';
 import { ConflictPanel } from './ConflictPanel.tsx';
 import { LocalLawReferences } from './LocalLawReferences.tsx';
 import { ContextSheetPanel } from './ContextSheetPanel.tsx';
+import { PdnInstitutionPanel } from './PdnInstitutionPanel.tsx';
 import { CorroborationPanel } from './CorroborationPanel.tsx';
 import { TransferPanel } from './TransferPanel.tsx';
 import { FederalFundsPanel } from './FederalFundsPanel.tsx';
@@ -171,6 +172,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <dd className="review-text">{facts.description}</dd>
       </dl>
       {detail.contextSheet !== undefined && <ContextSheetPanel sheet={detail.contextSheet} />}
+      <PdnInstitutionPanel session={session} entityId={facts.entityId} />
       {detail.conflictReview !== undefined && (
         <ConflictPanel
           session={session}

@@ -23,6 +23,7 @@ import { runNodeAudit } from './services/audit-service.ts';
 import { syncCorroboration } from './services/corroboration-service.ts';
 import { recheckPendingSanctions } from './services/pdn-context.ts';
 import { openPdnSources } from './services/pdn-sources.ts';
+import { createPdnInstitutionService, isPdnPublicEnabled } from './services/pdn-institution.ts';
 import { loadAuthorityRegistry } from './security/authority-registry.ts';
 import { loadOrCreateMfaKey } from './security/mfa-secrets.ts';
 import { acquireServerLock, refreshServerLock } from './server-lock.ts';
@@ -143,6 +144,7 @@ function start(): void {
     evidenceRetentionDays: config.evidenceRetentionDays,
     ...(network === undefined ? {} : { network }),
     ...(pdn.provider === null ? {} : { pdnSources: pdn.provider }),
+    ...(isPdnPublicEnabled(process.env) ? { pdnInstitutions: createPdnInstitutionService() } : {}),
     ...(corroboration === undefined ? {} : { corroboration }),
     isAuditEnabled: config.isAuditEnabled,
     oauth,

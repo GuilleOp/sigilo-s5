@@ -19,6 +19,7 @@ export * from './procedure.ts';
 export * from './network.ts';
 export * from './pdn-oauth.ts';
 export * from './pdn-statistics.ts';
+export * from './pdn-institution.ts';
 export * from './audit.ts';
 export * from './corroboration-key.ts';
 export * from './corroboration.ts';

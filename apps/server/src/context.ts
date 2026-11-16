@@ -72,6 +72,7 @@ import {
 import { MAX_EVIDENCE_BYTES, MAX_EVIDENCE_ITEMS } from '@sigilo/contracts';
 import type { ChallengeUploads } from './services/evidence-service.ts';
 import type { NoiseUnit } from './services/open-data.ts';
+import type { PdnInstitutionService } from './services/pdn-institution.ts';
 import type { EvidenceStore } from './storage/evidence-store.ts';
 
 export type { RequestLogEntry } from './http/request-log.ts';
@@ -125,6 +126,11 @@ export interface AppDeps {
   network?: NodeNetwork;
   /** Fuentes de la PDN para la ficha de contexto, el conflicto y las sanciones; ausente, sin ficha. */
   pdnSources?: PdnSourcesProvider;
+  /**
+   * Contexto público de las dependencias en la PDN (`SIGILO_PDN_PUBLIC=1`); ausente, la ficha dice
+   * que el nodo no consulta la PDN.
+   */
+  pdnInstitutions?: PdnInstitutionService;
   /** Índice de corroboración ciega; ausente, la corroboración no se registra. */
   corroboration?: CorroborationConfig;
   /** Corre el auditor en la tarea periódica (por omisión, sí). */

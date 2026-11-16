@@ -27,6 +27,9 @@ export const ROUTES = {
   authSession: `${API_PREFIX}/auth/session`,
   /** `GET`: autoridades alojadas en el nodo (para turnar y reasignar). */
   authorityAuthorities: `${API_PREFIX}/authority/authorities`,
+  /** `GET`: contexto público de una institución en la PDN (directorio de entes y S6). */
+  authorityPdnInstitution: (entityId: string) =>
+    `${API_PREFIX}/authority/pdn/institutions/${entityId}`,
   /** `GET ?offset=&limit=`: listado paginado (100 por omisión, 500 como máximo). */
   authorityComplaints: `${API_PREFIX}/authority/complaints`,
   authorityComplaint: COMPLAINT,

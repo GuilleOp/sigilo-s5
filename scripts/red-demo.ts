@@ -139,6 +139,8 @@ function nodeEnv(nodeId: DemoNodeId, dayZero: string): string {
     'SIGILO_ROUTER_URL=http://enrutador:8790',
     'SIGILO_CORROBORATION_INDEX_URL=http://indice:8792',
     'SIGILO_PDN_SOURCES=synthetic',
+    '# Ficha «Contexto PDN de la dependencia» con datos públicos reales (directorio de entes y S6).',
+    'SIGILO_PDN_PUBLIC=1',
     'SIGILO_DEMO=1',
     `SIGILO_DEMO_DAY_ZERO=${dayZero}`,
     '# Segundo factor opcional: las cuentas con factor inscrito lo piden; las demás entran sin él.',

@@ -1,6 +1,7 @@
 // Operaciones tipadas de la API v1. Todas las rutas salen de `ROUTES`; ninguna se escribe a mano.
 import {
   AuthorityProfileSchema,
+  PdnInstitutionContextSchema,
   CompetenceSaveResponseSchema,
   CompetenceViewSchema,
   AuthoritySessionInfoSchema,
@@ -39,6 +40,7 @@ import type {
   CompetenceSaveResponse,
   CompetenceView,
   AuthorityProfile,
+  PdnInstitutionContext,
   AuthoritySessionInfo,
   LoginResponse,
   LoginSessionStep,
@@ -160,6 +162,8 @@ export interface SigiloApi {
   logout(token: string): Promise<void>;
   /** Autoridades del nodo, para turnar y reasignar. */
   listAuthorities(token: string): Promise<AuthorityProfile[]>;
+  /** Contexto público de la dependencia en la PDN (directorio de entes y S6). */
+  getPdnInstitution(token: string, entityId: string): Promise<PdnInstitutionContext>;
   /** Página del listado de la autoridad (`offset` desde 0, `limit` hasta 500). */
   listComplaints(token: string, offset?: number, limit?: number): Promise<ComplaintSummary[]>;
   getComplaint(token: string, folio: string): Promise<ComplaintDetail>;
@@ -299,6 +303,12 @@ export function createSigiloApi(
     },
     listAuthorities: (token) =>
       client.json(ROUTES.authorityAuthorities, AuthorityListSchema, { bearer: token }),
+    getPdnInstitution: (token, entityId) =>
+      client.json(
+        ROUTES.authorityPdnInstitution(encodeURIComponent(entityId)),
+        PdnInstitutionContextSchema,
+        { bearer: token },
+      ),
     listComplaints: (token, offset = 0, limit = AUTHORITY_PAGE_SIZE) =>
       client.json(ROUTES.authorityComplaints, SummaryListSchema, {
         bearer: token,

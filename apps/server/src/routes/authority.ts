@@ -50,6 +50,7 @@ import {
 import { importClosures } from '../services/closure-import-service.ts';
 import { confirmTransfer, transferComplaint } from '../services/transfer-service.ts';
 import { buildComplaintDetail } from '../services/views.ts';
+import { disabledPdnInstitution } from '../services/pdn-institution.ts';
 import { listedWithSemaphore } from '../services/turn-semaphore.ts';
 import { MAX_INBOX_BODY_BYTES } from './network.ts';
 
@@ -169,6 +170,18 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   });
 
   app.get(ROUTES.authorityAuthorities, (c) => c.json(ctx.authorities.listAuthorities()));
+
+  // Contexto público de la dependencia en la PDN. Seguridad: solo el identificador público del ente
+  // sale del nodo; nada de la denuncia.
+  app.get(ROUTES.authorityPdnInstitution(':entityId'), async (c) => {
+    const entityId = c.req.param('entityId') ?? '';
+    if (!/^PDN-\d{2}-\d{1,6}$/.test(entityId)) throw new ApiFailure('bad_request');
+    const service = ctx.deps.pdnInstitutions;
+    if (service === undefined) return c.json(disabledPdnInstitution(entityId));
+    const context = await service.context(entityId);
+    if (context === null) throw new ApiFailure('bad_request');
+    return c.json(context);
+  });
 
   // Paginación simple por desplazamiento: `offset` (0 por omisión) y `limit` (de 1 a 500).
   app.get(ROUTES.authorityComplaints, (c) => {

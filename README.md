@@ -372,6 +372,7 @@ Adopción y datos:
 - [Guía para conectar un estado](docs/guia-conecta-tu-estado.md) (conceptos)
 - [Datos de la PDN: proceso y productos agregados](datos/README.md)
 - [Datos sintéticos](docs/datos-sinteticos.md)
+- [Contexto PDN de la dependencia (datos públicos en vivo)](docs/contexto-pdn.md)
 - [Accesibilidad](docs/accesibilidad.md)
 
 Proyecto:

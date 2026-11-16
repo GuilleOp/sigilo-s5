@@ -7,6 +7,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Agregado
 
+- **Contexto PDN de la dependencia** (`docs/contexto-pdn.md`): con `SIGILO_PDN_PUBLIC=1` el nodo
+  consulta en vivo el directorio de entes de la PDN y el S6 (sin credenciales) para la ficha del
+  panel. Solo usa datos institucionales, con caché de 24 h y sin enviar nada de la denuncia.
+  `GET /api/v1/authority/pdn/institutions/{entityId}`.
 - **Ciclo de vida legal completo** (Estándar S5 0.4.0, `docs/ciclo-de-vida-legal.md`): admisión,
   prevención y abstención del informe; emplazamiento y audiencia inicial; dos ramas (no grave con la
   substanciadora y resolutora, grave o de particulares en el Tribunal); firmeza, ejecución y
