@@ -175,8 +175,8 @@ denunciante no ve esos dos plazos hasta que califiques.
   investigación (antes, el sistema no se lo permite).
 - **Desde aquí ya no avanzas etapas.** Verás «Tu función no tiene acciones del trámite en este
   estado.» u opciones reducidas. Sí puedes: pedir medidas cautelares, dar vista al MP, registrar la
-  inconformidad firmada, registrar una apelación o revisión, escribir a la persona y aprobar
-  aperturas.
+  inconformidad firmada, registrar una apelación o revisión, **registrar la falta reclasificada si
+  el Tribunal lo ordena** (5.16), escribir a la persona y aprobar aperturas.
 
 ### 5.8 Pedir una medida cautelar
 
@@ -328,7 +328,32 @@ autoridad», «Nota pública para la persona» y «Turnar a otro nodo». Dentro 
 También puedes registrar una **apelación** o **revisión** de la sentencia del Tribunal («La
 autoridad investigadora» como quien la presenta, en revisión; LGRA, arts. 215 a 221).
 
-### 5.16 Descartar pruebas (solo spam)
+### 5.16 Registrar la falta reclasificada por orden del Tribunal
+
+Cuando el Tribunal recibe el expediente y considera que los hechos son de **otra falta grave**, te
+ordena reclasificarla y tienes **3 días hábiles** (LGRA, art. 209, fr. II). Si no fuera grave, el
+Tribunal no te lo pide: devuelve el expediente a la substanciadora.
+
+1. La denuncia sigue en tu bandeja. En la tarjeta «Trámite» verás «Orden de reclasificar del
+   Tribunal (…). La autoridad investigadora tiene hasta el … para registrar la falta reclasificada
+   (LGRA, art. 209 fr. II).» y el plazo «Reclasificar la falta».
+2. «Acción»: **«Registrar la falta reclasificada (orden del Tribunal)»** (el campo lo recuerda con
+   una ayuda).
+3. «Falta grave a la que se reclasifica»: elige la conducta. La lista es el catálogo de conductas
+   del estándar, solo faltas graves y de particulares, sin la vigente.
+4. «Fundamento legal» (20+ caracteres) y «Acuerdo de reclasificación en versión pública» (50+, sin
+   datos personales). «Nota pública (opcional)». → «Aplicar».
+
+- **Qué cambia:** la «Calificación» pasa a ser la nueva (falta grave, con tu fundamento y tu
+  acuerdo; el auditor la revisa como las demás). El detalle de la denuncia muestra «Conducta
+  reclasificada por orden del Tribunal»; la conducta que eligió la persona no se borra. El
+  expediente sigue en «Recibido en el Tribunal», que continúa con la admisión de pruebas.
+- **La persona ve** en su seguimiento: «La autoridad investigadora reclasificó la falta como «…» por
+  orden del Tribunal (LGRA, art. 209 fr. II).»
+- Solo una vez por orden, solo con la orden pendiente y solo a una conducta distinta de la vigente;
+  si no, el nodo responde `409`. Si dejas pasar los 3 dh, el Tribunal sigue con el procedimiento.
+
+### 5.17 Descartar pruebas (solo spam)
 
 «Descartar pruebas» borra para siempre los archivos («No se puede deshacer»). Úsalo solo con
 envíos sin valor. La persona lo ve y queda en la bitácora pública.
@@ -339,6 +364,7 @@ envíos sin valor. La persona lo ve y queda en la bitácora pública.
 | ---------------------------------------------------------- | ---------------------------------------------------------------------- |
 | «no corresponde a … en el directorio firmado»              | Elegiste la llave de otra autoridad                                    |
 | «Tu función no tiene acciones del trámite en este estado.» | La etapa ya es de la substanciadora o del Tribunal, o te excusaste     |
+| No aparece «Registrar la falta reclasificada»              | El Tribunal no lo ha ordenado, o ya la registraste                     |
 | No sale «Abrir identidad aprobada»                         | Falta la aprobación de otra cuenta                                     |
 | «La identidad de esta denuncia se selló con otra llave…»   | Pasó por el buzón general; no se puede abrir                           |
 | «Turnar a otro nodo» se niega                              | Es sellada: reasigna dentro del nodo                                   |
@@ -362,6 +388,7 @@ envíos sin valor. La persona lo ve y queda en la bitácora pública.
 - **IPRA:** Informe de Presunta Responsabilidad Administrativa.
 - **Calificación:** decidir si la falta es grave o no grave.
 - **Prevención:** la substanciadora pide corregir el IPRA.
+- **Reclasificar:** cambiar la conducta del informe a otra falta grave, por orden del Tribunal.
 - **Medida cautelar:** protege la investigación (por ejemplo, suspensión temporal).
 - **Vista al MP:** aviso a la fiscalía de que puede haber delito.
 - **Excusa:** apartarte por conflicto de interés.
@@ -383,6 +410,7 @@ flowchart TD
   G -- "Sí" --> I["Calificar la falta"]
   I --> J["Presentar el IPRA"]
   J --> K["Pasa a la substanciadora"]
+  K -. "el Tribunal lo ordena" .-> R["Registrar la falta reclasificada<br/>(3 dh)"]
   I -. "no grave" .-> L["Notificar por el buzón<br/>registrar inconformidad firmada"]
   J -. "opcional" .-> M["Pedir una medida cautelar"]
   E -. "posible delito" .-> N["Dar vista al Ministerio Público"]

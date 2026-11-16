@@ -16,8 +16,9 @@ Especializada del TFJA, ficticia; alzada: Tercera Sección).
 - **Resuelves los recursos** que te tocan: **inconformidad** contra la calificación de no grave o la
   abstención (arts. 102 a 110), **apelación** (arts. 215 a 219) y **revisión** (arts. 220 y 221),
   estas dos en la alzada.
-- Resuelves las **medidas cautelares** en tus etapas (arts. 123 a 129) y puedes **ordenar
-  reclasificar** la falta o **devolver** el expediente si no es grave (art. 209, fr. II).
+- Resuelves las **medidas cautelares** en tus etapas (arts. 123 a 129) y puedes **ordenar a la
+  autoridad investigadora que reclasifique** la falta si es otra falta grave, o **devolver** el
+  expediente si no es grave (art. 209, fr. II). Tú ordenas; quien reclasifica es la investigadora.
 - **Tu función de cuenta es `court`.** Nunca se combina con otra. Solo actúas en tus etapas: desde
   el expediente enviado hasta tu sentencia y su firmeza.
 - **No recibes denuncias.** Recibes el expediente que te envía la substanciadora. Por eso no
@@ -65,14 +66,34 @@ Trabajas en la tarjeta **«Trámite»**: «Acción» → «Aplicar».
 - **Solo en este momento** puedes también:
   - **«Devolver a la autoridad substanciadora: no es falta grave»** (pide «Fundamento legal»). La
     substanciadora sigue por la vía no grave.
-  - **«Ordenar reclasificar la falta (Tribunal)»** (con fundamento; 3 dh para reclasificar).
+  - **«Ordenar reclasificar la falta (Tribunal)»** (con fundamento), si los hechos son de otra falta
+    grave. La autoridad investigadora tiene **3 dh** para registrar la falta reclasificada.
 
 «Ordenar reclasificar la falta (Tribunal)» está en el campo **«Acción»**, no en «Etapa», y solo
 mientras la etapa es «Recibido en el Tribunal» (art. 209, fr. II): el campo «Acción» lo recuerda con
 una ayuda. Después de admitir las pruebas ya no aparece.
 
-> **Limitación conocida del prototipo.** Al ordenar la reclasificación corre el plazo de 3 dh, pero
-> la investigadora todavía no tiene una acción para registrar la falta reclasificada.
+**Qué pasa después de tu orden:**
+
+1. En la tarjeta «Trámite» verás «Orden de reclasificar del Tribunal (…). La autoridad
+   investigadora tiene hasta el … para registrar la falta reclasificada (LGRA, art. 209 fr. II).» y
+   el plazo «Reclasificar la falta» en la lista de plazos. Mientras está pendiente no puedes ordenar
+   otra.
+2. **Mientras corren esos 3 dh no admites las pruebas:** «Admitir las pruebas en el Tribunal» no
+   aparece en «Etapa» y el panel dice: «Admitir las pruebas en el Tribunal»: La autoridad
+   investigadora tiene la orden de reclasificar la falta (si la registra antes, podrás admitir las
+   pruebas en cuanto lo haga); su plazo corre hasta el …. Podrás hacerlo a partir del … (LGRA, art.
+   209, fracc. II). Por la API, el nodo responde `409` con un aviso parecido.
+3. Cuando la investigadora la registra (manual 03, 5.16), la línea de tiempo dice «La autoridad
+   investigadora reclasificó la falta» y la tarjeta muestra «Falta reclasificada: …» con su
+   fundamento; la «Calificación» pasa a ser la nueva, con su acuerdo. El expediente sigue en
+   «Recibido en el Tribunal» y los 15 dh para admitir las pruebas corren desde ese día.
+4. Si vencen los 3 dh sin que la registre, la tarjeta lo dice y puedes seguir con el procedimiento:
+   «Admitir las pruebas en el Tribunal» vuelve a aparecer.
+
+> **Limitación conocida del prototipo.** Si la investigadora se niega a reclasificar (la ley le pide
+> que te lo diga, fundando su negativa), no hay una acción para registrarlo: lo comunica fuera del
+> sistema y tú sigues al vencer los 3 dh.
 
 ### 5.2 Pruebas, alegatos y cierre
 
@@ -175,7 +196,8 @@ lee como registrado por otra autoridad.
 | No veo el buzón ni la tarjeta de identidad                 | Es a propósito                                                                                                          |
 | «Tu función no tiene acciones del trámite en este estado.» | El expediente no está en tus etapas                                                                                     |
 | No aparece «Declarar la sentencia firme»                   | Corren la apelación o la revisión (lee «Podrás hacerlo a partir del …»), o hay un recurso pendiente: resuélvelo primero |
-| No aparece «Ordenar reclasificar la falta»                 | Ya pasaste de «Recibido en el Tribunal»                                                                                 |
+| No aparece «Ordenar reclasificar la falta»                 | Ya pasaste de «Recibido en el Tribunal», o ya hay una orden pendiente                                                   |
+| No aparece «Admitir las pruebas en el Tribunal»            | Hay una orden de reclasificar pendiente: espera a la investigadora o a que venzan sus 3 dh                              |
 | No aparece «Cerrar la instrucción en el Tribunal»          | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                                                       |
 | No aparece «Cerrar con fundamento» después de la sentencia | Es a propósito: declara la sentencia firme; la substanciadora cierra                                                    |
 | «El código no es válido o ya se usó…»                      | Espera el código siguiente                                                                                              |
@@ -184,14 +206,15 @@ lee como registrado por otra autoridad.
 
 - La apelación y la revisión se cuentan desde la sentencia, no desde su notificación.
 - La reclasificación solo está disponible al recibir el expediente.
-- La investigadora todavía no registra la falta reclasificada después de tu orden.
+- La negativa fundada de la investigadora a reclasificar no tiene acción propia en el sistema.
 - La comparecencia de las partes y la presentación de escritos ocurren fuera del sistema.
 
 ## 8. Glosario breve
 
 - **Sala Especializada:** primera instancia en responsabilidades administrativas graves.
 - **Alzada:** sección de la Sala Superior que resuelve la apelación y la revisión.
-- **Reclasificar:** ordenar que la falta se califique de otra forma.
+- **Reclasificar:** cambiar la conducta del informe a otra falta grave. Tú lo ordenas; la
+  autoridad investigadora lo hace en 3 dh.
 - **Firmeza:** la sentencia ya no admite recurso.
 - **Inconformidad:** recurso de quien denunció contra la no grave o la abstención.
 
@@ -202,7 +225,9 @@ flowchart TD
   A["Envío del expediente al Tribunal"] --> B["Recibir el expediente en el Tribunal"]
   B --> C{"¿Es grave?"}
   C -- "No" --> D["Devolver a la substanciadora"]
-  C -- "Dudas" --> E["Ordenar reclasificar la falta"]
+  C -- "Otra falta grave" --> E["Ordenar reclasificar la falta"]
+  E --> E2["La investigadora registra la falta<br/>reclasificada (3 dh)"]
+  E2 --> F
   C -- "Sí" --> F["Admitir las pruebas en el Tribunal"]
   F --> G["Abrir los alegatos"]
   G --> H["Cerrar la instrucción"]
