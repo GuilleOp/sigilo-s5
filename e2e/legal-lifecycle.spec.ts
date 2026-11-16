@@ -1,7 +1,8 @@
 // Ciclo de vida legal en el navegador (estándar 0.4.0): una falta grave va del Informe de Presunta
 // Responsabilidad Administrativa al Tribunal, que la recibe con su propia cuenta; una abstención se
 // impugna con el aviso de inconformidad y el escrito firmado que registra la autoridad; y la vista
-// al Ministerio Público abre la vía penal en paralelo, sin detener la administrativa. La persona
+// al Ministerio Público abre la vía penal en paralelo, sin detener la administrativa; el Tribunal
+// registra la notificación de la sentencia y desde ahí corren la apelación y la firmeza. La persona
 // denunciante ve cada etapa en lenguaje sencillo. Todo con axe.
 import { expectNoAccessibilityViolations } from './support/accessibility.ts';
 import {
@@ -397,4 +398,76 @@ test('solo la fiscalía avanza la vía penal; el buzón turna solo a quien puede
   await panel.getByTestId('apply-procedure').click();
   await expect(panel.getByTestId('procedure-criminal-stage')).toContainText('Investigación penal');
   await expectNoAccessibilityViolations(page, 'panel de la fiscalía');
+});
+
+test('sentencia: el Tribunal registra la notificación y desde ahí corren la apelación y la firmeza', async ({
+  page,
+  request,
+}) => {
+  const prepared = await prepareSealedComplaint(
+    request,
+    'Persona Ficticia Notificada',
+    syntheticFacts(),
+  );
+  const { folio, words } = await seedPreparedComplaint(request, prepared);
+  await qualifyAndFile(request, folio, 'serious');
+  for (const stage of ['report_admitted', 'summoned'] as const) {
+    await applyProcedure(request, E2E_ACCOUNTS.iffeSubstantiation, folio, {
+      action: 'advance_stage',
+      stage,
+    });
+  }
+  await advanceServerClockByBusinessDays(10);
+  for (const stage of ['initial_hearing', 'case_file_sent'] as const) {
+    await applyProcedure(request, E2E_ACCOUNTS.iffeSubstantiation, folio, {
+      action: 'advance_stage',
+      stage,
+    });
+  }
+  for (const stage of [
+    'court_received',
+    'court_evidence_hearing',
+    'court_closing_arguments',
+  ] as const) {
+    await applyProcedure(request, E2E_ACCOUNTS.court, folio, { action: 'advance_stage', stage });
+  }
+  await advanceServerClockByBusinessDays(6);
+  for (const stage of ['court_instruction_closed', 'court_resolution'] as const) {
+    await applyProcedure(request, E2E_ACCOUNTS.court, folio, { action: 'advance_stage', stage });
+  }
+
+  // Sin notificación no corren los recursos ni hay firmeza: el panel pide registrarla primero.
+  await loginAsAuthority(page, E2E_ACCOUNTS.court);
+  await openComplaint(page, folio);
+  const panel = page.getByTestId('procedure-panel');
+  await expect(panel.getByTestId('procedure-waits')).toContainText(
+    '«Declarar la sentencia firme»: Registra primero la notificación',
+  );
+  await expect(panel.getByTestId('procedure-deadlines')).toContainText('Notificar la resolución');
+  await panel.getByTestId('procedure-action').selectOption('record_notification');
+  await expect(panel.getByTestId('notification-fields')).toContainText(
+    'Notificación de la sentencia',
+  );
+  await expect(panel.getByTestId('notification-recipient-reporter')).toBeChecked();
+  await expectNoAccessibilityViolations(page, 'registrar la notificación');
+  await panel.getByTestId('apply-procedure').click();
+  // Notificada, corre la apelación desde ese día: la firmeza espera a que venza.
+  await expect(panel.getByTestId('procedure-waits')).toContainText(
+    'La sentencia todavía puede apelarse hasta el',
+  );
+  await expect(panel.getByTestId('procedure-deadlines')).not.toContainText(
+    'Notificar la resolución',
+  );
+
+  // La persona ve que se le notificó y desde cuándo corren los plazos.
+  await openTracking(page, folio, words);
+  await expect(page.getByTestId('procedure-steps')).toContainText('Te notificaron la sentencia');
+  await expect(page.getByTestId('procedure-steps')).toContainText('desde ahí corren los plazos');
+
+  // Vencidos los 15 días hábiles de la apelación desde la notificación, el Tribunal la declara firme.
+  await advanceServerClockByBusinessDays(16);
+  await applyProcedure(request, E2E_ACCOUNTS.court, folio, {
+    action: 'advance_stage',
+    stage: 'final',
+  });
 });

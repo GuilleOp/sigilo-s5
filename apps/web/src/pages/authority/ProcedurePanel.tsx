@@ -16,6 +16,7 @@ import {
   hasFunction,
   MAX_REASSIGNMENTS,
   MIN_ROUTING_NOTE_LENGTH,
+  NOTIFICATION_RECIPIENTS,
   PRECAUTIONARY_RULE,
   REMEDY_FILERS,
   REMEDY_OUTCOMES,
@@ -28,6 +29,7 @@ import type {
   CriminalReferralBasisKey,
   LegalClosureReason,
   LegalStage,
+  NotificationRecipient,
   PrecautionaryOutcome,
   ProcedureActionRequest,
   RemedyFiledBy,
@@ -54,6 +56,7 @@ import {
   isReferralCopy,
   legalClosureOptions,
   nextDay,
+  notificationOption,
   precautionaryDecisionMode,
   precautionaryOutcomeOptions,
   precautionaryWaitFor,
@@ -106,6 +109,7 @@ const ACTION_LABELS: Readonly<Record<ActionKey, string>> = {
   send_federal_notice: 'Dar aviso a las autoridades federales',
   register_sanction: 'Registrar la inscripción de la sanción (S3)',
   record_withdrawal: 'Registrar un desistimiento',
+  record_notification: 'Registrar la notificación',
 };
 
 /** Sanción declarada al cerrar: se verifica contra el registro público de sanciones (S3). */
@@ -205,6 +209,8 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
     if (precautionaryDecisionMode(account, detail) !== null) actions.add('decide_precautionary');
     if (remedyFilingOptions(account, detail).length > 0) actions.add('file_remedy');
     if (remedyResolutionOptions(account, detail).length > 0) actions.add('resolve_remedy');
+    // Desde la notificación corren los plazos para impugnar el acto (y, vencidos, la firmeza).
+    if (notificationOption(account, detail) !== null) actions.add('record_notification');
     // La investigadora o la substanciadora dan vista; la fiscalía es el Ministerio Público.
     if (
       procedure?.criminalStage === undefined &&
@@ -261,6 +267,10 @@ interface Draft {
   registryReference: string;
   /** Conducta a la que se reclasifica por orden del Tribunal (vacío: sin elegir). */
   offenseCode: string;
+  /** Día de la notificación; vacío: hoy según el reloj del nodo. */
+  notifiedOn: string;
+  /** A quién se notificó; `null` mientras no se toca: los de inicio del acto. */
+  recipients: NotificationRecipient[] | null;
 }
 
 function emptyDraft(detail: ComplaintDetail, session: AuthoritySession): Draft {
@@ -289,6 +299,8 @@ function emptyDraft(detail: ComplaintDetail, session: AuthoritySession): Draft {
     prosecutor: '',
     registryReference: '',
     offenseCode: '',
+    notifiedOn: '',
+    recipients: null,
   };
 }
 
@@ -300,6 +312,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
   const stages = stageOptions(account, detail);
   const filings = remedyFilingOptions(account, detail);
   const resolutions = remedyResolutionOptions(account, detail);
+  const notification = notificationOption(account, detail);
   const [authorities, setAuthorities] = useState<AuthorityProfile[]>([]);
   const [action, setAction] = useState<ActionKey | ''>(actions[0] ?? '');
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(detail, session));
@@ -311,6 +324,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
   const isMounted = useRef(true);
   const current = detail.summary.assignedAuthorityId;
   const network = useNetworkState();
+  const recipients = draft.recipients ?? notification?.defaultRecipients ?? [];
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((previous) => ({ ...previous, [key]: value }));
 
@@ -387,6 +401,8 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
         return selectedFiling?.mode ?? null;
       case 'resolve_remedy':
         return selectedResolution?.mode ?? null;
+      case 'record_notification':
+        return notification?.mode ?? null;
       default:
         return 'own';
     }
@@ -487,6 +503,14 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     }
     if (action === 'register_sanction' && draft.registryReference.trim().length < 3) {
       found['sanction-registry'] = 'Escribe la referencia de la inscripción.';
+    }
+    if (action === 'record_notification' && recipients.length === 0) {
+      found['notification-recipient-first'] = 'Elige a quién se notificó.';
+    }
+    if (action === 'record_notification' && draft.notifiedOn !== '') {
+      if (!/^\d{4}-\d{2}-\d{2}$/u.test(draft.notifiedOn)) {
+        found['notification-date'] = 'Escribe la fecha como AAAA-MM-DD.';
+      }
     }
     return found;
   }
@@ -632,6 +656,14 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
         return { action, registryReference: draft.registryReference.trim(), legalBasis };
       case 'record_withdrawal':
         return { action, note };
+      case 'record_notification':
+        return {
+          action,
+          recipients,
+          ...(draft.notifiedOn === '' ? {} : { notifiedOn: draft.notifiedOn }),
+          ...withNote,
+          ...courtRecord(),
+        };
       default:
         return null;
     }
@@ -755,18 +787,26 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           <DeadlineList deadlines={deadlines} testId="procedure-deadlines" />
           {(waits.length > 0 || canCloseLater || precautionaryHearingOn !== null) && (
             <ul className="field__hint" data-testid="procedure-waits">
-              {waits.map((wait) => (
-                <li key={wait.key}>
-                  «{wait.label}»: {wait.text}
-                  {wait.dueOn === undefined ? '' : ` hasta el ${formatDayDate(wait.dueOn)}`}. Podrás
-                  hacerlo a partir del {formatDayDate(wait.availableOn)}
-                  {wait.isRemedyWait
-                    ? ' si nadie presenta el recurso, o al registrar la resolución del recurso presentado (LGRA, art. 206).'
-                    : wait.legalBasis.length > 0
-                      ? ` (${wait.legalBasis.join('; ')}).`
-                      : '.'}
-                </li>
-              ))}
+              {waits.map((wait) =>
+                wait.availableOn === undefined ? (
+                  <li key={wait.key} data-testid="procedure-wait-notification">
+                    «{wait.label}»: {wait.text}
+                    {wait.legalBasis.length > 0 ? ` (${wait.legalBasis.join('; ')})` : ''}. Usa
+                    «Registrar la notificación»; el paso procede cuando venzan esos plazos.
+                  </li>
+                ) : (
+                  <li key={wait.key}>
+                    «{wait.label}»: {wait.text}
+                    {wait.dueOn === undefined ? '' : ` hasta el ${formatDayDate(wait.dueOn)}`}.
+                    Podrás hacerlo a partir del {formatDayDate(wait.availableOn)}
+                    {wait.isRemedyWait
+                      ? ' si nadie presenta el recurso, o al registrar la resolución del recurso presentado (LGRA, art. 206).'
+                      : wait.legalBasis.length > 0
+                        ? ` (${wait.legalBasis.join('; ')}).`
+                        : '.'}
+                  </li>
+                ),
+              )}
               {precautionaryHearingOn !== null && (
                 <li>
                   «Resolver la medida cautelar»: la vista a quienes afecta corre hasta el{' '}
@@ -1271,6 +1311,72 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                 />
               )}
             </>
+          )}
+          {action === 'record_notification' && notification !== null && (
+            <fieldset className="field" data-testid="notification-fields">
+              <legend>Notificación de {notification.act.name}</legend>
+              <p className="field__hint">
+                Desde la notificación corren los plazos para impugnar {notification.act.name} (
+                {notification.act.legalBasis.map(formatLegalReference).join('; ')}). La persona
+                notificada lo verá en su seguimiento.
+              </p>
+              <TextField
+                id="notification-date"
+                type="date"
+                label="Día de la notificación"
+                hint="Si lo dejas vacío, cuenta el día de hoy según el reloj del nodo."
+                error={errors['notification-date']}
+                value={draft.notifiedOn}
+                onChange={(event) => set('notifiedOn', event.target.value)}
+                data-testid="notification-date"
+              />
+              <fieldset className="field">
+                <legend>A quién se notificó</legend>
+                {NOTIFICATION_RECIPIENTS.filter(
+                  (item) => item.key !== 'reporter' || notification.canNotifyReporter,
+                ).map((item, index) => (
+                  <div className="choice" key={item.key}>
+                    <input
+                      type="checkbox"
+                      id={
+                        index === 0
+                          ? 'notification-recipient-first'
+                          : `notification-recipient-${item.key}`
+                      }
+                      checked={recipients.includes(item.key)}
+                      aria-invalid={
+                        index === 0 && errors['notification-recipient-first'] !== undefined
+                          ? true
+                          : undefined
+                      }
+                      onChange={(event) =>
+                        set(
+                          'recipients',
+                          event.target.checked
+                            ? [...recipients, item.key]
+                            : recipients.filter((key) => key !== item.key),
+                        )
+                      }
+                      data-testid={`notification-recipient-${item.key}`}
+                    />
+                    <label
+                      htmlFor={
+                        index === 0
+                          ? 'notification-recipient-first'
+                          : `notification-recipient-${item.key}`
+                      }
+                    >
+                      {item.name}
+                    </label>
+                  </div>
+                ))}
+                {errors['notification-recipient-first'] !== undefined && (
+                  <p className="field__error" role="alert">
+                    {errors['notification-recipient-first']}
+                  </p>
+                )}
+              </fieldset>
+            </fieldset>
           )}
           {action === 'register_sanction' && (
             <TextField

@@ -10110,6 +10110,40 @@ components:
             - legalOn
             - registryReference
           additionalProperties: false
+        notification:
+          description: 'Notificación de la resolución o de la sentencia vigente (la última registrada): desde ella corren los plazos de los recursos y, vencidos, procede la firmeza.'
+          type: object
+          properties:
+            act:
+              type: string
+              enum:
+                - qualification
+                - abstention
+                - resolution
+                - court_resolution
+              description: 'Acto notificado: qualification (calificación de no grave), abstention (abstención), resolution (resolución de la falta no grave) o court_resolution (sentencia del Tribunal).'
+            notifiedOn:
+              type: string
+              pattern: ^\d{4}-\d{2}-\d{2}$
+              description: Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.
+              examples:
+                - '2026-11-05'
+            recipients:
+              type: array
+              items:
+                type: string
+                enum:
+                  - accused
+                  - reporter
+                  - investigating_authority
+                  - other_party
+                description: 'A quién se notificó: accused (la persona señalada), reporter (la persona denunciante, si se identificó), investigating_authority (la autoridad investigadora) u other_party (otra parte o tercero).'
+              description: A quién se notificó el acto.
+          required:
+            - act
+            - notifiedOn
+            - recipients
+          additionalProperties: false
         steps:
           type: array
           items:
@@ -10335,6 +10369,31 @@ components:
               type: string
               minLength: 50
               maxLength: 20000
+            notifiedAct:
+              type: string
+              enum:
+                - qualification
+                - abstention
+                - resolution
+                - court_resolution
+              description: 'Acto notificado: qualification (calificación de no grave), abstention (abstención), resolution (resolución de la falta no grave) o court_resolution (sentencia del Tribunal).'
+            notifiedOn:
+              description: 'Día de la notificación: desde él corren los plazos para impugnar el acto.'
+              type: string
+              pattern: ^\d{4}-\d{2}-\d{2}$
+              examples:
+                - '2026-11-05'
+            notificationRecipients:
+              description: A quién se notificó el acto.
+              type: array
+              items:
+                type: string
+                enum:
+                  - accused
+                  - reporter
+                  - investigating_authority
+                  - other_party
+                description: 'A quién se notificó: accused (la persona señalada), reporter (la persona denunciante, si se identificó), investigating_authority (la autoridad investigadora) u other_party (otra parte o tercero).'
           additionalProperties: false
           description: Datos del acto registrados con el paso.
       required:
@@ -12247,7 +12306,59 @@ components:
             - action
             - note
           additionalProperties: false
-      description: 'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification (el Tribunal ordena reclasificar) y record_reclassification (la investigadora registra la falta reclasificada), request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento.'
+        - type: object
+          properties:
+            action:
+              type: string
+              const: record_notification
+            notifiedOn:
+              description: Día en que se notificó (hora del centro de México). Sin este campo, el día de hoy según el reloj del nodo. No puede ser anterior al acto ni posterior a hoy.
+              type: string
+              pattern: ^\d{4}-\d{2}-\d{2}$
+              examples:
+                - '2026-11-05'
+            recipients:
+              minItems: 1
+              maxItems: 4
+              type: array
+              items:
+                type: string
+                enum:
+                  - accused
+                  - reporter
+                  - investigating_authority
+                  - other_party
+                description: 'A quién se notificó: accused (la persona señalada), reporter (la persona denunciante, si se identificó), investigating_authority (la autoridad investigadora) u other_party (otra parte o tercero).'
+              description: A quién se notificó el acto.
+            note:
+              type: string
+              minLength: 1
+              maxLength: 2000
+              description: Nota pública de la autoridad; la persona denunciante la lee tal cual.
+            courtRecord:
+              type: object
+              properties:
+                fileNumber:
+                  type: string
+                  minLength: 3
+                  maxLength: 80
+                  pattern: ^[\p{L}\p{N}][\p{L}\p{N} /.\-_º°]*$
+                  description: Número de expediente del Tribunal.
+                legalBasis:
+                  type: string
+                  minLength: 20
+                  maxLength: 1000
+                  description: Fundamento legal y motivo; la persona denunciante lo ve.
+              required:
+                - fileNumber
+                - legalBasis
+              additionalProperties: false
+              description: 'Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento.'
+          required:
+            - action
+            - recipients
+          additionalProperties: false
+      description: 'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification (el Tribunal ordena reclasificar) y record_reclassification (la investigadora registra la falta reclasificada), request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction, record_withdrawal o record_notification (la notificación de la calificación, la abstención, la resolución o la sentencia, desde la que corren los plazos de los recursos). Cada una queda en la bitácora y, si lleva nota, en el seguimiento.'
     ProcedureState:
       type: object
       properties:
@@ -13511,7 +13622,8 @@ components:
         - federal_notice_sent
         - sanction_registered
         - withdrawal_received
-      description: 'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, orden de reclasificar (reclassification_ordered) y reclasificación de la investigadora (offense_reclassified), medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento.'
+        - notification_recorded
+      description: 'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, orden de reclasificar (reclassification_ordered) y reclasificación de la investigadora (offense_reclassified), medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción, desistimiento y notificación de la calificación, la abstención, la resolución o la sentencia (notification_recorded), desde la que corren los plazos de los recursos.'
     OffenseSeverity:
       type: string
       enum:

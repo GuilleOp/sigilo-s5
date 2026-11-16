@@ -17,6 +17,9 @@ import {
   isCriminalStage,
   isLegalClosureAllowedAt,
   LEGAL_CLOSURE_REASONS,
+  notifiableActAt,
+  NOTIFICATION_DEADLINES,
+  NOTIFICATION_FIRST_TEXT,
   PRECAUTIONARY_RULE,
   REMEDY_KINDS,
   remedyKindForFilingDeadline,
@@ -32,6 +35,8 @@ import type {
   LegalClosureReasonOption,
   LegalStage,
   OffenseOption,
+  NotifiableAct,
+  NotificationRecipient,
   ProcedureFunction,
   ProcedureView,
   RemedyFiledBy,
@@ -206,6 +211,21 @@ export function nextDay(day: string): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Indica si el paso espera la notificación de la resolución o de la sentencia: sus plazos de
+ * recursos corren desde ella y, sin notificación, no hay firmeza. El nodo decide.
+ */
+export function needsNotificationFor(
+  procedure: ProcedureView | undefined,
+  transition: Pick<StageTransition, 'afterDeadlines'>,
+): boolean {
+  if (procedure === undefined) return false;
+  const keys = transition.afterDeadlines ?? [];
+  return (
+    keys.some((key) => NOTIFICATION_DEADLINES.has(key)) && procedure.notification === undefined
+  );
+}
+
 /** Paso que la cuenta dará cuando venza un plazo, con el aviso de hasta cuándo corre. */
 export interface StageWait {
   key: AdministrativeStage;
@@ -214,8 +234,10 @@ export interface StageWait {
   text: string;
   /** Último día del plazo que se espera (no lo hay cuando se espera un mínimo). */
   dueOn?: string;
-  /** Primer día en que procede el paso. */
-  availableOn: string;
+  /** Primer día en que procede el paso; no se sabe mientras falta la notificación. */
+  availableOn?: string;
+  /** El paso espera primero la notificación del acto («Registra primero la notificación»). */
+  needsNotification?: boolean;
   /** El plazo es para presentar un recurso: si se presenta y se resuelve, no hay que esperar. */
   isRemedyWait: boolean;
   /** Fundamento del plazo, para el aviso. */
@@ -248,6 +270,18 @@ export function stageWaits(
         availableOn: nextDay(reclassificationDue),
         isRemedyWait: false,
         legalBasis: ['LGRA, art. 209, fracc. II'],
+      });
+      continue;
+    }
+    if (needsNotificationFor(procedure, transition)) {
+      const act = notifiableActAt(administrativeStage(procedure));
+      waits.push({
+        key: transition.to,
+        label: transition.label,
+        text: `${NOTIFICATION_FIRST_TEXT} ${act?.name ?? 'el acto'}`,
+        needsNotification: true,
+        isRemedyWait: false,
+        legalBasis: (act?.legalBasis ?? []).map(formatLegalReference),
       });
       continue;
     }
@@ -375,6 +409,7 @@ export function stageOptions(
     }
     // Firmeza, informe no presentado y cierre de la instrucción esperan a que venza su plazo; la
     // audiencia inicial, a que se cumpla su mínimo (se explica en el panel).
+    if (needsNotificationFor(procedure, transition)) continue;
     if (openWaitFor(procedure, transition) !== null) continue;
     if (earliestWaitFor(procedure, transition) !== null) continue;
     const mode = actingMode(account, transition.fn, procedure);
@@ -589,4 +624,49 @@ export function remedyFiler(
   chosen: RemedyFiledBy,
 ): RemedyFiledBy {
   return kind.filedBy.includes(chosen) ? chosen : (kind.filedBy[0] ?? chosen);
+}
+
+/** Notificación que la cuenta puede registrar ahora: de qué acto, cómo actúa y a quién. */
+export interface NotificationOption {
+  act: NotifiableAct;
+  mode: ActingMode;
+  /** La persona denunciante se identificó (identidad sellada): se le puede notificar. */
+  canNotifyReporter: boolean;
+  /** A quién se notifica de inicio. */
+  defaultRecipients: NotificationRecipient[];
+}
+
+/**
+ * Notificación que la cuenta puede registrar en la etapa vigente, o `null`: la de la calificación
+ * de no grave (la investigadora) o la abstención (la substanciadora) mientras no se haya notificado
+ * a la persona; la de la resolución (la substanciadora) o la sentencia (el Tribunal) mientras no
+ * se haya registrado. Desde ella corren los plazos para impugnar el acto. El nodo decide.
+ */
+export function notificationOption(
+  account: Pick<AuthorityAccountView, 'functions'>,
+  detail: ComplaintDetail,
+): NotificationOption | null {
+  const procedure = detail.procedure;
+  if (procedure === undefined || detail.summary.managementState !== 'accepted') return null;
+  const act = notifiableActAt(administrativeStage(procedure));
+  if (act === undefined) return null;
+  if (act.act === 'qualification' || act.act === 'abstention') {
+    const against = act.act === 'qualification' ? 'non_serious' : 'abstention';
+    const inconformity = procedure.inconformity;
+    if (inconformity?.against !== against || inconformity.notifiedOn !== undefined) return null;
+    if (inconformity.signedOn !== undefined) return null;
+  } else if (procedure.notification !== undefined) {
+    return null;
+  }
+  const mode = actingMode(account, act.fn, procedure);
+  if (mode === null) return null;
+  const canNotifyReporter = detail.summary.mode === 'sealed';
+  return {
+    act,
+    mode,
+    canNotifyReporter,
+    defaultRecipients: act.defaultRecipients.filter(
+      (recipient) => recipient !== 'reporter' || canNotifyReporter,
+    ),
+  };
 }

@@ -111,6 +111,23 @@ async function advance(server: TestServer, name: TestAccountName, folio: string,
   return ok(server, name, folio, { action: 'advance_stage', stage } as ProcedureActionRequest);
 }
 
+/**
+ * Registra la notificación del acto vigente (la resolución, la sentencia, la calificación o la
+ * abstención): desde ella corren los plazos para impugnarlo y, vencidos, procede la firmeza.
+ */
+async function notify(
+  server: TestServer,
+  name: TestAccountName,
+  folio: string,
+  extra: Partial<Extract<ProcedureActionRequest, { action: 'record_notification' }>> = {},
+) {
+  return ok(server, name, folio, {
+    action: 'record_notification',
+    recipients: ['accused', 'reporter'],
+    ...extra,
+  });
+}
+
 async function tracking(server: TestServer, folio: string, reporter: ReceiptKeys) {
   const response = await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter));
   return TrackingViewSchema.parse(await response.json());
@@ -289,6 +306,14 @@ describe('falta grave: del IPRA al Tribunal', () => {
       outcome: 'confirmed',
       legalBasis: BASIS,
     });
+    // Sin la notificación de la sentencia no hay firmeza, aunque el recurso ya se resolvió.
+    const unnotified = await act(server, 'court', folio, {
+      action: 'advance_stage',
+      stage: 'final',
+    });
+    expect(unnotified.status).toBe(409);
+    expect(errorMessage(unnotified.body)).toContain('Registra primero la notificación');
+    await notify(server, 'court', folio);
     await advance(server, 'court', folio, 'final');
     // Al quedar firme, el Tribunal ya no ve la denuncia; la ejecución la registra la substanciación.
     expect((await detail(server, 'court', folio)).status).toBe(404);
@@ -511,9 +536,17 @@ describe('falta no grave: la substanciadora resuelve y la revocación detiene la
       );
     }
     let view = (await detail(server, 'oicSubstantiation', folio)).body?.procedure;
-    expect(view?.deadlines.map((item) => item.key)).toEqual(
-      expect.arrayContaining(['resolution_notice', 'revocation_filing']),
-    );
+    // Antes de notificar corre la notificación; la revocación corre desde que se notifica.
+    expect(view?.deadlines.map((item) => item.key)).toContain('resolution_notice');
+    expect(view?.deadlines.map((item) => item.key)).not.toContain('revocation_filing');
+    await notify(server, 'oicSubstantiation', folio);
+    view = (await detail(server, 'oicSubstantiation', folio)).body?.procedure;
+    expect(view?.deadlines.map((item) => item.key)).toContain('revocation_filing');
+    expect(view?.deadlines.map((item) => item.key)).not.toContain('resolution_notice');
+    expect(view?.notification).toMatchObject({
+      act: 'resolution',
+      recipients: ['accused', 'reporter'],
+    });
     // La revocación solo la presenta la persona sancionada.
     expect(
       (
@@ -654,6 +687,7 @@ describe('falta no grave: la substanciadora resuelve y la revocación detiene la
       outcome: 'modified',
       legalBasis: BASIS,
     });
+    await notify(server, 'court', folio);
     expect((await advance(server, 'court', folio, 'final')).legalStage).toBe('final');
   });
 });
@@ -1308,6 +1342,21 @@ describe('firmeza y cierres conforme a los plazos (LGRA, arts. 27, 74, 101 y 206
     const { server, folio } = await toInitialHearing('serious');
     await advance(server, 'oicSubstantiation', folio, 'case_file_sent');
     for (const stage of COURT_STAGES) await advance(server, 'court', folio, stage);
+    // Sin notificación no corren los plazos de los recursos ni hay firmeza.
+    const unnotified = await act(server, 'court', folio, toFinal);
+    expect(unnotified.status).toBe(409);
+    expect(errorMessage(unnotified.body)).toContain('Registra primero la notificación');
+    expect(errorMessage(unnotified.body)).toContain('la sentencia');
+    // La substanciación no notifica la sentencia: la notifica el Tribunal.
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'record_notification',
+          recipients: ['accused'],
+        })
+      ).status,
+    ).toBe(403);
+    await notify(server, 'court', folio);
     const sentencedOn = today(server);
     const early = await act(server, 'court', folio, toFinal);
     expect(early.status).toBe(409);
@@ -1322,15 +1371,48 @@ describe('firmeza y cierres conforme a los plazos (LGRA, arts. 27, 74, 101 y 206
     expect((await advance(server, 'court', folio, 'final')).legalStage).toBe('final');
   });
 
-  it('la resolución no grave queda firme al vencer la revocación', async () => {
-    const { server, folio } = await toInitialHearing('non_serious');
+  it('la resolución no grave queda firme al vencer la revocación, contada desde la notificación', async () => {
+    const { server, folio, reporter } = await toInitialHearing('non_serious');
     for (const stage of NON_SERIOUS_STAGES)
       await advance(server, 'oicSubstantiation', folio, stage);
     const resolvedOn = today(server);
+    // Pasan 16 días hábiles sin notificar: la firmeza sigue sin proceder.
+    server.setNow(businessDaysAfter(resolvedOn, 16));
+    const unnotified = await act(server, 'oicSubstantiation', folio, toFinal);
+    expect(unnotified.status).toBe(409);
+    expect(errorMessage(unnotified.body)).toContain('Registra primero la notificación');
+    // La notificación no puede ser posterior a hoy ni anterior a la resolución.
+    const tomorrow = addBusinessDays(today(server), 1, DEFAULT_BUSINESS_CALENDAR);
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'record_notification',
+          recipients: ['accused'],
+          notifiedOn: tomorrow,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'record_notification',
+          recipients: ['accused'],
+          notifiedOn: '2020-01-02',
+        })
+      ).status,
+    ).toBe(409);
+    // Se notificó dos días hábiles después de dictarla: desde ahí corren los 15 días.
+    const notifiedOn = addBusinessDays(resolvedOn, 2, DEFAULT_BUSINESS_CALENDAR);
+    await notify(server, 'oicSubstantiation', folio, { notifiedOn });
     const early = await act(server, 'oicSubstantiation', folio, toFinal);
     expect(early.status).toBe(409);
     expect(errorMessage(early.body)).toContain('recurso de revocación hasta el');
-    server.setNow(businessDaysAfter(resolvedOn, 16));
+    // La persona denunciante ve que se le notificó y desde cuándo corren los plazos.
+    const seen = await tracking(server, folio, reporter);
+    const step = seen.procedure?.steps.find((item) => item.action === 'notification_recorded');
+    expect(step?.title).toContain('Te notificaron la resolución');
+    expect(step?.explanation).toContain('desde ahí corren los plazos');
+    server.setNow(businessDaysAfter(notifiedOn, 16));
     expect((await advance(server, 'oicSubstantiation', folio, 'final')).legalStage).toBe('final');
   });
 
@@ -1359,7 +1441,8 @@ describe('firmeza y cierres conforme a los plazos (LGRA, arts. 27, 74, 101 y 206
       outcome: 'confirmed',
       legalBasis: BASIS,
     });
-    // Con la revocación resuelta, la firmeza no espera el resto del plazo.
+    // Con la revocación resuelta, la firmeza no espera el resto del plazo (sí la notificación).
+    await notify(server, 'oicSubstantiation', folio);
     await advance(server, 'oicSubstantiation', folio, 'final');
     const sanctioned: ProcedureActionRequest = {
       action: 'close',
@@ -1555,6 +1638,7 @@ describe('audiencia inicial y cierre de la instrucción conforme a sus plazos (L
       expect(errorMessage(closed.body)).toContain('no se cierra en el Tribunal');
     }
     // Firme la sentencia de sobreseimiento, la autoridad que ejecuta cierra con ese motivo.
+    await notify(server, 'court', folio, { recipients: ['accused'] });
     server.setNow(businessDaysAfter(today(server), 16));
     await advance(server, 'court', folio, 'final');
     const closed = await ok(server, 'oicSubstantiation', folio, {
@@ -1660,5 +1744,125 @@ describe('migración 19', () => {
         .get()?.['legal_stage'],
     ).toBe('evidence_hearing');
     expect(openDatabase(':memory:')).toBeDefined();
+  });
+});
+
+describe('registrar la notificación (LGRA, arts. 102, 103, 208 fr. XI y 209 fr. V)', () => {
+  it('la investigadora notifica la calificación de no grave: desde ahí corre la inconformidad', async () => {
+    const { server, folio, reporter } = await setup(undefined, 'LGRA-50');
+    await ok(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna al órgano interno de control del ente (nota sintética).',
+    });
+    await ok(server, 'oicIntake', folio, { action: 'accept' });
+    await advance(server, 'oicInvestigator', folio, 'investigation');
+    // Sin acto que notificar, no procede.
+    expect(
+      (
+        await act(server, 'oicInvestigator', folio, {
+          action: 'record_notification',
+          recipients: ['reporter'],
+        })
+      ).status,
+    ).toBe(409);
+    await ok(server, 'oicInvestigator', folio, {
+      action: 'advance_stage',
+      stage: 'qualification',
+      qualification: qualification('non_serious'),
+    });
+    // La notifica quien califica, no la substanciación.
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'record_notification',
+          recipients: ['reporter'],
+        })
+      ).status,
+    ).toBe(403);
+    const notifiedOn = today(server);
+    await notify(server, 'oicInvestigator', folio, { recipients: ['reporter'] });
+    const seen = await tracking(server, folio, reporter);
+    expect(seen.procedure?.inconformity?.notifiedOn).toBe(notifiedOn);
+    expect(seen.procedure?.qualification?.appealDueOn).toBeDefined();
+    expect(seen.procedure?.deadlines.map((item) => item.key)).toContain('appeal_filing');
+    const step = seen.procedure?.steps.find((item) => item.action === 'notification_recorded');
+    expect(step?.title).toContain('Te notificaron la calificación de falta no grave');
+  });
+
+  it('la substanciadora notifica la abstención y el cierre espera los 5 días hábiles', async () => {
+    const { server, folio } = await toReportFiled('non_serious');
+    await ok(server, 'oicSubstantiation', folio, {
+      action: 'advance_stage',
+      stage: 'abstention',
+      legalBasis: BASIS,
+      agreement: SYNTHETIC_AGREEMENT,
+    });
+    const closeAbstention: ProcedureActionRequest = {
+      action: 'close',
+      reason: 'attended',
+      legalOutcome: 'abstention',
+      legalBasis: 'LGRA, art. 101: abstención no impugnada (sintético).',
+      agreement: SYNTHETIC_AGREEMENT,
+    };
+    const notifiedOn = today(server);
+    await notify(server, 'oicSubstantiation', folio, { recipients: ['reporter'] });
+    const open = await act(server, 'oicSubstantiation', folio, closeAbstention);
+    expect(open.status).toBe(409);
+    expect(errorMessage(open.body)).toContain('todavía puede inconformarse');
+    server.setNow(businessDaysAfter(notifiedOn, 6));
+    expect((await ok(server, 'oicSubstantiation', folio, closeAbstention)).status).toBe(
+      'final_no_sanction',
+    );
+  });
+
+  it('el Tribunal notifica la sentencia; a una persona anónima no se le notifica', async () => {
+    const server = createTestServer();
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter: createReporter(),
+    });
+    const { folio } = await submitComplaint(server, request);
+    await ok(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna al órgano interno de control del ente (nota sintética).',
+    });
+    await ok(server, 'oicIntake', folio, { action: 'accept' });
+    await advance(server, 'oicInvestigator', folio, 'investigation');
+    await ok(server, 'oicInvestigator', folio, {
+      action: 'advance_stage',
+      stage: 'qualification',
+      qualification: qualification('serious'),
+    });
+    await advance(server, 'oicInvestigator', folio, 'report_filed');
+    for (const stage of ['report_admitted', 'summoned', 'initial_hearing']) {
+      await advance(server, 'oicSubstantiation', folio, stage);
+    }
+    await advance(server, 'oicSubstantiation', folio, 'case_file_sent');
+    for (const stage of [
+      'court_received',
+      'court_evidence_hearing',
+      'court_closing_arguments',
+      'court_instruction_closed',
+      'court_resolution',
+    ]) {
+      await advance(server, 'court', folio, stage);
+    }
+    expect(
+      (
+        await act(server, 'court', folio, {
+          action: 'record_notification',
+          recipients: ['reporter'],
+        })
+      ).status,
+    ).toBe(400);
+    await notify(server, 'court', folio, { recipients: ['accused', 'investigating_authority'] });
+    const view = (await detail(server, 'court', folio)).body?.procedure;
+    expect(view?.notification?.act).toBe('court_resolution');
+    expect(view?.deadlines.map((item) => item.key)).toEqual(
+      expect.arrayContaining(['court_appeal_filing', 'review_filing']),
+    );
+    expect(view?.deadlines.map((item) => item.key)).not.toContain('resolution_notice');
   });
 });

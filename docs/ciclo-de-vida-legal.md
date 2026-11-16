@@ -99,14 +99,14 @@ explica desde qué día procede.
 
 | Paso o cierre                                                                                                                                                      | Espera                                                                                                                                                | Sin esperar si                                           | Fundamento           |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------- |
-| «Declarar la resolución firme» (`resolution → final`)                                                                                                              | `revocation_filing`, 15 dh                                                                                                                            | La revocación presentada ya se resolvió                  | LGRA 206, 210        |
-| «Declarar la sentencia firme» (`court_resolution → final`)                                                                                                         | `court_appeal_filing`, 15 dh, y `review_filing`, 10 dh                                                                                                | La apelación o la revisión presentadas ya se resolvieron | LGRA 206, 215, 220   |
+| «Declarar la resolución firme» (`resolution → final`)                                                                                                              | La notificación registrada y `revocation_filing`, 15 dh desde ella                                                                                    | La revocación presentada ya se resolvió                  | LGRA 206, 210        |
+| «Declarar la sentencia firme» (`court_resolution → final`)                                                                                                         | La notificación registrada; `court_appeal_filing`, 15 dh, y `review_filing`, 10 dh, desde ella                                                        | La apelación o la revisión presentadas ya se resolvieron | LGRA 206, 215, 220   |
 | «Tener el informe por no presentado» (`report_prevented → investigation`)                                                                                          | `report_correction`, 3 dh                                                                                                                             | —                                                        | LGRA 195             |
 | «Registrar la audiencia inicial» (`summoned → initial_hearing`)                                                                                                    | `afterMinimumOf: initial_hearing_window`: no antes de 10 dh (`minAmount`) desde el emplazamiento; el panel recibe `earliestOn`                        | —                                                        | LGRA 208 III         |
 | «Cerrar la instrucción» (`closing_arguments → instruction_closed`) y «Cerrar la instrucción en el Tribunal» (`court_closing_arguments → court_instruction_closed`) | `closing_arguments`, 5 dh                                                                                                                             | —                                                        | LGRA 208 IX, 209 III |
 | «Admitir las pruebas en el Tribunal» (`court_received → court_evidence_hearing`) con una orden de reclasificar pendiente                                           | `reclassification`, 3 dh desde la orden (`ProcedureView.reclassification.dueOn`)                                                                      | La investigadora ya registró la reclasificación          | LGRA 209 II          |
 | Conceder o negar una medida cautelar (`decide_precautionary`)                                                                                                      | `precautionary_hearing`, 5 dh desde que se pidió; antes solo `provisional`, que se dicta una vez y deja la medida pendiente de la decisión definitiva | —                                                        | LGRA 126, 127        |
-| Cierre por `abstention`                                                                                                                                            | Con identidad sellada, la notificación por el buzón y los 5 dh de `appeal_filing`                                                                     | Se presentó la inconformidad y se resolvió               | LGRA 101 a 103       |
+| Cierre por `abstention`                                                                                                                                            | Con identidad sellada, la notificación (buzón o registrada) y los 5 dh de `appeal_filing`                                                             | Se presentó la inconformidad y se resolvió               | LGRA 101 a 103       |
 | Cierre por `expired` (caducidad)                                                                                                                                   | `inactivity_expiry`: 6 meses desde la última actuación                                                                                                | —                                                        | LGRA 74              |
 | Cierre por `prescribed`                                                                                                                                            | 3 años (no grave) o 7 (grave) desde el primer día del mes de los hechos, la cota más temprana                                                         | —                                                        | LGRA 74              |
 
@@ -117,9 +117,35 @@ investigación, art. 100), y el cierre `sanctioned` exige la inscripción en el 
 (`court_resolution`) nadie cierra (`NO_CLOSURE_STAGES`): el Tribunal la declara firme y la autoridad
 que ejecuta cierra después; la sentencia de sobreseimiento se cierra como `dismissed` desde `final`.
 
-Límite conocido: los plazos de los recursos corren desde la **notificación** de la resolución, que
-el sistema no registra; se cuentan desde que se entra a la etapa, la cota mínima. Pendiente:
-registrar la notificación (`resolution_notice`) y contar desde ahí.
+### Registrar la notificación (`record_notification`)
+
+Los plazos para impugnar un acto corren desde su **notificación**, no desde que se dicta (LGRA,
+arts. 103, 208 fr. XI, 209 fr. V, 210, 215 y 220). La autoridad que notifica lo registra con
+«Registrar la notificación»: el día (por omisión, hoy según el reloj del nodo; no antes del acto ni
+después de hoy) y a quién se notificó (`accused`, la persona señalada; `reporter`, la persona
+denunciante, solo si se identificó; `investigating_authority`; `other_party`). Queda el paso
+`notification_recorded` en la línea de tiempo.
+
+| Acto (`notifiedAct`)                       | Etapas                                              | Quién notifica                                 | Plazos que corren desde ahí                            | Fundamento           |
+| ------------------------------------------ | --------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------ | -------------------- |
+| `qualification` (calificación de no grave) | `qualification`, `report_filed`, `report_prevented` | Investigación                                  | `appeal_filing` (inconformidad, 5 dh)                  | LGRA 102, 103        |
+| `abstention`                               | `abstention`                                        | Substanciación                                 | `appeal_filing` (inconformidad, 5 dh)                  | LGRA 101 a 103       |
+| `resolution` (falta no grave)              | `resolution`                                        | Substanciación y resolución                    | `revocation_filing` (15 dh)                            | LGRA 208 XI, 210     |
+| `court_resolution` (sentencia)             | `court_resolution`                                  | Tribunal (o su registro por la substanciación) | `court_appeal_filing` (15 dh), `review_filing` (10 dh) | LGRA 209 V, 215, 220 |
+
+- **Resolución y sentencia.** Mientras no se registra, «Plazos que corren» muestra solo
+  «Notificar la resolución» (`resolution_notice`, 10 dh) y la firmeza no procede: el nodo responde
+  `409` con «Registra primero la notificación: los plazos de los recursos corren desde que se
+  notifica la resolución (…)» y el panel dice lo mismo bajo la lista de plazos. Registrada,
+  `resolution_notice` se cumple y los plazos de los recursos corren desde el día notificado. Si se
+  registra más de una notificación (por ejemplo, a cada parte en un día distinto), cuenta la más
+  tardía. Aunque un recurso presentado ya se haya resuelto, la firmeza exige la notificación.
+- **Calificación de no grave y abstención.** El mensaje de la autoridad por el buzón sigue contando
+  como notificación (art. 102). Si además se registra la notificación, la inconformidad corre desde
+  la primera de las dos.
+- **Seguimiento.** La persona notificada lee «Te notificaron la resolución el …» con «desde ahí
+  corren los plazos»; si no fue ella, «Se notificó … el …». La vista lleva
+  `procedure.notification` con la notificación vigente de la resolución o la sentencia.
 
 ## Etapas, funciones, plazos y artículos
 

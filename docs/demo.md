@@ -285,12 +285,12 @@ pruebas, pasa el mismo archivo:
 Varios pasos del procedimiento esperan un plazo legal, y el panel no los ofrece antes; en su lugar
 dice «Podrás hacerlo a partir del …»:
 
-| Paso                                                             | Espera                                                                                           | Antes del paso, en la demo |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------- |
-| «Registrar la audiencia inicial»                                 | 10 días hábiles desde el emplazamiento (LGRA, art. 208 fr. III)                                  | `+10dh`                    |
-| «Cerrar la instrucción» y «Cerrar la instrucción en el Tribunal» | que venzan los 5 días hábiles de alegatos (arts. 208 fr. IX y 209 fr. III)                       | `+6dh`                     |
-| «Resolver la medida cautelar» como concedida o negada            | que venza la vista de 5 días hábiles; antes, solo «Concedida provisionalmente» (arts. 126 y 127) | `+6dh`                     |
-| «Declarar la sentencia firme» / «Declarar la resolución firme»   | 15 días hábiles de apelación (y 10 de revisión) o de revocación (art. 206)                       | `+16dh`                    |
+| Paso                                                             | Espera                                                                                                                                | Antes del paso, en la demo                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| «Registrar la audiencia inicial»                                 | 10 días hábiles desde el emplazamiento (LGRA, art. 208 fr. III)                                                                       | `+10dh`                                       |
+| «Cerrar la instrucción» y «Cerrar la instrucción en el Tribunal» | que venzan los 5 días hábiles de alegatos (arts. 208 fr. IX y 209 fr. III)                                                            | `+6dh`                                        |
+| «Resolver la medida cautelar» como concedida o negada            | que venza la vista de 5 días hábiles; antes, solo «Concedida provisionalmente» (arts. 126 y 127)                                      | `+6dh`                                        |
+| «Declarar la sentencia firme» / «Declarar la resolución firme»   | la notificación registrada y, desde ella, 15 días hábiles de apelación (y 10 de revisión) o de revocación (arts. 206, 210, 215 y 220) | «Registrar la notificación» y después `+16dh` |
 
 Los plazos que hay que dejar vencer (alegatos, vista, recursos) proceden el día siguiente al último
 día, por eso se adelanta uno más (`+6dh`, `+16dh`); la audiencia procede el mismo décimo día
@@ -316,8 +316,25 @@ npm run demo:reloj -- +22d      # o 22 días naturales
 - Con un solo nodo (sin Docker), escribe los milisegundos en el archivo de
   `SIGILO_TEST_CLOCK_FILE`.
 
-Un recurso presentado y resuelto también permite la firmeza sin esperar: así se muestra la rama de
-la apelación sin mover el reloj.
+Un recurso presentado y resuelto también permite la firmeza sin esperar el plazo (sí la
+notificación): así se muestra la rama de la apelación sin mover el reloj.
+
+**La firmeza espera la notificación.** Los plazos de los recursos corren desde la notificación de la
+resolución o de la sentencia, no desde que se dicta. Sin ella, el panel dice «Registra primero la
+notificación…» y no ofrece la firmeza. El orden en la demostración:
+
+1. Dictada la resolución (no grave) entra la **substanciadora**; dictada la sentencia (grave), el
+   **Tribunal** (o, sin cuentas del Tribunal, la substanciadora con su registro de actuación).
+2. «Acción»: **«Registrar la notificación»**. Deja vacío el día (cuenta el de hoy del reloj
+   simulado) y marca a quién se notificó: la persona señalada y, si se identificó, la persona
+   denunciante. «Aplicar». «Notificar la resolución» desaparece de los plazos y aparecen la
+   revocación (o la apelación y la revisión) contadas desde ese día.
+3. `npm run demo:reloj -- +16dh` y la misma cuenta declara la firmeza.
+
+La persona denunciante ve en su seguimiento «Te notificaron la resolución el …; desde ahí corren los
+plazos». Para la inconformidad (calificación de no grave o abstención) basta, como antes, el
+mensaje de la autoridad por el buzón; también puede registrarse la notificación (la investigadora,
+la calificación; la substanciadora, la abstención) y cuenta la primera de las dos.
 
 ### Paso a paso, sin el comando único
 

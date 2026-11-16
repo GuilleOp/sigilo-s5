@@ -113,7 +113,8 @@ una ayuda. Después de admitir las pruebas ya no aparece.
 
 - **«Dictar la sentencia»** → «Sentencia del Tribunal». «Nota pública», por ejemplo `La Sala dictó
 sentencia: se acreditó la falta grave y se impuso sanción.`
-- Abre: notificar en 10 dh (art. 209, fr. V), **apelación 15 dh** y **revisión 10 dh**.
+- Abre: notificar en 10 dh (art. 209, fr. V). La **apelación (15 dh)** y la **revisión (10 dh)**
+  corren desde la notificación que registras (5.5).
 - **La persona ve:** «Sentencia» y «Puedes apelar como tercera» si se identificó.
 - **Dictada la sentencia, no cierras la denuncia.** «Cerrar con fundamento» ya no aparece en
   «Acción»: la sentencia se declara firme cuando vencen los recursos (5.5) y la substanciadora, que
@@ -132,30 +133,36 @@ sentencia: se acreditó la falta grave y se impuso sanción.`
   «Fundamento legal» → «Aplicar».
 - **Fundamento:** LGRA, arts. 215 a 221.
 
-### 5.5 Declarar la sentencia firme
+### 5.5 Registrar la notificación y declarar la sentencia firme
 
+- **Primero, notifica.** «Acción»: **«Registrar la notificación»** → «Día de la notificación» (si lo
+  dejas vacío, cuenta el día de hoy según el reloj del nodo; no antes de la sentencia ni después de
+  hoy) → «A quién se notificó»: «La persona señalada», «La persona denunciante (si se identificó)»,
+  «La autoridad investigadora» y, si hay, «Otra parte o tercero» → «Aplicar» (LGRA, arts. 209 fr. V,
+  215 y 220). «Notificar la resolución» desaparece de los plazos y aparecen la apelación y la
+  revisión contadas desde ese día. La persona denunciante ve «Te notificaron la sentencia el …».
+- Sin la notificación, «Declarar la sentencia firme» no aparece y el panel dice: «Declarar la
+  sentencia firme»: Registra primero la notificación: los plazos de los recursos corren desde que se
+  notifica la sentencia (…). Por la API, el nodo responde `409` con ese aviso.
 - **«Declarar la sentencia firme»** → «Resolución firme» (LGRA, art. 206). Después la
   substanciadora registra la inscripción en el S3, la ejecución y el cierre.
 - **El paso espera los plazos de los recursos:** 15 dh de apelación y 10 dh de revisión, contados
-  desde que la denuncia entró a «Sentencia del Tribunal»; manda el que vence más tarde. Mientras
-  corren, la opción no aparece en «Etapa» y, bajo la lista de plazos, el panel dice:
+  desde la notificación; manda el que vence más tarde. Mientras corren, la opción no aparece en
+  «Etapa» y, bajo la lista de plazos, el panel dice:
 
   > «Declarar la sentencia firme»: La sentencia todavía puede apelarse hasta el …. Podrás hacerlo a
   > partir del … si nadie presenta el recurso, o al registrar la resolución del recurso presentado
   > (LGRA, art. 206).
 
 - **Con un recurso registrado:** mientras esté pendiente, la firmeza sigue bloqueada. Cuando
-  registras su resolución (5.4), puedes declarar la firmeza sin esperar al fin del plazo.
+  registras su resolución (5.4), puedes declarar la firmeza sin esperar al fin del plazo (la
+  notificación sí hace falta).
 - Si alguien intenta el paso antes por la API, el nodo responde `409`: «La sentencia todavía puede
   apelarse hasta el …. Este paso procede a partir del día siguiente, o antes si el recurso
   presentado ya se resolvió (LGRA, art. 206).»
-- **En la demostración**, para no esperar 15 días reales, quien opera la red adelanta el reloj
-  simulado con `npm run demo:reloj -- +16dh` (ver `docs/demo.md`). **Solo para la demostración**;
+- **En la demostración**, para no esperar 15 días reales, registra la notificación y después quien
+  opera la red adelanta el reloj simulado con `npm run demo:reloj -- +16dh` (ver `docs/demo.md`). **Solo para la demostración**;
   en producción el reloj es el real. La sesión puede vencer con el salto: vuelve a entrar.
-
-> **Limitación conocida del prototipo.** La apelación y la revisión corren desde la
-> **notificación** de la sentencia (art. 209, fr. V), que el sistema todavía no registra; se cuentan
-> desde que se dicta, la cota más temprana. Si notificaste después, espera tú los días que falten.
 
 ### 5.6 Resolver la inconformidad
 
@@ -191,20 +198,19 @@ lee como registrado por otra autoridad.
 
 ## 6. Qué hacer si algo falla
 
-| Síntoma                                                    | Qué hacer                                                                                                               |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| No veo el buzón ni la tarjeta de identidad                 | Es a propósito                                                                                                          |
-| «Tu función no tiene acciones del trámite en este estado.» | El expediente no está en tus etapas                                                                                     |
-| No aparece «Declarar la sentencia firme»                   | Corren la apelación o la revisión (lee «Podrás hacerlo a partir del …»), o hay un recurso pendiente: resuélvelo primero |
-| No aparece «Ordenar reclasificar la falta»                 | Ya pasaste de «Recibido en el Tribunal», o ya hay una orden pendiente                                                   |
-| No aparece «Admitir las pruebas en el Tribunal»            | Hay una orden de reclasificar pendiente: espera a la investigadora o a que venzan sus 3 dh                              |
-| No aparece «Cerrar la instrucción en el Tribunal»          | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                                                       |
-| No aparece «Cerrar con fundamento» después de la sentencia | Es a propósito: declara la sentencia firme; la substanciadora cierra                                                    |
-| «El código no es válido o ya se usó…»                      | Espera el código siguiente                                                                                              |
+| Síntoma                                                    | Qué hacer                                                                                                                                                  |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No veo el buzón ni la tarjeta de identidad                 | Es a propósito                                                                                                                                             |
+| «Tu función no tiene acciones del trámite en este estado.» | El expediente no está en tus etapas                                                                                                                        |
+| No aparece «Declarar la sentencia firme»                   | Falta «Registrar la notificación», corren la apelación o la revisión (lee «Podrás hacerlo a partir del …»), o hay un recurso pendiente: resuélvelo primero |
+| No aparece «Ordenar reclasificar la falta»                 | Ya pasaste de «Recibido en el Tribunal», o ya hay una orden pendiente                                                                                      |
+| No aparece «Admitir las pruebas en el Tribunal»            | Hay una orden de reclasificar pendiente: espera a la investigadora o a que venzan sus 3 dh                                                                 |
+| No aparece «Cerrar la instrucción en el Tribunal»          | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                                                                                          |
+| No aparece «Cerrar con fundamento» después de la sentencia | Es a propósito: declara la sentencia firme; la substanciadora cierra                                                                                       |
+| «El código no es válido o ya se usó…»                      | Espera el código siguiente                                                                                                                                 |
 
 ## 7. Limitaciones conocidas del prototipo
 
-- La apelación y la revisión se cuentan desde la sentencia, no desde su notificación.
 - La reclasificación solo está disponible al recibir el expediente.
 - La negativa fundada de la investigadora a reclasificar no tiene acción propia en el sistema.
 - La comparecencia de las partes y la presentación de escritos ocurren fuera del sistema.
@@ -232,10 +238,11 @@ flowchart TD
   F --> G["Abrir los alegatos"]
   G --> H["Cerrar la instrucción"]
   H --> I["Dictar la sentencia"]
-  I --> J{"¿Apelación o revisión registrada?"}
+  I --> I2["Registrar la notificación"]
+  I2 --> J{"¿Apelación o revisión registrada?"}
   J -- "Sí" --> K["Registrar la resolución de un recurso"]
   K -- "recurso resuelto" --> L
-  J -- "No: esperar 15 dh de apelación<br/>y 10 dh de revisión" --> L["Declarar la sentencia firme"]
+  J -- "No: esperar 15 dh de apelación<br/>y 10 dh de revisión desde la notificación" --> L["Declarar la sentencia firme"]
   L --> M["La substanciadora ejecuta y cierra"]
   N["Inconformidad presentada con firma"] --> O["Resolver en 30 dh:<br/>Confirmada, Revocada o Improcedente"]
 ```

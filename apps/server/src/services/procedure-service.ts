@@ -40,6 +40,7 @@ import {
   MAX_REASSIGNMENTS,
   MIN_ROUTING_NOTE_LENGTH,
   isCourtOffense,
+  notifiableActAt,
   offenseSeverity,
   PRECAUTIONARY_RULE,
   primaryOffenseCode,
@@ -67,10 +68,12 @@ import {
   openStageWait,
   precautionaryWait,
   reclassificationWait,
+  formatLegalDay,
 } from './legal-waits.ts';
 import {
   ABSTENTION_NOTICE,
   ARCHIVE_NOTICE,
+  inconformableAct,
   NON_SERIOUS_NOTICE,
   recordQualification,
 } from './qualification-service.ts';
@@ -711,6 +714,60 @@ function plan(
         details: detailsOf(actor, {
           registryReference: request.registryReference,
           legalBasis: request.legalBasis,
+        }),
+      };
+    }
+    case 'record_notification': {
+      // Notificación del acto: desde ella corren los plazos para impugnarlo (LGRA, arts. 103, 208
+      // fr. XI, 209 fr. V, 210, 215 y 220). La registra quien notifica: la investigadora (la
+      // calificación de no grave), la substanciadora (la abstención y la resolución) o el Tribunal
+      // (la sentencia; sin cuentas del Tribunal, su registro por la substanciación).
+      requireAccepted();
+      const stage =
+        complaint.legalStage !== null && !isCriminalStage(complaint.legalStage)
+          ? (complaint.legalStage as AdministrativeStage)
+          : null;
+      const notifiable = notifiableActAt(stage);
+      if (notifiable === undefined) throw new ApiFailure('conflict');
+      const isInconformable = notifiable.act === 'qualification' || notifiable.act === 'abstention';
+      // La calificación y la abstención solo mientras admiten inconformidad (art. 102).
+      const inconformable = isInconformable ? inconformableAct(ctx, complaint, state) : null;
+      if (isInconformable) {
+        const against = notifiable.act === 'qualification' ? 'non_serious' : 'abstention';
+        if (inconformable?.against !== against) throw new ApiFailure('conflict');
+      }
+      // La persona denunciante solo se notifica si se identificó (identidad sellada).
+      if (request.recipients.includes('reporter') && complaint.mode !== 'sealed') {
+        throw new ApiFailure('bad_request');
+      }
+      const today = toMexicoCentralDay(ctx.deps.now());
+      const notifiedOn = request.notifiedOn ?? today;
+      const actOn =
+        notifiable.act === 'qualification'
+          ? (ctx.qualifications.lastQualification(complaint.folio)?.legalOn ?? null)
+          : notifiable.act === 'abstention'
+            ? (state.lastAbstention?.legalOn ?? null)
+            : state.stageEnteredOn;
+      if (notifiedOn > today || (actOn !== null && notifiedOn < actOn)) {
+        throw new ApiFailure(
+          'conflict',
+          `La fecha de la notificación no puede ser posterior a hoy ni anterior a ${notifiable.name}${actOn === null ? '' : ` (${formatLegalDay(actOn)})`}.`,
+        );
+      }
+      const actor = actAs(notifiable.fn);
+      return {
+        ...base,
+        action: 'notification_recorded',
+        managementState: current,
+        status: keepStatus(),
+        note: request.note ?? null,
+        details: detailsOf(actor, {
+          notifiedAct: notifiable.act,
+          notifiedOn,
+          notificationRecipients: request.recipients,
+          ...(actor.recordedForCourt
+            ? {}
+            : { legalBasis: notifiable.legalBasis.map(formatLegalReference).join('; ') }),
         }),
       };
     }

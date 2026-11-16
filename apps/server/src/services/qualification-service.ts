@@ -1,6 +1,7 @@
 // Calificación de la falta (LGRA, art. 100) y recurso de inconformidad (arts. 102 a 110) contra la
 // calificación de no grave o la abstención (art. 101). El acto se notifica a quien denunció por el
-// buzón (art. 102) y abre 5 días hábiles para inconformarse ante la autoridad investigadora (arts.
+// buzón (art. 102) o con la notificación que registra la autoridad (`record_notification`; cuenta
+// la primera) y abre 5 días hábiles para inconformarse ante la autoridad investigadora (arts.
 // 103 y 104). Desde este seguimiento la persona solo da un aviso de inconformidad: la ley pide un
 // escrito con nombre, domicilio y firma autógrafa (art. 109), y sin firma no se tiene por
 // presentado. Con el aviso, la persona acepta abrir su identidad sellada solo para el recurso. La
@@ -33,7 +34,11 @@ import { withTransaction } from '../db/database.ts';
 import type { StoredQualification } from '../db/qualification-repository.ts';
 import { ApiFailure } from '../http/errors.ts';
 import { assignedAuthorityOf, lifecycleOf } from './procedure-service.ts';
-import { currentInconformity } from './lifecycle-state.ts';
+import {
+  currentInconformity,
+  lifecycleStateOf,
+  recordedNotificationOn,
+} from './lifecycle-state.ts';
 import type { LifecycleState } from './lifecycle-state.ts';
 
 /** Fundamento con que se abre la identidad para el recurso; lo ve la persona en su seguimiento. */
@@ -131,11 +136,9 @@ export function inconformableAct(
     const act = state.lastAbstention;
     return {
       against: 'abstention',
-      notifiedOn: firstAuthorityMessageFrom(
-        ctx,
-        complaint.folio,
-        act.authoritySequence,
-        act.legalOn,
+      notifiedOn: earliestDay(
+        firstAuthorityMessageFrom(ctx, complaint.folio, act.authoritySequence, act.legalOn),
+        recordedNotificationOn(state, 'abstention', act.position),
       ),
     };
   }
@@ -265,7 +268,19 @@ export function qualificationNotifiedOn(
   qualification: StoredQualification | null,
 ): string | null {
   if (qualification === null || qualification.severity !== 'non_serious') return null;
-  return firstAuthorityMessageAfter(ctx, folio, 'qualification', qualification.legalOn);
+  // La notificación registrada por la investigadora también cuenta: vale la primera de las dos.
+  const state = lifecycleStateOf(ctx.procedure.listSteps(folio), null, null);
+  return earliestDay(
+    firstAuthorityMessageAfter(ctx, folio, 'qualification', qualification.legalOn),
+    recordedNotificationOn(state, 'qualification', state.lastQualificationPosition),
+  );
+}
+
+/** El más temprano de dos días, o `null` si no hay ninguno. */
+function earliestDay(first: string | null, second: string | null): string | null {
+  if (first === null) return second;
+  if (second === null) return first;
+  return first <= second ? first : second;
 }
 
 function dueOn(

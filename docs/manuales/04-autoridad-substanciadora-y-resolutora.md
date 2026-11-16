@@ -173,12 +173,34 @@ formulario: «Recurso»: «Reclamación».
 - Por la API, conceder o negar antes de tiempo da `409`. En la demostración, adelanta el reloj con
   `npm run demo:reloj -- +6dh` después de pedir la medida.
 
-### 5.9 Firmeza
+### 5.9 Registrar la notificación de la resolución
+
+- **Cuándo:** dictada la resolución de la falta no grave. Tienes 10 dh para notificarla (LGRA, art.
+  208, fr. XI): mientras no la registras, «Plazos que corren» muestra «Notificar la resolución».
+- «Acción»: **«Registrar la notificación»** → «Día de la notificación» (si lo dejas vacío, cuenta el
+  día de hoy según el reloj del nodo; no puede ser anterior a la resolución ni posterior a hoy) →
+  «A quién se notificó»: «La persona señalada» y, si se identificó, «La persona denunciante (si se
+  identificó)»; también «La autoridad investigadora» u «Otra parte o tercero» → «Aplicar».
+- Desde ese día corren los **15 dh de la revocación** (art. 210) y «Notificar la resolución» se da
+  por cumplido. Si registras otra notificación (a otra parte, otro día), cuenta la más tardía.
+- **La persona denunciante ve:** «Te notificaron la resolución el …» y «desde ahí corren los
+  plazos».
+- **Abstención:** también puedes registrar con esta acción la notificación de la abstención a la
+  persona denunciante (además del mensaje por el buzón; cuenta la primera de las dos). Desde ahí
+  corren sus 5 dh para inconformarse.
+
+### 5.10 Firmeza
 
 - **No grave:** «Etapa»: **«Declarar la resolución firme»** → «Resolución firme» (LGRA, art. 206).
-  El paso **espera los 15 días hábiles de la revocación**, contados desde que la denuncia entró a
-  «Resolución (falta no grave)». Mientras corren, la opción no aparece en «Etapa» y, bajo
-  la lista de plazos, el panel dice:
+  **Primero registra la notificación (5.9).** Sin ella, la opción no aparece y el panel dice:
+
+  > «Declarar la resolución firme»: Registra primero la notificación: los plazos de los recursos
+  > corren desde que se notifica la resolución (LGRA, art. 208, fracc. XI; LGRA, art. 210). Usa
+  > «Registrar la notificación»; el paso procede cuando venzan esos plazos.
+
+  Notificada, el paso **espera los 15 días hábiles de la revocación**, contados desde el día de la
+  notificación. Mientras corren, la opción no aparece en «Etapa» y, bajo la lista de plazos, el
+  panel dice:
 
   > «Declarar la resolución firme»: La resolución todavía puede impugnarse con el recurso de
   > revocación hasta el …. Podrás hacerlo a partir del … si nadie presenta el recurso, o al
@@ -186,22 +208,17 @@ formulario: «Recurso»: «Reclamación».
 
 - **Si se presentó la revocación:** mientras esté pendiente, la firmeza sigue bloqueada. En cuanto
   registras su resolución («Registrar la resolución de un recurso»), puedes declarar la firmeza sin
-  esperar al fin de los 15 días.
-- Si alguien intenta el paso antes por la API, el nodo responde `409` con el mismo aviso: «La
-  resolución todavía puede impugnarse con el recurso de revocación hasta el …. Este paso procede a
-  partir del día siguiente, o antes si el recurso presentado ya se resolvió (LGRA, art. 206).»
-- **Grave:** la declara el Tribunal («Declarar la sentencia firme»), con su propia espera (manual
+  esperar al fin de los 15 días (la notificación sí hace falta).
+- Si alguien intenta el paso antes por la API, el nodo responde `409` con el mismo aviso («Registra
+  primero la notificación…» o «La resolución todavía puede impugnarse con el recurso de revocación hasta el …. Este paso procede a
+  partir del día siguiente, o antes si el recurso presentado ya se resolvió (LGRA, art. 206).»).
+- **Grave:** la notifica y la declara firme el Tribunal («Declarar la sentencia firme»), con su propia espera (manual
   06, sección 5.5).
-- **En la demostración** no hace falta esperar 15 días reales: quien opera la red adelanta el reloj
-  simulado con `npm run demo:reloj -- +16dh` (ver `docs/demo.md`). **Solo sirve para la
-  demostración**; en producción el reloj es el real.
+- **En la demostración** no hace falta esperar 15 días reales: registra la notificación y después
+  quien opera la red adelanta el reloj simulado con `npm run demo:reloj -- +16dh` (ver
+  `docs/demo.md`). **Solo sirve para la demostración**; en producción el reloj es el real.
 
-> **Limitación conocida del prototipo.** Los plazos de los recursos corren desde la
-> **notificación** de la resolución, que el sistema todavía no registra; se cuentan desde que se
-> entra a la etapa, la cota más temprana. Si la notificación fue después, espera tú los días que
-> falten.
-
-### 5.10 Ejecución, inscripción en el S3 y cierre
+### 5.11 Ejecución, inscripción en el S3 y cierre
 
 1. «Etapa»: **«Registrar la ejecución de la sanción»** → «Sanción ejecutada» (LGRA, arts. 222 y
    225; informe de ejecución en 10 días si es grave).
@@ -247,7 +264,7 @@ un recurso pendiente: primero registra su resolución y después cierra la denun
 > **Limitación conocida del prototipo.** No hay integración real con el S3: solo se registra la
 > referencia.
 
-### 5.11 Dar vista al Ministerio Público
+### 5.12 Dar vista al Ministerio Público
 
 También puedes dar vista al MP («Dar vista al Ministerio Público», ver manual 03, sección 5.10),
 igual que la investigadora: con una fiscalía de tu nodo, la recibe en su bandeja como copia de
@@ -258,24 +275,22 @@ oficio.
 
 ## 6. Qué hacer si algo falla
 
-| Síntoma                                                    | Qué hacer                                                                            |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| No veo «Enviar el expediente al Tribunal…»                 | La calificación fue no grave, o aún no registras la audiencia inicial                |
-| No puedo admitir el informe                                | Hay una inconformidad pendiente                                                      |
-| No aparece «Declarar la resolución firme»                  | Corre la revocación (lee «Podrás hacerlo a partir del …») o hay un recurso pendiente |
-| No aparece «Cerrar con fundamento»                         | Hay un recurso pendiente: registra su resolución                                     |
-| No aparece «Registrar la audiencia inicial»                | No han pasado 10 dh desde el emplazamiento (lee «Podrás hacerlo a partir del …»)     |
-| No aparece «Cerrar la instrucción»                         | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                    |
-| Solo puedo elegir «Concedida provisionalmente»             | Corre la vista de 5 dh de la medida cautelar                                         |
-| «Resolución firme con sanción» está desactivada            | Primero «Registrar la inscripción de la sanción (S3)»                                |
-| «El sistema no aceptó los datos» al registrar un recurso   | Marca la casilla del escrito con firma y revisa el fundamento                        |
-| «Tu función no tiene acciones del trámite en este estado.» | La etapa es del Tribunal o de la investigadora                                       |
-| No veo una denuncia en la bandeja                          | La investigadora todavía no presenta el IPRA                                         |
+| Síntoma                                                    | Qué hacer                                                                                                               |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| No veo «Enviar el expediente al Tribunal…»                 | La calificación fue no grave, o aún no registras la audiencia inicial                                                   |
+| No puedo admitir el informe                                | Hay una inconformidad pendiente                                                                                         |
+| No aparece «Declarar la resolución firme»                  | Falta «Registrar la notificación», corre la revocación (lee «Podrás hacerlo a partir del …») o hay un recurso pendiente |
+| No aparece «Cerrar con fundamento»                         | Hay un recurso pendiente: registra su resolución                                                                        |
+| No aparece «Registrar la audiencia inicial»                | No han pasado 10 dh desde el emplazamiento (lee «Podrás hacerlo a partir del …»)                                        |
+| No aparece «Cerrar la instrucción»                         | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                                                       |
+| Solo puedo elegir «Concedida provisionalmente»             | Corre la vista de 5 dh de la medida cautelar                                                                            |
+| «Resolución firme con sanción» está desactivada            | Primero «Registrar la inscripción de la sanción (S3)»                                                                   |
+| «El sistema no aceptó los datos» al registrar un recurso   | Marca la casilla del escrito con firma y revisa el fundamento                                                           |
+| «Tu función no tiene acciones del trámite en este estado.» | La etapa es del Tribunal o de la investigadora                                                                          |
+| No veo una denuncia en la bandeja                          | La investigadora todavía no presenta el IPRA                                                                            |
 
 ## 7. Limitaciones conocidas del prototipo
 
-- Los plazos de los recursos se cuentan desde que se entra a la etapa, no desde la notificación,
-  que todavía no se registra.
 - Sin integración real con el S3; la comparecencia de terceros se hace fuera del sistema.
 
 ## 8. Glosario breve
@@ -304,7 +319,8 @@ flowchart TD
   H -- "No grave" --> I["Pruebas, alegatos,<br/>cierre de la instrucción"]
   I --> J["Resolver la falta no grave"]
   J -. "revocación 15 dh" .-> J2["Registrar y resolver el recurso"]
-  J -- "vencidos 15 dh<br/>o recurso resuelto" --> K["Declarar la resolución firme"]
+  J --> J1["Registrar la notificación"]
+  J1 -- "vencidos 15 dh desde la notificación<br/>o recurso resuelto" --> K["Declarar la resolución firme"]
   H -- "Grave" --> L["Enviar el expediente al Tribunal"]
   L --> M["Tribunal: sentencia firme"]
   K --> N["Registrar la ejecución de la sanción"]

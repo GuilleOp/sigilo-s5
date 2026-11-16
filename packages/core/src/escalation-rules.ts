@@ -67,6 +67,11 @@ export interface ProcedureSnapshot {
   downgradeSignalCount?: number;
   /** Día en que la denuncia entró a su etapa administrativa vigente. */
   stageEnteredOn?: string | null;
+  /**
+   * Notificación registrada de la resolución o la sentencia de la etapa vigente: desde ella corren
+   * los plazos de los recursos; mientras falta, corre el de notificarla (`resolution_notice`).
+   */
+  stageNotifiedOn?: string | null;
   /** Etapa de la vía penal, que corre en paralelo, y día en que entró a ella. */
   criminalStage?: CriminalStage | null;
   criminalStageEnteredOn?: string | null;
@@ -339,9 +344,17 @@ function stageDeadlines(snapshot: ProcedureSnapshot): ActiveDeadline[] {
       keys.push(snapshot.isSeriousTrack === true ? 'court_referral' : 'evidence_admission');
     }
     if (stage === 'final' && snapshot.isSeriousTrack === true) keys.push('execution_report');
+    const notifiedOn = snapshot.stageNotifiedOn ?? null;
     for (const key of keys) {
+      // Notificada la resolución o la sentencia, ya no corre el plazo para notificarla.
+      if (key === 'resolution_notice' && notifiedOn !== null) continue;
       const remedy = filingKeyOf.get(key);
       if (remedy !== undefined && filed.has(remedy)) continue;
+      // Los plazos de los recursos corren desde la notificación (LGRA, arts. 210, 215 y 220).
+      if (remedy !== undefined) {
+        if (notifiedOn !== null) deadlines.push({ key, startsOn: notifiedOn });
+        continue;
+      }
       deadlines.push({ key, startsOn: enteredOn });
     }
   }

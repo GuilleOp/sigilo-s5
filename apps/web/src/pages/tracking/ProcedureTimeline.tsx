@@ -73,6 +73,7 @@ const STAMP_LABELS: Readonly<Partial<Record<ProcedureStep['action'], string>>> =
   federal_notice_sent: 'Aviso federal',
   sanction_registered: 'Registro de la sanción',
   withdrawal_received: 'Desistimiento',
+  notification_recorded: 'Notificación',
 };
 
 /** Pasos cuya explicación va como nota al margen (lo que más confunde: «turnada»). */

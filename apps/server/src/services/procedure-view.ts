@@ -4,6 +4,7 @@
 import {
   CLOSURE_REASONS,
   describeLegalReference,
+  NOTIFIABLE_ACTS,
   FEDERAL_FUNDS_RULE,
   findClosureReason,
   findDeadlineRule,
@@ -54,6 +55,7 @@ import {
   pendingRemedies,
 } from './lifecycle-state.ts';
 import type { LifecycleState } from './lifecycle-state.ts';
+import { formatLegalDay } from './legal-waits.ts';
 
 /** Quién lee la vista: la persona denunciante (seguimiento) o la autoridad (panel). */
 export type ProcedureAudience = 'reporter' | 'authority';
@@ -126,6 +128,7 @@ export function procedureSnapshot(ctx: AppContext, complaint: ComplaintRecord): 
     transferPendingOn: unconfirmedTransferOn(ctx, complaint.folio),
     turnPendingOn: turnPendingSince(complaint, steps),
     stageEnteredOn: state.stageEnteredOn,
+    stageNotifiedOn: state.stageNotification?.notifiedOn ?? null,
     criminalStage: complaint.criminalStage,
     criminalStageEnteredOn: state.criminalStageEnteredOn,
     inconformityNotifiedOn: act?.notifiedOn ?? null,
@@ -224,6 +227,7 @@ function stepView(
     federal_notice_sent: 'Se dio aviso a las autoridades federales',
     sanction_registered: 'Sanción inscrita en el registro de sancionados (S3)',
     withdrawal_received: 'Se recibió un escrito de desistimiento',
+    notification_recorded: notificationTitle(details, audience),
   };
   if (step.action === 'stage_advanced' && criminal !== null) {
     titles.stage_advanced = `Vía penal: ${stage?.name ?? 'sin nombre'}`;
@@ -271,6 +275,7 @@ function stepView(
       'La autoridad avisó a las autoridades federales competentes porque la denuncia involucra recursos federales (Ley de Coordinación Fiscal, art. 49).',
     sanction_registered:
       'La sanción firme se inscribió en el sistema de servidores públicos y particulares sancionados de la Plataforma Digital Nacional (LGRA, art. 27).',
+    notification_recorded: notificationExplanation(details, audience),
     withdrawal_received:
       'Quedó registrado el escrito de desistimiento. La investigación también es de oficio: retirar la denuncia no obliga a cerrarla si hay elementos (LGRA, arts. 91 y 94).',
   };
@@ -292,6 +297,46 @@ function stepView(
     ...(step.note === null ? {} : { note: step.note }),
     ...recordOf(details, audience),
   };
+}
+
+/** Nombre del acto notificado («la resolución», «la sentencia»…). */
+function notifiedActName(details: NonNullable<StoredStep['details']>): string {
+  return NOTIFIABLE_ACTS.find((item) => item.act === details.notifiedAct)?.name ?? 'el acto';
+}
+
+/** Título del paso de notificación: a la persona notificada se le dice «Te notificaron…». */
+function notificationTitle(
+  details: NonNullable<StoredStep['details']>,
+  audience: ProcedureAudience,
+): string {
+  const day = details.notifiedOn === undefined ? '' : ` el ${formatLegalDay(details.notifiedOn)}`;
+  const name = notifiedActName(details);
+  if (audience === 'reporter' && details.notificationRecipients?.includes('reporter') === true) {
+    return `Te notificaron ${name}${day}`;
+  }
+  return `Se notificó ${name}${day}`;
+}
+
+/** Qué significa la notificación: desde ella corren los plazos para impugnar el acto. */
+function notificationExplanation(
+  details: NonNullable<StoredStep['details']>,
+  audience: ProcedureAudience,
+): string {
+  const day = details.notifiedOn === undefined ? '' : ` el ${formatLegalDay(details.notifiedOn)}`;
+  const isOwn =
+    audience === 'reporter' && details.notificationRecipients?.includes('reporter') === true;
+  const lead = isOwn ? `Te notificaron${day}` : `Se notificó${day}`;
+  switch (details.notifiedAct) {
+    case 'qualification':
+    case 'abstention':
+      return `${lead}; desde ahí corren los plazos: 5 días hábiles para inconformarse con escrito firmado ante la autoridad investigadora (LGRA, arts. 102, 103 y 109).`;
+    case 'resolution':
+      return `${lead}; desde ahí corren los plazos: la persona sancionada tiene 15 días hábiles para pedir la revocación. Si nadie la presenta, la resolución queda firme al vencer (LGRA, arts. 206, 208 fr. XI y 210).`;
+    case 'court_resolution':
+      return `${lead}; desde ahí corren los plazos: 15 días hábiles para apelar (también tú, como tercera, si te identificaste) y 10 para que las autoridades pidan la revisión. Si nadie recurre, la sentencia queda firme al vencer (LGRA, arts. 206, 209 fr. V, 215 y 220).`;
+    default:
+      return `${lead}; desde ahí corren los plazos para impugnar el acto.`;
+  }
 }
 
 /** Datos del acto que puede ver cada audiencia. */
@@ -328,6 +373,11 @@ function recordOf(
     ...(details.offenseCode === undefined || details.agreement === undefined
       ? {}
       : { agreement: details.agreement }),
+    ...(details.notifiedAct === undefined ? {} : { notifiedAct: details.notifiedAct }),
+    ...(details.notifiedOn === undefined ? {} : { notifiedOn: details.notifiedOn }),
+    ...(details.notificationRecipients === undefined
+      ? {}
+      : { notificationRecipients: details.notificationRecipients }),
   };
   return Object.keys(record).length === 0 ? {} : { record };
 }
@@ -592,6 +642,15 @@ export function buildProcedureView(
     ...(lifecycle.sanctionRegistered === null
       ? {}
       : { sanctionRegistered: lifecycle.sanctionRegistered }),
+    ...(lifecycle.stageNotification === null
+      ? {}
+      : {
+          notification: {
+            act: lifecycle.stageNotification.act,
+            notifiedOn: lifecycle.stageNotification.notifiedOn,
+            recipients: lifecycle.stageNotification.recipients,
+          },
+        }),
     steps: ctx.procedure
       .listSteps(complaint.folio)
       .filter((step) => isVisibleTo(step, audience))
