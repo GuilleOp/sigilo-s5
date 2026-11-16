@@ -249,7 +249,7 @@ test('H8: la inconformidad marca sus campos con error y enfoca el primero', asyn
   await openComplaint(page, folio);
   await page.getByTestId('authority-question').fill('Te notificamos la calificación (sintético).');
   await page.getByTestId('send-question').click();
-  await expect(page.getByTestId('authority-mailbox')).toContainText('Te notificamos');
+  await expect(page.getByTestId('authority-mailbox')).toContainText('Pregunta enviada cifrada');
   await openTracking(page, folio, words);
   const form = page.getByTestId('appeal-form');
   await form.getByTestId('appeal-submit').click();

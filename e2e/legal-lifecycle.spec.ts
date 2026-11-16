@@ -140,7 +140,7 @@ test('abstención: aviso de inconformidad, escrito con firma y resolución de la
   await openComplaint(page, folio);
   await page.getByTestId('authority-question').fill('Te notificamos la abstención (sintético).');
   await page.getByTestId('send-question').click();
-  await expect(page.getByTestId('authority-mailbox')).toContainText('Te notificamos');
+  await expect(page.getByTestId('authority-mailbox')).toContainText('Pregunta enviada cifrada');
 
   // La persona prepara el aviso: el sistema nunca dice que ya presentó la inconformidad.
   await openTracking(page, folio, words);
