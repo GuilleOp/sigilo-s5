@@ -61,6 +61,11 @@ import {
   RegistrationViewSchema,
 } from '../registration.ts';
 import { HpkeEnvelopeSchema } from '../envelope.ts';
+import {
+  CompetenceSaveRequestSchema,
+  CompetenceSaveResponseSchema,
+  CompetenceViewSchema,
+} from '../competence.ts';
 import { IdentityBlockSchema, ReporterKeysSchema, ComplaintFactsSchema } from '../complaint.ts';
 import { ComplaintModeSchema, ComplaintStatusSchema, SignedReceiptSchema } from '../complaint.ts';
 import { PublicKeySetSchema } from '../keys.ts';
@@ -206,6 +211,9 @@ export const STANDARD_COMPONENTS = {
   RegistrationList: RegistrationListSchema,
   RegistrationView: RegistrationViewSchema,
   RegistrationDecision: RegistrationDecisionSchema,
+  CompetenceView: CompetenceViewSchema,
+  CompetenceSaveRequest: CompetenceSaveRequestSchema,
+  CompetenceSaveResponse: CompetenceSaveResponseSchema,
 } as const satisfies Record<string, z.ZodType>;
 
 export type StandardComponentName = keyof typeof STANDARD_COMPONENTS;
@@ -250,7 +258,7 @@ export const STANDARD_TAGS: readonly { name: StandardTag; description: string }[
   {
     name: 'Alta de autoridades',
     description:
-      'Solicitud pública de alta de una institución con su candado (solo llaves públicas) y bandeja de la cuenta de operación del nodo, que aprueba con la huella confirmada por teléfono o rechaza con motivo.',
+      'Solicitud pública de alta de una institución con su candado (solo llaves públicas) y bandeja de la cuenta de operación del nodo, que aprueba con la huella confirmada por teléfono o rechaza con motivo. La misma cuenta asigna el órgano interno de control de cada dependencia (competencia por dependencia) y firma la versión nueva de la tabla de funciones del nodo.',
   },
   {
     name: 'Llaves y retos',
@@ -1198,6 +1206,49 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
         kind: 'json',
         component: 'RegistrationView',
         example: 'decide-registration.response',
+      },
+    },
+    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden', 'not_found', 'conflict'],
+  },
+  {
+    operationId: 'getCompetence',
+    method: 'get',
+    path: ROUTES.operationCompetence,
+    tag: 'Alta de autoridades',
+    summary: 'Competencia por dependencia del nodo',
+    description:
+      'Solo para la cuenta de operación del nodo, que nunca ve denuncias. Cada dependencia de la entidad del nodo (o cada ente federal, en el nodo federal) del catálogo de entes de la PDN, con quién la investiga y su distintivo (OIC con llaves, nombrado sin alta o pendiente), las autoridades investigadoras del nodo, la cobertura y las versiones de la tabla ya firmadas desde el panel. `404` si el nodo no está en una red o no tiene tabla de funciones.',
+    security: 'authorityBearer',
+    parameters: [],
+    success: {
+      status: 200,
+      description: 'Competencia por dependencia vigente.',
+      body: { kind: 'json', component: 'CompetenceView', example: 'get-competence.response' },
+    },
+    errors: ['unauthorized', 'forbidden', 'not_found'],
+  },
+  {
+    operationId: 'saveCompetence',
+    method: 'post',
+    path: ROUTES.operationCompetence,
+    tag: 'Alta de autoridades',
+    summary: 'Revisar o firmar la competencia por dependencia',
+    description:
+      'Arma la versión siguiente de la tabla de funciones (formato 2) con la competencia por dependencia enviada, la revisa como la revisará la SESNA y muestra los cambios. Con `dryRun: false` y sin problemas, la firma con la llave del nodo. La versión firmada se entrega a la SESNA y entra al directorio cuando los testigos lo cofirman. `409` si la tabla vigente ya no es `baseVersion`; `400` si nombra un ente que no es de la entidad del nodo.',
+    security: 'authorityBearer',
+    parameters: [],
+    requestBody: {
+      kind: 'json',
+      component: 'CompetenceSaveRequest',
+      example: 'save-competence.request',
+    },
+    success: {
+      status: 200,
+      description: 'Cambios, problemas y, si se firmó, la versión firmada.',
+      body: {
+        kind: 'json',
+        component: 'CompetenceSaveResponse',
+        example: 'save-competence.response',
       },
     },
     errors: [...JSON_ERRORS, 'unauthorized', 'forbidden', 'not_found', 'conflict'],

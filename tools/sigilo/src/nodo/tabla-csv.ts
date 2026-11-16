@@ -1,14 +1,28 @@
 // La tabla de funciones como hoja de cálculo (`config/tabla-de-funciones.csv`), para editarla en
-// Excel o LibreOffice. Columnas: funcion, orden, ente, gravedad, quien, fundamento.
-//   funcion     buzon, operacion, investigacion, substanciacion, resolucion, supervision, penal,
-//               observador
-//   orden       federal, estatal o municipal; varios separados por «;»
-//   ente        claves de ente separadas por «;» (vacío: todos los del orden)
-//   gravedad    vacío, grave o no_grave
-//   quien       authority.<id>, observer.<id> o institucion:<nombre oficial>
-//   fundamento  opcional, en lenguaje claro
-import { FunctionTableSchema, NODE_FUNCTIONS } from '@sigilo/contracts';
-import type { FunctionHolder, FunctionRule, FunctionTable, NodeFunction } from '@sigilo/contracts';
+// Excel o LibreOffice. Columnas: funcion, orden, ente, gravedad, quien, fundamento y, desde el
+// formato 2, instancia y solo_identificada (opcionales).
+//   funcion            buzon, operacion, investigacion, substanciacion, resolucion, tribunal,
+//                      supervision, penal, observador
+//   orden              federal, estatal o municipal; varios separados por «;»
+//   ente               claves de ente separadas por «;» (vacío: todos los del orden)
+//   gravedad           vacío, grave o no_grave
+//   quien              authority.<id>, observer.<id> o institucion:<nombre oficial>
+//   fundamento         opcional, en lenguaje claro
+//   instancia          solo en tribunal: vacío, primera o alzada
+//   solo_identificada  «si» si quien cumple la función solo admite denuncias con nombre y firma
+// El órgano interno de control de cada dependencia va aparte, en
+// `config/competencia-por-dependencia.csv` (ver `@sigilo/red`, competence-csv.ts).
+import { FunctionTableSchema, functionRulesOf, NODE_FUNCTIONS } from '@sigilo/contracts';
+import type {
+  EntityAssignment,
+  FunctionRule,
+  FunctionTable,
+  FunctionTableSettings,
+  NodeFunction,
+} from '@sigilo/contracts';
+import { holderFromCsv, holderToCsv, parseCsv } from '@sigilo/red';
+
+export { parseCsv } from '@sigilo/red';
 
 const FUNCTION_NAMES: Readonly<Record<NodeFunction, string>> = {
   intake: 'buzon',
@@ -16,80 +30,40 @@ const FUNCTION_NAMES: Readonly<Record<NodeFunction, string>> = {
   investigation: 'investigacion',
   substantiation: 'substanciacion',
   resolution: 'resolucion',
+  court: 'tribunal',
   supervision: 'supervision',
   prosecution: 'penal',
   observer: 'observador',
 };
 
 const HEADER = ['funcion', 'orden', 'ente', 'gravedad', 'quien', 'fundamento'];
-
-/** Separa un CSV (RFC 4180: comillas dobles, comas y saltos dentro de comillas). */
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let inQuotes = false;
-  const source = text.replace(/^\uFEFF/u, '');
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index];
-    if (inQuotes) {
-      if (char === '"' && source[index + 1] === '"') {
-        field += '"';
-        index += 1;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        field += char;
-      }
-    } else if (char === '"') {
-      inQuotes = true;
-    } else if (char === ',') {
-      row.push(field);
-      field = '';
-    } else if (char === '\n' || char === '\r') {
-      if (char === '\r' && source[index + 1] === '\n') index += 1;
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = '';
-    } else {
-      field += char;
-    }
-  }
-  if (field !== '' || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows.filter((cells) => cells.some((cell) => cell.trim() !== ''));
-}
+const FORMAT2_COLUMNS = ['instancia', 'solo_identificada'];
 
 function csvCell(value: string): string {
   return /[",\n\r]/u.test(value) ? `"${value.replace(/"/gu, '""')}"` : value;
 }
 
-function holderText(holder: FunctionHolder): string {
-  if (holder.kind === 'authority') return holder.authorityId;
-  if (holder.kind === 'observer') return holder.observerId;
-  return `institucion:${holder.name}`;
-}
-
-/** Escribe la tabla como CSV. */
+/** Escribe la tabla como CSV (con las columnas del formato 2 si la tabla es de ese formato). */
 export function tableToCsv(table: FunctionTable): string {
-  const lines = [HEADER.join(',')];
+  const isFormat2 = table.format === 2;
+  const lines = [(isFormat2 ? [...HEADER, ...FORMAT2_COLUMNS] : HEADER).join(',')];
   for (const fn of NODE_FUNCTIONS) {
-    for (const rule of table.functions[fn]) {
-      lines.push(
-        [
-          FUNCTION_NAMES[fn],
-          rule.governmentLevels.join(';'),
-          rule.entityIds.join(';'),
-          rule.severity === undefined ? '' : rule.severity === 'serious' ? 'grave' : 'no_grave',
-          holderText(rule.holder),
-          rule.legalBasis ?? '',
-        ]
-          .map(csvCell)
-          .join(','),
-      );
+    for (const rule of functionRulesOf(table, fn)) {
+      const cells = [
+        FUNCTION_NAMES[fn],
+        rule.governmentLevels.join(';'),
+        rule.entityIds.join(';'),
+        rule.severity === undefined ? '' : rule.severity === 'serious' ? 'grave' : 'no_grave',
+        holderToCsv(rule.holder),
+        rule.legalBasis ?? '',
+      ];
+      if (isFormat2) {
+        cells.push(
+          rule.instance === undefined ? '' : rule.instance === 'first' ? 'primera' : 'alzada',
+          rule.requiresIdentifiedReporter === true ? 'si' : '',
+        );
+      }
+      lines.push(cells.map(csvCell).join(','));
     }
   }
   return `${lines.join('\n')}\n`;
@@ -101,18 +75,15 @@ export interface TableHeader {
   stateCode: string | null;
   version: number;
   issuedOn: string;
-}
-
-function parseHolder(text: string): FunctionHolder | null {
-  const value = text.trim();
-  if (value.startsWith('authority.')) return { kind: 'authority', authorityId: value };
-  if (value.startsWith('observer.')) return { kind: 'observer', observerId: value };
-  const match = /^instituci[oó]n:\s*(.+)$/iu.exec(value);
-  return match?.[1] === undefined ? null : { kind: 'institution', name: match[1].trim() };
+  /** Competencia por dependencia (de `competencia-por-dependencia.csv`); con ella, formato 2. */
+  entities?: readonly EntityAssignment[];
+  /** Ajustes del nodo que ya tenía la tabla vigente (se conservan; formato 2). */
+  settings?: FunctionTableSettings;
 }
 
 /**
  * Lee la tabla desde el CSV. Devuelve la tabla (o `null`) y los problemas, cada uno con su línea.
+ * Es de formato 2 si usa el tribunal, las columnas nuevas, la competencia por dependencia o ajustes.
  */
 export function csvToTable(
   text: string,
@@ -124,12 +95,23 @@ export function csvToTable(
   if (first === undefined || HEADER.some((name, index) => first[index] !== name)) {
     return { table: null, problems: [`La primera línea debe ser: ${HEADER.join(',')}`] };
   }
+  let usesFormat2 =
+    first.length > HEADER.length || header.entities !== undefined || header.settings !== undefined;
   const functions = Object.fromEntries(
     NODE_FUNCTIONS.map((fn) => [fn, [] as FunctionRule[]]),
   ) as Record<NodeFunction, FunctionRule[]>;
   rows.slice(1).forEach((cells, index) => {
     const line = index + 2;
-    const [fnName = '', levels = '', entities = '', severity = '', who = '', basis = ''] = cells;
+    const [
+      fnName = '',
+      levels = '',
+      entities = '',
+      severity = '',
+      who = '',
+      basis = '',
+      instanceName = '',
+      identified = '',
+    ] = cells;
     const fn = NODE_FUNCTIONS.find(
       (candidate) => FUNCTION_NAMES[candidate] === fnName.trim().toLowerCase(),
     );
@@ -137,7 +119,7 @@ export function csvToTable(
       problems.push(`Línea ${line}: función «${fnName}» desconocida.`);
       return;
     }
-    const holder = parseHolder(who);
+    const holder = holderFromCsv(who);
     if (holder === null) {
       problems.push(`Línea ${line}: «quien» debe ser authority.…, observer.… o institucion:…`);
       return;
@@ -147,6 +129,13 @@ export function csvToTable(
       problems.push(`Línea ${line}: la gravedad debe quedar vacía o ser grave o no_grave.`);
       return;
     }
+    const instance = instanceName.trim().toLowerCase();
+    if (!['', 'primera', 'alzada'].includes(instance)) {
+      problems.push(`Línea ${line}: la instancia debe quedar vacía o ser primera o alzada.`);
+      return;
+    }
+    const isIdentifiedOnly = ['si', 'sí'].includes(identified.trim().toLowerCase());
+    if (fn === 'court' || instance !== '' || isIdentifiedOnly) usesFormat2 = true;
     const split = (value: string): string[] =>
       value
         .split(';')
@@ -160,10 +149,24 @@ export function csvToTable(
         : { severity: severityValue === 'grave' ? 'serious' : 'non_serious' }),
       holder,
       ...(basis.trim() === '' ? {} : { legalBasis: basis.trim() }),
+      ...(isIdentifiedOnly ? { requiresIdentifiedReporter: true } : {}),
+      ...(instance === '' ? {} : { instance: instance === 'primera' ? 'first' : 'appeal' }),
     });
   });
   if (problems.length > 0) return { table: null, problems };
-  const parsed = FunctionTableSchema.safeParse({ format: 1, ...header, functions });
+  const { entities, settings, ...rest } = header;
+  const { court, ...format1Functions } = functions;
+  const parsed = FunctionTableSchema.safeParse(
+    usesFormat2
+      ? {
+          format: 2,
+          ...rest,
+          functions,
+          ...(settings === undefined ? {} : { settings }),
+          ...(entities === undefined ? {} : { entities: [...entities] }),
+        }
+      : { format: 1, ...rest, functions: court.length > 0 ? functions : format1Functions },
+  );
   if (!parsed.success) {
     return {
       table: null,

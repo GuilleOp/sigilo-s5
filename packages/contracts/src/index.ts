@@ -23,5 +23,6 @@ export * from './audit.ts';
 export * from './corroboration-key.ts';
 export * from './corroboration.ts';
 export * from './registration.ts';
+export * from './competence.ts';
 export * from './security-headers.ts';
 export * from './web-config.ts';

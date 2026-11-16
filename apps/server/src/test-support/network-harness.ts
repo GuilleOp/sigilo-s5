@@ -128,6 +128,13 @@ export const NETWORK_ACCOUNTS = {
     authorityId: 'authority.comptroller-queretaro',
     functions: ['intake'],
   },
+  // Operación del nodo (la SESEA): altas y competencia por dependencia; nunca ve denuncias.
+  queretaroOperation: {
+    accountId: 'acct-00000000000000e9',
+    username: 'operacion.queretaro',
+    authorityId: 'authority.buzon-queretaro',
+    functions: ['operation'],
+  },
 } as const satisfies Record<string, Omit<NodeAccount, 'name'>>;
 
 export type NetworkAccountName = keyof typeof NETWORK_ACCOUNTS;
@@ -160,7 +167,7 @@ function accountsFile(nodeId: DemoNodeId): AuthorityAccountsFile {
         { authorityId: 'authority.buzon-queretaro', name: 'Buzón general de Querétaro' },
         {
           authorityId: 'authority.comptroller-queretaro',
-          name: 'Contraloría Estatal Ficticia de Querétaro',
+          name: 'Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)',
         },
       ],
       accounts,

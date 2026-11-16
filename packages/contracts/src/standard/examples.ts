@@ -52,6 +52,9 @@ import type {
   TrackingView,
   RegistrationRequest,
   RegistrationView,
+  CompetenceProposal,
+  CompetenceView,
+  FunctionTable,
 } from '../index.ts';
 import type { ApiError } from '../errors.ts';
 import { HPKE_SUITE_V1 } from '../envelope.ts';
@@ -658,11 +661,172 @@ const registrationView: RegistrationView = {
   },
 };
 
+const COURT =
+  'Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)';
+
+const competenceTable: FunctionTable = {
+  format: 2,
+  nodeId: 'node.queretaro',
+  stateCode: '22',
+  version: 3,
+  issuedOn: '2026-11-12',
+  functions: {
+    intake: [
+      {
+        governmentLevels: ['estatal', 'municipal'],
+        entityIds: [],
+        holder: { kind: 'authority', authorityId: 'authority.buzon-queretaro' },
+      },
+    ],
+    operation: [
+      {
+        governmentLevels: ['estatal', 'municipal'],
+        entityIds: [],
+        holder: {
+          kind: 'institution',
+          name: 'Secretaría Ejecutiva del Sistema Estatal Anticorrupción de Querétaro (ficticia)',
+        },
+      },
+    ],
+    investigation: [
+      {
+        governmentLevels: ['estatal'],
+        entityIds: [],
+        holder: { kind: 'authority', authorityId: 'authority.comptroller-queretaro' },
+        legalBasis: 'LGRA, arts. 3, fr. II, y 10',
+      },
+    ],
+    substantiation: [],
+    resolution: [],
+    court: [
+      {
+        governmentLevels: ['estatal', 'municipal'],
+        entityIds: [],
+        instance: 'first',
+        holder: { kind: 'institution', name: COURT },
+      },
+    ],
+    supervision: [],
+    prosecution: [],
+    observer: [],
+  },
+  entities: [
+    {
+      entityId: 'PDN-22-7283',
+      status: 'assigned',
+      holder: { kind: 'authority', authorityId: 'authority.oic-municipio-queretaro' },
+      legalBasis: 'CPEUM, art. 109, fr. III',
+    },
+  ],
+};
+
+const competenceProposal: CompetenceProposal = {
+  version: 4,
+  signedOn: '2026-11-16',
+  signedBy: ACCOUNT_ID,
+  changes: [
+    {
+      kind: 'changed',
+      scope: 'entity',
+      entityId: 'PDN-22-7232',
+      text: 'Fiscalía General del Estado: de pendiente a OIC Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio).',
+    },
+  ],
+  signedTable: {
+    table: {
+      ...competenceTable,
+      version: 4,
+      issuedOn: '2026-11-16',
+      entities: [
+        ...(competenceTable.entities ?? []),
+        {
+          entityId: 'PDN-22-7232',
+          status: 'assigned',
+          holder: {
+            kind: 'institution',
+            name: 'Órgano Interno de Control de la Fiscalía General del Estado de Querétaro (ficticio)',
+          },
+        },
+      ],
+    },
+    signature: SIGNATURE,
+  },
+};
+
+const competenceView: CompetenceView = {
+  nodeId: 'node.queretaro',
+  stateCode: '22',
+  today: '2026-11-16',
+  table: competenceTable,
+  authorities: [
+    {
+      authorityId: 'authority.oic-municipio-queretaro',
+      name: 'Órgano Interno de Control del Municipio de Querétaro (ficticio)',
+      governmentLevel: 'municipal',
+      hasKeys: true,
+    },
+  ],
+  entities: [
+    {
+      entityId: 'PDN-22-7283',
+      name: 'Secretaría del Ayuntamiento del Municipio de Querétaro',
+      level: 'municipal',
+      municipalityCode: '014',
+      isFictitious: false,
+      group: { key: 'municipio:014', label: 'Municipio de Querétaro' },
+      status: 'assigned',
+      source: 'entity',
+      holder: { kind: 'authority', authorityId: 'authority.oic-municipio-queretaro' },
+      holderName: 'Órgano Interno de Control del Municipio de Querétaro (ficticio)',
+      legalBasis: 'CPEUM, art. 109, fr. III',
+      requiresIdentifiedReporter: false,
+      badge: 'keys',
+    },
+    {
+      entityId: 'PDN-22-7232',
+      name: 'Fiscalía General del Estado',
+      level: 'estatal',
+      isFictitious: false,
+      group: { key: 'autonomo', label: 'Poderes y organismos autónomos' },
+      status: 'pending',
+      source: 'none',
+      holder: null,
+      holderName: null,
+      legalBasis: null,
+      requiresIdentifiedReporter: false,
+      badge: 'pending',
+    },
+  ],
+  coverage: {
+    stateCode: '22',
+    tableVersion: 3,
+    total: 2,
+    withOic: 1,
+    withoutOic: 0,
+    general: 0,
+    withKeys: 1,
+    pending: 1,
+  },
+  proposals: [],
+};
+
 /**
  * Ejemplo de cada cuerpo, por nombre de archivo en `estandar/ejemplos/` (sin `.json`). La prueba del
  * estándar valida cada uno con el esquema de su operación.
  */
 export const STANDARD_EXAMPLES = {
+  'get-competence.response': competenceView,
+  'save-competence.request': {
+    baseVersion: 3,
+    dryRun: false,
+    entities: competenceProposal.signedTable.table.entities ?? [],
+  },
+  'save-competence.response': {
+    version: 4,
+    changes: competenceProposal.changes,
+    problems: [],
+    proposal: competenceProposal,
+  },
   'submit-registration.request': registrationRequest,
   'submit-registration.response': {
     requestId: 'ALTA-3F2A9C01B7E4',

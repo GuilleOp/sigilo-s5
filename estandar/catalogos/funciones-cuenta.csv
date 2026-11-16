@@ -3,4 +3,5 @@ intake,Recepción y turnado
 investigation,Investigación
 supervision,Supervisión
 substantiation,Substanciación y resolución
-operation,Operación del nodo (solo solicitudes de alta)
+operation,Operación del nodo (solicitudes de alta y competencia por dependencia)
+court,"Tribunal (faltas graves, de particulares y alzada)"

@@ -35,7 +35,9 @@ const NODE_HELP = `Uso: ./sigilo <comando>
   actualizar [versión]   respaldo, imagen nueva, diagnóstico y regreso si algo falla
   cuenta nueva           cuenta individual del panel con contraseña temporal
   cuenta reiniciar-mfa <usuario>  borra su segundo factor (lo inscribe de nuevo al entrar)
-  tabla revisar|firmar   la tabla de funciones desde config/tabla-de-funciones.csv
+  tabla revisar|firmar   la tabla de funciones desde config/tabla-de-funciones.csv y
+                         config/competencia-por-dependencia.csv (el OIC de cada dependencia)
+  tabla exportar         escribe esos dos CSV desde la tabla vigente del directorio
   calendario revisar     días inhábiles locales desde config/dias-inhabiles.csv
   directorio actualizar  descarga la versión vigente del directorio (tarea diaria)
   rotar-llaves --enlace  nueva época de los secretos con la SESNA (--aplicar al confirmar)
@@ -93,7 +95,13 @@ async function nodeCommand(command: string, sub: string | undefined): Promise<Ha
     }
     case 'tabla': {
       const module = await import('./nodo/tabla.ts');
-      return sub === 'revisar' ? module.reviewTable : sub === 'firmar' ? module.signTable : null;
+      return sub === 'revisar'
+        ? module.reviewTable
+        : sub === 'firmar'
+          ? module.signTable
+          : sub === 'exportar'
+            ? module.exportTable
+            : null;
     }
     case 'calendario':
       return sub === 'revisar' ? (await import('./nodo/calendario.ts')).reviewCalendar : null;

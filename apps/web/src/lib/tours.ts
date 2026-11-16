@@ -83,7 +83,11 @@ const AUTHORITY_INTRO: Readonly<Record<AuthorityRole, TourStep>> = {
   },
   operation: {
     title: 'Tu función: operación del nodo',
-    text: 'Revisas las solicitudes de alta de las instituciones. No ves denuncias.',
+    text: 'Revisas las solicitudes de alta de las instituciones y asignas el órgano interno de control de cada dependencia. No ves denuncias.',
+  },
+  court: {
+    title: 'Tu función: tribunal',
+    text: 'Resuelves las faltas graves y las de particulares, y la alzada. No investigas ni turnas.',
   },
 };
 
@@ -111,6 +115,10 @@ const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
   operation: {
     title: 'Confirma la huella por teléfono',
     text: 'Llama a la institución y pide que te lea su huella. Solo si coincide con la que calcula tu navegador puedes aprobar.',
+  },
+  court: {
+    title: 'Solo lo que te remiten',
+    text: 'Ves los expedientes que la autoridad substanciadora te envía. Nunca abres nombres sellados.',
   },
 };
 

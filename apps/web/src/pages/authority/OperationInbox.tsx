@@ -1,7 +1,8 @@
 // Bandeja de la cuenta de operación del nodo (paso 3 del alta de autoridades): revisa cada
 // solicitud, recalcula en este navegador la huella del candado y solo deja aprobar si coincide con
 // la que la institución lee por teléfono. Al aprobar muestra la entrada propuesta del directorio.
-// Esta cuenta nunca ve denuncias.
+// La misma cuenta lleva la «Competencia por dependencia» (`CompetencePanel`). Esta cuenta nunca ve
+// denuncias.
 import { useCallback, useEffect, useState } from 'react';
 import { findState } from '@sigilo/contracts';
 import type { RegistrationView } from '@sigilo/contracts';
@@ -13,6 +14,7 @@ import { formatDayDate } from '../../lib/format.ts';
 import { api } from '../../services/api.ts';
 import { describeError } from '../../services/api-client.ts';
 import type { OperationSession } from './authority-session.ts';
+import { CompetencePanel } from './CompetencePanel.tsx';
 
 const STATUS_LABELS: Readonly<Record<RegistrationView['status'], string>> = {
   pending: 'Pendiente',
@@ -290,6 +292,7 @@ export function OperationInbox({ session, onLogout }: OperationInboxProps) {
   const [views, setViews] = useState<RegistrationView[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [screen, setScreen] = useState<'registrations' | 'competence'>('registrations');
 
   const load = useCallback(() => {
     api.listRegistrations(session.token).then(
@@ -322,16 +325,44 @@ export function OperationInbox({ session, onLogout }: OperationInboxProps) {
       </div>
       <Alert tone="info" title="Operación del nodo">
         <p>
-          Revisas las solicitudes de alta de las instituciones. Esta cuenta no ve denuncias ni
-          identidades.
+          Revisas las solicitudes de alta de las instituciones y asignas el órgano interno de
+          control de cada dependencia. Esta cuenta no ve denuncias ni identidades.
         </p>
       </Alert>
+      <nav aria-label="Operación del nodo" className="actions">
+        <button
+          type="button"
+          className={screen === 'registrations' ? 'button' : 'button button--secondary'}
+          aria-current={screen === 'registrations' ? 'page' : undefined}
+          onClick={() => {
+            setScreen('registrations');
+            focusAfterRender('registration-list-title');
+          }}
+          data-testid="operation-tab-registrations"
+        >
+          Solicitudes de alta
+        </button>
+        <button
+          type="button"
+          className={screen === 'competence' ? 'button' : 'button button--secondary'}
+          aria-current={screen === 'competence' ? 'page' : undefined}
+          onClick={() => {
+            setScreen('competence');
+            focusAfterRender('competence-title');
+          }}
+          data-testid="operation-tab-competence"
+        >
+          Competencia por dependencia
+        </button>
+      </nav>
       {error && (
         <p className="field__error" role="alert">
           {error}
         </p>
       )}
-      {current !== null ? (
+      {screen === 'competence' ? (
+        <CompetencePanel session={session} />
+      ) : current !== null ? (
         <RegistrationDetail
           session={session}
           view={current}

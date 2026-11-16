@@ -128,6 +128,9 @@ const ENC = 'mL6vYr2bW1xVxH3tLq8m0J9cQk4nFj7sT2pZ5aR1uE0';
 const CT =
   'StRzfWnAHU44irFcJi8Ovk2WchAogkFPTBaHqnM5Nr9BWGZk_sDbsz069mq6-8fAXMCKRxSTTNpoqQO9uuK4OPw';
 
+const QUERETARO_COURT =
+  'Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)';
+
 const directory: AuthorityDirectory = {
   format: 1,
   serial: 1,
@@ -152,7 +155,7 @@ const directory: AuthorityDirectory = {
   authorities: [
     {
       id: 'authority.comptroller-queretaro',
-      name: 'Contraloría Estatal Ficticia de Querétaro',
+      name: 'Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)',
       nodeId: 'node.queretaro',
       governmentLevel: 'estatal',
       stateCode: '22',
@@ -184,7 +187,7 @@ const directory: AuthorityDirectory = {
   functionTables: [
     {
       table: {
-        format: 1,
+        format: 2,
         nodeId: 'node.queretaro',
         stateCode: '22',
         version: 1,
@@ -203,13 +206,13 @@ const directory: AuthorityDirectory = {
               entityIds: [],
               holder: {
                 kind: 'institution',
-                name: 'Secretaría Ejecutiva Ficticia del Sistema Estatal Anticorrupción de Querétaro',
+                name: 'Secretaría Ejecutiva del Sistema Estatal Anticorrupción de Querétaro (ficticia)',
               },
             },
           ],
           investigation: [
             {
-              governmentLevels: ['estatal', 'municipal'],
+              governmentLevels: ['estatal'],
               entityIds: [],
               holder: { kind: 'authority', authorityId: 'authority.comptroller-queretaro' },
               legalBasis: 'LGRA, arts. 3, fr. II, y 10',
@@ -221,10 +224,16 @@ const directory: AuthorityDirectory = {
               governmentLevels: ['estatal', 'municipal'],
               entityIds: [],
               severity: 'serious',
-              holder: {
-                kind: 'institution',
-                name: 'Tribunal de Justicia Administrativa Ficticio de Querétaro',
-              },
+              holder: { kind: 'institution', name: QUERETARO_COURT },
+            },
+          ],
+          court: [
+            {
+              governmentLevels: ['estatal', 'municipal'],
+              entityIds: [],
+              instance: 'first',
+              holder: { kind: 'institution', name: QUERETARO_COURT },
+              legalBasis: 'LGRA, arts. 12 y 209',
             },
           ],
           supervision: [],
@@ -237,6 +246,18 @@ const directory: AuthorityDirectory = {
             },
           ],
         },
+        entities: [
+          {
+            entityId: 'PDN-22-7283',
+            status: 'assigned',
+            holder: {
+              kind: 'institution',
+              name: 'Órgano Interno de Control del Municipio de Querétaro (ficticio)',
+            },
+            legalBasis: 'CPEUM, art. 109, fr. III',
+          },
+          { entityId: 'PDN-22-7232', status: 'pending' },
+        ],
       },
       signature: SIGNATURE,
     },

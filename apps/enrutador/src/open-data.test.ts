@@ -210,6 +210,18 @@ describe('agregador en el enrutador', () => {
     expect(byId.get('node.queretaro')?.nationalEntrySeq).toBeGreaterThan(0);
     expect(byId.get('node.federal')).toMatchObject({ status: 'unreachable', ledgerHead: null });
     expect(cut.suppressed).toBe(5);
+    // Cobertura de OIC por estado: una fila por tabla del directorio, con el catálogo de la PDN.
+    const coverage = new Map(cut.oicCoverage?.map((row) => [row.nodeId, row]));
+    expect(coverage.size).toBe(router.signed.directory.functionTables?.length);
+    const queretaroCoverage = coverage.get('node.queretaro');
+    expect(queretaroCoverage).toMatchObject({ stateCode: '22', total: 145 });
+    expect(
+      (queretaroCoverage?.withOic ?? 0) +
+        (queretaroCoverage?.withoutOic ?? 0) +
+        (queretaroCoverage?.general ?? 0) +
+        (queretaroCoverage?.pending ?? 0),
+    ).toBe(145);
+    expect(coverage.get('node.federal')?.stateCode).toBeNull();
 
     const file = await app.request(NETWORK_ROUTES.nationalOpenDataCsv);
     expect(file.headers.get('Content-Type')).toContain('text/csv');

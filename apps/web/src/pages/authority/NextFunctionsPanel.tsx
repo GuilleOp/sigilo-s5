@@ -1,18 +1,26 @@
 // Quién sigue después de la investigación, según la tabla de funciones que firmó el nodo de la
 // entidad de los hechos (o el nodo federal, para un ente federal): substanciación, resolución,
-// supervisión, vía penal y observador. Sale del directorio verificado; nada se pide al servidor.
+// tribunal, supervisión y vía penal. La vigilancia del sistema (CPC) va aparte: no ve el caso. Sale
+// del directorio verificado; nada se pide al servidor.
 import { findEntity } from '@sigilo/contracts';
 import type { AuthorityDirectory, ComplaintDetail, NodeFunction } from '@sigilo/contracts';
-import { assignmentsFor, functionTableFor, stateDisplayName } from '@sigilo/red';
+import {
+  assignmentsFor,
+  COURT_INSTANCE_LABELS,
+  functionTableFor,
+  holderName,
+  stateDisplayName,
+} from '@sigilo/red';
+import { functionRulesOf } from '@sigilo/contracts';
 import { formatDayDate } from '../../lib/format.ts';
 
 /** Funciones siguientes que se muestran en el detalle. */
 export const NEXT_FUNCTIONS: readonly NodeFunction[] = [
   'substantiation',
   'resolution',
+  'court',
   'supervision',
   'prosecution',
-  'observer',
 ];
 
 const SEVERITY_TEXT = {
@@ -63,8 +71,13 @@ export function NextFunctionsPanel({ detail, directory }: NextFunctionsPanelProp
                   <dd>La tabla no la asigna para este ente.</dd>
                 ) : (
                   row.holders.map((holder) => (
-                    <dd key={`${holder.severity ?? 'any'}-${holder.name}`}>
+                    <dd
+                      key={`${holder.severity ?? 'any'}-${holder.instance ?? 'any'}-${holder.name}`}
+                    >
                       {holder.severity === null ? '' : `${SEVERITY_TEXT[holder.severity]}: `}
+                      {holder.instance === undefined
+                        ? ''
+                        : `En ${COURT_INSTANCE_LABELS[holder.instance]}: `}
                       {holder.name}
                       {holder.legalBasis === null ? '' : ` (${holder.legalBasis})`}
                     </dd>
@@ -73,6 +86,14 @@ export function NextFunctionsPanel({ detail, directory }: NextFunctionsPanelProp
               </div>
             ))}
           </dl>
+          <p data-testid="next-functions-observer">
+            <strong>Quién vigila el sistema (no ve tu caso):</strong>{' '}
+            {functionRulesOf(table, 'observer').length === 0
+              ? 'la tabla no nombra a nadie.'
+              : `${functionRulesOf(table, 'observer')
+                  .map((rule) => holderName(directory, rule.holder))
+                  .join(', ')}, con la bitácora pública y la estadística agregada.`}
+          </p>
         </>
       )}
     </section>

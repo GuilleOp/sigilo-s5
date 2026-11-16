@@ -9,6 +9,17 @@ rompe algo está marcado como **Incompatible**.
 
 ## [Sin publicar]
 
+### Agregado
+
+- Tabla de funciones en el formato 2 (`FunctionTable.format: 2`; el 1 se sigue aceptando): función
+  `court`, competencia por dependencia (`entities`), `requiresIdentifiedReporter`, `instance` y
+  `settings.operatorReceives`. Función de cuenta `court`.
+- Operaciones `getCompetence` y `saveCompetence` (`/api/v1/operation/competence`), con los esquemas
+  `CompetenceView`, `CompetenceSaveRequest` y `CompetenceSaveResponse`.
+- `NationalOpenData.oicCoverage`: cobertura de órganos internos de control por estado.
+
+La versión del estándar no se subió en este cambio: al publicarlo corresponde una versión menor.
+
 ## [0.3.0] - 2026-11-12
 
 Perfil de conexión con la PDN: el grupo «PDN» se publica y se comporta como las especificaciones

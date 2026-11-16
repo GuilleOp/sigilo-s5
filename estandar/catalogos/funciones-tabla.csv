@@ -1,9 +1,10 @@
 clave,valor
-intake,Buzón general: recibe y turna
+intake,Buzón de la autoridad receptora: recibe y turna
 operation,Operación del nodo: da de alta autoridades
 investigation,Investigación y calificación
 substantiation,Substanciación
 resolution,Resolución
+court,"Tribunal: faltas graves, de particulares y alzada (formato 2)"
 supervision,"Supervisión: superior jerárquico, recibe escalamientos"
 prosecution,Vía penal: fiscalía
 observer,Observador: Comité de Participación Ciudadana

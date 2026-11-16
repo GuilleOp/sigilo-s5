@@ -19,6 +19,8 @@ import type { IdentityRequestsRepository } from './db/identity-requests-reposito
 import { createProcedureRepository } from './db/procedure-repository.ts';
 import type { ProcedureRepository } from './db/procedure-repository.ts';
 import { createRegistrationsRepository } from './db/registrations-repository.ts';
+import { createFunctionTableProposalsRepository } from './db/function-table-proposals-repository.ts';
+import type { FunctionTableProposalsRepository } from './db/function-table-proposals-repository.ts';
 import type { RegistrationsRepository } from './db/registrations-repository.ts';
 import { createSecurityLogRepository } from './db/security-log-repository.ts';
 import type { SecurityLogRepository } from './db/security-log-repository.ts';
@@ -207,6 +209,8 @@ export interface AppContext {
   qualifications: QualificationRepository;
   securityLog: SecurityLogRepository;
   registrations: RegistrationsRepository;
+  /** Versiones de la tabla de funciones firmadas desde el panel de la operación (migración 18). */
+  tableProposals: FunctionTableProposalsRepository;
   authorities: AuthorityRegistry;
   sessions: SessionStore;
   /** Segundo factor: política, inscripciones, retos del segundo paso y secretos por confirmar. */
@@ -271,6 +275,7 @@ export function createContext(deps: AppDeps): AppContext {
     qualifications: createQualificationRepository(deps.db),
     securityLog: createSecurityLogRepository(deps.db),
     registrations: createRegistrationsRepository(deps.db),
+    tableProposals: createFunctionTableProposalsRepository(deps.db),
     authorities: deps.authorities ?? emptyAuthorityRegistry(),
     sessions:
       deps.sessions ??

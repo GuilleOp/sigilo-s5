@@ -5,6 +5,48 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Competencia por dependencia** (`docs/competencia-por-dependencia.md`). Tabla de funciones en el
+  **formato 2** (se sigue aceptando el 1): función `court` (Tribunal de Justicia Administrativa, con
+  primera instancia y alzada), `entities[]` con el órgano interno de control de cada ente
+  (`assigned`, `without_oic` con fundamento o `pending`), la marca `requiresIdentifiedReporter` y
+  `settings.operatorReceives`. `functionTableProblems` rechaza en el formato 2 una regla general
+  que mande los entes municipales a una autoridad que no es municipal (CPEUM, art. 109, fr. III) y
+  la misma área para investigar y substanciar (LGRA, art. 115).
+- Pantalla **«Competencia por dependencia»** para la cuenta de operación de cualquier nodo
+  (estatal o federal): las dependencias del catálogo de la PDN agrupadas en centralizada,
+  paraestatal, autónomos y cada municipio; pistas del S1 y del S2 calculadas sin conexión
+  (`/datos/competencia/<clave>.json`; el S3 no está por ente); asignar, nombrar, «sin OIC
+  designado», pendiente y asignación en bloque; distintivos «OIC con llaves ✓», «OIC nombrado,
+  falta alta» y «pendiente»; CSV; revisar los cambios y firmar la versión nueva con la llave del
+  nodo (`GET` y `POST /api/v1/operation/competence`, migración 18).
+- `sigilo tabla exportar` y `config/competencia-por-dependencia.csv` en `sigilo tabla revisar` y
+  `firmar`, con el resumen de cambios respecto de la versión vigente.
+- «¿Quién atiende tu denuncia en tu estado?»: búsqueda por dependencia y cobertura de OIC por
+  estado. El corte nacional de datos abiertos trae `oicCoverage`.
+- Función de cuenta `court` (mínima: el procedimiento del tribunal lo completa el trámite).
+- Demostración de Querétaro: unidad receptora de la Secretaría de la Contraloría (ficticia), SESEA
+  solo en la operación, OIC ficticios de los municipios de Querétaro y El Marqués y de la CEA,
+  Sala Especializada, fiscalía anticorrupción y ESFE ficticias, y cuentas nuevas (segunda persona
+  investigadora, substanciación, titular, OIC municipales, tribunal y fiscalía). La tabla federal
+  pasa al formato 2 con los OIC de sus entes, la ASF, el TFJA y la FGR.
+
+### Cambiado
+
+- `proposeCompetentAuthority`: si el OIC del ente está pendiente o sin llaves, la denuncia va a la
+  autoridad receptora con la nota «turnar al OIC de…» (`turnTo`); un ente municipal nunca va a una
+  autoridad estatal (también en el formato 1 y sin tablas), y una denuncia anónima nunca se
+  propone ni se ofrece a quien solo admite denuncias identificadas (B17).
+- La cuenta `fiscalia` del nodo federal recibe e investiga (`intake` e `investigation`): puede
+  aceptar lo que se le turna.
+- «Quién sigue en el trámite» y la página pública muestran al CPC aparte: vigila el sistema, no ve
+  casos (B05). Nombres de la demostración de Querétaro según su ley (B08).
+
+### Quitado
+
+- La regla «municipales sin OIC → Contraloría» de la demostración de Querétaro y de Oaxaca (B02).
+
 ## [1.1.0] - 2026-11-12
 
 Una sola ventanilla nacional en la SESNA, un nodo por estado (sin nodo común), tabla de funciones
