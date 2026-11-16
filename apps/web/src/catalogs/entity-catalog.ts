@@ -1,8 +1,10 @@
-// Entes públicos reales de la PDN en el navegador: se descarga del mismo origen solo el fragmento
-// de la entidad elegida (/datos/entes/<clave>.json) y el federal (00), se validan y se registran en
+// Entes públicos reales de la PDN en el navegador: fragmentos del mismo origen
+// (/datos/entes/<clave>.json, uno por entidad y el federal `00`), validados y registrados en
 // @sigilo/contracts para que `findEntity` (ruteo, vista previa, detalle) los encuentre.
-// Seguridad: el catálogo completo no viaja en el bundle; descargar un fragmento solo revela la
-// entidad, que la denuncia ya declara (igual que el grupo de anonimato, datos/README.md, regla 5).
+// Al entrar a «Denunciar» se descargan los 33 (report-prefetch.ts, ADR 0012): así se llena sin
+// conexión y las peticiones no revelan la entidad. Si esa descarga falla, `useStateEntities` pide
+// bajo demanda el de la entidad elegida y el federal.
+// Seguridad: el catálogo no viaja en el bundle y queda solo en memoria.
 import { useEffect, useSyncExternalStore } from 'react';
 import {
   ENTITY_FRAGMENT_BASE_PATH,

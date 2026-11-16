@@ -1,6 +1,7 @@
 // Pantalla /denunciar: asistente por pasos con progreso, validación y foco gestionado.
 // Al cambiar de paso el foco va al encabezado, o al panel exacto si lo pide el semáforo.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { prefetchReportCatalogs } from '../../catalogs/report-prefetch.ts';
 import { useNetworkState } from '../../network/use-network-state.ts';
 import { ErrorSummary } from '../../components/ErrorSummary.tsx';
 import { StepHeading } from '../../components/StepHeading.tsx';
@@ -63,6 +64,11 @@ export function ReportPage() {
   /** Con la denuncia enviada ya no hay pasos: se ocultan las píldoras y la barra de pasos. */
   const [isFinished, setFinished] = useState(false);
   const step = STEPS[index] ?? STEPS[0];
+  // Al empezar, aún con conexión, se descargan los catálogos de todo el país (ADR 0012): así los
+  // pasos 1 a 4 funcionan en modo avión. No bloquea la pantalla; si falla, se cargan bajo demanda.
+  useEffect(() => {
+    void prefetchReportCatalogs();
+  }, []);
   useDocumentTitle(`Denunciar, paso ${index + 1} de ${STEPS.length}: ${step.title}`);
 
   function goTo(next: number, target: string | null = null): void {

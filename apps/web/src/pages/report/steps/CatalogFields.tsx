@@ -1,6 +1,6 @@
 // Oficina de gobierno y conducta: un solo campo por decisión, donde se escribe para filtrar y se
 // elige en la misma lista. Las oficinas son las reales del directorio de la PDN de la entidad
-// elegida (se descarga solo su fragmento y el federal) y las ficticias de la demostración; las
+// elegida (descargadas al empezar, o bajo demanda si eso falló) y las ficticias de la demo; las
 // conductas se agrupan por situación cotidiana. El servidor valida todo contra los mismos catálogos.
 import {
   findMunicipality,

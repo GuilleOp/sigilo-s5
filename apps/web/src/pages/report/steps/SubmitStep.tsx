@@ -22,6 +22,7 @@ import { evaluatorKeyFromDirectory } from '@sigilo/corroboracion';
 import { identifierFromDraft } from '../../../corroboration/blind-corroboration.ts';
 import { workerCorroborationRunner } from '../../../corroboration/corroboration-runner.ts';
 import { destinationFor, keysForDestination } from '../../../network/network-keys.ts';
+import { useIsOnline } from '../../../network/use-online.ts';
 import {
   createRelayApi,
   sameOriginQueueChallenge,
@@ -104,6 +105,7 @@ function canSend(destination: ResolvedDestination): boolean {
 /** Envío y entrega del recibo. */
 export function SubmitStep({ draft, destination, navigator, onFinished }: SubmitStepProps) {
   const modes = useMemoryStore(usageModesStore);
+  const isOnline = useIsOnline();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const isSending = useRef(false);
   const isFinished = phase.kind === 'receipt' || phase.kind === 'done';
@@ -122,7 +124,8 @@ export function SubmitStep({ draft, destination, navigator, onFinished }: Submit
   }, [phase.kind]);
 
   async function send(): Promise<void> {
-    if (isSending.current || phase.kind === 'key-mismatch' || !canSend(destination)) return;
+    if (isSending.current || phase.kind === 'key-mismatch' || !canSend(destination) || !isOnline)
+      return;
     isSending.current = true;
     try {
       const network = networkSubmissionFor(draft, destination);
@@ -263,9 +266,17 @@ export function SubmitStep({ draft, destination, navigator, onFinished }: Submit
   }
 
   const isBlocked =
-    phase.kind === 'sending' || phase.kind === 'key-mismatch' || !canSend(destination);
+    phase.kind === 'sending' || phase.kind === 'key-mismatch' || !canSend(destination) || !isOnline;
   return (
     <>
+      {!isOnline && (
+        <Alert tone="warning" title="Para enviar necesitas conexión" testId="submit-offline">
+          <p>
+            Tu equipo no tiene internet. Tu denuncia sigue en esta pantalla, sin enviarse: conéctate
+            (quita el modo avión) y pulsa «Enviar denuncia».
+          </p>
+        </Alert>
+      )}
       {destination.kind === 'network' && (
         <p data-testid="submit-target">
           Se enviará a <strong>{destination.selected.name}</strong> ({destination.selected.nodeName}
