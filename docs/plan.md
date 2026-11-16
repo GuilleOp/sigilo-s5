@@ -26,6 +26,14 @@ definición de terminado común (ver `convenciones.md`) y revisión de cada etap
 | 5 Endurecimiento            | 10-11 nov | E2E del recorrido completo, accesibilidad, seguridad, replicación en entorno limpio. Congelamiento de funciones el 11 nov a las 18:00 |
 | 6 Entregables               | 11-13 nov | Presentación ejecutiva, documentación, guion y video; versión 1.1.0 con instalación de producción y Estándar S5 0.3.0                 |
 
+## Fase 3: ciclo de vida legal y competencia por dependencia (sin publicar, Estándar S5 0.4.0)
+
+| Etapa                         | Periodo | Objetivo                                                                                                                                                                     |
+| ----------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7 Ciclo de vida legal         | 16 nov  | Etapas del IPRA al Tribunal, recursos, medidas cautelares, vía penal en paralelo y recursos federales ([ciclo-de-vida-legal.md](ciclo-de-vida-legal.md))                     |
+| 8 Competencia por dependencia | 16 nov  | Tabla de funciones formato 2, pantalla «Competencia por dependencia», demostración de Querétaro y federal ([competencia-por-dependencia.md](competencia-por-dependencia.md)) |
+| 9 Revisión legal y documental | 16 nov  | Correcciones legales P0, redacción de estándar nacional, revisión de consistencia de la documentación y [guía para la auditoría](auditoria-guia.md)                          |
+
 Fecha límite oficial: 13 de noviembre de 2026, 23:59 (hora del centro de México). Presentación: 17 y
 18 de noviembre.
 

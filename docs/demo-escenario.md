@@ -62,18 +62,29 @@ denuncias sobre entes federales sí se envían, porque las atiende el nodo feder
 | `authority.oic-dfps`                  | Órgano Interno de Control en la Delegación Federal Ficticia de Programas Sociales                                                    | `node.federal`   | Recibe las tres denuncias del atacante contra el director honesto.                                                                                                                  |
 | `authority.prosecutor-anticorruption` | Fiscalía Ficticia Especializada en Hechos de Corrupción                                                                              | `node.federal`   | Recibe la vista por posibles delitos del Código Penal Federal.                                                                                                                      |
 | `authority.comptroller-queretaro`     | Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia)                                                  | `node.queretaro` | Autoridad estatal de referencia: archiva poco, motiva sus acuerdos y sus sanciones aparecen en el S3 ficticio.                                                                      |
+| `authority.oic-municipio-queretaro`   | Órgano Interno de Control del Municipio de Querétaro (ficticio)                                                                      | `node.queretaro` | OIC de los entes del Municipio de Querétaro en la competencia por dependencia (CPEUM, art. 109, fr. III).                                                                           |
+| `authority.oic-el-marques`            | Órgano Interno de Control del Municipio de El Marqués (ficticio)                                                                     | `node.queretaro` | OIC de los entes del Municipio de El Marqués.                                                                                                                                       |
+| `authority.oic-cea-queretaro`         | Órgano Interno de Control de la Comisión Estatal de Aguas (ficticio)                                                                 | `node.queretaro` | OIC de una paraestatal con su propio órgano interno de control.                                                                                                                     |
+| `authority.prosecutor-queretaro`      | Fiscalía Especializada en el Combate a la Corrupción de la Fiscalía General del Estado de Querétaro (ficticia)                       | `node.queretaro` | Vía penal de Querétaro (función `prosecution`).                                                                                                                                     |
+| `authority.esfe-queretaro`            | Entidad Superior de Fiscalización del Estado de Querétaro (ficticia)                                                                 | `node.queretaro` | Investiga faltas graves, pero solo admite denuncias con nombre y firma (`requiresIdentifiedReporter`): la ventanilla nunca le envía una anónima. No tiene cuentas.                  |
+| `authority.asf-federal`               | Auditoría Superior de la Federación (ficticia)                                                                                       | `node.federal`   | Investiga faltas graves que detecta al fiscalizar; sí admite denuncias sin nombre (LFRCF, art. 60). No tiene cuentas.                                                               |
 | `authority.comptroller-oaxaca`        | Contraloría Ficticia de Oaxaca                                                                                                       | `node.oaxaca`    | Autoridad de una entidad sin CPC y sin S3 conectado: sus sanciones quedan «sin cobertura».                                                                                          |
 | `authority.buzon-federal`             | Buzón general ficticio del nodo Federal                                                                                              | `node.federal`   | Buzón general (papel `inbox`) de los entes federales: recibe lo que la tabla federal no asigna (un ente federal sin OIC en el directorio) y lo turna. Su supervisora es la federal. |
 | `authority.buzon-queretaro`           | Buzón general del nodo Querétaro, a cargo de la unidad receptora de quejas y denuncias de la Secretaría de la Contraloría (ficticia) | `node.queretaro` | Buzón general (papel `inbox`) de la entidad `22`: recibe lo que la tabla de Querétaro no asigna y lo turna. No lo atiende la SESEA.                                                 |
 | `authority.buzon-oaxaca`              | Buzón general ficticio del nodo Oaxaca                                                                                               | `node.oaxaca`    | Buzón general (papel `inbox`) de Oaxaca.                                                                                                                                            |
 
+Los tribunales (la Sala Especializada ficticia del TFJA, `authority.tfja-sala-ra`, y la de
+Querétaro, `authority.tja-queretaro`) tienen cuentas en su nodo pero no están en el directorio: no
+reciben denuncias cifradas, solo actúan en sus etapas y en los recursos que resuelven
+([ciclo de vida legal](ciclo-de-vida-legal.md#el-tribunal-como-actor)).
+
 Los tres buzones generales están en el directorio con la llave de `keys.json` de su nodo. La
 ventanilla única nunca los propone por competencia: si la tabla de funciones de la entidad (sección
-2.5) no nombra a quién investiga al ente, propone el buzón de esa tabla con el motivo «La tabla de
-funciones de … no nombra quién investiga a ese ente. La enviamos al buzón general…, donde una
-persona la turna a quien corresponda.» Así funciona el canal único con turno (Bases de la PDN, arts.
-56 y 58), igual que la bandeja general del S5. Las autoridades también pueden devolver una denuncia
-al buzón (`returned_to_inbox`).
+2.5) no nombra a quién investiga al ente, o si el OIC del ente está pendiente o sin llaves, propone
+el buzón de la autoridad receptora de esa tabla con la nota «turnar al OIC de…». Ahí una persona la
+turna a quien corresponda: así funciona el canal único con turno (Bases de la PDN, arts. 56 y 58),
+igual que la bandeja general del S5. Las autoridades también pueden devolver una denuncia al buzón
+(`returned_to_inbox`).
 
 Relaciones de supervisión (para el escalamiento):
 
@@ -94,33 +105,47 @@ dos funciones. Sí obliga a separar la investigación de la substanciación y la
 art. 3, fr. II a IV, y art. 115): la cuenta de substanciación del OIC IFFE es otra persona, que
 avanza las etapas desde que se presenta el Informe de Presunta Responsabilidad Administrativa
 (`report_filed`) y nunca turna ni abre identidades. El buzón general solo recibe y turna, y nunca
-abre identidades.
+abre identidades. Las cuentas del Tribunal (función `court`) nunca se combinan con otra función.
 
-| Usuario                           | Nodo             | Autoridad                                                                              | Funciones                   |
-| --------------------------------- | ---------------- | -------------------------------------------------------------------------------------- | --------------------------- |
-| `buzon.federal`                   | `node.federal`   | Buzón general del nodo Federal                                                         | Recepción y turnado         |
-| `oic-equipamiento.persona1`       | `node.federal`   | `authority.oic-iffe`                                                                   | Recepción e investigación   |
-| `oic-equipamiento.persona2`       | `node.federal`   | `authority.oic-iffe`                                                                   | Recepción e investigación   |
-| `oic-equipamiento.titular`        | `node.federal`   | `authority.oic-iffe`                                                                   | Supervisión                 |
-| `oic-equipamiento.substanciacion` | `node.federal`   | `authority.oic-iffe`                                                                   | Substanciación y resolución |
-| `oic-programas`                   | `node.federal`   | `authority.oic-dfps`                                                                   | Recepción e investigación   |
-| `supervision-oic`                 | `node.federal`   | `authority.oversight-federal`                                                          | Supervisión                 |
-| `fiscalia`                        | `node.federal`   | `authority.prosecutor-anticorruption`                                                  | Investigación               |
-| `operacion.federal`               | `node.federal`   | Operación del nodo Federal                                                             | Operación del nodo          |
-| `buzon.queretaro`                 | `node.queretaro` | Buzón general del nodo Querétaro (cuenta de la Secretaría de la Contraloría, ficticia) | Recepción y turnado         |
-| `contraloria.queretaro`           | `node.queretaro` | `authority.comptroller-queretaro`                                                      | Recepción e investigación   |
-| `operacion.queretaro`             | `node.queretaro` | Operación del nodo Querétaro                                                           | Operación del nodo          |
-| `buzon.oaxaca`                    | `node.oaxaca`    | Buzón general del nodo Oaxaca                                                          | Recepción y turnado         |
-| `contraloria.oaxaca`              | `node.oaxaca`    | `authority.comptroller-oaxaca`                                                         | Recepción e investigación   |
-| `operacion.oaxaca`                | `node.oaxaca`    | Operación del nodo Oaxaca                                                              | Operación del nodo          |
+| Usuario                           | Nodo             | Autoridad                                                                                                    | Funciones                   |
+| --------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| `buzon.federal`                   | `node.federal`   | Buzón general del nodo Federal                                                                               | Recepción y turnado         |
+| `oic-equipamiento.persona1`       | `node.federal`   | `authority.oic-iffe`                                                                                         | Recepción e investigación   |
+| `oic-equipamiento.persona2`       | `node.federal`   | `authority.oic-iffe`                                                                                         | Recepción e investigación   |
+| `oic-equipamiento.titular`        | `node.federal`   | `authority.oic-iffe`                                                                                         | Supervisión                 |
+| `oic-equipamiento.substanciacion` | `node.federal`   | `authority.oic-iffe`                                                                                         | Substanciación y resolución |
+| `oic-programas`                   | `node.federal`   | `authority.oic-dfps`                                                                                         | Recepción e investigación   |
+| `supervision-oic`                 | `node.federal`   | `authority.oversight-federal`                                                                                | Supervisión                 |
+| `fiscalia`                        | `node.federal`   | `authority.prosecutor-anticorruption`                                                                        | Recepción e investigación   |
+| `tribunal.federal`                | `node.federal`   | Sala Especializada ficticia del TFJA (`authority.tfja-sala-ra`)                                              | Tribunal                    |
+| `operacion.federal`               | `node.federal`   | Operación del nodo Federal                                                                                   | Operación del nodo          |
+| `buzon.queretaro`                 | `node.queretaro` | Buzón general del nodo Querétaro (unidad receptora de la Secretaría de la Contraloría, ficticia)             | Recepción y turnado         |
+| `contraloria.queretaro`           | `node.queretaro` | `authority.comptroller-queretaro`                                                                            | Recepción e investigación   |
+| `contraloria.queretaro.persona2`  | `node.queretaro` | `authority.comptroller-queretaro`                                                                            | Recepción e investigación   |
+| `contraloria.substanciacion`      | `node.queretaro` | `authority.comptroller-queretaro` (Dirección de Responsabilidades)                                           | Substanciación y resolución |
+| `contraloria.titular`             | `node.queretaro` | `authority.comptroller-queretaro`                                                                            | Supervisión                 |
+| `oic-municipio-queretaro`         | `node.queretaro` | `authority.oic-municipio-queretaro`                                                                          | Recepción e investigación   |
+| `oic-el-marques`                  | `node.queretaro` | `authority.oic-el-marques`                                                                                   | Recepción e investigación   |
+| `oic-cea.queretaro`               | `node.queretaro` | `authority.oic-cea-queretaro`                                                                                | Recepción e investigación   |
+| `tja.queretaro`                   | `node.queretaro` | Sala Especializada ficticia del Tribunal de Justicia Administrativa de Querétaro (`authority.tja-queretaro`) | Tribunal                    |
+| `fiscalia.queretaro`              | `node.queretaro` | `authority.prosecutor-queretaro`                                                                             | Recepción e investigación   |
+| `operacion.queretaro`             | `node.queretaro` | Operación del nodo Querétaro (SESEA ficticia)                                                                | Operación del nodo          |
+| `buzon.oaxaca`                    | `node.oaxaca`    | Buzón general del nodo Oaxaca                                                                                | Recepción y turnado         |
+| `contraloria.oaxaca`              | `node.oaxaca`    | `authority.comptroller-oaxaca`                                                                               | Recepción e investigación   |
+| `operacion.oaxaca`                | `node.oaxaca`    | Operación del nodo Oaxaca                                                                                    | Operación del nodo          |
 
-Segundo factor (TOTP): `supervision-oic`, `fiscalia` y las tres cuentas `operacion.*` lo tienen
-inscrito con un secreto sintético (`npm run demo:codigo -- <usuario>` da el código); `oic-programas`
-lo inscribe en su primer acceso; las demás entran solo con contraseña (`SIGILO_MFA=opcional` en la
-demostración). Ver [demo.md](demo.md#segundo-factor-en-la-presentación).
+Segundo factor (TOTP): `supervision-oic`, `contraloria.titular`, `fiscalia`, `fiscalia.queretaro`,
+`tja.queretaro` y las tres cuentas `operacion.*` lo tienen inscrito con un secreto sintético
+(`npm run demo:codigo -- <usuario>` da el código; la lista está en `DEMO_MFA_USERS`,
+`apps/server/src/security/demo-accounts.ts`); `oic-programas` lo inscribe en su primer acceso; las
+demás entran solo con contraseña (`SIGILO_MFA=opcional` en la demostración). Ver
+[demo.md](demo.md#segundo-factor-en-la-presentación).
 
-Las dos personas del OIC IFFE permiten la apertura de identidad de 2 de N. Las cuentas de operación
-solo revisan las solicitudes de alta de autoridades (entran sin llave y no ven denuncias). Cada
+Las dos personas del OIC IFFE, y las dos de la Contraloría de Querétaro, permiten la apertura de
+identidad de 2 de N. Las cuentas del Tribunal no están en el directorio (no reciben denuncias
+cifradas) y en la demostración entran con la llave del buzón de su nodo. Las cuentas de operación
+solo revisan las solicitudes de alta de autoridades y la competencia por dependencia (entran sin
+llave y no ven denuncias). Cada
 solicitud de alta va al nodo de la entidad de la institución, por los pasos de la ventanilla
 única. La siembra deja pendiente en el nodo de Oaxaca la del «Órgano Interno de Control
 Ficticio de la Secretaría de Salud Ficticia de Oaxaca» y rechazada en el nodo Federal la del
@@ -161,33 +186,73 @@ nodo.
 ### 2.5 Tabla de funciones de cada nodo
 
 Cada nodo declara, para su entidad, qué institución cumple cada función. La tabla
-(`FunctionTable`, formato 1) la firma el nodo con su llave de firma del directorio y viaja dentro del
-directorio, que firma la operación y cofirman los testigos. Así la SESNA no puede cambiar la tabla
-de un estado sin la firma de ese estado, y los testigos ven cada versión. Cada regla dice a qué
-órdenes de gobierno aplica y, si hace falta, a qué entes específicos («ente X → su OIC») y a qué
-gravedad (la resolución de faltas graves es de la Sala Especializada del tribunal). Gana la regla que nombra al ente sobre la
-de todo su orden. La ventanilla propone con la tabla de la entidad de los hechos (la federal, si el
-ente es federal); si la tabla no nombra a nadie, propone su buzón general. El panel muestra en el
-detalle quién sigue (substanciación, resolución, supervisión y vía penal; el CPC aparte, porque
-vigila el sistema y no el caso) y la página
-pública «¿Quién atiende tu denuncia en tu estado?» (`/quien-atiende`) muestra cada tabla.
+(`FunctionTable`, formato 1 o 2; ver [competencia por dependencia](competencia-por-dependencia.md))
+la firma el nodo con su llave de firma del directorio y viaja dentro del directorio, que firma la
+operación y cofirman los testigos. Así la SESNA no puede cambiar la tabla de un estado sin la firma
+de ese estado, y los testigos ven cada versión. Las tablas de **Querétaro y del nodo federal son de
+formato 2**: además de las reglas por orden de gobierno traen la función `court` (el Tribunal y su
+alzada) y la **competencia por dependencia** (`entities[]`: el OIC de cada ente). La de **Oaxaca es
+de formato 1**: solo reglas por orden de gobierno y por ente. En la tabla manda primero la
+competencia por dependencia; después, la regla que nombra al ente gana sobre la de todo su orden. La
+ventanilla propone con la tabla de la entidad de los hechos (la federal, si el ente es federal); si
+la tabla no nombra a nadie, o el OIC del ente está pendiente o sin llaves, propone el buzón de la
+autoridad receptora con la nota de a quién turnarla. El panel muestra en el detalle quién sigue
+(substanciación, resolución, Tribunal, supervisión y vía penal; el CPC aparte, porque vigila el
+sistema y no el caso) y la página pública «¿Quién atiende tu denuncia en tu estado?»
+(`/quien-atiende`) muestra cada tabla y permite buscar una dependencia.
 
-| Función                               | Querétaro (`node.queretaro`)                                                                                                                                                          | Federal (`node.federal`)                                                                               | Oaxaca (`node.oaxaca`)                                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| Buzón general                         | `authority.buzon-queretaro`                                                                                                                                                           | `authority.buzon-federal`                                                                              | `authority.buzon-oaxaca`                                                                                             |
-| Operación del nodo                    | SESEA Ficticia de Querétaro (solo opera el nodo y da de alta autoridades)                                                                                                             | Secretaría Anticorrupción y Buen Gobierno Ficticia                                                     | Secretaría de la Contraloría Ficticia de Oaxaca                                                                      |
-| Investigación y calificación          | Entes estatales: `authority.comptroller-queretaro`; entes municipales: el OIC de cada municipio (ficticio); si el municipio no está en el directorio, al buzón para turnarla a su OIC | `VE-INSTITUTO`: `authority.oic-iffe`; `VE-PROGRAMAS`: `authority.oic-dfps`; los demás, al buzón        | Entes estatales: `authority.comptroller-oaxaca`; entes municipales: al buzón, para turnarla al OIC de cada municipio |
-| Substanciación                        | Área de responsabilidades de la Secretaría de la Contraloría (ficticia), distinta de la que investiga                                                                                 | El área de responsabilidades de cada OIC                                                               | Dirección Ficticia de Responsabilidades de la Contraloría                                                            |
-| Resolución                            | No grave: la Contraloría; grave: Sala Especializada en materia de Responsabilidades Administrativas del Tribunal de Justicia Administrativa del Estado de Querétaro (ficticia)        | No grave: cada OIC; grave: Sala Especializada del Tribunal Federal Ficticio de Justicia Administrativa | No grave: la Contraloría; grave: Sala Especializada del Tribunal de Justicia Administrativa Ficticio                 |
-| Supervisión                           | Titular de la Contraloría                                                                                                                                                             | `authority.oversight-federal`                                                                          | Sin asignar                                                                                                          |
-| Vía penal                             | Fiscalía Especializada en el Combate a la Corrupción de la Fiscalía General del Estado de Querétaro (ficticia)                                                                        | `authority.prosecutor-anticorruption`                                                                  | Fiscalía Ficticia de Oaxaca                                                                                          |
-| Quién vigila el sistema (no ve casos) | `observer.cpc-queretaro`                                                                                                                                                              | CPC Ficticio del Sistema Nacional                                                                      | Sin asignar (no tiene CPC)                                                                                           |
+| Función                                                      | Querétaro (`node.queretaro`, formato 2)                                                                                                                          | Federal (`node.federal`, formato 2)                                                                                                          | Oaxaca (`node.oaxaca`, formato 1)                                                                                    |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Autoridad receptora (recepción y turnado)                    | `authority.buzon-queretaro`, de la unidad receptora de quejas y denuncias de la Secretaría de la Contraloría (ficticia)                                          | `authority.buzon-federal`                                                                                                                    | `authority.buzon-oaxaca`                                                                                             |
+| Operación del nodo (altas de autoridades, sin ver denuncias) | SESEA ficticia de Querétaro: solo opera el nodo y da de alta autoridades (no recibe ni turna; LSEAQ, arts. 24 y 34, fr. X)                                       | Secretaría Anticorrupción y Buen Gobierno (ficticia), operación del nodo federal                                                             | Secretaría de la Contraloría Ficticia de Oaxaca                                                                      |
+| Investigación y calificación                                 | Por dependencia (abajo); faltas graves: la ESFE ficticia, marcada «solo denuncias con nombre y firma»                                                            | Por dependencia (abajo); faltas graves: `authority.asf-federal` (admite denuncias sin nombre, LFRCF, art. 60)                                | Entes estatales: `authority.comptroller-oaxaca`; entes municipales: al buzón, para turnarla al OIC de cada municipio |
+| Substanciación                                               | Dirección de Responsabilidades Administrativas de la Contraloría (ficticia); en los municipios de Querétaro y El Marqués, el área de responsabilidades de su OIC | Área de responsabilidades de cada OIC (`VE-INSTITUTO` y `VE-PROGRAMAS`)                                                                      | Dirección Ficticia de Responsabilidades de la Contraloría                                                            |
+| Resolución                                                   | No grave: la Contraloría como resolutora; grave: la Sala Especializada (ficticia)                                                                                | No grave: cada OIC; grave: el Tribunal Federal (ficticio)                                                                                    | No grave: la Contraloría; grave: Tribunal de Justicia Administrativa Ficticio de Oaxaca                              |
+| Tribunal (faltas graves, de particulares y alzada)           | Primera instancia: Sala Especializada en materia de Responsabilidades Administrativas del TJA de Querétaro; alzada: su Cuarta Sección (ficticias)                | Primera instancia: Sala Especializada en Responsabilidades Administrativas del TFJA; alzada: Tercera Sección de la Sala Superior (ficticias) | Sin declarar (formato 1)                                                                                             |
+| Supervisión (superior)                                       | Titular de la Secretaría de la Contraloría (ficticia)                                                                                                            | `authority.oversight-federal`                                                                                                                | Sin asignar                                                                                                          |
+| Vía penal (fiscalía)                                         | `authority.prosecutor-queretaro` (ficticia, con llaves)                                                                                                          | `authority.prosecutor-anticorruption`                                                                                                        | Fiscalía Ficticia de Oaxaca                                                                                          |
+| Vigilancia del sistema (CPC), sin acceso a casos             | `observer.cpc-queretaro`                                                                                                                                         | CPC Ficticio del Sistema Nacional Anticorrupción                                                                                             | Sin asignar (no tiene CPC)                                                                                           |
+
+**Competencia por dependencia de Querétaro** (`queretaroEntityAssignments`,
+`packages/red/src/demo-queretaro.ts`; los entes son los reales del catálogo de la PDN, y ningún caso
+acusa a uno de ellos):
+
+| Entes                                                                             | Estado del ente        | Quién lo atiende                                                                  |
+| --------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| Dependencias centralizadas y paraestatales del Ejecutivo (salvo la CEA)           | `without_oic`          | «Sin OIC designado → la Contraloría» (LRAEQ, arts. 2, fr. XXII, 6 y 7)            |
+| Comisión Estatal de Aguas                                                         | `assigned`, con llaves | `authority.oic-cea-queretaro`                                                     |
+| Entes del Municipio de Querétaro                                                  | `assigned`, con llaves | `authority.oic-municipio-queretaro`                                               |
+| Entes del Municipio de El Marqués                                                 | `assigned`, con llaves | `authority.oic-el-marques`                                                        |
+| Entes del Municipio de San Juan del Río, la Universidad Autónoma y la Legislatura | `assigned`, sin alta   | Su OIC nombrado (ficticio): la denuncia va a la receptora con la nota de turnarla |
+| Los demás poderes y organismos autónomos                                          | `pending`              | La receptora, con la nota de turnarla a su OIC                                    |
+| Los demás municipios (no se listan)                                               | Sin fila               | La receptora, con la nota de turnarla al OIC del municipio (nunca la Contraloría) |
+
+**Competencia por dependencia federal** (`federalEntityAssignments`,
+`packages/red/src/demo-federal.ts`):
+
+| Ente                                       | Estado del ente        | Quién lo atiende                                                                  |
+| ------------------------------------------ | ---------------------- | --------------------------------------------------------------------------------- |
+| `VE-INSTITUTO` (IFFE)                      | `assigned`, con llaves | `authority.oic-iffe`                                                              |
+| `VE-PROGRAMAS`                             | `assigned`, con llaves | `authority.oic-dfps`                                                              |
+| `VE-ADUANA` (oficina ficticia de aduanas)  | `without_oic`          | «Sin OIC designado → la SABG» (ficticia, sin llaves; LOAPF, art. 37, fr. XXIX)    |
+| Dos entes reales del catálogo (IMSS y SAT) | `assigned`, sin alta   | Su OIC nombrado (ficticio): la denuncia va al buzón federal con la nota de turnar |
+| Dos organismos autónomos                   | `pending`              | El buzón federal, con la nota de turnarla a su OIC                                |
+
+Además, en las faltas graves investiga la ASF (`authority.asf-federal`), resuelve el TFJA (Sala
+Especializada y Tercera Sección, ficticias) y la vía penal es de la FGR (fiscalía ficticia). Cuando
+un ente estatal o municipal ejerce recursos federales, el panel ofrece dar vista a la ASF, la SABG y
+la FGR y turnar al nodo Federal ([ciclo de vida legal](ciclo-de-vida-legal.md#recursos-federales-en-entes-locales-b10)).
 
 Reglas de coherencia que revisa el directorio (`functionTableProblems`): una tabla por nodo y por
 entidad; firma válida del nodo; una tabla estatal no cubre entes federales y la federal solo cubre
 federales; solo nombra autoridades de su propio nodo y de su entidad; el buzón y la investigación
 deben ser autoridades del directorio con el papel `inbox` e `investigating` (reciben sobres
-cifrados); las demás funciones pueden ser una institución sin llaves.
+cifrados); las demás funciones pueden ser una institución sin llaves. En el formato 2, además:
+cada ente aparece una sola vez y es de la entidad de la tabla; ninguna regla general manda los entes
+municipales a una autoridad que no es municipal (CPEUM, art. 109, fr. III); la misma área no
+investiga y substancia (LGRA, art. 115), y quien opera el nodo no es la autoridad receptora salvo
+que la tabla declare `settings.operatorReceives` con la ley que lo faculta
+([competencia por dependencia](competencia-por-dependencia.md#31-reglas-de-coherencia-las-revisa-el-nodo-al-firmar-y-la-sesna-al-aceptar)).
 
 ## 3. Entes y personas
 
@@ -758,10 +823,10 @@ columna «Regla del plazo», no las fechas.
 | 31  | jue 2026-12-10      | 2 678 400 000          | Reglas                        | **Escalamiento** automático a `authority.oversight-federal` por `escalation.conflict` y `escalation.downgrade-signals`. Los observadores ven el evento sin contenido.                                                                                                                             | LGRA, arts. 58, 64, I y 102                                                                       |
 | 32  | vie 2026-12-11      | 2 764 800 000          | `authority.oversight-federal` | Acepta el escalamiento y abre el expediente con su segunda llave.                                                                                                                                                                                                                                 |                                                                                                   |
 | 35  | lun 2026-12-14      | 3 024 000 000          | Marta                         | **Prepara su inconformidad** en el 3.er día hábil de la ventana: el seguimiento avisa a la autoridad investigadora y le da el escrito para firmarlo a mano y entregarlo antes del día 37. Acepta abrir su identidad sellada **solo para el recurso**; la apertura queda en bitácora y ella la ve. | LGRA, arts. 103, 104 y 109: nombre, domicilio y firma autógrafa                                   |
-| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oic-iffe`          | Recibe el escrito firmado (en la demo se supone entregado) y corre traslado a la Sala Especializada con el expediente y un informe que justifique la calificación. Mientras se resuelve, no se inicia el procedimiento de responsabilidad.                                                        | LGRA, arts. 102 y 104                                                                             |
-| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oversight-federal` | Da vista a la fiscalía (re-cifrada en su navegador) por posibles delitos, como orientación: CPF, art. 217, fr. I, incisos B y D (adjudicaciones y adquisiciones ilícitas).                                                                                                                        | CPF, art. 217; el art. 220, fr. I, solo si se acredita beneficio a socios o sociedades vinculadas |
-| 79  | mié 2027-01-27      | 6 825 600 000          | Sala (fuera del sistema)      | Vence el plazo de la Sala para resolver la inconformidad. En la demo, la Sala la declara fundada: la conducta es grave.                                                                                                                                                                           | LGRA, art. 107: 30 días hábiles                                                                   |
-| 95  | vie 2027-02-12      | 8 208 000 000          | `authority.oversight-federal` | Registra la sentencia de la Sala Especializada con fundamento: «resuelto con sanción», expediente `TFF-SALA-0001` (el Tribunal no tiene cuenta en la demo). Plazos comprimidos para la demo.                                                                                                      |                                                                                                   |
+| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oic-iffe`          | Recibe el escrito firmado y lo registra como «inconformidad presentada con firma» (`file_remedy`, `signed: true`; no lo siembra `demo:seed`), y corre traslado a la Sala Especializada. Mientras se resuelve, el informe no se admite.                                                            | LGRA, arts. 102, 104 y 109                                                                        |
+| 36  | mar 2026-12-15      | 3 110 400 000          | `authority.oic-iffe`          | Da vista al Ministerio Público (`refer_to_prosecutor`; la fiscalía la acepta con `fiscalia`) por posibles delitos, como orientación: CPF, art. 217, fr. I, incisos B y D. La vía penal corre en paralelo (`criminalStage`).                                                                       | CPF, art. 217; el art. 220, fr. I, solo si se acredita beneficio a socios o sociedades vinculadas |
+| 79  | mié 2027-01-27      | 6 825 600 000          | Sala (`tribunal.federal`)     | Vence el plazo de la Sala para resolver la inconformidad. En el escenario, la Sala la declara fundada (`resolve_remedy` con `revoked`): la conducta es grave y se vuelve a calificar.                                                                                                             | LGRA, art. 107: 30 días hábiles                                                                   |
+| 95  | vie 2027-02-12      | 8 208 000 000          | Sala (`tribunal.federal`)     | Dicta la sentencia en la rama grave (`court_resolution`), expediente `TFF-SALA-0001`; sin cuentas del Tribunal, la substanciación la registraría como actuación del Tribunal (`courtRecord`). Plazos comprimidos para la demo.                                                                    | LGRA, arts. 207 y 209                                                                             |
 | 96  | sáb 2027-02-13      | 8 294 400 000          | Sistema                       | Verificación contra `s3.federal`: **confirmado**. Marta ve el resultado en su seguimiento; el observatorio suma una sanción verificada.                                                                                                                                                           |                                                                                                   |
 | 151 | vie 2027-04-09      | 13 046 400 000         | Sistema (opcional)            | **Alerta de inactividad** a los 5 meses para `case.queretaro-dormant`, en investigación. No cita la caducidad.                                                                                                                                                                                    | Regla publicada del prototipo                                                                     |
 | 181 | dom 2027-05-09      | 15 638 400 000         | Sistema (opcional)            | **Alerta de inactividad** a los 6 meses para `case.queretaro-dormant`. Es una alerta, no una determinación legal: en la investigación no corre la caducidad de la instancia.                                                                                                                      | La caducidad (LGRA, art. 74) solo aplica después de admitido el informe                           |
@@ -776,8 +841,9 @@ periodo de los hechos es mensual, la fecha se muestra a nivel de mes.
   plazo.»
 - Día 30: «La autoridad calificó la conducta como falta no grave. Si no estás de acuerdo, puedes
   inconformarte dentro de los 5 días hábiles siguientes a que te lo notifique por el buzón (LGRA,
-  arts. 102 y 103), desde este seguimiento. Para hacerlo, la ley pide tu nombre, domicilio y firma
-  (art. 109): solo entonces se abriría tu identidad sellada, y solo para el recurso.»
+  arts. 102 y 103). Desde este seguimiento preparas el aviso; la inconformidad cuenta cuando entregas
+  el escrito con tu nombre, domicilio y firma autógrafa ante la autoridad investigadora (art. 109).
+  Solo entonces se abriría tu identidad sellada, y solo para el recurso.»
 - Día 31: la regla «Calificación de no grave con dos o más señales del auditor» y «Acto
   resolutivo con conflicto de interés sin excusa» aparecen como cumplidas: la denuncia pasó a la
   autoridad supervisora.
@@ -917,18 +983,20 @@ Pendientes y riesgos:
   las llaves y las personas de la demo son inventadas. La ESFE (Entidad Superior de Fiscalización
   del Estado de Querétaro) es autoridad, no observadora, y no recibe denuncias anónimas (LFSRCQ
   arts. 50 y 51). Ver [proceso-legal-de-la-denuncia.md](proceso-legal-de-la-denuncia.md).
-- Agregar `VE-INSTITUTO` a `packages/contracts/src/catalogs/public-entities.ts` (tarea de semillas).
+- Resuelto: `VE-INSTITUTO` ya está en `packages/contracts/src/catalogs/public-entities.ts`.
 - Resuelto con el texto vigente de la LGRA: la inconformidad (art. 102) procede contra la
   calificación de no grave y contra la abstención del art. 101, **no** contra un archivo; por eso
   `case.marta` se califica como no grave en lugar de archivarse. Se presenta ante la autoridad
-  investigadora que calificó (art. 104), que corre traslado a la Sala. El prototipo no modela la
-  Sala: registra el aviso de que la persona preparó su escrito, abre la identidad solo para el
-  recurso y muestra el plazo para entregarlo. Sin firma autógrafa el escrito «no se tendrá por
-  presentado» (art. 109, fr. IV): cuenta cuando la persona lo entrega firmado a mano a la autoridad
-  investigadora dentro de los 5 días hábiles, y el plazo de 30 días hábiles de la Sala (art. 107)
-  corre después.
-- Pendiente: registrar en el nodo la resolución de la Sala y bloquear el informe mientras la
-  inconformidad esté pendiente (art. 102, segundo párrafo); hoy solo se explica en el seguimiento.
+  investigadora que calificó (art. 104), que corre traslado a la Sala. Desde el seguimiento la
+  persona solo **prepara su aviso**: el sistema abre la identidad solo para el recurso y muestra el
+  plazo para entregar el escrito. Sin firma autógrafa el escrito «no se tendrá por presentado»
+  (art. 109, fr. IV): el recurso cuenta cuando la autoridad investigadora registra «inconformidad
+  presentada con firma» (`file_remedy` con `signed: true`) dentro de los 5 días hábiles, y el
+  plazo de 30 días hábiles de la Sala (art. 107) corre desde ese registro. La Sala la resuelve con
+  `resolve_remedy`, y mientras está pendiente el informe no se admite ni se cierra por abstención
+  ([ciclo de vida legal](ciclo-de-vida-legal.md#recursos); E2E `legal-lifecycle`). La semilla de la
+  demostración deja a Marta en el aviso del día 35: el escrito firmado y la resolución de la Sala no
+  se siembran.
 - La vista a la fiscalía es orientativa: CPF, art. 217, fr. I, incisos B y D (uso ilícito de
   atribuciones en adjudicaciones y adquisiciones); el art. 220, fr. I (ejercicio abusivo de
   funciones), solo si se acredita que la adjudicación benefició a socios o sociedades vinculadas
@@ -937,4 +1005,6 @@ Pendientes y riesgos:
 - Los umbrales de 6.2 están publicados con el auditor (`packages/auditor/config/umbrales.json`); los de 6.3 se fijan y publican cuando se implemente la regla.
 - La matriz de cobertura real por entidad requiere procesar los reportes de cobertura fuera del
   repositorio.
-- Actualizar `docs/demo.md` con este recorrido cuando las funciones existan.
+- `docs/demo.md` sigue este recorrido hasta el día 35; el resto del ciclo de vida (Tribunal,
+  recursos, vista al Ministerio Público y recursos federales) se muestra con las cuentas
+  `tribunal.federal`, `tja.queretaro`, `fiscalia` y `fiscalia.queretaro`, sin semilla propia.

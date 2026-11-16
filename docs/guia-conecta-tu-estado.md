@@ -9,7 +9,9 @@ da de alta a las autoridades; no lee denuncias ni ve los hechos. El buzón gener
 autoridad receptora que designe tu estado (por ejemplo, la unidad de quejas y denuncias de la
 contraloría). Que la SESEA reciba y turne denuncias depende de la ley de cada estado: en Querétaro
 no está previsto; en Michoacán sí, por ley y por lineamientos de su Comité Coordinador. Revisa la
-tuya antes de llenar la tabla ([proceso legal](proceso-legal-de-la-denuncia.md#62-sesea-de-querétaro)).
+tuya antes de llenar la tabla ([proceso legal](proceso-legal-de-la-denuncia.md#62-sesea-de-querétaro)):
+si tu SESEA sí recibe y turna, tu tabla lo declara en `settings.operatorReceives` con la ley que la
+faculta (sección 2).
 
 Así está repartida la red:
 
@@ -114,25 +116,27 @@ muestra quién sigue en el trámite (sin el observador, que vigila el sistema y 
 página pública «¿Quién atiende tu denuncia en tu estado?» la
 enseña a cualquiera.
 
-| Función        | Clave            | En el CSV        | Quién puede ser                                                                                                          |
-| -------------- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Buzón general  | `intake`         | `buzon`          | Tu buzón general (autoridad del directorio con papel `inbox`), atendido por la autoridad receptora que designe tu estado |
-| Operación      | `operation`      | `operacion`      | Quien opera el nodo y da de alta autoridades (SESEA o contraloría); no lee denuncias                                     |
-| Investigación  | `investigation`  | `investigacion`  | Autoridad del directorio con papel `investigating`: recibe cifrado                                                       |
-| Substanciación | `substantiation` | `substanciacion` | Una autoridad o una institución                                                                                          |
-| Resolución     | `resolution`     | `resolucion`     | Una autoridad o una institución (la falta grave la resuelve la Sala Especializada del tribunal)                          |
-| Supervisión    | `supervision`    | `supervision`    | El superior que recibe escalamientos (autoridad `supervisory`) u otra                                                    |
-| Vía penal      | `prosecution`    | `penal`          | La fiscalía anticorrupción (autoridad `prosecution` o institución)                                                       |
-| Observador     | `observer`       | `observador`     | Tu CPC (observador del directorio): vigila el sistema con datos agregados, no sigue en el trámite ni ve casos            |
+| Función                                                      | Clave            | En el CSV        | Quién puede ser                                                                                                           |
+| ------------------------------------------------------------ | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Autoridad receptora (recepción y turnado)                    | `intake`         | `buzon`          | Tu buzón general (autoridad del directorio con papel `inbox`), atendido por la autoridad receptora que designe tu estado  |
+| Operación del nodo (altas de autoridades, sin ver denuncias) | `operation`      | `operacion`      | Quien opera el nodo y da de alta autoridades (SESEA o contraloría); no lee denuncias                                      |
+| Investigación y calificación                                 | `investigation`  | `investigacion`  | Autoridad del directorio con papel `investigating`: recibe cifrado                                                        |
+| Substanciación                                               | `substantiation` | `substanciacion` | Una autoridad o una institución, distinta del área que investiga (LGRA art. 115)                                          |
+| Resolución                                                   | `resolution`     | `resolucion`     | Una autoridad o una institución (la falta grave la resuelve la Sala Especializada del tribunal)                           |
+| Tribunal (faltas graves, de particulares y alzada)           | `court`          | `tribunal`       | La Sala Especializada de tu Tribunal de Justicia Administrativa (`instancia` `primera`) y su alzada (`alzada`); formato 2 |
+| Supervisión (superior)                                       | `supervision`    | `supervision`    | El superior que recibe escalamientos (autoridad `supervisory`) u otra                                                     |
+| Vía penal (fiscalía)                                         | `prosecution`    | `penal`          | La fiscalía anticorrupción (autoridad `prosecution` o institución)                                                        |
+| Vigilancia del sistema (CPC), sin acceso a casos             | `observer`       | `observador`     | Tu CPC (observador del directorio): vigila el sistema con datos agregados, no sigue en el trámite ni ve casos             |
 
 Cada función es una lista de reglas. Cada regla dice a qué órdenes de gobierno aplica (`estatal`,
 `municipal`), si aplica solo a ciertos entes del catálogo (`entityIds`) y, si hace falta, a qué
 gravedad (`severity`). La regla que nombra al ente gana sobre la de todo su orden. Ejemplo en
 lenguaje llano:
 
-- Investigación: entes estatales → Contraloría; la Secretaría de Salud → su OIC (una regla con su
-  `entityId`); cada municipio → el OIC de ese municipio (una regla por municipio con su
-  `entityId`). Todo municipio tiene su propio OIC (CPEUM art. 109 fr. III) y la contraloría del
+- Investigación: dependencias del Poder Ejecutivo → Contraloría; la Secretaría de Salud → su OIC
+  (una regla con su `entityId`); cada municipio → el OIC de ese municipio (una regla por municipio
+  con su `entityId`). Los poderes y los organismos autónomos tienen su propio OIC: la contraloría del
+  Ejecutivo no los investiga. Con el formato 2 esto se escribe ente por ente (sección 2.1). Todo municipio tiene su propio OIC (CPEUM art. 109 fr. III) y la contraloría del
   Poder Ejecutivo no es competente para los servidores municipales: no pongas una regla general que
   mande el orden municipal a la contraloría. Si un municipio todavía no está en tu directorio, sus
   denuncias llegan al buzón general para turnarlas a su OIC.
@@ -159,7 +163,35 @@ resolucion,estatal;municipal,,grave,institucion:Sala Especializada del Tribunal 
 `./sigilo tabla revisar` la valida contra el directorio vigente y la muestra en lenguaje llano;
 `./sigilo tabla firmar` sube su `version`, la firma con la llave de tu nodo y deja el archivo para la
 SESNA, que lo integra con `./sigilo-sesna aceptar`. La operación no puede cambiarla sin tu firma: el
-navegador rechaza un directorio con una tabla que no lleva la firma de su nodo.
+navegador rechaza un directorio con una tabla que no lleva la firma de su nodo. Desde el formato 2
+el CSV admite dos columnas opcionales: `instancia` (solo en `tribunal`: `primera` o `alzada`) y
+`solo_identificada` (`si` si quien cumple la función solo admite denuncias con nombre y firma, como
+algunas entidades de fiscalización).
+
+### 2.1 El OIC de cada dependencia (competencia por dependencia)
+
+Las reglas por orden de gobierno no bastan: cada dependencia, poder, organismo autónomo y municipio
+tiene su propio órgano interno de control. La tabla de **formato 2** lo declara ente por ente
+(`entities[]`): su OIC (`asignado`), «sin OIC designado → lo atiende…» con su fundamento (`sin_oic`)
+o `pendiente`. Detalle y fundamento en
+[competencia-por-dependencia.md](competencia-por-dependencia.md).
+
+- **En el panel:** la cuenta de operación abre la pestaña **«Competencia por dependencia»**, con las
+  dependencias de tu entidad del catálogo de la PDN ya cargadas, agrupadas en centralizada,
+  paraestatal, autónomos y cada municipio. Asigna el OIC (con llaves o solo nombrado), marca «sin
+  OIC designado» o deja pendiente, revisa los cambios y firma la versión nueva.
+- **En hoja de cálculo:** `./sigilo tabla exportar` escribe `config/tabla-de-funciones.csv` y
+  `config/competencia-por-dependencia.csv` (columnas
+  `ente,nombre,estado,quien,fundamento,solo_identificada`) desde la tabla vigente; editas, y
+  `./sigilo tabla revisar` y `./sigilo tabla firmar` los leen juntos y muestran el resumen de
+  cambios.
+- **Lo que aún no tiene llaves** llega a tu autoridad receptora con la nota «turnar al OIC de…»:
+  nunca se manda a otra autoridad por una regla general.
+- **Si tu SESEA recibe y turna** por ley (por ejemplo, Michoacán), la tabla lo declara en
+  `settings.operatorReceives` con el fundamento; sin él, `functionTableProblems` rechaza que quien
+  opera el nodo sea la autoridad receptora. Hoy ni el CSV ni la pantalla editan ese ajuste: `sigilo
+tabla firmar` conserva el de la tabla vigente, y agregarlo la primera vez es un siguiente paso de
+  la herramienta.
 
 ## 3. Llaves y huellas
 

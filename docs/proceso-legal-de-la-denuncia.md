@@ -9,10 +9,11 @@ Cómo lo usa SIGILO: el estándar define **una vez, a nivel nacional**, las etap
 una denuncia, y **cada estado asigna** en su tabla de funciones firmada qué institución cumple cada
 función (LGSNA art. 56; Bases de la PDN art. 58; LGRA art. 115). Documentos relacionados:
 
-- [Ciclo de vida legal en el estándar](ciclo-de-vida-legal.md) (en preparación): etapas, recursos,
-  Tribunal, abstención, vía penal y fondos federales en el modelo de SIGILO.
-- [Competencia por dependencia](competencia-por-dependencia.md) (en preparación): quién investiga a
-  cada ente en la tabla de funciones.
+- [Ciclo de vida legal en el estándar](ciclo-de-vida-legal.md) (Estándar S5 0.4.0): etapas,
+  recursos, Tribunal, abstención, vía penal y fondos federales en el modelo de SIGILO, con el estado
+  de las rutas R1 a R43.
+- [Competencia por dependencia](competencia-por-dependencia.md): quién investiga a cada ente en la
+  tabla de funciones (formato 2).
 - [¿Quién protege a quien denuncia?](proteccion-de-quien-denuncia.md) y
   [ADR 0007](adr/0007-rendicion-de-cuentas-de-la-autoridad.md) (rendición de cuentas de la autoridad).
 
@@ -820,9 +821,18 @@ Lo que el estándar ya refleja:
 
 Lo que es meta de servicio y no ley: el semáforo de turnado de 1 y 2 días hábiles (paso 1).
 
-Lo que viene en la siguiente versión del estándar (el modelo ya lo permite: son etapas y funciones
-nuevas, y cada estado solo asigna quién): el Tribunal como actor, admisión, emplazamiento y
-audiencia inicial, la abstención, los recursos (reclamación, revocación, apelación y revisión), las
-medidas cautelares, la vista al Ministerio Público en paralelo y los fondos federales con la ASF,
-la SABG y la FGR. Ver [ciclo de vida legal](ciclo-de-vida-legal.md) (en preparación) y
-[competencia por dependencia](competencia-por-dependencia.md) (en preparación).
+Lo que agregó el Estándar S5 0.4.0 (son etapas y funciones nacionales, y cada estado solo asigna
+quién): el Tribunal como actor (función `court`), la prevención, la admisión y la abstención del
+informe, el emplazamiento y la audiencia inicial, las dos ramas (no grave y grave o de particulares),
+la firmeza y la ejecución, los recursos (inconformidad con firma, reclamación, revocación, apelación
+y revisión), las medidas cautelares, la vista al Ministerio Público con la vía penal en paralelo y
+la marca de recursos federales con la ASF, la SABG y la FGR. La tabla de funciones de formato 2
+agrega la competencia por dependencia (el OIC de cada ente) y la marca de quien solo admite
+denuncias con nombre y firma. Ver [ciclo de vida legal](ciclo-de-vida-legal.md) y
+[competencia por dependencia](competencia-por-dependencia.md).
+
+Lo que sigue pendiente (siguiente paso, documentado en las rutas R1 a R43 del
+[ciclo de vida legal](ciclo-de-vida-legal.md#rutas-r1-a-r43)): la calificación aparte de las faltas
+de particulares, la recusación, quién decidió las medidas de protección, la comparecencia de la
+persona como tercera, los expedientes derivados, la denuncia con varias conductas y las reglas de
+recursos federales por ente en la tabla.
