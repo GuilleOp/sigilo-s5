@@ -19,7 +19,7 @@ import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import type { AuthorityAccount } from '../security/authority-registry.ts';
 import { DEFAULT_EVIDENCE_RETENTION_DAYS, evidenceDeletionDay } from './evidence-service.ts';
 import { listIdentityRequests } from './identity-service.ts';
-import { assignedAuthorityOf } from './procedure-service.ts';
+import { assignedAuthorityOf, isProsecutionCompetent } from './procedure-service.ts';
 import { buildProcedureView } from './procedure-view.ts';
 import { auditSignalViews } from './audit-service.ts';
 import { conflictReview, contextSheetView } from './pdn-context.ts';
@@ -132,12 +132,15 @@ export function buildComplaintDetail(
   }
   const receivedEvent = publishedReceivedEvent(ctx, complaint);
   const deletionOn = evidenceDeletionOn(ctx, complaint);
-  // El Tribunal ve el expediente y el trámite, pero no el buzón con la persona denunciante ni las
-  // solicitudes de apertura de su identidad.
-  const isCourtView =
+  // El Tribunal y la fiscalía que recibió la vista al Ministerio Público (copia de lectura) ven el
+  // expediente y el trámite, pero no el buzón con la persona denunciante ni las solicitudes de
+  // apertura de su identidad.
+  const isOtherAuthority =
     account !== null &&
-    account.functions.includes('court') &&
     account.authorityId !== (complaint.assignedAuthorityId ?? ctx.authorities.inboxAuthorityId);
+  const isCourtView =
+    isOtherAuthority &&
+    (account.functions.includes('court') || isProsecutionCompetent(ctx, account, complaint));
   return {
     summary: summaryWithSemaphore(ctx, complaint, toSummary(ctx, complaint)),
     version: 1,

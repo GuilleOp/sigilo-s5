@@ -824,11 +824,146 @@ describe('vía penal en paralelo', () => {
     expect(titles(seen.procedure)).toContain('Se dio vista al Ministerio Público (denuncia penal)');
     const step = seen.procedure?.steps.find((item) => item.action === 'criminal_referral_filed');
     expect(step?.record?.legalBasis).toBe('LGRA, art. 10, fracc. III');
-    // El texto dice lo que pasa: se registra la vista; la remisión a la fiscalía es aparte.
+    // Sin fiscalía del nodo, el texto dice que la remisión va por oficio.
     const view = (await detail(server, 'oicInvestigator', folio)).body?.procedure;
     const note = view?.steps.find((item) => item.action === 'criminal_referral_filed')?.note;
-    expect(note).toContain('Se registró la vista al Ministerio Público');
-    expect(note).toContain('es un paso aparte');
+    expect(note).toContain('Se dio vista al Ministerio Público');
+    expect(note).toContain('por oficio');
+    // La vista por oficio no llega a la bandeja de la fiscalía del nodo.
+    expect((await detail(server, 'prosecutor', folio)).status).toBe(404);
+  });
+
+  it('la vista a la fiscalía del nodo llega a su bandeja como copia de lectura', async () => {
+    const { server, folio, reporter } = await setup();
+    await ok(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna al órgano interno de control del ente (nota sintética).',
+    });
+    await ok(server, 'oicIntake', folio, { action: 'accept' });
+    await advance(server, 'oicInvestigator', folio, 'investigation');
+    const listed = async (name: TestAccountName) => {
+      const response = await getAsAuthority(
+        server.app,
+        ROUTES.authorityComplaints,
+        testToken(name),
+      );
+      return ((await response.json()) as { folio: string }[]).map((item) => item.folio);
+    };
+    // Antes de la vista, la fiscalía no la ve.
+    expect(await listed('prosecutor')).not.toContain(folio);
+    expect((await detail(server, 'prosecutor', folio)).status).toBe(404);
+    // El panel sabe qué autoridades del nodo son fiscalías.
+    const authorities = (await (
+      await getAsAuthority(server.app, ROUTES.authorityAuthorities, testToken('oicInvestigator'))
+    ).json()) as { authorityId: string; isProsecution?: boolean }[];
+    expect(
+      authorities.filter((item) => item.isProsecution === true).map((item) => item.authorityId),
+    ).toEqual([TEST_AUTHORITIES.prosecutor]);
+    const base = {
+      action: 'refer_to_prosecutor',
+      basis: 'internal_control',
+      prosecutor: 'Fiscalía de prueba en hechos de corrupción',
+    } as const;
+    // Solo a una fiscalía del nodo: ni a otra autoridad, ni a sí misma, ni a una que no existe.
+    for (const prosecutorAuthorityId of [
+      TEST_AUTHORITIES.other,
+      TEST_AUTHORITIES.oic,
+      TEST_AUTHORITIES.court,
+      'authority.no-existe',
+    ]) {
+      expect(
+        (await act(server, 'oicInvestigator', folio, { ...base, prosecutorAuthorityId })).status,
+      ).toBe(400);
+    }
+    const referred = await ok(server, 'oicInvestigator', folio, {
+      ...base,
+      prosecutorAuthorityId: TEST_AUTHORITIES.prosecutor,
+    });
+    // La denuncia no se reasigna: la vía administrativa sigue con el OIC.
+    expect(referred).toMatchObject({
+      assignedAuthorityId: TEST_AUTHORITIES.oic,
+      managementState: 'accepted',
+      legalStage: 'investigation',
+      criminalStage: 'criminal_complaint_filed',
+    });
+    expect(await listed('prosecutor')).toContain(folio);
+    expect(await listed('oicInvestigator')).toContain(folio);
+    // Otra fiscalía, el Tribunal u otra autoridad no la ven.
+    expect(await listed('otherInvestigator')).not.toContain(folio);
+    expect((await detail(server, 'otherInvestigator', folio)).status).toBe(404);
+
+    // La fiscalía ve los hechos y el trámite, pero no el buzón ni las solicitudes de apertura.
+    const copy = await detail(server, 'prosecutor', folio);
+    expect(copy.status).toBe(200);
+    expect(copy.body?.facts.description).toBeTruthy();
+    expect(copy.body?.summary.assignedAuthorityId).toBe(TEST_AUTHORITIES.oic);
+    expect(copy.body?.messages).toEqual([]);
+    expect(copy.body?.identityRequests).toEqual([]);
+    const note = copy.body?.procedure?.steps.find(
+      (item) => item.action === 'criminal_referral_filed',
+    )?.note;
+    expect(note).toContain('la recibe en su bandeja');
+    expect(note).toContain('identidad sellada');
+    // No escribe a la persona ni pide la apertura de su identidad.
+    expect(
+      (
+        await postJson(
+          server.app,
+          ROUTES.authorityIdentityRequests(folio),
+          { legalBasis: 'CNPP, art. 109: requerimiento sintético de la fiscalía de prueba.' },
+          testToken('prosecutor'),
+        )
+      ).status,
+    ).toBe(404);
+
+    // Solo avanza la vía penal: nada del trámite administrativo ni de la gestión.
+    for (const request of [
+      { action: 'accept' },
+      {
+        action: 'reassign',
+        authorityId: TEST_AUTHORITIES.other,
+        note: 'Nota sintética de prueba para reasignar.',
+      },
+      { action: 'advance_stage', stage: 'qualification', qualification: qualification('serious') },
+      { action: 'record_withdrawal', note: 'Desistimiento sintético de prueba.' },
+      { action: 'flag_federal_funds', funding: 'aportaciones' },
+    ] as ProcedureActionRequest[]) {
+      expect((await act(server, 'prosecutor', folio, request)).status).toBe(403);
+    }
+    expect(
+      (
+        await act(server, 'oicInvestigator', folio, {
+          action: 'advance_stage',
+          stage: 'criminal_investigation',
+        })
+      ).status,
+    ).toBe(403);
+    const investigated = await advance(server, 'prosecutor', folio, 'criminal_investigation');
+    expect(investigated).toMatchObject({
+      assignedAuthorityId: TEST_AUTHORITIES.oic,
+      legalStage: 'investigation',
+      criminalStage: 'criminal_investigation',
+    });
+    // La vía administrativa sigue con el OIC mientras la penal avanza.
+    await ok(server, 'oicInvestigator', folio, {
+      action: 'advance_stage',
+      stage: 'qualification',
+      qualification: qualification('serious'),
+    });
+    await advance(server, 'prosecutor', folio, 'prosecutor_determination');
+    const seen = await tracking(server, folio, reporter);
+    expect(seen.procedure).toMatchObject({
+      legalStage: 'qualification',
+      criminalStage: 'prosecutor_determination',
+    });
+    expect(titles(seen.procedure)).toEqual(
+      expect.arrayContaining([
+        'Se dio vista al Ministerio Público (denuncia penal)',
+        'Vía penal: Investigación penal',
+        'Vía penal: Determinación del Ministerio Público',
+      ]),
+    );
   });
 
   it('solo la fiscalía avanza la vía penal; no lleva la administrativa ni se da vista', async () => {

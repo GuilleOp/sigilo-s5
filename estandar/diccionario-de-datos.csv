@@ -255,6 +255,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /AuthorityProfile,supervisorId,No,Alfanumérico,String,No,"Autoridad supervisora que recibe los escalamientos, si tiene.",AuthorityProfile,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oversight-federal
 /AuthorityProfile,isInbox,Sí,Booleano,Boolean,No,"Si es el buzón general del nodo, que recibe y turna.",AuthorityProfile,,,false
 /AuthorityProfile,canReceive,Sí,Booleano,Boolean,No,"Si es destino válido para turnar o reasignar: no es el buzón general y alguna de sus cuentas tiene la función intake, la única que acepta una denuncia turnada. El Tribunal, una supervisora sin recepción o una autoridad sin cuentas no lo son.",AuthorityProfile,,,true
+/AuthorityProfile,isProsecution,No,Booleano,Boolean,No,Presente si la autoridad es una fiscalía (papel prosecution del directorio o del archivo de cuentas): puede recibir la vista al Ministerio Público en su bandeja.,AuthorityProfile,valor fijo true,,
 /PdnInstitutionContext,entityId,Sí,Alfanumérico,String,No,Identificador del ente en el catálogo (PDN-EE-N).,PdnInstitutionContext,,,PDN-00-196
 /PdnInstitutionContext,status,Sí,Alfanumérico,String (enum),No,live: consultado ahora; cached: copia guardada; unavailable: sin conexión con la PDN y sin copia; disabled: el nodo no consulta la PDN.,PdnInstitutionContext,,live; cached; unavailable; disabled,live
 /PdnInstitutionContext,consultedAt,Sí,Valor,Valor,No,Fecha y hora (ISO 8601) de la consulta a la PDN.,PdnInstitutionContext,,,2026-11-16T18:00:00.000Z

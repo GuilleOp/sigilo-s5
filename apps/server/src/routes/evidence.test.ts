@@ -36,6 +36,7 @@ import {
   credentialsFor,
   getAsAuthority,
   postJson,
+  procedureAs,
   sampleJpeg,
   samplePng,
   submitComplaint,
@@ -495,6 +496,64 @@ describe('llaves re-cifradas hacia otra autoridad del nodo', () => {
       expect(response.status).toBe(400);
     }
     expect(storedGrants(server, folio)).toEqual([]);
+  });
+
+  it('la fiscalía que recibe la vista descarga el contenedor y ve solo la llave re-cifrada hacia ella', async () => {
+    const server = createTestServer();
+    const { folio, evidenceId } = await withEvidence(server);
+    const step = async (name: Parameters<typeof testToken>[0], body: unknown) => {
+      const response = await procedureAs(server, name, folio, body as never);
+      expect(response.status, JSON.stringify(await response.clone().json())).toBe(200);
+    };
+    await step('inboxIntake', {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna al órgano interno de control del ente (nota sintética).',
+    });
+    await step('oicIntake', { action: 'accept' });
+    await step('oicInvestigator', { action: 'advance_stage', stage: 'investigation' });
+    const download = (name: Parameters<typeof testToken>[0]) =>
+      getAsAuthority(server.app, ROUTES.authorityEvidence(evidenceId), testToken(name));
+    // Sin vista, la fiscalía no alcanza el contenedor.
+    expect((await download('prosecutor')).status).toBe(404);
+    // La investigadora (o la substanciadora) re-cifra la llave hacia la fiscalía antes de la vista.
+    const granted = await postJson(
+      server.app,
+      ROUTES.authorityEvidenceKeys(folio),
+      { grants: [grantFor(server, evidenceId, TEST_AUTHORITIES.prosecutor)] },
+      testToken('oicSubstantiation'),
+    );
+    expect(granted.status).toBe(200);
+    // La fiscalía no comparte llaves de una denuncia que no tiene.
+    expect(
+      (
+        await postJson(
+          server.app,
+          ROUTES.authorityEvidenceKeys(folio),
+          { grants: [grantFor(server, evidenceId, TEST_AUTHORITIES.prosecutor)] },
+          testToken('prosecutor'),
+        )
+      ).status,
+    ).toBe(404);
+    await step('oicInvestigator', {
+      action: 'refer_to_prosecutor',
+      basis: 'internal_control',
+      prosecutor: 'Fiscalía de prueba en hechos de corrupción',
+      prosecutorAuthorityId: TEST_AUTHORITIES.prosecutor,
+    });
+    const response = await download('prosecutor');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/octet-stream');
+    const detail = ComplaintDetailSchema.parse(
+      await (
+        await getAsAuthority(server.app, ROUTES.authorityComplaint(folio), testToken('prosecutor'))
+      ).json(),
+    );
+    expect(detail.evidenceCustody?.keyGrants.map((grant) => grant.authorityId)).toEqual([
+      TEST_AUTHORITIES.prosecutor,
+    ]);
+    // Otra autoridad sigue sin alcanzarlo.
+    expect((await download('otherInvestigator')).status).toBe(404);
   });
 
   it('después del descarte ya no hay archivo al que dar llave', async () => {

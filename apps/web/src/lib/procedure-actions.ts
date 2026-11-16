@@ -21,6 +21,7 @@ import {
 import type {
   AdministrativeStage,
   AuthorityAccountView,
+  AuthorityProfile,
   ComplaintDetail,
   DeadlineView,
   LegalClosureReasonOption,
@@ -165,6 +166,33 @@ export function isProsecutionAccount(
   account: Pick<AuthorityAccountView, 'isProsecution'>,
 ): boolean {
   return account.isProsecution === true;
+}
+
+/**
+ * Indica si la cuenta es de la fiscalía que recibió la vista al Ministerio Público: ve la denuncia
+ * como copia de lectura (la tiene otra autoridad) y solo avanza la vía penal.
+ */
+export function isReferralCopy(
+  account: Pick<AuthorityAccountView, 'authorityId' | 'isProsecution'>,
+  detail: Pick<ComplaintDetail, 'summary'>,
+): boolean {
+  const assigned = detail.summary.assignedAuthorityId;
+  return (
+    isProsecutionAccount(account) && assigned !== undefined && assigned !== account.authorityId
+  );
+}
+
+/**
+ * Fiscalías del nodo que pueden recibir la vista en su bandeja: las autoridades con papel de
+ * fiscalía, salvo la que tiene la denuncia.
+ */
+export function referralTargets(
+  authorities: readonly AuthorityProfile[],
+  assignedAuthorityId: string | undefined,
+): AuthorityProfile[] {
+  return authorities.filter(
+    (item) => item.isProsecution === true && item.authorityId !== assignedAuthorityId,
+  );
 }
 
 /**

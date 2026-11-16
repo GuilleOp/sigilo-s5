@@ -8,6 +8,11 @@ import { TurnSemaphore } from './TurnSemaphore.tsx';
 interface ComplaintListProps {
   complaints: readonly ComplaintSummary[];
   onOpen: (folio: string) => void;
+  /**
+   * Autoridad de la fiscalía de la sesión: las denuncias que tiene otra autoridad son vistas al
+   * Ministerio Público recibidas (copias de lectura) y se marcan así.
+   */
+  referralAuthorityId?: string;
 }
 
 /**
@@ -25,7 +30,7 @@ function s5Label(state: ComplaintSummary['managementState']): string {
  * Tabla de denuncias recibidas. En celular cada fila se ve como tarjeta (folio, conducta, estatus y
  * fecha); `data-label` da el nombre de cada dato en esa vista.
  */
-export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
+export function ComplaintList({ complaints, onOpen, referralAuthorityId }: ComplaintListProps) {
   if (complaints.length === 0) return <p>No hay denuncias todavía.</p>;
   return (
     <TableScroll labelledBy={'complaint-list-caption'}>
@@ -68,6 +73,14 @@ export function ComplaintList({ complaints, onOpen }: ComplaintListProps) {
                 <span className="complaint-list__status-text">
                   {STATUS_LABELS[complaint.status]}
                 </span>
+                {referralAuthorityId !== undefined &&
+                  complaint.assignedAuthorityId !== undefined &&
+                  complaint.assignedAuthorityId !== referralAuthorityId && (
+                    <span className="complaint-list__status-text" data-testid="referral-copy">
+                      {' '}
+                      · Vista al Ministerio Público (copia de lectura)
+                    </span>
+                  )}
               </td>
               <td data-label="Meta de turnado del S5">
                 <TurnSemaphore semaphore={complaint.turnSemaphore} />

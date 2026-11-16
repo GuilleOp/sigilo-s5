@@ -1,8 +1,18 @@
 // Pruebas de las acciones del trámite que ofrece el panel: solo la fiscalía avanza la vía penal y
 // no ve la investigación administrativa; la investigadora solo ve la administrativa.
 import { describe, expect, it } from 'vitest';
-import type { AuthorityAccountView, ComplaintDetail, ProcedureView } from '@sigilo/contracts';
-import { isProsecutionAccount, stageOptions } from './procedure-actions.ts';
+import type {
+  AuthorityAccountView,
+  AuthorityProfile,
+  ComplaintDetail,
+  ProcedureView,
+} from '@sigilo/contracts';
+import {
+  isProsecutionAccount,
+  isReferralCopy,
+  referralTargets,
+  stageOptions,
+} from './procedure-actions.ts';
 
 function detail(procedure: Partial<ProcedureView> = {}): ComplaintDetail {
   return {
@@ -54,5 +64,36 @@ describe('vía penal en el panel', () => {
       detail({ criminalStage: 'criminal_complaint_filed' }),
     ).map((item) => item.label);
     expect(labels).toEqual(['Vía penal: El Ministerio Público inició la investigación']);
+  });
+});
+
+describe('vista al Ministerio Público en la bandeja de la fiscalía', () => {
+  const assignedTo = (authorityId: string) =>
+    ({ summary: { assignedAuthorityId: authorityId } }) as unknown as ComplaintDetail;
+
+  it('la fiscalía ve como copia de lectura la denuncia que tiene otra autoridad', () => {
+    expect(isReferralCopy(PROSECUTION, assignedTo(OIC.authorityId))).toBe(true);
+    // Si se la turnaron, es suya: no es copia.
+    expect(isReferralCopy(PROSECUTION, assignedTo(PROSECUTION.authorityId))).toBe(false);
+    // El OIC nunca tiene copias de lectura.
+    expect(isReferralCopy(OIC, assignedTo('authority.otra-prueba'))).toBe(false);
+  });
+
+  it('solo se da vista a fiscalías del nodo distintas de la que tiene la denuncia', () => {
+    const authorities: AuthorityProfile[] = [
+      { authorityId: OIC.authorityId, name: 'OIC', isInbox: false, canReceive: true },
+      {
+        authorityId: PROSECUTION.authorityId,
+        name: 'Fiscalía',
+        isInbox: false,
+        canReceive: true,
+        isProsecution: true,
+      },
+      { authorityId: 'authority.tribunal', name: 'Tribunal', isInbox: false, canReceive: false },
+    ];
+    expect(referralTargets(authorities, OIC.authorityId).map((item) => item.authorityId)).toEqual([
+      PROSECUTION.authorityId,
+    ]);
+    expect(referralTargets(authorities, PROSECUTION.authorityId)).toEqual([]);
   });
 });

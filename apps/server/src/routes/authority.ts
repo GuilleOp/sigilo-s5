@@ -46,7 +46,10 @@ import {
   applyProcedureAction,
   isCompetent,
   isCourtCompetent,
+  isProsecutionCompetent,
+  listReferredFolios,
 } from '../services/procedure-service.ts';
+import { isProsecutionAuthority } from '../services/prosecution.ts';
 import { importClosures } from '../services/closure-import-service.ts';
 import { confirmTransfer, transferComplaint } from '../services/transfer-service.ts';
 import { buildComplaintDetail } from '../services/views.ts';
@@ -104,15 +107,18 @@ function findCompetent(ctx: AppContext, c: Context, account: AuthorityAccount): 
 }
 
 /**
- * Denuncia que la cuenta puede ver en el detalle y en el trámite: la de su autoridad o, si es una
- * cuenta del Tribunal, la que está en sus etapas o tiene un recurso que él resuelve.
+ * Denuncia que la cuenta puede ver en el detalle y en el trámite: la de su autoridad; si es una
+ * cuenta del Tribunal, la que está en sus etapas o tiene un recurso que él resuelve; si es de una
+ * fiscalía, la que le llegó con la vista al Ministerio Público (copia de lectura).
  * Seguridad (SEC-17): fuera de eso responde igual que una inexistente.
  */
 function findReachable(ctx: AppContext, c: Context, account: AuthorityAccount): ComplaintRecord {
   const complaint = ctx.complaints.find(folioOf(c));
   const isReachable =
     complaint !== null &&
-    (isCompetent(ctx, account, complaint) || isCourtCompetent(ctx, account, complaint));
+    (isCompetent(ctx, account, complaint) ||
+      isCourtCompetent(ctx, account, complaint) ||
+      isProsecutionCompetent(ctx, account, complaint));
   if (!isReachable) throw new ApiFailure('not_found');
   return complaint;
 }
@@ -137,11 +143,14 @@ function serveEvidence(ctx: AppContext, c: Context): Response {
   const evidenceId = c.req.param('evidenceId') ?? '';
   const record = EVIDENCE_ID_PATTERN.test(evidenceId) ? ctx.evidence.find(evidenceId) : null;
   // Las pruebas pendientes (sin denuncia) no se sirven; las de otra autoridad, tampoco, salvo a la
-  // supervisora de una denuncia escalada.
+  // supervisora de una denuncia escalada y a la fiscalía que recibió la vista (el contenedor va
+  // cifrado: solo lo abre con una llave que se le haya re-cifrado).
   const complaint = record?.folio ? ctx.complaints.find(record.folio) : null;
   const isAllowed =
     complaint !== null &&
-    (isCompetent(ctx, account, complaint) || isEscalatedTo(ctx, account, complaint.folio));
+    (isCompetent(ctx, account, complaint) ||
+      isEscalatedTo(ctx, account, complaint.folio) ||
+      isProsecutionCompetent(ctx, account, complaint));
   const bytes = isAllowed ? ctx.deps.evidenceStore.read(evidenceId) : null;
   if (record === null || bytes === null) throw new ApiFailure('not_found');
   // Seguridad: es el contenedor cifrado; el navegador de la autoridad lo abre con su llave. Se
@@ -169,7 +178,18 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
     await next();
   });
 
-  app.get(ROUTES.authorityAuthorities, (c) => c.json(ctx.authorities.listAuthorities()));
+  // Cada autoridad dice si es fiscalía: el panel la ofrece como destino de la vista al MP.
+  app.get(ROUTES.authorityAuthorities, (c) =>
+    c.json(
+      ctx.authorities
+        .listAuthorities()
+        .map((profile) =>
+          isProsecutionAuthority(ctx, profile.authorityId)
+            ? { ...profile, isProsecution: true as const }
+            : profile,
+        ),
+    ),
+  );
 
   // Contexto público de la dependencia en la PDN. Seguridad: solo el identificador público del ente
   // sale del nodo; nada de la denuncia.
@@ -195,6 +215,10 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
           ctx.authorities.inboxAuthorityId,
           offset,
           limit,
+          // La fiscalía también ve las denuncias de las que recibió vista (copias de lectura).
+          isProsecutionAuthority(ctx, account.authorityId)
+            ? listReferredFolios(ctx, account.authorityId)
+            : [],
         );
     // Cada resumen lleva el semáforo de turnado si espera turno o aceptación.
     return c.json(listed.map((item) => listedWithSemaphore(ctx, item)));
@@ -293,9 +317,10 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   });
 
   // Llaves de los archivos de prueba re-cifradas en el navegador hacia otra autoridad del nodo,
-  // antes de turnarla o reasignarla dentro del nodo: el contenedor no cambia, solo su llave.
+  // antes de turnarla o reasignarla dentro del nodo o de dar vista a la fiscalía del nodo (también
+  // la substanciadora da vista): el contenedor no cambia, solo su llave.
   app.post(ROUTES.authorityEvidenceKeys(':folio'), jsonBodyLimit, async (c) => {
-    const account = requireFunction(ctx, c, ['intake', 'investigation']);
+    const account = requireFunction(ctx, c, ['intake', 'investigation', 'substantiation']);
     const complaint = findCompetent(ctx, c, account);
     const { grants } = await readJson(c, EvidenceKeyGrantsRequestSchema);
     const keyIdOf = (authorityId: string): string | null =>

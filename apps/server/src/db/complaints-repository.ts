@@ -132,12 +132,16 @@ export interface ComplaintsRepository {
     offset: number,
     limit: number,
   ): ListedComplaint[];
-  /** Como `listSummariesForAuthority`, con el día de entrada al estado (semáforo de turnado). */
+  /**
+   * Como `listSummariesForAuthority`, con el día de entrada al estado (semáforo de turnado). Suma
+   * los `referredFolios` (las vistas al Ministerio Público que recibió una fiscalía).
+   */
   listForAuthority(
     authorityId: string,
     inboxAuthorityId: string,
     offset: number,
     limit: number,
+    referredFolios?: readonly string[],
   ): ListedComplaint[];
   updateStatus(folio: string, status: ComplaintStatus): void;
   /** Guarda el estado del trámite después de una acción. */
@@ -266,6 +270,20 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
      WHERE COALESCE(assigned_authority, ?) = ?
      ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
   );
+  // La bandeja de una fiscalía suma las denuncias de las que recibió vista (copias de lectura).
+  const listWithReferralsStatement = db.prepare(
+    `SELECT ${SUMMARY_COLUMNS},
+       COALESCE(
+         (SELECT legal_on FROM procedure_steps AS step
+          WHERE step.folio = complaints.folio
+            AND step.action IN ('received', 'routed', 'reassigned', 'returned_to_inbox')
+          ORDER BY step.position DESC LIMIT 1),
+         received_legal_on, received_on) AS state_since_on
+     FROM complaints
+     WHERE COALESCE(assigned_authority, ?) = ?
+       OR folio IN (SELECT value FROM json_each(?))
+     ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
+  );
   const updateStatusStatement = db.prepare('UPDATE complaints SET status = ? WHERE folio = ?');
   const updateProcedureStatement = db.prepare(
     `UPDATE complaints SET status = ?, assigned_authority = ?, management_state = ?,
@@ -350,8 +368,17 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
       listForAuthorityStatement
         .all(inboxAuthorityId, authorityId, limit, offset)
         .map((row) => toListedSummary(row, inboxAuthorityId)),
-    listForAuthority: (authorityId, inboxAuthorityId, offset, limit) =>
-      listForAuthorityStatement.all(inboxAuthorityId, authorityId, limit, offset).map((row) => ({
+    listForAuthority: (authorityId, inboxAuthorityId, offset, limit, referredFolios = []) =>
+      (referredFolios.length === 0
+        ? listForAuthorityStatement.all(inboxAuthorityId, authorityId, limit, offset)
+        : listWithReferralsStatement.all(
+            inboxAuthorityId,
+            authorityId,
+            JSON.stringify(referredFolios),
+            limit,
+            offset,
+          )
+      ).map((row) => ({
         summary: toListedSummary(row, inboxAuthorityId),
         stateSinceOn: readText(row, 'state_since_on'),
       })),

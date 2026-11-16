@@ -210,6 +210,10 @@ export function AuthorityPage() {
               </h2>
               <ComplaintList
                 complaints={complaints}
+                // La fiscalía distingue las vistas recibidas (copias de lectura) de lo turnado.
+                {...(session.account.isProsecution === true
+                  ? { referralAuthorityId: session.account.authorityId }
+                  : {})}
                 onOpen={(folio) => {
                   setSelected(folio);
                   focusAfterRender('detail-title');
