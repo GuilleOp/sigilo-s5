@@ -36,7 +36,12 @@ export const EntityCompetenceViewSchema = z
       description: 'Ente ficticio de la demostración (no está en el catálogo de la PDN).',
     }),
     group: z
-      .object({ key: z.string().min(1).max(64), label: z.string().min(1).max(200) })
+      .object({
+        key: z.string().min(1).max(64).meta({
+          description: 'centralizada, paraestatal, autonomo, municipal o municipio:<clave INEGI>.',
+        }),
+        label: z.string().min(1).max(200).meta({ description: 'Nombre del grupo.' }),
+      })
       .strict()
       .meta({
         description: 'Grupo en la pantalla: centralizada, paraestatal, autónomos o municipio.',
@@ -49,10 +54,18 @@ export const EntityCompetenceViewSchema = z
       description:
         'De dónde sale: competencia por dependencia, regla del ente, regla general o nada.',
     }),
-    holder: FunctionHolderSchema.nullable(),
-    holderName: z.string().max(300).nullable(),
-    legalBasis: z.string().max(300).nullable(),
-    requiresIdentifiedReporter: z.boolean(),
+    holder: FunctionHolderSchema.nullable().meta({
+      description: 'Quién lo investiga (su OIC o quien lo atiende), o null si está pendiente.',
+    }),
+    holderName: z
+      .string()
+      .max(300)
+      .nullable()
+      .meta({ description: 'Nombre de quien lo investiga, o null.' }),
+    legalBasis: z.string().max(300).nullable().meta({ description: 'Fundamento, o null.' }),
+    requiresIdentifiedReporter: z.boolean().meta({
+      description: 'Quien lo atiende solo admite denuncias con nombre y firma.',
+    }),
     badge: CompetenceBadgeSchema,
   })
   .strict()
@@ -62,7 +75,7 @@ export type EntityCompetenceView = z.infer<typeof EntityCompetenceViewSchema>;
 export const CompetenceAuthorityOptionSchema = z
   .object({
     authorityId: AuthorityIdSchema,
-    name: z.string().min(1).max(300),
+    name: z.string().min(1).max(300).meta({ description: 'Nombre de la autoridad.' }),
     governmentLevel: GovernmentLevelSchema,
     hasKeys: z.boolean().meta({ description: 'Sus llaves están vigentes hoy.' }),
   })
@@ -71,20 +84,33 @@ export const CompetenceAuthorityOptionSchema = z
 
 export const FunctionTableChangeSchema = z
   .object({
-    kind: z.enum(['added', 'removed', 'changed']),
-    scope: z.string().min(1).max(32).meta({ description: 'Función o `entity`.' }),
-    entityId: z.string().min(1).max(64).optional(),
-    text: z.string().min(1).max(1000),
+    kind: z
+      .enum(['added', 'removed', 'changed'])
+      .meta({ description: 'Se agregó, se quitó o cambió.' }),
+    scope: z
+      .string()
+      .min(1)
+      .max(32)
+      .meta({ description: 'Función de la tabla, `entity` (una dependencia) o `format`.' }),
+    entityId: z
+      .string()
+      .min(1)
+      .max(64)
+      .optional()
+      .meta({ description: 'Dependencia que cambió (solo en `entity`).' }),
+    text: z.string().min(1).max(1000).meta({ description: 'El cambio, en lenguaje claro.' }),
   })
   .strict()
   .meta({ description: 'Un cambio entre dos versiones de la tabla de funciones.' });
 
 export const CompetenceProposalSchema = z
   .object({
-    version: z.number().int().min(1),
+    version: z.number().int().min(1).meta({ description: 'Versión firmada de la tabla.' }),
     signedOn: DayDateSchema,
     signedBy: AccountIdSchema.meta({ description: 'Cuenta de operación que la firmó.' }),
-    changes: z.array(FunctionTableChangeSchema),
+    changes: z
+      .array(FunctionTableChangeSchema)
+      .meta({ description: 'Cambios respecto de la versión vigente cuando se firmó.' }),
     signedTable: SignedFunctionTableSchema.meta({
       description:
         'Tabla firmada por el nodo. Se entrega a la SESNA (`sigilo-sesna aceptar`) y entra al directorio cuando los testigos lo cofirman.',
@@ -97,11 +123,17 @@ export type CompetenceProposal = z.infer<typeof CompetenceProposalSchema>;
 export const CompetenceViewSchema = z
   .object({
     nodeId: NodeIdSchema,
-    stateCode: NetworkStateKeySchema.nullable(),
+    stateCode: NetworkStateKeySchema.nullable().meta({
+      description: 'Entidad del nodo; null en el nodo federal.',
+    }),
     today: DayDateSchema,
     table: FunctionTableSchema.meta({ description: 'Tabla vigente del nodo en el directorio.' }),
-    authorities: z.array(CompetenceAuthorityOptionSchema),
-    entities: z.array(EntityCompetenceViewSchema),
+    authorities: z.array(CompetenceAuthorityOptionSchema).meta({
+      description: 'Autoridades investigadoras del nodo que pueden ser OIC.',
+    }),
+    entities: z.array(EntityCompetenceViewSchema).meta({
+      description: 'Dependencias de la entidad (o federales) del catálogo de la PDN.',
+    }),
     coverage: CompetenceCoverageSchema,
     proposals: z.array(CompetenceProposalSchema).meta({
       description: 'Versiones firmadas desde el panel, de la más reciente a la más antigua.',
@@ -118,7 +150,9 @@ export const CompetenceSaveRequestSchema = z
       .int()
       .min(1)
       .meta({ description: 'Versión de la tabla sobre la que se editó; si cambió, responde 409.' }),
-    entities: z.array(EntityAssignmentSchema).max(5000),
+    entities: z.array(EntityAssignmentSchema).max(5000).meta({
+      description: 'Competencia por dependencia completa de la versión nueva.',
+    }),
     dryRun: z
       .boolean()
       .meta({ description: 'true: solo revisa y muestra los cambios; false: firma la versión.' }),
@@ -129,7 +163,9 @@ export type CompetenceSaveRequest = z.infer<typeof CompetenceSaveRequestSchema>;
 export const CompetenceSaveResponseSchema = z
   .object({
     version: z.number().int().min(1).meta({ description: 'Versión que tendría o tiene la tabla.' }),
-    changes: z.array(FunctionTableChangeSchema),
+    changes: z
+      .array(FunctionTableChangeSchema)
+      .meta({ description: 'Cambios respecto de la versión vigente.' }),
     problems: z.array(z.string().max(1000)).meta({
       description: 'Problemas de coherencia (vacío si la tabla sirve). Con problemas no se firma.',
     }),

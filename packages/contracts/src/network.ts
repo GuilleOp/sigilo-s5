@@ -1074,7 +1074,11 @@ export const CompetenceCoverageSchema = z
     stateCode: NetworkStateKeySchema.nullable().meta({
       description: 'Entidad de la tabla; null en la federal.',
     }),
-    tableVersion: z.number().int().min(1),
+    tableVersion: z
+      .number()
+      .int()
+      .min(1)
+      .meta({ description: 'Versión de la tabla de funciones con que se calculó.' }),
     total: z.number().int().nonnegative().meta({ description: 'Dependencias del catálogo.' }),
     withOic: z
       .number()
@@ -1108,9 +1112,24 @@ export const CompetenceCoverageSchema = z
 /** Una fila de la cobertura de órganos internos de control por estado (datos abiertos). */
 export const OicCoverageRowSchema = CompetenceCoverageSchema.extend({
   nodeId: NodeIdSchema,
-  percentWithOic: z.number().int().min(0).max(100),
-  percentWithKeys: z.number().int().min(0).max(100),
-  percentPending: z.number().int().min(0).max(100),
+  percentWithOic: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .meta({ description: 'Porcentaje con su OIC asignado (entero).' }),
+  percentWithKeys: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .meta({ description: 'Porcentaje cuyo OIC tiene llaves vigentes (entero).' }),
+  percentPending: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .meta({ description: 'Porcentaje pendiente (entero).' }),
 }).meta({
   description:
     'Cobertura de OIC de una entidad (o de la federación): dependencias con OIC asignado, con llaves y pendientes, en número y porcentaje.',

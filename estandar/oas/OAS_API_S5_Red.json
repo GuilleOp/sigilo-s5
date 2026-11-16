@@ -3530,7 +3530,12 @@
                   "example": "22",
                   "nullable": true
                 },
-                "tableVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                "tableVersion": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "Versión de la tabla de funciones con que se calculó."
+                },
                 "total": {
                   "type": "integer",
                   "minimum": 0,
@@ -3573,9 +3578,24 @@
                   "description": "Identificador estable del nodo.",
                   "example": "node.queretaro"
                 },
-                "percentWithOic": { "type": "integer", "minimum": 0, "maximum": 100 },
-                "percentWithKeys": { "type": "integer", "minimum": 0, "maximum": 100 },
-                "percentPending": { "type": "integer", "minimum": 0, "maximum": 100 }
+                "percentWithOic": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Porcentaje con su OIC asignado (entero)."
+                },
+                "percentWithKeys": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Porcentaje cuyo OIC tiene llaves vigentes (entero)."
+                },
+                "percentPending": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Porcentaje pendiente (entero)."
+                }
               },
               "required": [
                 "stateCode",

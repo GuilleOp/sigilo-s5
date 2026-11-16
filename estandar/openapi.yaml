@@ -12094,6 +12094,7 @@ components:
               examples:
                 - '22'
             - type: 'null'
+          description: Entidad del nodo; null en el nodo federal.
         today:
           type: string
           pattern: ^\d{4}-\d{2}-\d{2}$
@@ -12118,6 +12119,7 @@ components:
                 type: string
                 minLength: 1
                 maxLength: 300
+                description: Nombre de la autoridad.
               governmentLevel:
                 type: string
                 enum:
@@ -12135,6 +12137,7 @@ components:
               - hasKeys
             additionalProperties: false
             description: Autoridad investigadora del nodo que puede ser el OIC de un ente.
+          description: Autoridades investigadoras del nodo que pueden ser OIC.
         entities:
           type: array
           items:
@@ -12171,10 +12174,12 @@ components:
                     type: string
                     minLength: 1
                     maxLength: 64
+                    description: centralizada, paraestatal, autonomo, municipal o municipio:<clave INEGI>.
                   label:
                     type: string
                     minLength: 1
                     maxLength: 200
+                    description: Nombre del grupo.
                 required:
                   - key
                   - label
@@ -12203,18 +12208,22 @@ components:
                 anyOf:
                   - $ref: '#/components/schemas/FunctionHolder'
                   - type: 'null'
+                description: Quién lo investiga (su OIC o quien lo atiende), o null si está pendiente.
               holderName:
                 anyOf:
                   - type: string
                     maxLength: 300
                   - type: 'null'
+                description: Nombre de quien lo investiga, o null.
               legalBasis:
                 anyOf:
                   - type: string
                     maxLength: 300
                   - type: 'null'
+                description: Fundamento, o null.
               requiresIdentifiedReporter:
                 type: boolean
+                description: Quien lo atiende solo admite denuncias con nombre y firma.
               badge:
                 type: string
                 enum:
@@ -12237,6 +12246,7 @@ components:
               - badge
             additionalProperties: false
             description: Una dependencia con quién la investiga.
+          description: Dependencias de la entidad (o federales) del catálogo de la PDN.
         coverage:
           type: object
           properties:
@@ -12253,6 +12263,7 @@ components:
               type: integer
               minimum: 1
               maximum: 9007199254740991
+              description: Versión de la tabla de funciones con que se calculó.
             total:
               type: integer
               minimum: 0
@@ -12303,6 +12314,7 @@ components:
                 type: integer
                 minimum: 1
                 maximum: 9007199254740991
+                description: Versión firmada de la tabla.
               signedOn:
                 type: string
                 pattern: ^\d{4}-\d{2}-\d{2}$
@@ -12323,12 +12335,14 @@ components:
                         - added
                         - removed
                         - changed
+                      description: Se agregó, se quitó o cambió.
                     scope:
                       type: string
                       minLength: 1
                       maxLength: 32
-                      description: Función o `entity`.
+                      description: Función de la tabla, `entity` (una dependencia) o `format`.
                     entityId:
+                      description: Dependencia que cambió (solo en `entity`).
                       type: string
                       minLength: 1
                       maxLength: 64
@@ -12336,12 +12350,14 @@ components:
                       type: string
                       minLength: 1
                       maxLength: 1000
+                      description: El cambio, en lenguaje claro.
                   required:
                     - kind
                     - scope
                     - text
                   additionalProperties: false
                   description: Un cambio entre dos versiones de la tabla de funciones.
+                description: Cambios respecto de la versión vigente cuando se firmó.
               signedTable:
                 description: Tabla firmada por el nodo. Se entrega a la SESNA (`sigilo-sesna aceptar`) y entra al directorio cuando los testigos lo cofirman.
                 $ref: '#/components/schemas/SignedFunctionTable'
@@ -12408,6 +12424,7 @@ components:
               - status
             additionalProperties: false
             description: 'Competencia por dependencia (formato 2): el órgano interno de control de un ente (CPEUM art. 109 fr. III; LGRA arts. 3, 9 y 10). Gana sobre las reglas de investigación.'
+          description: Competencia por dependencia completa de la versión nueva.
         dryRun:
           type: boolean
           description: 'true: solo revisa y muestra los cambios; false: firma la versión.'
@@ -12436,12 +12453,14 @@ components:
                   - added
                   - removed
                   - changed
+                description: Se agregó, se quitó o cambió.
               scope:
                 type: string
                 minLength: 1
                 maxLength: 32
-                description: Función o `entity`.
+                description: Función de la tabla, `entity` (una dependencia) o `format`.
               entityId:
+                description: Dependencia que cambió (solo en `entity`).
                 type: string
                 minLength: 1
                 maxLength: 64
@@ -12449,12 +12468,14 @@ components:
                 type: string
                 minLength: 1
                 maxLength: 1000
+                description: El cambio, en lenguaje claro.
             required:
               - kind
               - scope
               - text
             additionalProperties: false
             description: Un cambio entre dos versiones de la tabla de funciones.
+          description: Cambios respecto de la versión vigente.
         problems:
           type: array
           items:
@@ -12469,6 +12490,7 @@ components:
                   type: integer
                   minimum: 1
                   maximum: 9007199254740991
+                  description: Versión firmada de la tabla.
                 signedOn:
                   type: string
                   pattern: ^\d{4}-\d{2}-\d{2}$
@@ -12489,12 +12511,14 @@ components:
                           - added
                           - removed
                           - changed
+                        description: Se agregó, se quitó o cambió.
                       scope:
                         type: string
                         minLength: 1
                         maxLength: 32
-                        description: Función o `entity`.
+                        description: Función de la tabla, `entity` (una dependencia) o `format`.
                       entityId:
+                        description: Dependencia que cambió (solo en `entity`).
                         type: string
                         minLength: 1
                         maxLength: 64
@@ -12502,12 +12526,14 @@ components:
                         type: string
                         minLength: 1
                         maxLength: 1000
+                        description: El cambio, en lenguaje claro.
                     required:
                       - kind
                       - scope
                       - text
                     additionalProperties: false
                     description: Un cambio entre dos versiones de la tabla de funciones.
+                  description: Cambios respecto de la versión vigente cuando se firmó.
                 signedTable:
                   description: Tabla firmada por el nodo. Se entrega a la SESNA (`sigilo-sesna aceptar`) y entra al directorio cuando los testigos lo cofirman.
                   $ref: '#/components/schemas/SignedFunctionTable'
@@ -13924,6 +13950,7 @@ components:
                 type: integer
                 minimum: 1
                 maximum: 9007199254740991
+                description: Versión de la tabla de funciones con que se calculó.
               total:
                 type: integer
                 minimum: 0
@@ -13964,14 +13991,17 @@ components:
                 type: integer
                 minimum: 0
                 maximum: 100
+                description: Porcentaje con su OIC asignado (entero).
               percentWithKeys:
                 type: integer
                 minimum: 0
                 maximum: 100
+                description: Porcentaje cuyo OIC tiene llaves vigentes (entero).
               percentPending:
                 type: integer
                 minimum: 0
                 maximum: 100
+                description: Porcentaje pendiente (entero).
             required:
               - stateCode
               - tableVersion

@@ -442,33 +442,33 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /RegistrationView,directoryEntry,Sí,Valor,Valor,No,"Si se aprobó: entrada propuesta para el directorio, lista para agregarla, firmarla y que los testigos la cofirmen.",RegistrationView,,,
 /RegistrationDecision,(valor),Sí,Objeto,Object,No,Aprobar con la huella confirmada o rechazar con un motivo.,RegistrationDecision,,,
 /CompetenceView,nodeId,Sí,Alfanumérico,String,No,Identificador estable del nodo.,CompetenceView,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
-/CompetenceView,stateCode,Sí,Alfanumérico,String,No,,CompetenceView,,,22
+/CompetenceView,stateCode,Sí,Alfanumérico,String,No,Entidad del nodo; null en el nodo federal.,CompetenceView,,,22
 /CompetenceView,today,Sí,Fecha en formato ISO 8601,Date,No,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",CompetenceView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-16
 /CompetenceView,table,Sí,Objeto,Object (FunctionTable),No,Tabla vigente del nodo en el directorio.,CompetenceView,,,
-/CompetenceView,authorities,Sí,Arreglo,Array of Object,No,,CompetenceView,,,
+/CompetenceView,authorities,Sí,Arreglo,Array of Object,No,Autoridades investigadoras del nodo que pueden ser OIC.,CompetenceView,,,
 /CompetenceView/authorities,authorityId,Sí,Alfanumérico,String,No,Identificador estable de la autoridad.,CompetenceView,patrón ^authority\.[a-z0-9]+(?:-[a-z0-9]+)*$,,authority.oic-municipio-queretaro
-/CompetenceView/authorities,name,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 300 caracteres,,Órgano Interno de Control del Municipio de Quer…
+/CompetenceView/authorities,name,Sí,Alfanumérico,String,No,Nombre de la autoridad.,CompetenceView,de 1 a 300 caracteres,,Órgano Interno de Control del Municipio de Quer…
 /CompetenceView/authorities,governmentLevel,Sí,Alfanumérico,String (enum),No,"Orden de gobierno: federal, estatal o municipal.",CompetenceView,,federal; estatal; municipal,municipal
 /CompetenceView/authorities,hasKeys,Sí,Booleano,Boolean,No,Sus llaves están vigentes hoy.,CompetenceView,,,true
-/CompetenceView,entities,Sí,Arreglo,Array of Object,No,,CompetenceView,,,
+/CompetenceView,entities,Sí,Arreglo,Array of Object,No,Dependencias de la entidad (o federales) del catálogo de la PDN.,CompetenceView,,,
 /CompetenceView/entities,entityId,Sí,Alfanumérico,String,No,Clave del ente.,CompetenceView,de 1 a 64 caracteres,,PDN-22-7283
 /CompetenceView/entities,name,Sí,Alfanumérico,String,No,Nombre del ente.,CompetenceView,de 1 a 400 caracteres,,Secretaría del Ayuntamiento del Municipio de Qu…
 /CompetenceView/entities,level,Sí,Alfanumérico,String (enum),No,"Orden de gobierno: federal, estatal o municipal.",CompetenceView,,federal; estatal; municipal,municipal
 /CompetenceView/entities,municipalityCode,No,Alfanumérico,String,No,"Clave INEGI del municipio, si el catálogo la trae.",CompetenceView,patrón ^\d{3}$,,014
 /CompetenceView/entities,isFictitious,Sí,Booleano,Boolean,No,Ente ficticio de la demostración (no está en el catálogo de la PDN).,CompetenceView,,,false
 /CompetenceView/entities,group,Sí,Objeto,Object,No,"Grupo en la pantalla: centralizada, paraestatal, autónomos o municipio.",CompetenceView,,,
-/CompetenceView/entities/group,key,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 64 caracteres,,municipio:014
-/CompetenceView/entities/group,label,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 200 caracteres,,Municipio de Querétaro
+/CompetenceView/entities/group,key,Sí,Alfanumérico,String,No,"centralizada, paraestatal, autonomo, municipal o municipio:<clave INEGI>.",CompetenceView,de 1 a 64 caracteres,,municipio:014
+/CompetenceView/entities/group,label,Sí,Alfanumérico,String,No,Nombre del grupo.,CompetenceView,de 1 a 200 caracteres,,Municipio de Querétaro
 /CompetenceView/entities,status,Sí,Alfanumérico,String,No,"assigned, without_oic o pending (competencia por dependencia), o general (lo cubre una regla de todo su orden).",CompetenceView,,,assigned
 /CompetenceView/entities,source,Sí,Alfanumérico,String (enum),No,"De dónde sale: competencia por dependencia, regla del ente, regla general o nada.",CompetenceView,,entity; rule; general; none,entity
-/CompetenceView/entities,holder,Sí,Valor,Valor,No,,CompetenceView,,,
-/CompetenceView/entities,holderName,Sí,Alfanumérico,String,No,,CompetenceView,,,Órgano Interno de Control del Municipio de Quer…
-/CompetenceView/entities,legalBasis,Sí,Alfanumérico,String,No,,CompetenceView,,,"CPEUM, art. 109, fr. III"
-/CompetenceView/entities,requiresIdentifiedReporter,Sí,Booleano,Boolean,No,,CompetenceView,,,false
+/CompetenceView/entities,holder,Sí,Valor,Valor,No,"Quién lo investiga (su OIC o quien lo atiende), o null si está pendiente.",CompetenceView,,,
+/CompetenceView/entities,holderName,Sí,Alfanumérico,String,No,"Nombre de quien lo investiga, o null.",CompetenceView,,,Órgano Interno de Control del Municipio de Quer…
+/CompetenceView/entities,legalBasis,Sí,Alfanumérico,String,No,"Fundamento, o null.",CompetenceView,,,"CPEUM, art. 109, fr. III"
+/CompetenceView/entities,requiresIdentifiedReporter,Sí,Booleano,Boolean,No,Quien lo atiende solo admite denuncias con nombre y firma.,CompetenceView,,,false
 /CompetenceView/entities,badge,Sí,Alfanumérico,String (enum),No,"Distintivo: keys (OIC con llaves vigentes: la denuncia le llega cifrada), named (OIC nombrado, falta su alta) o pending (pendiente: va a la autoridad receptora).",CompetenceView,,keys; named; pending,keys
 /CompetenceView,coverage,Sí,Objeto,Object,No,Cobertura de órganos internos de control de una tabla de funciones.,CompetenceView,,,
 /CompetenceView/coverage,stateCode,Sí,Alfanumérico,String,No,Entidad de la tabla; null en la federal.,CompetenceView,,,22
-/CompetenceView/coverage,tableVersion,Sí,Numérico,Number,No,,CompetenceView,mínimo 1,,3
+/CompetenceView/coverage,tableVersion,Sí,Numérico,Number,No,Versión de la tabla de funciones con que se calculó.,CompetenceView,mínimo 1,,3
 /CompetenceView/coverage,total,Sí,Numérico,Number,No,Dependencias del catálogo.,CompetenceView,mínimo 0,,2
 /CompetenceView/coverage,withOic,Sí,Numérico,Number,No,Con su órgano interno de control asignado.,CompetenceView,mínimo 0,,1
 /CompetenceView/coverage,withoutOic,Sí,Numérico,Number,No,"«Sin OIC designado»: la atiende otra autoridad, con fundamento.",CompetenceView,mínimo 0,,0
@@ -476,17 +476,17 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /CompetenceView/coverage,withKeys,Sí,Numérico,Number,No,Quien la atiende tiene llaves vigentes.,CompetenceView,mínimo 0,,1
 /CompetenceView/coverage,pending,Sí,Numérico,Number,No,Pendientes: sus denuncias van a la autoridad receptora.,CompetenceView,mínimo 0,,1
 /CompetenceView,proposals,Sí,Arreglo,Array of Object,No,"Versiones firmadas desde el panel, de la más reciente a la más antigua.",CompetenceView,,,
-/CompetenceView/proposals,version,Sí,Numérico,Number,No,,CompetenceView,mínimo 1,,
+/CompetenceView/proposals,version,Sí,Numérico,Number,No,Versión firmada de la tabla.,CompetenceView,mínimo 1,,
 /CompetenceView/proposals,signedOn,Sí,Fecha en formato ISO 8601,Date,No,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",CompetenceView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
 /CompetenceView/proposals,signedBy,Sí,Alfanumérico,String,No,Cuenta de operación que la firmó.,CompetenceView,,,acct-5f0c2a9d1e7b3c44
-/CompetenceView/proposals,changes,Sí,Arreglo,Array of Object,No,,CompetenceView,,,
-/CompetenceView/proposals/changes,kind,Sí,Alfanumérico,String (enum),No,,CompetenceView,,added; removed; changed,
-/CompetenceView/proposals/changes,scope,Sí,Alfanumérico,String,No,Función o entity.,CompetenceView,de 1 a 32 caracteres,,
-/CompetenceView/proposals/changes,entityId,No,Alfanumérico,String,No,,CompetenceView,de 1 a 64 caracteres,,
-/CompetenceView/proposals/changes,text,Sí,Alfanumérico,String,No,,CompetenceView,de 1 a 1000 caracteres,,
+/CompetenceView/proposals,changes,Sí,Arreglo,Array of Object,No,Cambios respecto de la versión vigente cuando se firmó.,CompetenceView,,,
+/CompetenceView/proposals/changes,kind,Sí,Alfanumérico,String (enum),No,"Se agregó, se quitó o cambió.",CompetenceView,,added; removed; changed,
+/CompetenceView/proposals/changes,scope,Sí,Alfanumérico,String,No,"Función de la tabla, entity (una dependencia) o format.",CompetenceView,de 1 a 32 caracteres,,
+/CompetenceView/proposals/changes,entityId,No,Alfanumérico,String,No,Dependencia que cambió (solo en entity).,CompetenceView,de 1 a 64 caracteres,,
+/CompetenceView/proposals/changes,text,Sí,Alfanumérico,String,No,"El cambio, en lenguaje claro.",CompetenceView,de 1 a 1000 caracteres,,
 /CompetenceView/proposals,signedTable,Sí,Objeto,Object (SignedFunctionTable),No,Tabla firmada por el nodo. Se entrega a la SESNA (sigilo-sesna aceptar) y entra al directorio cuando los testigos lo cofirman.,CompetenceView,,,
 /CompetenceSaveRequest,baseVersion,Sí,Numérico,Number,No,"Versión de la tabla sobre la que se editó; si cambió, responde 409.",CompetenceSaveRequest,mínimo 1,,3
-/CompetenceSaveRequest,entities,Sí,Arreglo,Array of Object,No,,CompetenceSaveRequest,hasta 5000 elementos,,
+/CompetenceSaveRequest,entities,Sí,Arreglo,Array of Object,No,Competencia por dependencia completa de la versión nueva.,CompetenceSaveRequest,hasta 5000 elementos,,
 /CompetenceSaveRequest/entities,entityId,Sí,Alfanumérico,String,No,Ente del catálogo de la PDN (o ficticio de la demostración).,CompetenceSaveRequest,de 1 a 64 caracteres,,PDN-22-7283
 /CompetenceSaveRequest/entities,status,Sí,Alfanumérico,String (enum),No,"Estado: assigned (el ente tiene su órgano interno de control, holder), without_oic (sin OIC designado: lo atiende holder, con legalBasis obligatorio) o pending (pendiente: nadie asignado; sus denuncias van al buzón de la autoridad receptora, que la turna al OIC del ente).",CompetenceSaveRequest,,assigned; without_oic; pending,assigned
 /CompetenceSaveRequest/entities,holder,No,Objeto,Object (FunctionHolder),No,Quién investiga al ente: una autoridad del directorio (con llaves) o una institución nombrada que aún no tiene alta. Falta solo si está pendiente.,CompetenceSaveRequest,,,
@@ -494,11 +494,11 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /CompetenceSaveRequest/entities,requiresIdentifiedReporter,No,Booleano,Boolean,No,Como en la regla: quien atiende al ente no admite denuncias anónimas.,CompetenceSaveRequest,valor fijo true,,
 /CompetenceSaveRequest,dryRun,Sí,Booleano,Boolean,No,true: solo revisa y muestra los cambios; false: firma la versión.,CompetenceSaveRequest,,,false
 /CompetenceSaveResponse,version,Sí,Numérico,Number,No,Versión que tendría o tiene la tabla.,CompetenceSaveResponse,mínimo 1,,4
-/CompetenceSaveResponse,changes,Sí,Arreglo,Array of Object,No,,CompetenceSaveResponse,,,
-/CompetenceSaveResponse/changes,kind,Sí,Alfanumérico,String (enum),No,,CompetenceSaveResponse,,added; removed; changed,changed
-/CompetenceSaveResponse/changes,scope,Sí,Alfanumérico,String,No,Función o entity.,CompetenceSaveResponse,de 1 a 32 caracteres,,entity
-/CompetenceSaveResponse/changes,entityId,No,Alfanumérico,String,No,,CompetenceSaveResponse,de 1 a 64 caracteres,,PDN-22-7232
-/CompetenceSaveResponse/changes,text,Sí,Alfanumérico,String,No,,CompetenceSaveResponse,de 1 a 1000 caracteres,,Fiscalía General del Estado: de pendiente a OIC…
+/CompetenceSaveResponse,changes,Sí,Arreglo,Array of Object,No,Cambios respecto de la versión vigente.,CompetenceSaveResponse,,,
+/CompetenceSaveResponse/changes,kind,Sí,Alfanumérico,String (enum),No,"Se agregó, se quitó o cambió.",CompetenceSaveResponse,,added; removed; changed,changed
+/CompetenceSaveResponse/changes,scope,Sí,Alfanumérico,String,No,"Función de la tabla, entity (una dependencia) o format.",CompetenceSaveResponse,de 1 a 32 caracteres,,entity
+/CompetenceSaveResponse/changes,entityId,No,Alfanumérico,String,No,Dependencia que cambió (solo en entity).,CompetenceSaveResponse,de 1 a 64 caracteres,,PDN-22-7232
+/CompetenceSaveResponse/changes,text,Sí,Alfanumérico,String,No,"El cambio, en lenguaje claro.",CompetenceSaveResponse,de 1 a 1000 caracteres,,Fiscalía General del Estado: de pendiente a OIC…
 /CompetenceSaveResponse,problems,Sí,Arreglo,Array of String,No,Problemas de coherencia (vacío si la tabla sirve). Con problemas no se firma.,CompetenceSaveResponse,cada elemento: hasta 1000 caracteres,,
 /CompetenceSaveResponse,proposal,Sí,Objeto,Object,No,"La versión firmada, o null si fue una revisión o tiene problemas.",CompetenceSaveResponse,,,
 /SignedAuthorityDirectory,directory,Sí,Objeto,Object (AuthorityDirectory),Sí,Directorio de autoridades: cada versión la firma la operación y la cofirman m de n testigos.,SignedAuthorityDirectory,,,
@@ -667,7 +667,7 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /NationalOpenData,suppressed,Sí,Numérico,Number,Sí,Suprimidas: la suma de la fila de suprimidas de cada nodo más las celdas que quedaron bajo la celda mínima después de sumar.,NationalOpenData,mínimo 0,,5
 /NationalOpenData,oicCoverage,No,Arreglo,Array of Object,Sí,"Cobertura de órganos internos de control por entidad y de la federación, calculada con la tabla de funciones firmada de cada nodo y el catálogo de entes de la PDN.",NationalOpenData,,,
 /NationalOpenData/oicCoverage,stateCode,Sí,Alfanumérico,String,Sí,Entidad de la tabla; null en la federal.,NationalOpenData,,,
-/NationalOpenData/oicCoverage,tableVersion,Sí,Numérico,Number,Sí,,NationalOpenData,mínimo 1,,
+/NationalOpenData/oicCoverage,tableVersion,Sí,Numérico,Number,Sí,Versión de la tabla de funciones con que se calculó.,NationalOpenData,mínimo 1,,
 /NationalOpenData/oicCoverage,total,Sí,Numérico,Number,Sí,Dependencias del catálogo.,NationalOpenData,mínimo 0,,
 /NationalOpenData/oicCoverage,withOic,Sí,Numérico,Number,Sí,Con su órgano interno de control asignado.,NationalOpenData,mínimo 0,,
 /NationalOpenData/oicCoverage,withoutOic,Sí,Numérico,Number,Sí,"«Sin OIC designado»: la atiende otra autoridad, con fundamento.",NationalOpenData,mínimo 0,,
@@ -675,9 +675,9 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /NationalOpenData/oicCoverage,withKeys,Sí,Numérico,Number,Sí,Quien la atiende tiene llaves vigentes.,NationalOpenData,mínimo 0,,
 /NationalOpenData/oicCoverage,pending,Sí,Numérico,Number,Sí,Pendientes: sus denuncias van a la autoridad receptora.,NationalOpenData,mínimo 0,,
 /NationalOpenData/oicCoverage,nodeId,Sí,Alfanumérico,String,Sí,Identificador estable del nodo.,NationalOpenData,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
-/NationalOpenData/oicCoverage,percentWithOic,Sí,Numérico,Number,Sí,,NationalOpenData,de 0 a 100,,
-/NationalOpenData/oicCoverage,percentWithKeys,Sí,Numérico,Number,Sí,,NationalOpenData,de 0 a 100,,
-/NationalOpenData/oicCoverage,percentPending,Sí,Numérico,Number,Sí,,NationalOpenData,de 0 a 100,,
+/NationalOpenData/oicCoverage,percentWithOic,Sí,Numérico,Number,Sí,Porcentaje con su OIC asignado (entero).,NationalOpenData,de 0 a 100,,
+/NationalOpenData/oicCoverage,percentWithKeys,Sí,Numérico,Number,Sí,Porcentaje cuyo OIC tiene llaves vigentes (entero).,NationalOpenData,de 0 a 100,,
+/NationalOpenData/oicCoverage,percentPending,Sí,Numérico,Number,Sí,Porcentaje pendiente (entero).,NationalOpenData,de 0 a 100,,
 /NationalOpenDataNode,nodeId,Sí,Alfanumérico,String,Sí,Identificador estable del nodo.,NationalOpenDataNode,patrón ^node\.[a-z0-9]+(?:-[a-z0-9]+)*$,,node.queretaro
 /NationalOpenDataNode,name,Sí,Alfanumérico,String,Sí,Nombre del nodo en el directorio.,NationalOpenDataNode,de 1 a 200 caracteres,,Nodo estatal Querétaro
 /NationalOpenDataNode,status,Sí,Alfanumérico,String (enum),Sí,included: su CSV se sumó; unreachable: no respondió (sin datos de ese nodo en este corte); rejected: su CSV no cumplió las reglas y no se sumó.,NationalOpenDataNode,,included; unreachable; rejected,included
