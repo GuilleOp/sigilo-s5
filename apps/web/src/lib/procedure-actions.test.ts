@@ -10,8 +10,10 @@ import type {
   ProcedureView,
   RemedyView,
 } from '@sigilo/contracts';
+import { findRemedyKind } from '@sigilo/contracts';
 import {
   hasPendingRemedy,
+  remedyFiler,
   requiresLegalOutcome,
   stageOptions,
   stageWaits,
@@ -133,5 +135,15 @@ describe('cierres', () => {
     expect(requiresLegalOutcome(detail({ legalStage: 'qualification' }))).toBe(false);
     expect(requiresLegalOutcome(detail({ legalStage: 'report_filed' }))).toBe(true);
     expect(requiresLegalOutcome(detail({}))).toBe(false);
+  });
+});
+
+describe('quién presentó el recurso', () => {
+  it('la revocación solo la presenta la persona señalada: no se envía «persona denunciante»', () => {
+    const revocation = findRemedyKind('revocation');
+    if (revocation === undefined) throw new Error('Falta la revocación en el catálogo.');
+    expect(revocation.filedBy).toEqual(['accused']);
+    expect(remedyFiler(revocation, 'reporter')).toBe('accused');
+    expect(remedyFiler({ filedBy: ['accused', 'reporter'] }, 'reporter')).toBe('reporter');
   });
 });

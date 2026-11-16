@@ -50,6 +50,7 @@ import {
   isProsecutionAccount,
   legalClosureOptions,
   precautionaryDecisionMode,
+  remedyFiler,
   remedyFilingOptions,
   remedyResolutionOptions,
   requiresLegalOutcome,
@@ -317,6 +318,10 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     draft.legalOutcome === '' ? undefined : findLegalClosureReason(draft.legalOutcome);
   const selectedResolution = resolutions.find((item) => item.kind.key === draft.remedyKind);
   const selectedFiling = filings.find((item) => item.kind.key === draft.remedyKind);
+  const filers =
+    selectedFiling === undefined
+      ? []
+      : REMEDY_FILERS.filter((item) => selectedFiling.kind.filedBy.includes(item.key));
   /** Modo de la acción elegida: con la función propia o como registro de actuación del Tribunal. */
   const mode: ActingMode | null = (() => {
     switch (action) {
@@ -517,7 +522,10 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           : {
               action,
               kind: draft.remedyKind,
-              filedBy: draft.filedBy,
+              filedBy:
+                selectedFiling === undefined
+                  ? draft.filedBy
+                  : remedyFiler(selectedFiling.kind, draft.filedBy),
               signed: true,
               ...(legalBasis.length >= 20 ? { legalBasis } : {}),
               ...withNote,
@@ -741,6 +749,11 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           <SelectField
             id="procedure-action"
             label="Acción"
+            hint={
+              actions.includes('order_reclassification')
+                ? 'Si el expediente es de otra falta grave, elige «Ordenar reclasificar la falta (Tribunal)» aquí, en «Acción»: solo se puede al recibirlo, antes de admitir las pruebas (LGRA, art. 209 fr. II).'
+                : undefined
+            }
             value={action}
             onChange={(event) => setAction(event.target.value as ActionKey)}
             data-testid="procedure-action"
@@ -980,21 +993,26 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                 {selectedFiling.kind.against} Se presenta ante: {selectedFiling.kind.filedBefore}{' '}
                 {selectedFiling.kind.effect}
               </p>
-              <SelectField
-                id="remedy-filed-by"
-                label="Quién lo presentó"
-                value={draft.filedBy}
-                onChange={(event) => set('filedBy', event.target.value as RemedyFiledBy)}
-                data-testid="remedy-filed-by"
-              >
-                {REMEDY_FILERS.filter((item) => selectedFiling.kind.filedBy.includes(item.key)).map(
-                  (item) => (
+              {filers.length === 1 ? (
+                <p data-testid="remedy-filed-by-only">
+                  <strong>Quién lo presentó:</strong> {filers[0]?.name}. Este recurso solo lo puede
+                  presentar esa parte.
+                </p>
+              ) : (
+                <SelectField
+                  id="remedy-filed-by"
+                  label="Quién lo presentó"
+                  value={remedyFiler(selectedFiling.kind, draft.filedBy)}
+                  onChange={(event) => set('filedBy', event.target.value as RemedyFiledBy)}
+                  data-testid="remedy-filed-by"
+                >
+                  {filers.map((item) => (
                     <option key={item.key} value={item.key}>
                       {item.name}
                     </option>
-                  ),
-                )}
-              </SelectField>
+                  ))}
+                </SelectField>
+              )}
               <div className="choice">
                 <input
                   type="checkbox"
