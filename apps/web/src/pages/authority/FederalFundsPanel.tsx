@@ -25,6 +25,20 @@ const DEFAULT_NOTICE_BASIS =
   'Ley de Coordinación Fiscal, art. 49: aviso inmediato por posible desvío de recursos federales.';
 
 /** Panel de recursos federales. */
+/**
+ * A quién se dio el aviso federal, según el último paso «Se dio aviso a las autoridades federales»
+ * (por ejemplo, «Auditoría Superior de la Federación (ASF) y Secretaría Anticorrupción y Buen
+ * Gobierno (SABG)»); vacío si el paso no lo trae.
+ */
+export function noticeRecipients(detail: Pick<ComplaintDetail, 'procedure'>): string {
+  const step = detail.procedure?.steps.findLast((item) => item.action === 'federal_notice_sent');
+  const names = (step?.record?.recipients ?? []).map(
+    (key) => FEDERAL_FUNDS_RULE.authorities.find((authority) => authority.key === key)?.name ?? key,
+  );
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} y ${names.at(-1) ?? ''}`;
+}
+
 export function FederalFundsPanel({ session, detail, onChanged }: FederalFundsPanelProps) {
   const federal = detail.procedure?.federalFunds;
   const canAct =
@@ -114,7 +128,8 @@ export function FederalFundsPanel({ session, detail, onChanged }: FederalFundsPa
           <p data-testid="federal-funds-transfer">{FEDERAL_FUNDS_RULE.transfer}</p>
           {federal.noticeSentOn !== undefined ? (
             <p data-testid="federal-notice-sent">
-              Se dio aviso el {formatDayDate(federal.noticeSentOn)}.
+              Se dio aviso el {formatDayDate(federal.noticeSentOn)}
+              {noticeRecipients(detail) === '' ? '.' : ` a: ${noticeRecipients(detail)}.`}
             </p>
           ) : (
             canAct && (
