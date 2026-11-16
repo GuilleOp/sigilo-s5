@@ -117,9 +117,9 @@ solo VPN) y 80 (solo con Let's Encrypt).
    (`./sigilo-sesna aceptar <entrada.json>`, manual 09).
 5. Cuando el directorio con la autoridad nueva esté publicado, **crea las cuentas** (5.4).
 
-> **Limitación conocida del prototipo.** El identificador propuesto de la autoridad puede salir
-> cortado (por ejemplo, `authority.organo-interno-de-control-ficticio-de-la-secreta`). Revísalo antes
-> de mandarlo a la SESNA.
+El identificador propuesto sale del nombre oficial, sin acentos y con guiones; si es largo, se
+corta entre palabras a 48 caracteres (por ejemplo,
+`authority.organo-interno-de-control-ficticio-de-la`). Revísalo antes de mandarlo a la SESNA.
 
 ### 5.3 Competencia por dependencia (panel)
 
@@ -245,7 +245,6 @@ derivan sin enviarlo.
 - Agregar una autoridad aprobada al directorio es un paso de línea de comandos de la SESNA, no del
   panel.
 - Firmar la tabla no cambia de inmediato a quién llegan las denuncias: hace falta la cofirma.
-- El identificador propuesto en un alta puede salir cortado.
 - Las pistas del S1 no existen para Querétaro ni Oaxaca («sin datos»).
 
 ## 8. Glosario breve

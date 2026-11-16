@@ -67,9 +67,12 @@ Trabajas en la tarjeta **«Trámite»**: «Acción» → «Aplicar».
     substanciadora sigue por la vía no grave.
   - **«Ordenar reclasificar la falta (Tribunal)»** (con fundamento; 3 dh para reclasificar).
 
-> **Limitación conocida del prototipo.** «Ordenar reclasificar la falta (Tribunal)» solo se ofrece
-> mientras la etapa es «Recibido en el Tribunal». Si ya admitiste pruebas, ya no aparece, aunque el
-> seguimiento de la persona lo mencione.
+«Ordenar reclasificar la falta (Tribunal)» está en el campo **«Acción»**, no en «Etapa», y solo
+mientras la etapa es «Recibido en el Tribunal» (art. 209, fr. II): el campo «Acción» lo recuerda con
+una ayuda. Después de admitir las pruebas ya no aparece.
+
+> **Limitación conocida del prototipo.** Al ordenar la reclasificación corre el plazo de 3 dh, pero
+> la investigadora todavía no tiene una acción para registrar la falta reclasificada.
 
 ### 5.2 Pruebas, alegatos y cierre
 
@@ -169,9 +172,7 @@ lee como registrado por otra autoridad.
 - La apelación y la revisión se cuentan desde la sentencia, no desde su notificación.
 - La instrucción se puede cerrar con los alegatos abiertos.
 - La medida cautelar se puede conceder o negar antes de la vista de 5 días.
-- La reclasificación solo está disponible al recibir el expediente.
-- El seguimiento de la persona dice que la Contraloría notifica la sentencia; en la vía grave
-  notificas tú (art. 209, fr. V).
+- La investigadora todavía no registra la falta reclasificada después de tu orden.
 - La comparecencia de las partes y la presentación de escritos ocurren fuera del sistema.
 
 ## 8. Glosario breve
