@@ -343,6 +343,9 @@ Para empezar:
 
 - [Matriz de requisitos](docs/requisitos.md): cada requisito del reto, su nivel y su evidencia
 - [Guion de la demostración](docs/demo.md) y [escenario sintético](docs/demo-escenario.md)
+- [Manuales por perfil](docs/manuales/00-indice.md): un manual para cada persona que usa SIGILO
+  (denunciante, buzón, investigación, substanciación, supervisión, Tribunal, fiscalía, SESEA,
+  SESNA, nodo Federal, alta de instituciones, testigos y ciudadanía), con sus etapas y fundamento
 - [Arquitectura](docs/arquitectura.md)
 - [Estándar S5](estandar/README.md), con los perfiles de [seguridad](estandar/perfil-seguridad.md)
   y de [privacidad](estandar/perfil-privacidad.md)
