@@ -1,0 +1,362 @@
+[
+  {
+    "clave": "inicio>investigation",
+    "valor": "Iniciar la investigación",
+    "via": "administrativa",
+    "desde": null,
+    "hacia": "investigation",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "LGRA, art. 94; LGRA, art. 64, fracc. II"
+  },
+  {
+    "clave": "investigation>qualification",
+    "valor": "Calificar la falta",
+    "via": "administrativa",
+    "desde": "investigation",
+    "hacia": "qualification",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "LGRA, art. 100"
+  },
+  {
+    "clave": "qualification>report_filed",
+    "valor": "Presentar el Informe de Presunta Responsabilidad Administrativa",
+    "via": "administrativa",
+    "desde": "qualification",
+    "hacia": "report_filed",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "LGRA, art. 100; LGRA, art. 194"
+  },
+  {
+    "clave": "report_filed>report_prevented",
+    "valor": "Prevenir: pedir que se corrija el informe",
+    "via": "administrativa",
+    "desde": "report_filed",
+    "hacia": "report_prevented",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 195"
+  },
+  {
+    "clave": "report_filed>abstention",
+    "valor": "Abstenerse de iniciar el procedimiento",
+    "via": "administrativa",
+    "desde": "report_filed",
+    "hacia": "abstention",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 101"
+  },
+  {
+    "clave": "report_filed>report_admitted",
+    "valor": "Admitir el informe e iniciar el procedimiento",
+    "via": "administrativa",
+    "desde": "report_filed",
+    "hacia": "report_admitted",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 112; LGRA, art. 208, fracc. I"
+  },
+  {
+    "clave": "report_prevented>report_filed",
+    "valor": "Presentar el informe corregido",
+    "via": "administrativa",
+    "desde": "report_prevented",
+    "hacia": "report_filed",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "LGRA, art. 195"
+  },
+  {
+    "clave": "report_prevented>investigation",
+    "valor": "Tener el informe por no presentado (no se corrigió)",
+    "via": "administrativa",
+    "desde": "report_prevented",
+    "hacia": "investigation",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 195"
+  },
+  {
+    "clave": "report_admitted>summoned",
+    "valor": "Emplazar a la persona señalada",
+    "via": "administrativa",
+    "desde": "report_admitted",
+    "hacia": "summoned",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 193; LGRA, art. 208, fracc. II"
+  },
+  {
+    "clave": "summoned>initial_hearing",
+    "valor": "Registrar la audiencia inicial",
+    "via": "administrativa",
+    "desde": "summoned",
+    "hacia": "initial_hearing",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 208, fracc. III a VII"
+  },
+  {
+    "clave": "initial_hearing>evidence_hearing",
+    "valor": "Admitir las pruebas (falta no grave)",
+    "via": "administrativa",
+    "desde": "initial_hearing",
+    "hacia": "evidence_hearing",
+    "funcion": "substantiation",
+    "rama": "non_serious",
+    "fundamento": "LGRA, art. 208, fracc. VIII"
+  },
+  {
+    "clave": "initial_hearing>case_file_sent",
+    "valor": "Enviar el expediente al Tribunal (falta grave o de particulares)",
+    "via": "administrativa",
+    "desde": "initial_hearing",
+    "hacia": "case_file_sent",
+    "funcion": "substantiation",
+    "rama": "serious",
+    "fundamento": "LGRA, art. 12; LGRA, art. 209, fracc. I"
+  },
+  {
+    "clave": "evidence_hearing>closing_arguments",
+    "valor": "Abrir el periodo de alegatos",
+    "via": "administrativa",
+    "desde": "evidence_hearing",
+    "hacia": "closing_arguments",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 208, fracc. IX"
+  },
+  {
+    "clave": "closing_arguments>instruction_closed",
+    "valor": "Cerrar la instrucción",
+    "via": "administrativa",
+    "desde": "closing_arguments",
+    "hacia": "instruction_closed",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 208, fracc. X"
+  },
+  {
+    "clave": "instruction_closed>resolution",
+    "valor": "Resolver la falta no grave",
+    "via": "administrativa",
+    "desde": "instruction_closed",
+    "hacia": "resolution",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 208, fracc. X y XI"
+  },
+  {
+    "clave": "case_file_sent>court_received",
+    "valor": "Recibir el expediente en el Tribunal",
+    "via": "administrativa",
+    "desde": "case_file_sent",
+    "hacia": "court_received",
+    "funcion": "court",
+    "rama": null,
+    "fundamento": "LGRA, art. 209, fracc. II"
+  },
+  {
+    "clave": "court_received>evidence_hearing",
+    "valor": "Devolver a la autoridad substanciadora: no es falta grave",
+    "via": "administrativa",
+    "desde": "court_received",
+    "hacia": "evidence_hearing",
+    "funcion": "court",
+    "rama": null,
+    "fundamento": "LGRA, art. 209, fracc. II"
+  },
+  {
+    "clave": "court_received>court_evidence_hearing",
+    "valor": "Admitir las pruebas en el Tribunal",
+    "via": "administrativa",
+    "desde": "court_received",
+    "hacia": "court_evidence_hearing",
+    "funcion": "court",
+    "rama": null,
+    "fundamento": "LGRA, art. 209, fracc. II"
+  },
+  {
+    "clave": "court_evidence_hearing>court_closing_arguments",
+    "valor": "Abrir los alegatos en el Tribunal",
+    "via": "administrativa",
+    "desde": "court_evidence_hearing",
+    "hacia": "court_closing_arguments",
+    "funcion": "court",
+    "rama": null,
+    "fundamento": "LGRA, art. 209, fracc. III"
+  },
+  {
+    "clave": "court_closing_arguments>court_instruction_closed",
+    "valor": "Cerrar la instrucción en el Tribunal",
+    "via": "administrativa",
+    "desde": "court_closing_arguments",
+    "hacia": "court_instruction_closed",
+    "funcion": "court",
+    "rama": null,
+    "fundamento": "LGRA, art. 209, fracc. IV"
+  },
+  {
+    "clave": "court_instruction_closed>court_resolution",
+    "valor": "Dictar la sentencia",
+    "via": "administrativa",
+    "desde": "court_instruction_closed",
+    "hacia": "court_resolution",
+    "funcion": "court",
+    "rama": null,
+    "fundamento": "LGRA, art. 207; LGRA, art. 209, fracc. IV y V"
+  },
+  {
+    "clave": "resolution>final",
+    "valor": "Declarar la resolución firme",
+    "via": "administrativa",
+    "desde": "resolution",
+    "hacia": "final",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 206"
+  },
+  {
+    "clave": "court_resolution>final",
+    "valor": "Declarar la sentencia firme",
+    "via": "administrativa",
+    "desde": "court_resolution",
+    "hacia": "final",
+    "funcion": "court",
+    "rama": null,
+    "fundamento": "LGRA, art. 206"
+  },
+  {
+    "clave": "final>executed",
+    "valor": "Registrar la ejecución de la sanción",
+    "via": "administrativa",
+    "desde": "final",
+    "hacia": "executed",
+    "funcion": "substantiation",
+    "rama": null,
+    "fundamento": "LGRA, art. 222; LGRA, art. 225"
+  },
+  {
+    "clave": "inicio>criminal_investigation",
+    "valor": "Iniciar la investigación penal",
+    "via": "penal",
+    "desde": null,
+    "hacia": "criminal_investigation",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "criminal_complaint_filed>criminal_investigation",
+    "valor": "El Ministerio Público inició la investigación",
+    "via": "penal",
+    "desde": "criminal_complaint_filed",
+    "hacia": "criminal_investigation",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "criminal_investigation>prosecutor_determination",
+    "valor": "Determinación del Ministerio Público",
+    "via": "penal",
+    "desde": "criminal_investigation",
+    "hacia": "prosecutor_determination",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 253; CNPP, art. 254; CNPP, art. 255; CNPP, art. 256"
+  },
+  {
+    "clave": "criminal_investigation>intermediate_stage",
+    "valor": "Etapa intermedia",
+    "via": "penal",
+    "desde": "criminal_investigation",
+    "hacia": "intermediate_stage",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "criminal_investigation>alternative_exit",
+    "valor": "Solución alterna",
+    "via": "penal",
+    "desde": "criminal_investigation",
+    "hacia": "alternative_exit",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 183 a 200"
+  },
+  {
+    "clave": "prosecutor_determination>judicial_review",
+    "valor": "Se impugnó la determinación ante el juez",
+    "via": "penal",
+    "desde": "prosecutor_determination",
+    "hacia": "judicial_review",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 258"
+  },
+  {
+    "clave": "prosecutor_determination>criminal_investigation",
+    "valor": "Se reabrió la investigación",
+    "via": "penal",
+    "desde": "prosecutor_determination",
+    "hacia": "criminal_investigation",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "judicial_review>criminal_investigation",
+    "valor": "El juez ordenó seguir la investigación",
+    "via": "penal",
+    "desde": "judicial_review",
+    "hacia": "criminal_investigation",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "judicial_review>prosecutor_determination",
+    "valor": "El juez confirmó la determinación",
+    "via": "penal",
+    "desde": "judicial_review",
+    "hacia": "prosecutor_determination",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 253; CNPP, art. 254; CNPP, art. 255; CNPP, art. 256"
+  },
+  {
+    "clave": "intermediate_stage>trial",
+    "valor": "Juicio",
+    "via": "penal",
+    "desde": "intermediate_stage",
+    "hacia": "trial",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "intermediate_stage>alternative_exit",
+    "valor": "Solución alterna",
+    "via": "penal",
+    "desde": "intermediate_stage",
+    "hacia": "alternative_exit",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 183 a 200"
+  },
+  {
+    "clave": "trial>sentence",
+    "valor": "Sentencia",
+    "via": "penal",
+    "desde": "trial",
+    "hacia": "sentence",
+    "funcion": "investigation",
+    "rama": null,
+    "fundamento": "CNPP, art. 211"
+  }
+]

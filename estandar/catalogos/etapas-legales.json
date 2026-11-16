@@ -1,0 +1,160 @@
+[
+  {
+    "clave": "investigation",
+    "valor": "Investigación",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 91; LGRA, art. 96"
+  },
+  {
+    "clave": "qualification",
+    "valor": "Calificación de la falta",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 100; LGRA, art. 102"
+  },
+  {
+    "clave": "report_filed",
+    "valor": "Informe de Presunta Responsabilidad Administrativa presentado",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 100; LGRA, art. 194"
+  },
+  {
+    "clave": "report_prevented",
+    "valor": "Informe con observaciones (prevención)",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 195"
+  },
+  {
+    "clave": "abstention",
+    "valor": "Abstención",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 101; LGRA, art. 102"
+  },
+  {
+    "clave": "report_admitted",
+    "valor": "Procedimiento iniciado (informe admitido)",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 112; LGRA, art. 113; LGRA, art. 208, fracc. I"
+  },
+  {
+    "clave": "summoned",
+    "valor": "Emplazamiento",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 193; LGRA, art. 208, fracc. II"
+  },
+  {
+    "clave": "initial_hearing",
+    "valor": "Audiencia inicial",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 208, fracc. III a VII; LGRA, art. 116, fracc. IV"
+  },
+  {
+    "clave": "evidence_hearing",
+    "valor": "Admisión y desahogo de pruebas",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 208, fracc. VIII"
+  },
+  {
+    "clave": "closing_arguments",
+    "valor": "Alegatos",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 208, fracc. IX"
+  },
+  {
+    "clave": "instruction_closed",
+    "valor": "Cierre de la instrucción",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 208, fracc. X"
+  },
+  {
+    "clave": "resolution",
+    "valor": "Resolución (falta no grave)",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 208, fracc. X y XI; LGRA, art. 75; LGRA, art. 77"
+  },
+  {
+    "clave": "case_file_sent",
+    "valor": "Envío del expediente al Tribunal",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 12; LGRA, art. 209, fracc. I"
+  },
+  {
+    "clave": "court_received",
+    "valor": "Recibido en el Tribunal",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 209, fracc. II"
+  },
+  {
+    "clave": "court_evidence_hearing",
+    "valor": "Pruebas en el Tribunal",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 209, fracc. II"
+  },
+  {
+    "clave": "court_closing_arguments",
+    "valor": "Alegatos en el Tribunal",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 209, fracc. III"
+  },
+  {
+    "clave": "court_instruction_closed",
+    "valor": "Cierre de la instrucción en el Tribunal",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 209, fracc. IV"
+  },
+  {
+    "clave": "court_resolution",
+    "valor": "Sentencia del Tribunal",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 207; LGRA, art. 209, fracc. IV y V"
+  },
+  {
+    "clave": "final",
+    "valor": "Resolución firme",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 206"
+  },
+  {
+    "clave": "executed",
+    "valor": "Sanción ejecutada",
+    "via": "administrativa",
+    "fundamento": "LGRA, art. 222; LGRA, art. 225; LGRA, art. 27"
+  },
+  {
+    "clave": "criminal_complaint_filed",
+    "valor": "Denuncia penal presentada (vista al Ministerio Público)",
+    "via": "penal",
+    "fundamento": "LGRA, art. 10, fracc. III; CNPP, art. 222"
+  },
+  {
+    "clave": "criminal_investigation",
+    "valor": "Investigación penal",
+    "via": "penal",
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "prosecutor_determination",
+    "valor": "Determinación del Ministerio Público",
+    "via": "penal",
+    "fundamento": "CNPP, art. 253; CNPP, art. 254; CNPP, art. 255; CNPP, art. 256"
+  },
+  {
+    "clave": "judicial_review",
+    "valor": "Control judicial de la determinación",
+    "via": "penal",
+    "fundamento": "CNPP, art. 258"
+  },
+  {
+    "clave": "intermediate_stage",
+    "valor": "Etapa intermedia",
+    "via": "penal",
+    "fundamento": "CNPP, art. 211"
+  },
+  {
+    "clave": "alternative_exit",
+    "valor": "Solución alterna",
+    "via": "penal",
+    "fundamento": "CNPP, art. 183 a 200"
+  },
+  { "clave": "trial", "valor": "Juicio", "via": "penal", "fundamento": "CNPP, art. 211" },
+  { "clave": "sentence", "valor": "Sentencia", "via": "penal", "fundamento": "CNPP, art. 211" }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "clave": "inconformity",
+    "valor": "Inconformidad",
+    "plazoPresentacion": "appeal_filing",
+    "plazoResolucion": "appeal_resolution",
+    "resuelve": "court",
+    "fundamento": "LGRA, art. 102; LGRA, art. 103; LGRA, art. 104; LGRA, art. 107; LGRA, art. 109; LGRA, art. 110"
+  },
+  {
+    "clave": "claim",
+    "valor": "Reclamación",
+    "plazoPresentacion": "claim_filing",
+    "plazoResolucion": "claim_resolution",
+    "resuelve": "in_charge",
+    "fundamento": "LGRA, art. 213; LGRA, art. 214"
+  },
+  {
+    "clave": "revocation",
+    "valor": "Revocación",
+    "plazoPresentacion": "revocation_filing",
+    "plazoResolucion": "revocation_resolution",
+    "resuelve": "substantiation",
+    "fundamento": "LGRA, art. 210; LGRA, art. 211; LGRA, art. 212"
+  },
+  {
+    "clave": "appeal",
+    "valor": "Apelación",
+    "plazoPresentacion": "court_appeal_filing",
+    "plazoResolucion": null,
+    "resuelve": "court",
+    "fundamento": "LGRA, art. 215; LGRA, art. 216; LGRA, art. 217; LGRA, art. 218; LGRA, art. 219; LGRA, art. 116, fracc. IV"
+  },
+  {
+    "clave": "review",
+    "valor": "Revisión",
+    "plazoPresentacion": "review_filing",
+    "plazoResolucion": null,
+    "resuelve": "court",
+    "fundamento": "LGRA, art. 220; LGRA, art. 221"
+  }
+]

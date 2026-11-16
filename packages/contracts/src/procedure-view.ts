@@ -342,9 +342,15 @@ export const ProcedureStepRecordSchema = z
     legalOutcome: LegalClosureReasonSchema.optional(),
     destination: ReferralDestinationSchema.optional(),
     funding: FederalFundingSchema.optional(),
-    recipients: z.array(z.enum(['asf', 'sabg', 'fgr'])).optional(),
-    prosecutor: z.string().optional(),
-    registryReference: z.string().optional(),
+    recipients: z
+      .array(z.enum(['asf', 'sabg', 'fgr']))
+      .optional()
+      .meta({ description: 'Autoridades federales a las que se dio aviso.' }),
+    prosecutor: z.string().optional().meta({ description: 'Fiscalía que recibió la vista.' }),
+    registryReference: z
+      .string()
+      .optional()
+      .meta({ description: 'Referencia de la inscripción de la sanción en el S3.' }),
   })
   .meta({ description: 'Datos del acto registrados con el paso.' });
 export type ProcedureStepRecord = z.infer<typeof ProcedureStepRecordSchema>;
@@ -403,7 +409,10 @@ export const ClosureViewSchema = z
     sanctionCheck: SanctionCheckViewSchema.optional(),
     legalOutcome: LegalClosureReasonSchema.optional(),
     legalOutcomeName: z.string().optional().meta({ description: 'Nombre del motivo legal.' }),
-    legalOutcomeExplanation: z.string().optional(),
+    legalOutcomeExplanation: z
+      .string()
+      .optional()
+      .meta({ description: 'Qué significa el motivo legal, en lenguaje sencillo.' }),
     destination: ReferralDestinationSchema.optional(),
   })
   .meta({ description: 'Cierre del trámite con fundamento y acuerdo en versión pública.' });
@@ -461,15 +470,17 @@ export type QualificationView = z.infer<typeof QualificationViewSchema>;
 export const RemedyViewSchema = z
   .object({
     kind: RemedyKindSchema,
-    name: z.string(),
+    name: z.string().meta({ description: 'Nombre del recurso.' }),
     filedOn: LegalDaySchema,
     filedBy: RemedyFiledBySchema.optional().meta({
       description:
         'Quién lo presentó. En el seguimiento solo aparece si fue la propia persona denunciante.',
     }),
-    status: z.enum(['pending', 'admitted', 'resolved']),
+    status: z.enum(['pending', 'admitted', 'resolved']).meta({
+      description: 'pending (presentado), admitted (admitido, sin resolver) o resolved (resuelto).',
+    }),
     outcome: RemedyOutcomeSchema.optional(),
-    outcomeName: z.string().optional(),
+    outcomeName: z.string().optional().meta({ description: 'Nombre del resultado.' }),
     resolvedOn: LegalDaySchema.optional(),
     resolutionDueOn: LegalDaySchema.optional(),
     effect: z.string().meta({ description: 'Efecto del recurso en el trámite.' }),
@@ -480,7 +491,10 @@ export type RemedyView = z.infer<typeof RemedyViewSchema>;
 /** Inconformidad posible o en curso contra la calificación de no grave o la abstención. */
 export const InconformityViewSchema = z
   .object({
-    against: z.enum(['non_serious', 'abstention']),
+    against: z.enum(['non_serious', 'abstention']).meta({
+      description:
+        'Acto que se impugna: non_serious (calificación de no grave) o abstention (abstención).',
+    }),
     notifiedOn: LegalDaySchema.optional(),
     filingDueOn: LegalDaySchema.optional(),
     filingRemaining: z.number().int().optional().meta({
@@ -500,9 +514,11 @@ export type InconformityView = z.infer<typeof InconformityViewSchema>;
 export const AbstentionViewSchema = z
   .object({
     legalOn: LegalDaySchema,
-    legalBasis: z.string(),
-    agreement: z.string(),
-    explanation: z.string(),
+    legalBasis: z.string().meta({ description: 'Fundamento de la abstención.' }),
+    agreement: z.string().meta({ description: 'Acuerdo de abstención en versión pública.' }),
+    explanation: z
+      .string()
+      .meta({ description: 'Qué significa y cómo inconformarse, en lenguaje sencillo.' }),
   })
   .meta({ description: 'Abstención con su fundamento y acuerdo en versión pública.' });
 export type AbstentionView = z.infer<typeof AbstentionViewSchema>;
@@ -511,7 +527,7 @@ export type AbstentionView = z.infer<typeof AbstentionViewSchema>;
 export const FederalFundsViewSchema = z
   .object({
     funding: FederalFundingSchema,
-    fundingName: z.string(),
+    fundingName: z.string().meta({ description: 'Nombre del origen de los recursos.' }),
     flaggedOn: LegalDaySchema,
     noticeSentOn: LegalDaySchema.optional(),
   })
@@ -544,7 +560,10 @@ export const ProcedureViewSchema = z
     criminalStage: CriminalStageSchema.optional().meta({
       description: 'Etapa de la vía penal, que corre en paralelo a la administrativa.',
     }),
-    criminalStageName: z.string().optional(),
+    criminalStageName: z
+      .string()
+      .optional()
+      .meta({ description: 'Nombre de la etapa de la vía penal.' }),
     closure: ClosureViewSchema.optional(),
     qualification: QualificationViewSchema.optional(),
     abstention: AbstentionViewSchema.optional(),
@@ -566,7 +585,12 @@ export const ProcedureViewSchema = z
         'Solo en el panel: el estado no dio cuentas al Tribunal y la substanciación registra sus actuaciones.',
     }),
     sanctionRegistered: z
-      .object({ legalOn: LegalDaySchema, registryReference: z.string() })
+      .object({
+        legalOn: LegalDaySchema,
+        registryReference: z
+          .string()
+          .meta({ description: 'Referencia de la inscripción en el S3 (registrada como acto).' }),
+      })
       .optional()
       .meta({ description: 'Inscripción de la sanción en el S3, registrada como acto.' }),
     steps: z

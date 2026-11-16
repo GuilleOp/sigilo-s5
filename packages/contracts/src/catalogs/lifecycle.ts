@@ -728,6 +728,13 @@ export const CRIMINAL_REFERRAL_BASES = [
 /** Clave del fundamento de la vista al Ministerio Público. */
 export type CriminalReferralBasisKey = (typeof CRIMINAL_REFERRAL_BASES)[number]['key'];
 
+// TODO(tabla-de-funciones-court): la tabla de funciones firmada (`NODE_FUNCTIONS` y
+// `packages/red/src/function-table.ts`, de quien mantiene la tabla) debe nombrar el holder de la
+// función `court` (Tribunal y su alzada) de cada nodo, y las reglas por ente con
+// `fundingSources` (aportaciones y convenios federales) para que la marca de recursos federales
+// salga también del ente y no solo de la denuncia. El estándar ya define la función de cuenta
+// `court` y esta regla.
+
 /** Autoridad federal competente cuando hay recursos federales en un ente local. */
 export interface FederalAuthorityOption {
   key: 'asf' | 'sabg' | 'fgr';

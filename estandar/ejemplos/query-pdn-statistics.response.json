@@ -39,7 +39,17 @@
           "total": null
         },
         { "clave": "ARCHIVADA", "valor": "Archivada", "total": null },
-        { "clave": "CONCLUIDA", "valor": "Concluida", "total": null }
+        { "clave": "CONCLUIDA", "valor": "Concluida", "total": null },
+        {
+          "clave": "EN_PROCEDIMIENTO",
+          "valor": "En procedimiento de responsabilidad",
+          "total": null
+        },
+        { "clave": "EN_TRIBUNAL", "valor": "En el Tribunal", "total": null },
+        { "clave": "EN_RECURSO", "valor": "En recurso", "total": null },
+        { "clave": "CONCLUIDA_CON_SANCION", "valor": "Concluida con sanción firme", "total": null },
+        { "clave": "CONCLUIDA_SIN_SANCION", "valor": "Concluida sin sanción", "total": null },
+        { "clave": "PRESCRITA_O_CADUCADA", "valor": "Prescrita o caducada", "total": null }
       ],
       "tiemposMedianosDiasHabiles": { "turno": 1, "aceptacion": 1, "archivo": null }
     }

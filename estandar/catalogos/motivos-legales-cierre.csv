@@ -1,0 +1,10 @@
+clave,valor,motivosS5,estatus,fundamento
+archived,Archivo por falta de elementos,insufficient_information,archived,"LGRA, art. 100"
+abstention,Abstención,attended,final_no_sanction,"LGRA, art. 101"
+prescribed,Prescripción,other,prescribed_or_expired,"LGRA, art. 74"
+expired,Caducidad de la instancia,other,prescribed_or_expired,"LGRA, art. 74"
+dismissed,Sobreseimiento,other|inadmissible,final_no_sanction,"LGRA, art. 196; LGRA, art. 197"
+incompetence,Incompetencia y remisión,channeled,resolved,"LGRA, art. 14; LGRA, art. 196, fracc. II"
+sanctioned,Resolución firme con sanción,attended,final_sanction,"LGRA, art. 206; LGRA, art. 222"
+responsible_no_sanction,Resolución firme: responsable sin sanción,attended,final_no_sanction,"LGRA, art. 77; LGRA, art. 206"
+not_responsible,Resolución firme: no responsable,attended,final_no_sanction,"LGRA, art. 206"

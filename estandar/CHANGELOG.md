@@ -9,6 +9,70 @@ rompe algo está marcado como **Incompatible**.
 
 ## [Sin publicar]
 
+## [0.4.0] - 2026-11-16
+
+Ciclo de vida legal completo de la denuncia según la LGRA y, en la vía penal, el CNPP. Todo es
+nacional: las etapas, acciones, recursos, funciones, plazos y motivos de cierre usan solo las
+leyes generales; cada nodo asigna quién cumple cada función. Detalle en
+`docs/ciclo-de-vida-legal.md`.
+
+### Agregado
+
+- Etapas administrativas nuevas: `report_prevented` (prevención del informe, art. 195),
+  `abstention` (art. 101), `report_admitted` (art. 208 fr. I), `summoned` (art. 208 fr. II),
+  `initial_hearing` (art. 208 fr. III a VII), las etapas del Tribunal `court_received`,
+  `court_evidence_hearing`, `court_closing_arguments`, `court_instruction_closed` y
+  `court_resolution` (art. 209), `final` (art. 206) y `executed` (arts. 222 y 225).
+- Transiciones con sus dos ramas después de la audiencia inicial (no grave ante la substanciadora
+  y resolutora; grave o de particulares ante el Tribunal), la devolución del Tribunal y la función
+  que da cada paso (`ADMINISTRATIVE_TRANSITIONS`, `CRIMINAL_TRANSITIONS`; catálogo
+  `transiciones`).
+- Vía penal en una capa aparte (`criminalStage` en `ProcedureState` y `ProcedureView`), en paralelo
+  a la administrativa, con las etapas `criminal_complaint_filed`, `prosecutor_determination`,
+  `judicial_review` y `alternative_exit`.
+- Función de cuenta `court` (Tribunal): solo actúa en sus etapas y en los recursos que resuelve. Si
+  el estado no le da cuentas, la substanciación registra sus actuaciones con `courtRecord`
+  (número de expediente y fundamento), marcado en la línea de tiempo como registro de otra
+  autoridad.
+- Acciones `order_reclassification`, `request_precautionary`, `decide_precautionary`,
+  `file_remedy`, `resolve_remedy`, `refer_to_prosecutor`, `flag_federal_funds`,
+  `send_federal_notice`, `register_sanction` y `record_withdrawal`; `advance_stage` admite
+  `legalBasis`, `agreement` y `courtRecord`; `close` admite `legalOutcome`, `destination` y
+  `courtRecord`.
+- Pasos nuevos de la línea de tiempo (`ProcedureAction`) y sus datos (`ProcedureStep.record`).
+- Recursos (`RemedyKind`: inconformidad, reclamación, revocación, apelación y revisión) con su
+  resultado (`RemedyOutcome`), quién los presenta (`RemedyFiledBy`) y su efecto; catálogo
+  `recursos`.
+- Motivo legal del cierre (`LegalClosureReason`), aparte de los seis motivos del S5; catálogo
+  `motivos-legales-cierre`.
+- Plazos nuevos: prevención y admisión del informe, audiencia inicial, cita de las partes (en
+  horas: unidad `hours`), pruebas, alegatos, resolución y su notificación, envío al Tribunal,
+  reclasificación, medidas cautelares, reclamación, revocación, apelación, revisión, informe de
+  ejecución e impugnación de la determinación del Ministerio Público.
+- Estatus de la API v1 `in_procedure`, `in_court`, `under_remedy`, `final_sanction`,
+  `final_no_sanction` y `prescribed_or_expired`, también en la estadística de la PDN.
+- `ProcedureView`: abstención, inconformidad (con el plazo contado por el nodo), recursos, medida
+  cautelar (sin la medida concreta para la persona), recursos federales, inscripción de la sanción
+  en el S3 y, en el panel, si la substanciación registra las actuaciones del Tribunal.
+- Regla de recursos federales en entes locales (`FEDERAL_FUNDS_RULE`): ASF, SABG y FGR con su
+  fundamento, en los dos sentidos entre el nodo Federal y los estatales.
+- Catálogo `etapas-legales`.
+
+### Cambiado
+
+- **Incompatible:** el aviso de inconformidad (`POST trackingAppeal`) ya no es la inconformidad: el
+  recurso cuenta cuando la autoridad registra el escrito con firma autógrafa (`file_remedy` con
+  `signed: true`, LGRA art. 109). `AppealResponse.resolutionDueOn` queda obsoleto y ya no se envía;
+  se agrega `filingDueOn`. El plazo `appeal_resolution` corre desde el escrito firmado.
+- **Incompatible:** las etapas penales ya no van en `legalStage` sino en `criminalStage`; los saltos
+  de etapa ya no se aceptan (cada paso sigue una transición del catálogo) y `case_file_sent` solo
+  cabe en la rama grave.
+- El estatus de las etapas posteriores a la admisión del informe es `in_procedure` o `in_court`
+  (antes `classified`).
+- El semáforo de turnado se nombra «meta de turnado del S5»: no es un plazo legal.
+- `estatusAlCierre` de la estadística de la PDN trae los estatus nuevos; los meses congelados antes
+  los publican como suprimidos.
+
 ## [0.3.0] - 2026-11-12
 
 Perfil de conexión con la PDN: el grupo «PDN» se publica y se comporta como las especificaciones

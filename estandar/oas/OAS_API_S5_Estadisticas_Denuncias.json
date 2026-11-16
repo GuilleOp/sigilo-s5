@@ -3,7 +3,7 @@
   "info": {
     "title": "S5 - Estadísticas de denuncias",
     "description": "Perfil de conexión con la Plataforma Digital Nacional del Sistema de denuncias públicas (S5), con la metodología de las APIs del S2 y del S3: el servidor de autorización OAuth 2.0 del nodo (`POST /oauth/token`), la estadística agregada de denuncias con paginación (`POST /v1/denuncias/estadisticas`) y el catálogo de autoridades (`GET /v1/denuncias/estadisticas/autoridades`). Es lo que la SESNA consume de cada nodo y lo que se prueba con el protocolo de conexión (ValidAPI).\n\nErrores con el esquema `resError` (`code` = estatus HTTP, `message`). En `/oauth/token`, además, los campos de RFC 6749 (`error`, `error_description`).\n\nPropuesta de SIGILO para el Datatón Anticorrupción 2026; no es una especificación oficial de la SESNA. Generado desde `packages/contracts` con `npm run standard:build`; el estándar completo está en `openapi.yaml` (OpenAPI 3.1) y `openapi-3.0.json`, y los cambios en `CHANGELOG.md`.",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "license": { "name": "CC BY-NC 4.0", "url": "https://creativecommons.org/licenses/by-nc/4.0/" }
   },
   "servers": [
@@ -248,7 +248,29 @@
                               "total": null
                             },
                             { "clave": "ARCHIVADA", "valor": "Archivada", "total": null },
-                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null }
+                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null },
+                            {
+                              "clave": "EN_PROCEDIMIENTO",
+                              "valor": "En procedimiento de responsabilidad",
+                              "total": null
+                            },
+                            { "clave": "EN_TRIBUNAL", "valor": "En el Tribunal", "total": null },
+                            { "clave": "EN_RECURSO", "valor": "En recurso", "total": null },
+                            {
+                              "clave": "CONCLUIDA_CON_SANCION",
+                              "valor": "Concluida con sanción firme",
+                              "total": null
+                            },
+                            {
+                              "clave": "CONCLUIDA_SIN_SANCION",
+                              "valor": "Concluida sin sanción",
+                              "total": null
+                            },
+                            {
+                              "clave": "PRESCRITA_O_CADUCADA",
+                              "valor": "Prescrita o caducada",
+                              "total": null
+                            }
                           ],
                           "tiemposMedianosDiasHabiles": {
                             "turno": 1,
@@ -784,9 +806,15 @@
                       "EN_INVESTIGACION",
                       "CALIFICADA",
                       "ARCHIVADA",
-                      "CONCLUIDA"
+                      "CONCLUIDA",
+                      "EN_PROCEDIMIENTO",
+                      "EN_TRIBUNAL",
+                      "EN_RECURSO",
+                      "CONCLUIDA_CON_SANCION",
+                      "CONCLUIDA_SIN_SANCION",
+                      "PRESCRITA_O_CADUCADA"
                     ],
-                    "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida)."
+                    "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada)."
                   }
                 ]
               }
@@ -1130,8 +1158,8 @@
             "nullable": true
           },
           "estatusAlCierre": {
-            "minItems": 7,
-            "maxItems": 7,
+            "minItems": 13,
+            "maxItems": 13,
             "type": "array",
             "items": {
               "type": "object",
@@ -1145,9 +1173,15 @@
                     "EN_INVESTIGACION",
                     "CALIFICADA",
                     "ARCHIVADA",
-                    "CONCLUIDA"
+                    "CONCLUIDA",
+                    "EN_PROCEDIMIENTO",
+                    "EN_TRIBUNAL",
+                    "EN_RECURSO",
+                    "CONCLUIDA_CON_SANCION",
+                    "CONCLUIDA_SIN_SANCION",
+                    "PRESCRITA_O_CADUCADA"
                   ],
-                  "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida)."
+                  "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada)."
                 },
                 "valor": {
                   "type": "string",

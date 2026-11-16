@@ -7,7 +7,7 @@ info:
     Errores con el esquema `resError` (`code` = estatus HTTP, `message`). En `/oauth/token`, además, los campos de RFC 6749 (`error`, `error_description`).
 
     Propuesta de SIGILO para el Datatón Anticorrupción 2026; no es una especificación oficial de la SESNA. Generado desde `packages/contracts` con `npm run standard:build`; el estándar completo está en `openapi.yaml` (OpenAPI 3.1) y `openapi-3.0.json`, y los cambios en `CHANGELOG.md`.
-  version: 0.3.0
+  version: 0.4.0
   license:
     name: CC BY-NC 4.0
     url: https://creativecommons.org/licenses/by-nc/4.0/
@@ -251,6 +251,24 @@ paths:
                             total: null
                           - clave: CONCLUIDA
                             valor: Concluida
+                            total: null
+                          - clave: EN_PROCEDIMIENTO
+                            valor: En procedimiento de responsabilidad
+                            total: null
+                          - clave: EN_TRIBUNAL
+                            valor: En el Tribunal
+                            total: null
+                          - clave: EN_RECURSO
+                            valor: En recurso
+                            total: null
+                          - clave: CONCLUIDA_CON_SANCION
+                            valor: Concluida con sanción firme
+                            total: null
+                          - clave: CONCLUIDA_SIN_SANCION
+                            valor: Concluida sin sanción
+                            total: null
+                          - clave: PRESCRITA_O_CADUCADA
+                            valor: Prescrita o caducada
                             total: null
                         tiemposMedianosDiasHabiles:
                           turno: 1
@@ -750,7 +768,13 @@ components:
                     - CALIFICADA
                     - ARCHIVADA
                     - CONCLUIDA
-                  description: 'Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida).'
+                    - EN_PROCEDIMIENTO
+                    - EN_TRIBUNAL
+                    - EN_RECURSO
+                    - CONCLUIDA_CON_SANCION
+                    - CONCLUIDA_SIN_SANCION
+                    - PRESCRITA_O_CADUCADA
+                  description: 'Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada).'
           additionalProperties: false
       additionalProperties: false
       description: Consulta de la estadística, con la forma de las APIs del S2 y del S3.
@@ -1066,8 +1090,8 @@ components:
           description: Reglas de escalamiento cumplidas en el mes con efecto de escalar.
           nullable: true
         estatusAlCierre:
-          minItems: 7
-          maxItems: 7
+          minItems: 13
+          maxItems: 13
           type: array
           items:
             type: object
@@ -1082,7 +1106,13 @@ components:
                   - CALIFICADA
                   - ARCHIVADA
                   - CONCLUIDA
-                description: 'Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida).'
+                  - EN_PROCEDIMIENTO
+                  - EN_TRIBUNAL
+                  - EN_RECURSO
+                  - CONCLUIDA_CON_SANCION
+                  - CONCLUIDA_SIN_SANCION
+                  - PRESCRITA_O_CADUCADA
+                description: 'Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada).'
               valor:
                 type: string
                 minLength: 1

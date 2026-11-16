@@ -455,6 +455,10 @@ describe('catálogos', () => {
       'funciones-cuenta',
       'motivos-cierre',
       'estatus-denuncia',
+      'etapas-legales',
+      'transiciones',
+      'recursos',
+      'motivos-legales-cierre',
     ]);
     for (const catalog of catalogs) {
       const json = JSON.parse(

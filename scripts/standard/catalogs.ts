@@ -2,8 +2,15 @@
 // (arreglo de `{ clave, valor, … }`) y `.csv` (`clave,valor,…`), para proponerlos a la SESNA tal
 // cual. Se derivan de los catálogos de @sigilo/contracts. Función pura: no escribe nada.
 import {
+  ADMINISTRATIVE_TRANSITIONS,
   AuthorityFunctionSchema,
+  CRIMINAL_TRANSITIONS,
+  LEGAL_CLOSURE_REASONS,
+  LEGAL_STAGES,
   MUNICIPALITIES,
+  REMEDY_KINDS,
+  findLegalStage,
+  formatLegalReference,
   NODE_FUNCTIONS,
   OFFENSES,
   OFFENSE_LAW_NAMES,
@@ -154,6 +161,62 @@ export function buildCatalogs(): Catalog[] {
     {
       name: 'estatus-denuncia',
       rows: PDN_STATUS_CATALOG.map(({ key, clave, valor }) => ({ clave, valor, claveApi: key })),
+    },
+    {
+      name: 'etapas-legales',
+      rows: LEGAL_STAGES.map((stage) => ({
+        clave: stage.key,
+        valor: stage.name,
+        via: stage.track === 'administrative' ? 'administrativa' : 'penal',
+        fundamento: stage.legalBasis.map(formatLegalReference).join('; '),
+      })),
+    },
+    {
+      name: 'transiciones',
+      rows: [
+        ...ADMINISTRATIVE_TRANSITIONS.map((transition) => ({
+          clave: `${transition.from ?? 'inicio'}>${transition.to}`,
+          valor: transition.label,
+          via: 'administrativa',
+          desde: transition.from,
+          hacia: transition.to,
+          funcion: transition.fn,
+          rama: transition.severities?.join('|') ?? null,
+          fundamento: transition.legalBasis.map(formatLegalReference).join('; '),
+        })),
+        ...CRIMINAL_TRANSITIONS.map((transition) => ({
+          clave: `${transition.from ?? 'inicio'}>${transition.to}`,
+          valor: transition.label,
+          via: 'penal',
+          desde: transition.from,
+          hacia: transition.to,
+          funcion: 'investigation',
+          rama: null,
+          fundamento:
+            findLegalStage(transition.to)?.legalBasis.map(formatLegalReference).join('; ') ?? null,
+        })),
+      ],
+    },
+    {
+      name: 'recursos',
+      rows: REMEDY_KINDS.map((kind) => ({
+        clave: kind.key,
+        valor: kind.name,
+        plazoPresentacion: kind.filingDeadline,
+        plazoResolucion: kind.resolutionDeadline ?? null,
+        resuelve: kind.resolvedBy,
+        fundamento: kind.legalBasis.map(formatLegalReference).join('; '),
+      })),
+    },
+    {
+      name: 'motivos-legales-cierre',
+      rows: LEGAL_CLOSURE_REASONS.map((reason) => ({
+        clave: reason.key,
+        valor: reason.name,
+        motivosS5: reason.s5Reasons.join('|'),
+        estatus: reason.status,
+        fundamento: reason.legalBasis.map(formatLegalReference).join('; '),
+      })),
     },
   ];
 }
