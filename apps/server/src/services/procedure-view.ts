@@ -354,12 +354,31 @@ function remedyViews(
   });
 }
 
-function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: string): DeadlineView[] {
+/**
+ * Plazos de falta grave que se suponen sin conducta del catálogo («Ninguna se parece»): la regla
+ * prudente los mantiene para la autoridad (LGRA, art. 64 fr. II), con un nombre que dice que es una
+ * posibilidad; a la persona no se le presentan como si su denuncia ya fuera de falta grave.
+ */
+const ASSUMED_SERIOUS_NAMES: Partial<Record<DeadlineView['key'], string>> = {
+  serious_offense_start: 'Iniciar la investigación (podría ser falta grave)',
+  prescription_serious: 'Prescripción si resulta falta grave',
+};
+
+function deadlineViews(
+  ctx: AppContext,
+  complaint: ComplaintRecord,
+  today: string,
+  audience: ProcedureAudience,
+): DeadlineView[] {
   const snapshot = procedureSnapshot(ctx, complaint);
   const isAccepted = complaint.managementState === 'accepted';
+  const isUnclassified =
+    offenseSeverity(complaint.facts.offenseCode) === undefined && snapshot.qualifiedOn === null;
   return activeDeadlines(snapshot, { isAccepted }).flatMap((deadline) => {
     const rule = findDeadlineRule(deadline.key);
     if (rule === undefined) return [];
+    const assumedName = isUnclassified ? ASSUMED_SERIOUS_NAMES[deadline.key] : undefined;
+    if (assumedName !== undefined && audience === 'reporter') return [];
     try {
       const evaluation = evaluateDeadline(deadline.key, deadline.startsOn, today, {
         calendar: nodeCalendar(ctx),
@@ -367,7 +386,7 @@ function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: strin
       return [
         {
           key: deadline.key,
-          name: rule.name,
+          name: assumedName ?? rule.name,
           explanation: rule.explanation,
           startsOn: deadline.startsOn,
           dueOn: evaluation.dueOn,
@@ -510,7 +529,7 @@ export function buildProcedureView(
       .listSteps(complaint.folio)
       .filter((step) => isVisibleTo(step, audience))
       .map((step, index, visible) => stepView(ctx, step, audience, visible[index + 1])),
-    deadlines: deadlineViews(ctx, complaint, today),
+    deadlines: deadlineViews(ctx, complaint, today, audience),
     rules: ctx.procedure.listRuleTriggers(complaint.folio).map(ruleTriggerView),
   };
 }

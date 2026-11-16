@@ -107,4 +107,21 @@ describe('riesgo', () => {
       'remove-municipality',
     ]);
   });
+
+  it('a quien no trabaja en esa oficina no le advierte de la red de su trabajo (hallazgo 14a)', () => {
+    const draft = filledDraft();
+    // Martes a mediodía: horario laboral.
+    const noon = new Date('2026-11-17T12:00:00');
+    draft.workplace.worksThere = 'yes';
+    expect(buildRiskActions(buildRiskSignals(draft, noon)).map((a) => a.kind)).toContain('advice');
+    draft.workplace.worksThere = 'no';
+    const signals = buildRiskSignals(draft, noon);
+    expect(signals.localTime).toBeUndefined();
+    expect(buildRiskActions(signals).map((a) => a.kind)).not.toContain('advice');
+    expect(
+      assessRisk(signals)
+        .reasons.map((r) => r.text)
+        .join(' '),
+    ).not.toContain('red de tu trabajo');
+  });
 });
