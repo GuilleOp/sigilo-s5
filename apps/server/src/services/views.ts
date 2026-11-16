@@ -106,6 +106,23 @@ export function canSeeCorroboration(
   );
 }
 
+/**
+ * Aperturas de la identidad que sí ocurrieron: las de la autoridad por aprobación 2 de 3 y las
+ * entregas del sobre para el recurso (una por apertura). El aviso de inconformidad de la persona
+ * solo autoriza abrirla para el recurso: hasta la entrega no cuenta (hallazgo 9). La bitácora
+ * pública conserva su evento `identity.opened` sin cambios.
+ */
+function identityOpenedCount(ctx: AppContext, folio: string): number {
+  const opened = new Set(
+    ctx.identityOpenings
+      .listByFolio(folio)
+      .filter((entry) => entry.actorRole === 'authority')
+      .map((entry) => entry.openingId),
+  );
+  for (const release of ctx.qualifications.listReleases(folio)) opened.add(release.openingId);
+  return opened.size;
+}
+
 export function buildComplaintDetail(
   ctx: AppContext,
   complaint: ComplaintRecord,
@@ -159,7 +176,7 @@ export function buildComplaintDetail(
     storedEvidenceCount: ctx.evidence.listStoredIdsForFolio(complaint.folio).length,
     ...optional('evidenceCustody', evidenceCustodyView(ctx, complaint.folio, account)),
     messages: isCourtView ? [] : ctx.messages.listByFolio(complaint.folio),
-    identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
+    identityOpenedCount: identityOpenedCount(ctx, complaint.folio),
     s5References: s5ReferencesFor(
       complaint.facts.entityId,
       complaint.facts.stateCode,

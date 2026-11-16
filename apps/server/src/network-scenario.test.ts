@@ -341,6 +341,8 @@ describe('red del escenario de la demostración', () => {
     const { openingId } = AppealResponseSchema.parse(await appeal.json());
     seen = await tracking(federal, folio, marta);
     expect(seen.identityAccess.at(-1)).toMatchObject({ actorRole: 'reporter', openingId });
+    // El aviso solo autoriza abrirla para el recurso: todavía nadie la abrió (hallazgo 9).
+    expect((await detail(federal, 'iffeInvestigator', folio)).identityOpenedCount).toBe(0);
     // Es un aviso: el plazo para el escrito firmado sigue corriendo y la Sala todavía no (B04).
     expect(seen.procedure?.qualification?.appeal?.filingDueOn).toBeDefined();
     expect(seen.procedure?.qualification?.appeal?.resolutionDueOn).toBeUndefined();
@@ -375,6 +377,7 @@ describe('red del escenario de la demostración', () => {
     // La entrega queda en el seguimiento y en la bitácora (identity.released).
     seen = await tracking(federal, folio, marta);
     expect(seen.identityReleases?.map((item) => item.openingId)).toEqual([openingId]);
+    expect((await detail(federal, 'iffeInvestigator', folio)).identityOpenedCount).toBe(1);
     // La autoridad investigadora registra el escrito con firma autógrafa: corre el plazo de la Sala.
     const signed = await asAccount(federal, 'iffeInvestigator', ROUTES.authorityProcedure(folio), {
       action: 'file_remedy',

@@ -248,6 +248,8 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
               {`${ringUsed} de 3 llaves usadas`}
             </StateTag>{' '}
             Aperturas registradas: {detail.identityOpenedCount}.
+            {appeal !== undefined &&
+              ' La persona autorizó abrirla solo para el recurso: cuenta como apertura cuando se entrega el sobre.'}
           </p>
         </div>
       </div>
