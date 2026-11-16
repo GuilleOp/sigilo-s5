@@ -183,7 +183,7 @@ test('abstención: aviso de inconformidad, escrito con firma y resolución de la
   await expect(page.getByTestId('appeal-outcome')).toContainText('Confirmada');
 });
 
-test('vista al Ministerio Público: la vía penal corre en paralelo a la administrativa', async ({
+test('vista al Ministerio Público: llega a la bandeja de la fiscalía y la vía penal corre en paralelo', async ({
   page,
   request,
 }) => {
@@ -204,12 +204,17 @@ test('vista al Ministerio Público: la vía penal corre en paralelo a la adminis
   const panel = page.getByTestId('procedure-panel');
   await panel.getByTestId('procedure-action').selectOption('refer_to_prosecutor');
   await expect(panel.getByTestId('referral-basis')).toContainText('LGRA, art. 10, fracc. III');
-  // Dice lo que hace: registra la vista; remitir la denuncia a la fiscalía es un paso aparte.
-  await expect(panel.getByTestId('referral-hint')).toContainText('Aquí se registra la vista');
-  await expect(panel.getByTestId('referral-hint')).toContainText('es un paso aparte');
-  await panel
-    .getByTestId('referral-prosecutor')
-    .fill('Fiscalía Ficticia Especializada en Hechos de Corrupción');
+  // La fiscalía se elige del directorio del nodo; la de fuera del nodo va por oficio.
+  const target = panel.getByTestId('referral-target');
+  await expect(target).toHaveValue(PROSECUTION);
+  await expect(target.locator('option[value="outside"]')).toHaveCount(1);
+  await expect(panel.getByTestId('referral-prosecutor')).toHaveCount(0);
+  // Dice lo que recibe la fiscalía y lo que no.
+  await expect(panel.getByTestId('referral-hint')).toContainText('copia de lectura');
+  await expect(panel.getByTestId('referral-hint')).not.toContainText('todavía no');
+  await expect(panel.getByTestId('referral-identity-hint')).toContainText(
+    'La identidad sellada no se comparte con la fiscalía',
+  );
   await panel.getByTestId('apply-procedure').click();
   await expect(panel.getByTestId('procedure-criminal-stage')).toContainText(
     'Denuncia penal presentada',
@@ -231,11 +236,35 @@ test('vista al Ministerio Público: la vía penal corre en paralelo a la adminis
         'Con fundamento en el artículo 100 de la LGRA se califica la conducta como grave (sintético).',
     },
   });
+
+  // La fiscalía la ve en su bandeja como copia de lectura y solo avanza la vía penal.
+  await loginAsAuthority(page, E2E_ACCOUNTS.prosecution);
+  const row = page.getByTestId('complaint-list').locator('tr', { hasText: folio });
+  await expect(row.getByTestId('referral-copy')).toContainText('Vista al Ministerio Público');
+  await openComplaint(page, folio);
+  const detail = page.getByTestId('complaint-detail');
+  await expect(detail.getByTestId('referral-copy-notice')).toContainText(
+    'La identidad sellada no se comparte contigo',
+  );
+  // Sin buzón con la persona, sin apertura de la identidad y sin trámite administrativo.
+  await expect(detail.getByTestId('authority-mailbox')).toHaveCount(0);
+  await expect(detail.getByTestId('request-identity')).toHaveCount(0);
+  const copy = page.getByTestId('procedure-panel');
+  const actions = copy.getByTestId('procedure-action');
+  await expect(actions).toHaveValue('advance_stage');
+  await expect(actions.locator('option')).toHaveCount(1);
+  const stage = copy.getByTestId('procedure-stage');
+  await expect(stage.locator('option')).toHaveCount(1);
+  await expect(stage).toContainText('Vía penal: El Ministerio Público inició la investigación');
+  await copy.getByTestId('apply-procedure').click();
+  await expect(copy.getByTestId('procedure-criminal-stage')).toContainText('Investigación penal');
+  // La denuncia sigue con la Contraloría: la administrativa no cambió.
+  await expect(copy.getByTestId('procedure-state')).toContainText('Calificación de la falta');
+  await expectNoAccessibilityViolations(page, 'copia de lectura de la fiscalía');
+
   await openTracking(page, folio, words);
   await expect(page.getByTestId('tracking-legal-stage')).toContainText('Calificación de la falta');
-  await expect(page.getByTestId('tracking-criminal-stage')).toContainText(
-    'Denuncia penal presentada',
-  );
+  await expect(page.getByTestId('tracking-criminal-stage')).toContainText('Investigación penal');
   await expect(page.getByTestId('procedure-steps')).toContainText('Vista al Ministerio Público');
   await expectNoAccessibilityViolations(page, 'seguimiento con la vía penal en paralelo');
 });

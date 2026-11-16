@@ -13,10 +13,17 @@ import {
 } from '@sigilo/contracts';
 import { generateFolio, sealEvidence } from '@sigilo/core';
 import { buildSubmitRequest, createReceipt } from '../apps/web/src/crypto/submission.ts';
-import { fetchPinnedKeys, solveProofOfWork, syntheticFacts } from './support/api.ts';
+import {
+  applyProcedure,
+  fetchComplaintDetail,
+  fetchPinnedKeys,
+  routeToInvestigation,
+  solveProofOfWork,
+  syntheticFacts,
+} from './support/api.ts';
 import { loginAsAuthority, openComplaint } from './support/authority.ts';
 import { advanceServerClockToNextDay } from './support/clock.ts';
-import { API_ORIGIN } from './support/environment.ts';
+import { API_ORIGIN, E2E_ACCOUNTS } from './support/environment.ts';
 import { expect, test } from './support/fixtures.ts';
 
 /** Color del único píxel de la prueba: el navegador debe descifrarla y decodificarla igual. */
@@ -172,4 +179,40 @@ test('un contenedor alterado en el camino no se muestra', async ({ page, request
   const gallery = page.getByTestId('authority-evidence');
   await expect(gallery).toContainText('El archivo no coincide con su digesto.');
   await expect(gallery.getByRole('img')).toHaveCount(0);
+});
+
+test('la vista al Ministerio Público comparte las llaves de las pruebas con la fiscalía del nodo', async ({
+  page,
+  request,
+}) => {
+  const prosecution = 'authority.prosecutor-anticorruption';
+  const { folio } = await seedWithEvidence(request);
+  await routeToInvestigation(request, folio);
+  await applyProcedure(request, E2E_ACCOUNTS.iffeInvestigator, folio, {
+    action: 'advance_stage',
+    stage: 'investigation',
+  });
+  // La investigadora da vista desde el panel: su navegador re-cifra la llave de la prueba hacia la
+  // llave pública de la fiscalía antes de registrar la vista.
+  await loginAsAuthority(page, E2E_ACCOUNTS.iffeInvestigator);
+  await openComplaint(page, folio);
+  const panel = page.getByTestId('procedure-panel');
+  await panel.getByTestId('procedure-action').selectOption('refer_to_prosecutor');
+  await expect(panel.getByTestId('referral-target')).toHaveValue(prosecution);
+  await panel.getByTestId('apply-procedure').click();
+  await expect(panel.getByTestId('procedure-criminal-stage')).toContainText(
+    'Denuncia penal presentada',
+  );
+  const seen = await fetchComplaintDetail(request, folio, E2E_ACCOUNTS.prosecution);
+  expect(seen.summary.assignedAuthorityId).toBe('authority.oic-iffe');
+  expect(seen.evidenceCustody?.keyGrants.map((grant) => grant.authorityId)).toEqual([prosecution]);
+  // La fiscalía descarga el contenedor y su navegador lo descifra y lo compara con lo anclado.
+  await loginAsAuthority(page, E2E_ACCOUNTS.prosecution);
+  await openComplaint(page, folio);
+  await expect(page.getByTestId('evidence-check')).toHaveText(
+    'Descifrada aquí; coincide con lo anclado en la bitácora al recibirla.',
+  );
+  await expect(
+    page.getByTestId('authority-evidence').getByRole('img', { name: /^Prueba 1/u }),
+  ).toBeVisible();
 });
