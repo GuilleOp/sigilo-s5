@@ -876,6 +876,31 @@ CREATE TABLE authority_mfa (
 ) STRICT, WITHOUT ROWID;
 `;
 
+/**
+ * Migración 18: ciclo de vida legal completo (estándar 0.4.0). La vía penal pasa a una capa aparte
+ * (`criminal_stage`), en paralelo a la administrativa: las denuncias que estaban en una etapa penal
+ * la conservan ahí y quedan sin etapa administrativa. Las etapas de pruebas, alegatos, cierre y
+ * resolución que ya se habían avanzado después de enviar el expediente al Tribunal pasan a las
+ * etapas del Tribunal (`court_*`). Cada paso guarda los datos de su acto (`details_json`: función
+ * que actuó, recurso, registro de actuación del Tribunal…) y cada cierre su motivo legal y su
+ * destino. Los pasos ya guardados no se tocan: son de solo agregar.
+ */
+const LEGAL_LIFECYCLE = `
+ALTER TABLE complaints ADD COLUMN criminal_stage TEXT;
+ALTER TABLE complaints ADD COLUMN funding_source TEXT
+  CHECK (funding_source IS NULL OR funding_source IN ('aportaciones', 'convenio_federal'));
+UPDATE complaints SET criminal_stage = legal_stage, legal_stage = NULL
+  WHERE legal_stage IN ('criminal_investigation', 'intermediate_stage', 'trial', 'sentence');
+UPDATE complaints SET legal_stage = 'court_' || legal_stage
+  WHERE legal_stage IN ('evidence_hearing', 'closing_arguments', 'instruction_closed', 'resolution')
+    AND EXISTS (SELECT 1 FROM procedure_steps AS step
+      WHERE step.folio = complaints.folio AND step.legal_stage = 'case_file_sent');
+ALTER TABLE procedure_steps ADD COLUMN details_json TEXT;
+ALTER TABLE closure_agreements ADD COLUMN legal_outcome TEXT;
+ALTER TABLE closure_agreements ADD COLUMN destination_json TEXT;
+CREATE INDEX complaints_by_legal_stage ON complaints (legal_stage);
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -895,6 +920,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 15, sql: PDN_STATISTICS },
   { version: 16, sql: ENCRYPTED_EVIDENCE },
   { version: 17, sql: AUTHORITY_MFA },
+  { version: 18, sql: LEGAL_LIFECYCLE },
 ];
 
 /** Versión más reciente del esquema. */

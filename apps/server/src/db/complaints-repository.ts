@@ -6,6 +6,8 @@ import {
   ComplaintFactsSchema,
   ComplaintModeSchema,
   ComplaintStatusSchema,
+  CriminalStageSchema,
+  FederalFundingSchema,
   HpkeEnvelopeSchema,
   LegalStageSchema,
   ManagementStateSchema,
@@ -17,6 +19,8 @@ import type {
   ComplaintMode,
   ComplaintStatus,
   ComplaintSummary,
+  CriminalStage,
+  FederalFunding,
   HpkeEnvelope,
   LegalStage,
   ManagementState,
@@ -47,7 +51,12 @@ export interface ComplaintRecord {
   /** Autoridad que tiene la denuncia; `null` en denuncias anteriores, que están en el buzón. */
   assignedAuthorityId: string | null;
   managementState: ManagementState;
+  /** Etapa de la vía administrativa (desde la migración 18 nunca es penal). */
   legalStage: LegalStage | null;
+  /** Etapa de la vía penal, que corre en paralelo a la administrativa. */
+  criminalStage: CriminalStage | null;
+  /** Recursos federales en un ente local, si la autoridad lo marcó (B10). */
+  fundingSource: FederalFunding | null;
   closureReason: ClosureReason | null;
   /** Segunda llave: sobre de escalamiento hacia la supervisora, si la persona lo envió. */
   escalationEnvelope: HpkeEnvelope | null;
@@ -61,6 +70,10 @@ export interface ProcedureFields {
   assignedAuthorityId: string;
   managementState: ManagementState;
   legalStage: LegalStage | null;
+  /** Etapa penal nueva; sin valor (o `null`) se conserva la que había: nunca se borra. */
+  criminalStage?: CriminalStage | null;
+  /** Marca de recursos federales nueva; sin valor se conserva la que había. */
+  fundingSource?: FederalFunding | null;
   closureReason: ClosureReason | null;
 }
 
@@ -108,6 +121,17 @@ export interface ComplaintsRepository {
     offset: number,
     limit: number,
   ): ComplaintSummary[];
+  /**
+   * Denuncias que puede ver el Tribunal del nodo: las que están en sus etapas (`stages`) o tienen
+   * un recurso que él resuelve (`folios`), de las más recientes a las más antiguas.
+   */
+  listForCourt(
+    stages: readonly string[],
+    folios: readonly string[],
+    inboxAuthorityId: string,
+    offset: number,
+    limit: number,
+  ): ListedComplaint[];
   /** Como `listSummariesForAuthority`, con el día de entrada al estado (semáforo de turnado). */
   listForAuthority(
     authorityId: string,
@@ -176,6 +200,14 @@ function toRecord(row: Row): ComplaintRecord {
     assignedAuthorityId: readOptionalText(row, 'assigned_authority'),
     managementState: ManagementStateSchema.parse(readText(row, 'management_state')),
     legalStage: parseOptional(readOptionalText(row, 'legal_stage'), LegalStageSchema.parse),
+    criminalStage: parseOptional(
+      readOptionalText(row, 'criminal_stage'),
+      CriminalStageSchema.parse,
+    ),
+    fundingSource: parseOptional(
+      readOptionalText(row, 'funding_source'),
+      FederalFundingSchema.parse,
+    ),
     closureReason: parseOptional(
       readOptionalText(row, 'closure_reason'),
       ClosureReasonSchema.parse,
@@ -237,8 +269,19 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
   const updateStatusStatement = db.prepare('UPDATE complaints SET status = ? WHERE folio = ?');
   const updateProcedureStatement = db.prepare(
     `UPDATE complaints SET status = ?, assigned_authority = ?, management_state = ?,
-       legal_stage = ?, closure_reason = ?
+       legal_stage = ?, criminal_stage = COALESCE(?, criminal_stage),
+       funding_source = COALESCE(?, funding_source), closure_reason = ?
      WHERE folio = ?`,
+  );
+  // Parámetros posicionales simples: el SQLite de Node 22 no acepta reutilizar `?1`.
+  const listForCourtStatement = db.prepare(
+    `SELECT ${SUMMARY_COLUMNS},
+       COALESCE(received_legal_on, received_on) AS state_since_on
+     FROM complaints
+     WHERE management_state <> 'closed'
+       AND (legal_stage IN (SELECT value FROM json_each(?))
+         OR folio IN (SELECT value FROM json_each(?)))
+     ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
   );
   const rulesStatement = db.prepare(
     `SELECT folio FROM complaints
@@ -312,6 +355,13 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
         summary: toListedSummary(row, inboxAuthorityId),
         stateSinceOn: readText(row, 'state_since_on'),
       })),
+    listForCourt: (stages, folios, inboxAuthorityId, offset, limit) =>
+      listForCourtStatement
+        .all(JSON.stringify(stages), JSON.stringify(folios), limit, offset)
+        .map((row) => ({
+          summary: toListedSummary(row, inboxAuthorityId),
+          stateSinceOn: readText(row, 'state_since_on'),
+        })),
     updateStatus: (folio, status) => {
       updateStatusStatement.run(status, folio);
     },
@@ -321,6 +371,8 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
         fields.assignedAuthorityId,
         fields.managementState,
         fields.legalStage,
+        fields.criminalStage ?? null,
+        fields.fundingSource ?? null,
         fields.closureReason,
         folio,
       );

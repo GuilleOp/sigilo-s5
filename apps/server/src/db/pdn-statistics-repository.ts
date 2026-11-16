@@ -60,7 +60,9 @@ export const FrozenStatisticsRowSchema = z
       .object({ graves: PublishedCountSchema, noGraves: PublishedCountSchema })
       .strict(),
     escalamientos: PublishedCountSchema,
-    estatusAlCierre: z.record(ComplaintStatusSchema, PublishedCountSchema),
+    // Parcial: los meses congelados antes del estándar 0.4.0 no traen los estatus nuevos; se
+    // publican como suprimidos (`null`), igual que una celda de menos de 5.
+    estatusAlCierre: z.partialRecord(ComplaintStatusSchema, PublishedCountSchema),
     tiemposMedianosDiasHabiles: z
       .object({ turno: MedianDaysSchema, aceptacion: MedianDaysSchema, archivo: MedianDaysSchema })
       .strict(),

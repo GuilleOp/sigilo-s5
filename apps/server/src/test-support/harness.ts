@@ -8,6 +8,7 @@ import {
   ROUTES,
 } from '@sigilo/contracts';
 import type {
+  AuthorityFunction,
   ComplaintMode,
   EvidenceDescriptor,
   EvidenceMediaType,
@@ -57,6 +58,8 @@ export const TEST_AUTHORITIES = {
   oic: 'authority.oic-prueba',
   other: 'authority.otra-prueba',
   supervisor: 'authority.supervision-prueba',
+  /** Tribunal de Justicia Administrativa sintético: solo actúa en sus etapas. */
+  court: 'authority.tribunal-prueba',
 } as const;
 
 /** Cuentas sintéticas del nodo de prueba: autoridad, función, usuario y contraseña. */
@@ -136,6 +139,13 @@ export const TEST_ACCOUNTS = {
     authorityId: TEST_AUTHORITIES.inbox,
     functions: ['operation'],
   },
+  /** Sala del Tribunal: recibe el expediente de las faltas graves y resuelve. */
+  court: {
+    accountId: 'acct-000000000000000d',
+    username: 'tribunal.sala',
+    authorityId: TEST_AUTHORITIES.court,
+    functions: ['court'],
+  },
 } as const;
 
 /** Nombre de una cuenta sintética de prueba. */
@@ -159,9 +169,31 @@ export const TEST_TOKEN = testToken('inboxInvestigator');
 
 let cachedRegistry: AuthorityRegistry | null = null;
 
+/** Cuenta de prueba tal como la recibe `testAuthorityRegistryWith`. */
+export type TestAccount =
+  | (typeof TEST_ACCOUNTS)[TestAccountName]
+  | {
+      accountId: string;
+      username: string;
+      authorityId: string;
+      functions: readonly AuthorityFunction[];
+    };
+
 /** Registro de autoridades y cuentas de prueba, con digestos baratos (2^10) para que sea rápido. */
 export function testAuthorityRegistry(): AuthorityRegistry {
-  cachedRegistry ??= createAuthorityRegistry(
+  cachedRegistry ??= testAuthorityRegistryWith((accounts) => accounts);
+  return cachedRegistry;
+}
+
+/**
+ * Registro de prueba con las cuentas que devuelve `transform` (por ejemplo, sin la cuenta del
+ * Tribunal, o con una cuenta que cambió de función). Las contraseñas son las de `testPassword`.
+ */
+export function testAuthorityRegistryWith(
+  transform: (accounts: [TestAccountName, TestAccount][]) => [TestAccountName, TestAccount][],
+): AuthorityRegistry {
+  const accounts = transform(Object.entries(TEST_ACCOUNTS) as [TestAccountName, TestAccount][]);
+  return createAuthorityRegistry(
     {
       version: 1,
       inboxAuthorityId: TEST_AUTHORITIES.inbox,
@@ -182,16 +214,19 @@ export function testAuthorityRegistry(): AuthorityRegistry {
           supervisorId: TEST_AUTHORITIES.supervisor,
         },
         { authorityId: TEST_AUTHORITIES.supervisor, name: 'Supervisora de prueba' },
+        {
+          authorityId: TEST_AUTHORITIES.court,
+          name: 'Sala de prueba en materia de responsabilidades administrativas',
+        },
       ],
-      accounts: Object.entries(TEST_ACCOUNTS).map(([name, account]) => ({
+      accounts: accounts.map(([name, account]) => ({
         ...account,
         functions: [...account.functions],
-        passwordHash: hashPassword(testPassword(name as TestAccountName), 10),
+        passwordHash: hashPassword(testPassword(name), 10),
       })),
     },
     { minScryptLogN: 10 },
   );
-  return cachedRegistry;
 }
 
 /** Servidor de prueba con sus llaves, su base y su reloj. */

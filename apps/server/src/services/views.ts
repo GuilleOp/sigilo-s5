@@ -69,7 +69,7 @@ export function buildTrackingView(ctx: AppContext, complaint: ComplaintRecord): 
     messages: ctx.messages.listByFolio(complaint.folio),
     receipt: complaint.receipt,
     ...(receivedEvent === null ? {} : { receivedEvent }),
-    procedure: buildProcedureView(ctx, complaint),
+    procedure: buildProcedureView(ctx, complaint, 'reporter'),
   };
 }
 
@@ -132,6 +132,12 @@ export function buildComplaintDetail(
   }
   const receivedEvent = publishedReceivedEvent(ctx, complaint);
   const deletionOn = evidenceDeletionOn(ctx, complaint);
+  // El Tribunal ve el expediente y el trámite, pero no el buzón con la persona denunciante ni las
+  // solicitudes de apertura de su identidad.
+  const isCourtView =
+    account !== null &&
+    account.functions.includes('court') &&
+    account.authorityId !== (complaint.assignedAuthorityId ?? ctx.authorities.inboxAuthorityId);
   return {
     summary: summaryWithSemaphore(ctx, complaint, toSummary(ctx, complaint)),
     version: 1,
@@ -152,7 +158,7 @@ export function buildComplaintDetail(
     ...(deletionOn === null ? {} : { evidenceDeletionOn: deletionOn }),
     storedEvidenceCount: ctx.evidence.listStoredIdsForFolio(complaint.folio).length,
     ...optional('evidenceCustody', evidenceCustodyView(ctx, complaint.folio, account)),
-    messages: ctx.messages.listByFolio(complaint.folio),
+    messages: isCourtView ? [] : ctx.messages.listByFolio(complaint.folio),
     identityOpenedCount: ctx.identityOpenings.countByFolio(complaint.folio),
     s5References: s5ReferencesFor(
       complaint.facts.entityId,
@@ -160,7 +166,7 @@ export function buildComplaintDetail(
       complaint.facts.offenseCode,
     ),
     procedure: buildProcedureView(ctx, complaint),
-    identityRequests: listIdentityRequests(ctx, complaint),
+    identityRequests: isCourtView ? [] : listIdentityRequests(ctx, complaint),
     ...optional('contextSheet', contextSheetView(ctx, complaint, mayCorroborate)),
     ...optional('conflictReview', conflictReview(ctx, complaint)),
     ...optional('corroboration', corroboration),
