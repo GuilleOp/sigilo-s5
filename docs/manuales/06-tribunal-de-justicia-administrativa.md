@@ -78,8 +78,12 @@ Trabajas en la tarjeta **«Trámite»**: «Acción» → «Aplicar».
 3. **«Cerrar la instrucción en el Tribunal»** → «Cierre de la instrucción en el Tribunal» (resolver
    en 30 + 30 dh; fr. IV).
 
-> **Limitación conocida del prototipo.** El sistema todavía deja cerrar la instrucción con los 5 dh
-> de alegatos abiertos. Espera tú a que venzan.
+- **El cierre espera a que venzan los 5 dh de alegatos.** Mientras corren, «Cerrar la instrucción
+  en el Tribunal» no aparece y el panel dice: «Cerrar la instrucción en el Tribunal»: Las partes
+  todavía pueden presentar sus alegatos hasta el …. Podrás hacerlo a partir del … (LGRA, art. 208,
+  fracc. IX; LGRA, art. 209, fracc. III). Por la API, el nodo responde `409` con el mismo aviso.
+- **En la demostración**, quien opera la red adelanta el reloj antes de este paso con
+  `npm run demo:reloj -- +6dh` (ver `docs/demo.md`).
 
 ### 5.3 Dictar la sentencia
 
@@ -87,6 +91,11 @@ Trabajas en la tarjeta **«Trámite»**: «Acción» → «Aplicar».
 sentencia: se acreditó la falta grave y se impuso sanción.`
 - Abre: notificar en 10 dh (art. 209, fr. V), **apelación 15 dh** y **revisión 10 dh**.
 - **La persona ve:** «Sentencia» y «Puedes apelar como tercera» si se identificó.
+- **Dictada la sentencia, no cierras la denuncia.** «Cerrar con fundamento» ya no aparece en
+  «Acción»: la sentencia se declara firme cuando vencen los recursos (5.5) y la substanciadora, que
+  ejecuta, cierra con su motivo legal (también si la sentencia fue de sobreseimiento). Por la API, el
+  nodo responde `409`. Antes de la sentencia, en tus etapas, sí puedes cerrar con «Sobreseimiento»,
+  «Caducidad de la instancia» o «Prescripción».
 
 ### 5.4 Registrar y resolver la apelación o la revisión
 
@@ -140,8 +149,10 @@ sentencia: se acreditó la falta grave y se impuso sanción.`
 «Acción»: **«Resolver la medida cautelar»** → «Concedida», «Concedida provisionalmente» o «Negada»
 → fundamento → «Aplicar» (LGRA, arts. 125 a 127). La persona no ve la medida.
 
-> **Limitación conocida del prototipo.** El sistema deja conceder o negar la medida antes de que
-> venza la vista de 5 días (art. 126). Antes de ese plazo usa solo «Concedida provisionalmente».
+- Mientras corre la vista de 5 dh a quienes afecta (art. 126), solo aparece «Concedida
+  provisionalmente» y el panel dice desde qué día podrás concederla o negarla. Vencida la vista, la
+  resuelves en definitiva, también después de la provisional. En la demostración:
+  `npm run demo:reloj -- +6dh`.
 
 ### 5.8 Reclamación
 
@@ -162,13 +173,13 @@ lee como registrado por otra autoridad.
 | «Tu función no tiene acciones del trámite en este estado.» | El expediente no está en tus etapas                                                                                     |
 | No aparece «Declarar la sentencia firme»                   | Corren la apelación o la revisión (lee «Podrás hacerlo a partir del …»), o hay un recurso pendiente: resuélvelo primero |
 | No aparece «Ordenar reclasificar la falta»                 | Ya pasaste de «Recibido en el Tribunal»                                                                                 |
+| No aparece «Cerrar la instrucción en el Tribunal»          | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                                                       |
+| No aparece «Cerrar con fundamento» después de la sentencia | Es a propósito: declara la sentencia firme; la substanciadora cierra                                                    |
 | «El código no es válido o ya se usó…»                      | Espera el código siguiente                                                                                              |
 
 ## 7. Limitaciones conocidas del prototipo
 
 - La apelación y la revisión se cuentan desde la sentencia, no desde su notificación.
-- La instrucción se puede cerrar con los alegatos abiertos.
-- La medida cautelar se puede conceder o negar antes de la vista de 5 días.
 - La reclasificación solo está disponible al recibir el expediente.
 - El seguimiento de la persona dice que la Contraloría notifica la sentencia; en la vía grave
   notificas tú (art. 209, fr. V).

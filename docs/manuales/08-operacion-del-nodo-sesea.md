@@ -221,8 +221,10 @@ derivan sin enviarlo.
 - Las llaves de autoridades y del buzón nunca entran al servidor. `./sigilo diagnostico` marca como
   problema una llave del buzón en `datos/`.
 - Nunca uses en producción `SIGILO_DEMO`, `SIGILO_E2E`, reloj simulado ni `SIGILO_NODE_INTAKE`.
-  `npm run demo:reloj -- +16dh` adelanta el reloj simulado de la red de demostración para mostrar
-  la firmeza sin esperar los plazos reales; es **solo para la demostración** (`docs/demo.md`).
+  `npm run demo:reloj -- +Ndh` adelanta el reloj simulado de la red de demostración para mostrar
+  sin esperar los plazos reales la audiencia inicial (`+10dh`), el cierre de la instrucción y la
+  medida cautelar (`+6dh`) y la firmeza (`+16dh`); es **solo para la demostración**
+  (`docs/demo.md`).
 
 ## 6. Qué hacer si algo falla
 

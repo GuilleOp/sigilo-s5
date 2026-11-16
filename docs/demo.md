@@ -282,14 +282,25 @@ pruebas, pasa el mismo archivo:
 
 ### Adelantar el reloj simulado (firmeza y otros plazos)
 
-La firmeza espera a que venzan los plazos de los recursos: la sentencia del Tribunal, 15 días
-hábiles de apelación (y 10 de revisión); la resolución no grave, 15 de revocación (LGRA, art. 206).
-El panel no ofrece «Declarar la sentencia firme» hasta entonces y dice desde qué día procede. Para
-mostrarlo en la demostración, adelanta el reloj simulado común de la red:
+Varios pasos del procedimiento esperan un plazo legal, y el panel no los ofrece antes; en su lugar
+dice «Podrás hacerlo a partir del …»:
+
+| Paso                                                             | Espera                                                                                           | Antes del paso, en la demo |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------- |
+| «Registrar la audiencia inicial»                                 | 10 días hábiles desde el emplazamiento (LGRA, art. 208 fr. III)                                  | `+10dh`                    |
+| «Cerrar la instrucción» y «Cerrar la instrucción en el Tribunal» | que venzan los 5 días hábiles de alegatos (arts. 208 fr. IX y 209 fr. III)                       | `+6dh`                     |
+| «Resolver la medida cautelar» como concedida o negada            | que venza la vista de 5 días hábiles; antes, solo «Concedida provisionalmente» (arts. 126 y 127) | `+6dh`                     |
+| «Declarar la sentencia firme» / «Declarar la resolución firme»   | 15 días hábiles de apelación (y 10 de revisión) o de revocación (art. 206)                       | `+16dh`                    |
+
+Los plazos que hay que dejar vencer (alegatos, vista, recursos) proceden el día siguiente al último
+día, por eso se adelanta uno más (`+6dh`, `+16dh`); la audiencia procede el mismo décimo día
+hábil (`+10dh`). Para mostrarlo en la demostración, adelanta el reloj simulado común de la red:
 
 ```sh
 npm run demo:reloj              # muestra el día simulado
-npm run demo:reloj -- +16dh     # adelanta 16 días hábiles (calendario oficial)
+npm run demo:reloj -- +10dh     # antes de registrar la audiencia inicial
+npm run demo:reloj -- +6dh      # antes de cerrar la instrucción o resolver la medida cautelar
+npm run demo:reloj -- +16dh     # antes de la firmeza (calendario oficial)
 npm run demo:reloj -- +22d      # o 22 días naturales
 ```
 
@@ -300,7 +311,7 @@ npm run demo:reloj -- +22d      # o 22 días naturales
   empezar de cero, `npm run demo:todo`.
 - Con el salto, la sesión del panel puede vencer: vuelve a entrar. Los códigos de 6 dígitos siguen
   saliendo de `npm run demo:codigo`, que usa el mismo desfase.
-- `+16dh` cuenta con los días inhábiles oficiales. Si un nodo declaró días inhábiles locales
+- `+Ndh` cuenta con los días inhábiles oficiales. Si un nodo declaró días inhábiles locales
   (`dias-inhabiles.json`), usa la fecha que muestra el panel («Podrás hacerlo a partir del …»).
 - Con un solo nodo (sin Docker), escribe los milisegundos en el archivo de
   `SIGILO_TEST_CLOCK_FILE`.

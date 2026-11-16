@@ -182,8 +182,9 @@ Casi todo se hace en la tarjeta **«Trámite»**: eliges «Acción», llenas los
 - «Acción»: **«Pedir una medida cautelar»** → «Medida que pides (reservada: la persona denunciante
   no la ve)» (al menos 10 caracteres). Ejemplo: `Suspensión temporal del presunto responsable de
 su cargo mientras dura el procedimiento.` → «Aplicar».
-- La resuelve la substanciadora o, en sus etapas, el Tribunal («Concedida», «Concedida
-  provisionalmente» o «Negada»).
+- La resuelve la substanciadora o, en sus etapas, el Tribunal. Durante la vista de 5 días hábiles a
+  quienes afecta solo puede concederla provisionalmente; vencida, la concede o la niega (LGRA,
+  arts. 126 y 127). Mientras tu medida esté pendiente o solo provisional, no puedes pedir otra.
 - **Fundamento:** LGRA, arts. 123 a 129 (por ejemplo, art. 124, fr. I).
 - **La persona ve:** solo que se dictaron medidas, sin detalle.
 
