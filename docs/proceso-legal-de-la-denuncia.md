@@ -39,12 +39,60 @@ Abreviaturas (cada una enlaza al texto consultado; el detalle de versiones está
 
 Otras: fr. (fracción), DOF (Diario Oficial de la Federación), P.O. (periódico oficial «La Sombra de
 Arteaga»), SABG (Secretaría Anticorrupción y Buen Gobierno, antes Secretaría de la Función Pública),
-ASF (Auditoría Superior de la Federación), ESFE (Entidad Superior de Fiscalización del Estado de
+ASF (Auditoría Superior de la Federación), ESAF (entidad de fiscalización superior de un estado), ESFE (Entidad Superior de Fiscalización del Estado de
 Querétaro), FGR (Fiscalía General de la República).
 
 ---
 
-## 0. La respuesta corta
+## Un estándar nacional: la federación y los 32 estados
+
+SIGILO es un **estándar nacional**: las mismas etapas, plazos y funciones valen para los 32 estados y
+para la federación, porque el procedimiento lo fija una ley general (la LGRA) y el S5 lo establece
+el Comité Coordinador nacional (LGSNA art. 56). Lo que cambia de un lugar a otro es **quién** cumple
+cada función, y eso no va en el estándar: cada nodo lo declara en su **tabla de funciones firmada**.
+**Querétaro y Oaxaca son solo el ejemplo de la demostración**; en este documento, Querétaro aparece
+como ejemplo, rotulado así.
+
+| Función                                       | En cada estado                                                                                                                                                         | En la federación                                                                                                     | Ejemplo: Querétaro                                                                                                      | Fundamento                                                        |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Ventanilla única y protocolo de turno         | La misma ventanilla nacional                                                                                                                                           | La misma                                                                                                             | La misma                                                                                                                | BPDN arts. 56 a 58                                                |
+| Operación del nodo                            | La SESEA o la secretaría de control interno (contraloría) del estado: da de alta autoridades, no lee denuncias                                                         | La Secretaría Anticorrupción y Buen Gobierno (SABG)                                                                  | SESEA de Querétaro                                                                                                      | LGSNA art. 56; ley del sistema anticorrupción de cada estado      |
+| Recepción y turno (buzón general)             | La autoridad receptora que designe la ley del estado; la SESEA solo si su ley se lo da                                                                                 | El área receptora de la SABG o de cada OIC federal                                                                   | Unidad receptora de la Secretaría de la Contraloría (la ley no se lo da a la SESEA)                                     | BPDN art. 58; LGRA art. 14                                        |
+| Investigación y calificación                  | El OIC de cada ente estatal o municipal; la secretaría de control interno del estado; la entidad de fiscalización superior del estado (ESAF) en las graves que detecte | El OIC federal de cada ente; la SABG; la Auditoría Superior de la Federación (ASF)                                   | OIC del ente, Secretaría de la Contraloría, OIC de cada municipio, ESFE                                                 | LGRA arts. 3 fr. II, 9, 10 y 11                                   |
+| Substanciación                                | Un área distinta de la que investigó                                                                                                                                   | Igual                                                                                                                | Área de responsabilidades                                                                                               | LGRA arts. 3 fr. III y 115                                        |
+| Resolución de faltas no graves                | El OIC o la secretaría de control interno                                                                                                                              | El OIC federal o la SABG                                                                                             | OIC o Secretaría de la Contraloría                                                                                      | LGRA arts. 3 fr. IV y 10                                          |
+| Resolución de faltas graves y de particulares | La sala especializada del Tribunal de Justicia Administrativa del estado                                                                                               | Las Salas Especializadas en Responsabilidades Administrativas del Tribunal Federal de Justicia Administrativa (TFJA) | Sala Especializada en materia de Responsabilidades Administrativas del TJA (alzada: Cuarta Sección de la Sala Superior) | LGRA arts. 12 y 209; LOTFJA arts. 37 y 38; LOTJAEQ arts. 15 y 23  |
+| Vía penal                                     | La fiscalía anticorrupción del estado                                                                                                                                  | La Fiscalía Especializada en materia de Combate a la Corrupción de la Fiscalía General de la República (FGR)         | Fiscalía Especializada en el Combate a la Corrupción de la FGE                                                          | CPEUM art. 109; LGRA art. 10 fr. III; Ley de la FGR art. 13 fr. V |
+| Fiscalización superior                        | La ESAF del estado; según su ley, puede exigir nombre y firma                                                                                                          | La ASF, que recibe denuncias sin nombre                                                                              | La ESFE desecha las denuncias sin nombre y firma                                                                        | LFRCF arts. 59 a 61; LFSRCQ arts. 50 y 51                         |
+| Observación del sistema (no ve casos)         | El CPC y el Comité Coordinador del estado                                                                                                                              | El CPC y el Comité Coordinador nacionales                                                                            | CPC de Querétaro                                                                                                        | LGSNA arts. 21, 23 y 36                                           |
+| Medidas de protección de servidores públicos  | El ente donde trabaja quien denuncia                                                                                                                                   | Igual                                                                                                                | —                                                                                                                       | LGRA art. 64, último párrafo                                      |
+
+**Lo que depende de la ley de cada estado** (se configura en la tabla de funciones de su nodo, no en
+el estándar):
+
+- si la SESEA recibe y turna denuncias: en Michoacán sí, por ley y por lineamientos de su Comité
+  Coordinador; en Querétaro no;
+- si la entidad de fiscalización superior del estado acepta denuncias anónimas: la ESFE de Querétaro
+  no; la ASF sí;
+- los nombres de las salas, fiscalías y secretarías, y qué autoridad investiga a un ente cuando el
+  señalado es su titular;
+- los plazos internos de turno que fijen lineamientos locales (en Michoacán, 10 días hábiles);
+- los tipos penales y sus artículos (cada código penal estatal).
+
+**Lo que es igual en todo el país** (va en el estándar): las etapas y plazos de la LGRA, la separación
+entre investigar y substanciar, que las graves las resuelve un tribunal, la inconformidad con firma
+autógrafa, los recursos, la confidencialidad de la identidad y el canal único con su protocolo de
+turno.
+
+**Cuándo sube a la federación** aunque los hechos ocurran en un estado: si el ente es federal, si el
+dinero es federal (aportaciones del Ramo 33 o convenios) o si el delito es federal (sección 5).
+
+---
+
+## 0. La respuesta corta (ejemplo: Querétaro)
+
+Lo que sigue usa Querétaro como ejemplo; en otro estado cambian los nombres y los puntos que dependen
+de su ley (ver la sección anterior).
 
 Un flujo que parece natural, pero que **no** es el de la ley:
 
