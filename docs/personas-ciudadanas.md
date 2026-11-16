@@ -56,5 +56,5 @@ normativa que conviene presentar junto con el estándar.
 
 Casos `case.ventanilla-1` y `case.ventanilla-2` en [demo-escenario.md](demo-escenario.md): dos
 personas ciudadanas a quienes les pidieron dinero en la misma ventanilla del Instituto de Movilidad
-Estatal Ficticio denuncian por separado, en días distintos, ante la Contraloría de Querétaro. La
+Estatal Ficticio denuncian por separado, en días distintos, ante la Secretaría de la Contraloría de Querétaro (ficticia). La
 corroboración ciega las junta como dos fuentes independientes sin revelar quiénes son.

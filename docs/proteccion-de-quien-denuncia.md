@@ -9,13 +9,13 @@ hace SIGILO, qué no hace y quién decide cada cosa. Es información general, no
 
 ## Respuesta corta
 
-| Quién denuncia                                           | Qué ley la protege                                                                                                 | Quién decide las medidas                                                     |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Persona servidora pública, falta administrativa          | LGRA, art. 64: medidas de protección razonables si denuncia una falta grave o faltas de particulares, o es testigo | El ente público donde trabaja                                                |
-| Cualquier persona, falta administrativa                  | LGRA, art. 91: denuncia anónima e identidad confidencial                                                           | La autoridad investigadora guarda la identidad                               |
-| Víctima u ofendido de un hecho de corrupción (vía penal) | CNPP, art. 109 (fr. XVI, XVIII, XIX y XXVI) y art. 137                                                             | El Ministerio Público y el Órgano jurisdiccional                             |
-| Testigo en la vía penal                                  | CNPP, arts. 131 fr. XV, 367 y 370                                                                                  | El Ministerio Público y el Órgano jurisdiccional                             |
-| Particular que no es víctima ni testigo                  | La LGRA no prevé medidas equivalentes ([hueco legal](personas-ciudadanas.md#hueco-legal))                          | Ninguna autoridad tiene una medida prevista; SIGILO reduce el riesgo técnico |
+| Quién denuncia                                           | Qué ley la protege                                                                                                 | Quién decide las medidas                                                                                                                              |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Persona servidora pública, falta administrativa          | LGRA, art. 64: medidas de protección razonables si denuncia una falta grave o faltas de particulares, o es testigo | El ente público donde trabaja, que puede ser el mismo de la persona denunciada ([ver riesgo](#medidas-de-protección-quién-decide-y-qué-riesgo-tiene)) |
+| Cualquier persona, falta administrativa                  | LGRA, art. 91: denuncia anónima e identidad confidencial                                                           | La autoridad investigadora guarda la identidad                                                                                                        |
+| Víctima u ofendido de un hecho de corrupción (vía penal) | CNPP, art. 109 (fr. XVI, XVIII, XIX y XXVI) y art. 137                                                             | El Ministerio Público y el Órgano jurisdiccional                                                                                                      |
+| Testigo en la vía penal                                  | CNPP, arts. 131 fr. XV, 367 y 370                                                                                  | El Ministerio Público y el Órgano jurisdiccional                                                                                                      |
+| Particular que no es víctima ni testigo                  | La LGRA no prevé medidas equivalentes ([hueco legal](personas-ciudadanas.md#hueco-legal))                          | Ninguna autoridad tiene una medida prevista; SIGILO reduce el riesgo técnico                                                                          |
 
 En todos los casos, los datos personales que tiene una autoridad se rigen por la LGPDPPSO
 (principios del art. 10 y confidencialidad del art. 36).
@@ -105,6 +105,48 @@ Cómo se abre la identidad en la vía penal:
 Detalle técnico en [criptografia.md](criptografia.md#apertura-de-identidad-2-de-3) y
 [arquitectura.md](arquitectura.md#apertura-de-identidad-2-de-3).
 
+## Medidas de protección: quién decide y qué riesgo tiene
+
+La LGRA dice que las medidas de protección de una persona servidora pública las evalúa y atiende
+«el Ente público donde presta sus servicios el denunciante» (art. 64, último párrafo). Muchas veces
+ese ente es **el mismo donde trabaja la persona denunciada**, incluso su jefe: quien decide la
+protección depende, en la práctica, de la estructura que se denuncia. La ley no prevé otra
+autoridad para esa decisión, y SIGILO no puede cambiarlo. Lo honesto es decirlo y ofrecer las
+alternativas que sí existen:
+
+1. **Pedir al OIC o a la autoridad investigadora que solicite medidas cautelares** contra la
+   persona señalada, como la **suspensión temporal** de su empleo mientras dura el procedimiento,
+   con su mínimo vital y sin exhibirla como culpable (LGRA arts. 123 y 124 fr. I). Las pide la
+   investigadora a la substanciadora o al Tribunal cuando presenta su informe (IPRA); se resuelven
+   en un incidente breve (arts. 125 a 127). No las decide el ente donde trabaja la persona.
+2. **En lo penal, pedirlas al Ministerio Público** (CNPP art. 137), si la persona es víctima,
+   ofendida o testigo (ver arriba). Si la vida corre peligro inmediato, el número es el 911.
+3. **Dejar constancia.** La solicitud que se envía desde el seguimiento queda con fecha en el buzón
+   cifrado de la autoridad investigadora; si después hay represalias, esa constancia sirve.
+
+Qué hace hoy SIGILO: la solicitud viaja por el buzón a la **autoridad investigadora**, no al ente
+donde trabaja la persona, para que no la lea primero quien podría ser parte del problema. La
+investigadora es quien debe hacerla llegar al ente o pedir medidas cautelares. SIGILO todavía no
+registra **quién decidió** las medidas ni qué decidió; está previsto en la siguiente versión del
+estándar (ver [proceso legal](proceso-legal-de-la-denuncia.md#paso-15-protección-de-quien-denuncia)).
+
+## Derechos como tercera en el procedimiento administrativo
+
+Si se identifica, la persona denunciante es **tercera** en el procedimiento de responsabilidad
+administrativa (LGRA art. 116 fr. IV). Eso le da derechos que van más allá de la inconformidad:
+
+| Derecho                                                                               | Plazo                                  | Artículo                                    |
+| ------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------- |
+| Recibir el aviso de archivo, de la calificación de no grave y de la resolución        | 10 días hábiles (archivo y resolución) | LGRA arts. 100, 102, 208 fr. XI y 209 fr. V |
+| Inconformarse contra la calificación de no grave o la abstención, con firma autógrafa | 5 días hábiles desde la notificación   | LGRA arts. 102 a 110                        |
+| Ser citada a la audiencia inicial, manifestar lo que convenga y ofrecer pruebas       | Citación 72 horas antes                | LGRA art. 208 fr. IV a VI                   |
+| **Apelar** la sentencia del Tribunal que absuelve (o la que sanciona), como tercera   | 15 días hábiles                        | LGRA arts. 215 a 219                        |
+
+Si denuncia de forma **anónima**, no recibirá notificaciones legales ni podrá inconformarse,
+comparecer como tercera o apelar: no hay a quién notificar. Con **identidad sellada** puede
+revelarse después, solo para eso. Hoy SIGILO prepara el escrito de inconformidad; comparecer en la
+audiencia y apelar se hacen fuera del sistema, ante la autoridad substanciadora o el Tribunal.
+
 ## Lo que hace SIGILO
 
 - **Antes de enviar:** Huella Cero (nada sale del equipo hasta enviar), revisor de frases que
@@ -121,7 +163,9 @@ Detalle técnico en [criptografia.md](criptografia.md#apertura-de-identidad-2-de
 ## Límites
 
 - **SIGILO no otorga medidas ni decide quién es víctima.** Hace llegar la solicitud y deja
-  constancia; las medidas las decide la autoridad competente.
+  constancia; las medidas las decide la autoridad competente. En la vía administrativa, esa
+  autoridad es el ente donde trabaja la persona servidora pública, que puede ser el de la persona
+  denunciada ([ver arriba](#medidas-de-protección-quién-decide-y-qué-riesgo-tiene)).
 - **Algunas medidas requieren identificarse.** La vigilancia o la protección policial (art. 137) no
   se pueden dar a alguien anónimo. Si la autoridad pide datos por el buzón, la persona decide.
 - **Particulares sin calidad de víctima ni de testigo** no tienen en la LGRA medidas equivalentes a
@@ -137,11 +181,12 @@ Detalle técnico en [criptografia.md](criptografia.md#apertura-de-identidad-2-de
 
 ## Quién hace qué
 
-| Quién                                                | Qué hace                                                                                                                                                                                                                                                     |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Fiscalía anticorrupción (Ministerio Público)         | Recibe denuncias, también anónimas y digitales (art. 131 fr. II); ordena medidas de protección (art. 137); protege a víctimas y testigos (arts. 131 fr. XV y 367); puede requerir el dato con fundamento (art. 131 fr. IX). En SIGILO: función `prosecution` |
-| Órgano jurisdiccional (Juez de control, tribunal)    | Decide el resguardo de la identidad (art. 109 fr. XXVI), ratifica o cancela medidas (art. 137) y resuelve la reserva frente a la defensa (arts. 218 a 220)                                                                                                   |
-| OIC o autoridad investigadora                        | Mantiene confidencial la identidad (LGRA, art. 91), no la revela (art. 64 fr. III) y recibe la solicitud de medidas por el buzón. En SIGILO: custodia de la apertura 2 de 3                                                                                  |
-| Ente público donde trabaja quien denuncia            | Evalúa y atiende «de manera oportuna» la solicitud de medidas de una persona servidora pública (LGRA, art. 64)                                                                                                                                               |
-| SESNA                                                | Opera la ventanilla única y el enrutador ciego. No tiene llaves ni lee denuncias, y no decide medidas                                                                                                                                                        |
-| SESEA (o la secretaría que opere el nodo del estado) | Opera el nodo de su entidad y da de alta a sus autoridades. Ve los hechos, pero no la identidad sellada ni los mensajes del buzón; no decide medidas                                                                                                         |
+| Quién                                                | Qué hace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fiscalía anticorrupción (Ministerio Público)         | Recibe denuncias, también anónimas y digitales (art. 131 fr. II); ordena medidas de protección (art. 137); protege a víctimas y testigos (arts. 131 fr. XV y 367); puede requerir el dato con fundamento (art. 131 fr. IX). En SIGILO: función `prosecution`                                                                                                                                                                                                                                                                                                                                                                |
+| Órgano jurisdiccional (Juez de control, tribunal)    | Decide el resguardo de la identidad (art. 109 fr. XXVI), ratifica o cancela medidas (art. 137) y resuelve la reserva frente a la defensa (arts. 218 a 220)                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| OIC o autoridad investigadora                        | Mantiene confidencial la identidad (LGRA, art. 91), no la revela (art. 64 fr. III) y recibe la solicitud de medidas por el buzón. En SIGILO: custodia de la apertura 2 de 3                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Ente público donde trabaja quien denuncia            | Evalúa y atiende «de manera oportuna» la solicitud de medidas de una persona servidora pública (LGRA, art. 64). Puede ser el mismo ente de la persona denunciada                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Autoridad substanciadora o Tribunal                  | Resuelve las medidas cautelares que pide la investigadora, como la suspensión temporal de la persona señalada (LGRA arts. 123 a 127)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| SESNA                                                | Opera la ventanilla única y el enrutador ciego. No tiene llaves ni lee denuncias, y no decide medidas                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| SESEA (o la secretaría que opere el nodo del estado) | Opera el nodo de su entidad y da de alta a sus autoridades. No recibe, no turna y no lee denuncias: no tiene cuenta para ver los hechos, la identidad sellada ni los mensajes del buzón, y no decide medidas. Hoy los hechos se guardan en claro en la base del nodo ([modelo de amenazas](modelo-de-amenazas.md), C01), así que la administración del servidor debe hacerse bajo convenio con las autoridades responsables de los datos; cifrar también los hechos hacia la autoridad es el siguiente paso. Que una SESEA turne denuncias depende de la ley de cada estado: en Querétaro no está previsto; en Michoacán sí |

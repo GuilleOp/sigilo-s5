@@ -80,7 +80,10 @@ de turnado la marca vencida y la supervisión recibe el aviso.
 
 La bandeja del S5 marca en amarillo una denuncia sin turnar a 1 día y vencida a 2 días. SIGILO
 tiene el mismo semáforo, además de los plazos legales de cada etapa (LGRA) y de las reglas públicas
-de escalamiento:
+de escalamiento. El semáforo es una **meta de servicio del S5, no un plazo legal**: ni la LGRA ni
+las Bases de la PDN fijan plazo para turnar. Los plazos legales corren aparte, por ejemplo los 30
+días naturales para iniciar cuando la conducta puede ser falta grave (LGRA, art. 64 fr. II). Por eso
+la interfaz lo presenta como meta de turnado del S5 y no como plazo legal.
 
 - Aplica a las denuncias que esperan turno (`received_in_inbox` y `returned_to_inbox`, en el buzón
   general) y a las que esperan aceptación (`routed` y `reassigned`). Cuenta desde el día en que
@@ -95,8 +98,8 @@ de escalamiento:
   días naturales, así que solo difieren en fines de semana y días inhábiles.
 - Los días los cuenta el reloj del nodo (el simulado en la demo), en la hora del centro de México.
 - La API lo entrega en `ComplaintSummary.turnSemaphore` (listado y detalle), un campo opcional: un
-  nodo anterior que no lo envía sigue cumpliendo el esquema. El panel lo muestra en la columna
-  «Plazo de turnado» y en el detalle como insignia con ícono y texto («A tiempo», «Por vencer»,
+  nodo anterior que no lo envía sigue cumpliendo el esquema. El panel lo muestra en la columna de
+  la meta de turnado y en el detalle como insignia con ícono y texto («A tiempo», «Por vencer»,
   «Vencida»), nunca solo con color.
 - Al vencer, el motor de reglas registra la alerta pública `alert.turn-overdue` («Turnado
   vencido», reglas 1.3.0) con la supervisora de la autoridad que la tiene. Es un aviso, no un
@@ -121,8 +124,12 @@ de la LGRA o del CPF, más `SIN-CLASIFICAR`, «Ninguna se parece», que llega al
   desobediencia o resistencia de particulares, falsedad, quebrantamiento de sellos, lavado de
   dinero, acoso sexual y rubros genéricos como «faltas administrativas graves» que no nombran una
   conducta.
-- El S5 incluye en el cohecho el art. 80 Bis de la LGRA: no es otra falta, sino la regla que
-  convierte en no grave un cohecho o desvío de monto menor ya devuelto.
+- El S5 agrupa con el cohecho el art. 80 Bis de la LGRA. No es otra falta: es la regla que vuelve
+  no grave solo dos supuestos, no devolver en 30 días un pago en exceso de la remuneración (art. 52,
+  párrafo segundo) y pagar remuneraciones fuera del tabulador (art. 54, párrafo segundo), cuando no
+  exceden 5 000 UMA y se devolvieron. **No aplica al cohecho del art. 52, párrafo primero** (pedir o
+  aceptar «cooperaciones» o cualquier beneficio), que siempre es grave; calificarlo como no grave
+  sería simular una falta no grave (art. 64 fr. I).
 - El panel muestra, bajo la conducta, «En la ley que aplica»: los artículos de la ley de la entidad
   de los hechos, o de la LGRA y el CPF si la oficina es federal. El `id` del S5 de cada artículo
   queda en el archivo para enviarlo a la bandeja del S5.

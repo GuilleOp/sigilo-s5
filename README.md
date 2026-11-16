@@ -18,14 +18,27 @@ aparece denunciada en la demostración.
 
 ## El modelo: un S5, muchas llaves
 
+**Un estándar nacional:** las mismas etapas para los 32 estados y la federación; cada nodo declara
+quién cumple cada función. En la federación, el mismo modelo con la Secretaría Anticorrupción y Buen
+Gobierno, los OIC federales, el Tribunal Federal de Justicia Administrativa, la FGR y la ASF. Lo que
+depende de la ley de cada estado (por ejemplo, si su SESEA turna denuncias o si su entidad de
+fiscalización acepta denuncias anónimas) se configura en su nodo, no en el estándar. Querétaro y
+Oaxaca son solo el ejemplo de la demostración
+([proceso legal](docs/proceso-legal-de-la-denuncia.md#un-estándar-nacional-la-federación-y-los-32-estados)).
+
 - **Una sola ventanilla nacional en la SESNA**, donde denuncian ciudadanos y personas servidoras
   públicas, junto con un **enrutador ciego** que entrega cada denuncia cifrada sin poder leerla.
 - **Un nodo por estado** (más el federal, solo con autoridades federales), sin nodo común. Cada
   autoridad tiene sus propias llaves, y en producción el nodo no recibe denuncias directas (perfil
-  `nodo`).
+  `nodo`). Quien opera el nodo (la SESEA o la contraloría) lo mantiene y da de alta autoridades,
+  pero no lee ni turna denuncias: el buzón general lo atiende la autoridad receptora que designe el
+  estado. Que la SESEA turne depende de la ley de cada estado (por ejemplo, Michoacán lo prevé y
+  Querétaro no).
 - **Una tabla de funciones por nodo**, firmada por el estado: quién recibe, investiga, substancia,
-  resuelve y supervisa para cada orden de gobierno y ente. Con ella el navegador propone la
-  autoridad competente. Viaja en un **directorio firmado** que cofirman testigos m de n.
+  resuelve y supervisa para cada orden de gobierno y ente (cada municipio, con su propio OIC; las
+  faltas graves, con la Sala Especializada del tribunal). Con ella el navegador propone la
+  autoridad competente. Viaja en un **directorio firmado** que cofirman testigos m de n. El CPC
+  vigila el sistema con datos agregados, no los casos.
 - **APIs con la SESNA como las de la PDN** (OAuth 2.0, igual que S2 y S3): entregas al buzón del
   nodo y estadística agregada para el portal.
 
@@ -153,16 +166,16 @@ solicitar medidas de protección por el buzón cifrado
 
 ## Para revisar el proyecto
 
-| Busco                                     | Dónde                                                                                                                                                                                                                                       |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| El modelo (ventanilla, nodos y funciones) | [Arquitectura](docs/arquitectura.md), [ADR 0005](docs/adr/0005-estandar-s5-federado.md) y la [guía para conectar un estado](docs/guia-conecta-tu-estado.md)                                                                                 |
-| El estándar                               | [estandar/README.md](estandar/README.md): OpenAPI, diccionarios, catálogos, perfiles y validador                                                                                                                                            |
-| La instalación                            | [Nodo del estado](docs/instalacion-nodo.md), [SESNA](docs/instalacion-sesna.md) y [demostración](docs/demo.md)                                                                                                                              |
-| La seguridad                              | [Modelo de amenazas](docs/modelo-de-amenazas.md), [producción](docs/seguridad-produccion.md), [historial](docs/historial-de-seguridad.md) y [criptografía](docs/criptografia.md)                                                            |
-| El manejo de las pruebas                  | [Pruebas cifradas](docs/criptografia.md#pruebas-cifradas-de-extremo-a-extremo) y [cadena de custodia](docs/arquitectura.md#pruebas-y-cadena-de-custodia)                                                                                    |
-| El fundamento legal                       | [Marco legal](docs/requisitos.md#marco-legal) (LGRA, LGSNA, Bases de la PDN, CNPP y LGPDPPSO), [¿quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md) y [ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md) |
-| El uso de IA                              | [Declaración de uso de IA](docs/uso-de-ia.md)                                                                                                                                                                                               |
-| El cumplimiento del reto                  | [Matriz de requisitos](docs/requisitos.md)                                                                                                                                                                                                  |
+| Busco                                     | Dónde                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El modelo (ventanilla, nodos y funciones) | [Arquitectura](docs/arquitectura.md), [ADR 0005](docs/adr/0005-estandar-s5-federado.md) y la [guía para conectar un estado](docs/guia-conecta-tu-estado.md)                                                                                                                                                                                                                                                             |
+| El estándar                               | [estandar/README.md](estandar/README.md): OpenAPI, diccionarios, catálogos, perfiles y validador                                                                                                                                                                                                                                                                                                                        |
+| La instalación                            | [Nodo del estado](docs/instalacion-nodo.md), [SESNA](docs/instalacion-sesna.md) y [demostración](docs/demo.md)                                                                                                                                                                                                                                                                                                          |
+| La seguridad                              | [Modelo de amenazas](docs/modelo-de-amenazas.md), [producción](docs/seguridad-produccion.md), [historial](docs/historial-de-seguridad.md) y [criptografía](docs/criptografia.md)                                                                                                                                                                                                                                        |
+| El manejo de las pruebas                  | [Pruebas cifradas](docs/criptografia.md#pruebas-cifradas-de-extremo-a-extremo) y [cadena de custodia](docs/arquitectura.md#pruebas-y-cadena-de-custodia)                                                                                                                                                                                                                                                                |
+| El fundamento legal                       | [El proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md) (quién hace qué, en qué plazo y con qué artículo), sus [fuentes legales](docs/fuentes-legales.md), [Marco legal](docs/requisitos.md#marco-legal) (LGRA, LGSNA, Bases de la PDN, CNPP y LGPDPPSO), [¿quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md) y [ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md) |
+| El uso de IA                              | [Declaración de uso de IA](docs/uso-de-ia.md)                                                                                                                                                                                                                                                                                                                                                                           |
+| El cumplimiento del reto                  | [Matriz de requisitos](docs/requisitos.md)                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Inicio rápido (un solo nodo, sin Docker)
 
@@ -301,6 +314,8 @@ Diseño y seguridad:
 - [Confianza verificable](docs/confianza-verificable.md)
 - [Cuando denuncia una persona ciudadana](docs/personas-ciudadanas.md)
 - [¿Quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md)
+- [El proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md) y sus
+  [fuentes legales](docs/fuentes-legales.md)
 - [Decisiones de arquitectura](docs/adr/)
 - [Interfaces entre paquetes](docs/interfaces.md)
 
