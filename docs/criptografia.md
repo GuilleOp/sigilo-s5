@@ -279,6 +279,21 @@ el campo.
   Contraloría.** La identidad sellada y los mensajes con la persona denunciante **no** se
   re-cifran hacia ella: si la vía penal necesita la identidad, se abre con la apertura de 2 de N
   de la autoridad que tiene la denuncia.
+- Vista al Ministerio Público a una fiscalía de otro nodo: como el turnado entre nodos para las
+  pruebas, pero sin ceder la denuncia. El navegador de quien investiga elige al azar el folio de
+  la copia en el destino, abre cada prueba guardada con la llave de su autoridad, la vuelve a
+  cifrar hacia la llave de la fiscalía del directorio firmado (con ese folio y la fiscalía en el
+  AAD, y la misma sal: el compromiso no cambia) y la sube a su nodo por el enrutador. Después, el
+  nodo de origen firma con su llave Ed25519 del directorio el paquete de la vista
+  (`NetworkReferralPackage`: hechos, descriptores, autoridades, día y fundamento; prefijo de
+  dominio `sigilo/red/vista/v1:` y forma canónica) y lo cifra hacia la llave X25519 del nodo
+  destino (sobre de red v2, operación `receiveReferral`); el enrutador solo ve el nodo destino y el
+  tramo. El nodo destino verifica la firma con la llave del nodo de origen en el directorio (nadie
+  más puede llenar la bandeja de la fiscalía con vistas a nombre de una autoridad), exige que el
+  día sea de estos días y que el folio no exista (una vista repetida no crea otra copia), ancla los
+  digestos de las pruebas y firma el comprobante de la copia. **La identidad sellada, las llaves de
+  seguimiento y los mensajes no viajan**; el origen conserva sus pruebas (no hay entrega de
+  custodia: es una copia).
 - A otro nodo: el navegador de recepción y turnado abre cada prueba, elige el folio del destino,
   la vuelve a cifrar hacia la autoridad destino del directorio con ese folio y la misma sal, la
   sube por el enrutador y la cita en la denuncia re-cifrada; la segunda llave de la supervisora
