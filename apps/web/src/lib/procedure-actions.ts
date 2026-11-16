@@ -5,10 +5,14 @@
 // validar todo; aquí solo se ofrece lo que tiene sentido.
 import {
   COURT_ACCESS_STAGES,
+  CRIMINAL_STAGES,
   CRIMINAL_TRANSITIONS,
+  findDeadlineRule,
   findLegalStage,
+  formatLegalReference,
   functionInChargeAt,
   hasFunction,
+  isClosureAllowedAt,
   isCriminalStage,
   isLegalClosureAllowedAt,
   LEGAL_CLOSURE_REASONS,
@@ -118,13 +122,47 @@ export function openWaitFor(
   return hasResolvedRemedy ? null : latest;
 }
 
+/**
+ * Plazo con mínimo de `transition.afterMinimumOf` que todavía no se cumple (la audiencia inicial,
+ * antes de 10 días hábiles desde el emplazamiento), o `null`. Sin el dato, el nodo decide.
+ */
+export function earliestWaitFor(
+  procedure: ProcedureView | undefined,
+  transition: Pick<StageTransition, 'afterMinimumOf'>,
+): (DeadlineView & { earliestOn: string }) | null {
+  const key = transition.afterMinimumOf;
+  if (procedure === undefined || key === undefined) return null;
+  const deadline = procedure.deadlines.find((item) => item.key === key);
+  if (deadline?.earliestOn === undefined || deadline.isEarliestReached !== false) return null;
+  return { ...deadline, earliestOn: deadline.earliestOn };
+}
+
+/** Fundamento breve del plazo para el aviso («LGRA, art. 208, fracc. III»). */
+function legalBasisOf(key: DeadlineView['key']): string[] {
+  return (findDeadlineRule(key)?.legalBasis ?? []).map(formatLegalReference);
+}
+
+/** Día siguiente a `day` (AAAA-MM-DD). */
+export function nextDay(day: string): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
 /** Paso que la cuenta dará cuando venza un plazo, con el aviso de hasta cuándo corre. */
 export interface StageWait {
   key: AdministrativeStage;
   label: string;
   /** Qué sigue abierto («La sentencia todavía puede apelarse»). */
   text: string;
-  dueOn: string;
+  /** Último día del plazo que se espera (no lo hay cuando se espera un mínimo). */
+  dueOn?: string;
+  /** Primer día en que procede el paso. */
+  availableOn: string;
+  /** El plazo es para presentar un recurso: si se presenta y se resuelve, no hay que esperar. */
+  isRemedyWait: boolean;
+  /** Fundamento del plazo, para el aviso. */
+  legalBasis: readonly string[];
 }
 
 /** Pasos que la cuenta podría dar, pero que esperan a que venza un plazo legal. */
@@ -134,20 +172,63 @@ export function stageWaits(
 ): StageWait[] {
   const procedure = detail.procedure;
   if ((detail.summary.managementState ?? 'received_in_inbox') !== 'accepted') return [];
+  const severity = branchSeverity(procedure);
   const waits: StageWait[] = [];
   for (const transition of transitionsFrom(administrativeStage(procedure))) {
+    if (transition.severities !== undefined && severity !== null) {
+      if (!transition.severities.includes(severity)) continue;
+    }
     if (isBlocked(procedure, transition.to)) continue;
     if (actingMode(account, transition.fn, procedure) === null) continue;
     const wait = openWaitFor(procedure, transition);
-    if (wait === null) continue;
-    waits.push({
-      key: transition.to,
-      label: transition.label,
-      text: STAGE_WAIT_TEXTS[wait.key] ?? `Todavía corre el plazo «${wait.name}»`,
-      dueOn: wait.dueOn,
-    });
+    if (wait !== null) {
+      waits.push({
+        key: transition.to,
+        label: transition.label,
+        text: STAGE_WAIT_TEXTS[wait.key] ?? `Todavía corre el plazo «${wait.name}»`,
+        dueOn: wait.dueOn,
+        availableOn: nextDay(wait.dueOn),
+        isRemedyWait: remedyKindForFilingDeadline(wait.key) !== undefined,
+        legalBasis: legalBasisOf(wait.key),
+      });
+      continue;
+    }
+    const earliest = earliestWaitFor(procedure, transition);
+    if (earliest !== null) {
+      waits.push({
+        key: transition.to,
+        label: transition.label,
+        text: STAGE_WAIT_TEXTS[earliest.key] ?? `El paso espera el plazo «${earliest.name}»`,
+        availableOn: earliest.earliestOn,
+        isRemedyWait: false,
+        legalBasis: legalBasisOf(earliest.key),
+      });
+    }
   }
   return waits;
+}
+
+/**
+ * Plazos que la cuenta ve en el panel. La fiscalía no lleva la vía administrativa (LGRA, arts. 3
+ * fr. II y 91): solo ve los plazos de la vía penal, no los del procedimiento administrativo (art. 64
+ * fr. II, prescripción, audiencia, alegatos…).
+ */
+export function visibleDeadlines(
+  account: Pick<AuthorityAccountView, 'isProsecution'>,
+  procedure: ProcedureView | undefined,
+): DeadlineView[] {
+  const deadlines = procedure?.deadlines ?? [];
+  if (!isProsecutionAccount(account)) return deadlines;
+  const criminal = new Set<string>(CRIMINAL_STAGES.flatMap((stage) => stage.deadlines));
+  return deadlines.filter((item) => criminal.has(item.key));
+}
+
+/**
+ * Indica si se puede cerrar en la etapa vigente: dictada la sentencia, el Tribunal no cierra; la
+ * declara firme y la autoridad que ejecuta cierra después (LGRA, art. 206).
+ */
+export function canCloseAtStage(detail: ComplaintDetail): boolean {
+  return isClosureAllowedAt(administrativeStage(detail.procedure));
 }
 
 /** Indica si hay un recurso sin resolver: mientras tanto no se cierra la denuncia. */
@@ -214,8 +295,10 @@ export function stageOptions(
       if (!transition.severities.includes(severity)) continue;
     }
     if (isBlocked(procedure, transition.to)) continue;
-    // Firmeza e informe no presentado: esperan a que venza su plazo (se explica en el panel).
+    // Firmeza, informe no presentado y cierre de la instrucción esperan a que venza su plazo; la
+    // audiencia inicial, a que se cumpla su mínimo (se explica en el panel).
     if (openWaitFor(procedure, transition) !== null) continue;
+    if (earliestWaitFor(procedure, transition) !== null) continue;
     const mode = actingMode(account, transition.fn, procedure);
     if (mode === null) continue;
     options.push({
@@ -343,7 +426,39 @@ export function canRequestPrecautionary(
     detail.summary.managementState === 'accepted' &&
     stage !== null &&
     stages.includes(stage) &&
-    (pending === undefined || pending.decidedOn !== undefined)
+    !isPrecautionaryPending(pending)
+  );
+}
+
+/** La medida está sin resolver o concedida solo provisionalmente (falta la decisión definitiva). */
+function isPrecautionaryPending(pending: ProcedureView['precautionary']): boolean {
+  return (
+    pending !== undefined && (pending.decidedOn === undefined || pending.outcome === 'provisional')
+  );
+}
+
+/**
+ * Último día de la vista de 5 días hábiles sobre la medida cautelar, si sigue corriendo: mientras
+ * tanto solo se concede provisionalmente (LGRA, arts. 126 y 127). Usa el plazo que calculó el nodo.
+ */
+export function precautionaryHearingDueOn(detail: ComplaintDetail): string | null {
+  const hearing = detail.procedure?.deadlines.find((item) => item.key === 'precautionary_hearing');
+  return hearing === undefined || hearing.status === 'overdue' ? null : hearing.dueOn;
+}
+
+/**
+ * Resoluciones que caben ahora para la medida pendiente: durante la vista, solo la provisional;
+ * vencida, concederla o negarla (también después de la provisional, que se dicta una vez).
+ */
+export function precautionaryOutcomeOptions(
+  detail: ComplaintDetail,
+): (typeof PRECAUTIONARY_RULE.outcomes)[number][] {
+  const pending = detail.procedure?.precautionary;
+  if (!isPrecautionaryPending(pending)) return [];
+  const isHearingOpen = precautionaryHearingDueOn(detail) !== null;
+  const wasProvisional = pending?.outcome === 'provisional';
+  return PRECAUTIONARY_RULE.outcomes.filter((item) =>
+    item.key === 'provisional' ? !wasProvisional : !isHearingOpen,
   );
 }
 
@@ -352,11 +467,32 @@ export function precautionaryDecisionMode(
   account: Pick<AuthorityAccountView, 'functions'>,
   detail: ComplaintDetail,
 ): ActingMode | null {
-  const pending = detail.procedure?.precautionary;
-  if (pending === undefined || pending.decidedOn !== undefined) return null;
+  if (precautionaryOutcomeOptions(detail).length === 0) return null;
+  return precautionaryDeciderMode(account, detail);
+}
+
+/** Resuelve la substanciadora o, en las etapas del Tribunal, el Tribunal (LGRA, art. 123). */
+function precautionaryDeciderMode(
+  account: Pick<AuthorityAccountView, 'functions'>,
+  detail: ComplaintDetail,
+): ActingMode | null {
   const stage = administrativeStage(detail.procedure);
   const isCourt = stage !== null && COURT_ACCESS_STAGES.has(stage);
   return actingMode(account, isCourt ? 'court' : 'substantiation', detail.procedure);
+}
+
+/**
+ * Para quien resuelve la medida pendiente: último día de la vista, si sigue corriendo, para avisar
+ * desde cuándo puede concederla o negarla. `null` si no aplica.
+ */
+export function precautionaryWaitFor(
+  account: Pick<AuthorityAccountView, 'functions'>,
+  detail: ComplaintDetail,
+): string | null {
+  if (detail.summary.managementState !== 'accepted') return null;
+  if (!isPrecautionaryPending(detail.procedure?.precautionary)) return null;
+  if (precautionaryDeciderMode(account, detail) === null) return null;
+  return precautionaryHearingDueOn(detail);
 }
 
 /** Nombre de una etapa (administrativa o penal). */

@@ -12,6 +12,7 @@ import {
   syntheticFacts,
 } from './support/api.ts';
 import { loginAsAuthority, openComplaint } from './support/authority.ts';
+import { advanceServerClockByBusinessDays } from './support/clock.ts';
 import { E2E_ACCOUNTS, E2E_AUTHORITY } from './support/environment.ts';
 import { expect, test } from './support/fixtures.ts';
 import { openTracking } from './support/tracking.ts';
@@ -62,17 +63,35 @@ test('falta grave: del informe a la audiencia inicial y el Tribunal recibe el ex
   );
   const { folio, words } = await seedPreparedComplaint(request, prepared);
   await qualifyAndFile(request, folio, 'serious');
-  for (const stage of ['report_admitted', 'summoned', 'initial_hearing'] as const) {
+  for (const stage of ['report_admitted', 'summoned'] as const) {
     await applyProcedure(request, E2E_ACCOUNTS.iffeSubstantiation, folio, {
       action: 'advance_stage',
       stage,
     });
   }
 
-  // La substanciadora envía el expediente al Tribunal desde el panel: solo esa rama, por ser grave.
+  // La audiencia inicial no procede el día del emplazamiento: el panel dice desde cuándo.
   await loginAsAuthority(page, E2E_ACCOUNTS.iffeSubstantiation);
   await openComplaint(page, folio);
   let panel = page.getByTestId('procedure-panel');
+  await expect(panel.getByTestId('procedure-waits')).toContainText(
+    '«Registrar la audiencia inicial»: La audiencia inicial se celebra entre 10 y 15 días hábiles',
+  );
+  await expect(panel.getByTestId('procedure-waits')).toContainText('Podrás hacerlo a partir del');
+  await expect(
+    panel.getByTestId('procedure-action').locator('option[value="advance_stage"]'),
+  ).toHaveCount(0);
+  // Diez días hábiles después del emplazamiento (LGRA, art. 208 fr. III), sí.
+  await advanceServerClockByBusinessDays(10);
+  await applyProcedure(request, E2E_ACCOUNTS.iffeSubstantiation, folio, {
+    action: 'advance_stage',
+    stage: 'initial_hearing',
+  });
+
+  // La substanciadora envía el expediente al Tribunal desde el panel: solo esa rama, por ser grave.
+  await loginAsAuthority(page, E2E_ACCOUNTS.iffeSubstantiation);
+  await openComplaint(page, folio);
+  panel = page.getByTestId('procedure-panel');
   await panel.getByTestId('procedure-action').selectOption('advance_stage');
   const stage = panel.getByTestId('procedure-stage');
   await expect(stage.locator('option[value="evidence_hearing"]')).toHaveCount(0);
@@ -315,6 +334,8 @@ test('solo la fiscalía avanza la vía penal; el buzón turna solo a quien puede
   await expect(stage.locator('option[value="investigation"]')).toHaveCount(0);
   await expect(stage).toContainText('Vía penal: Iniciar la investigación penal');
   await expect(panel.getByText('Iniciar ante una posible falta grave')).toHaveCount(0);
+  // Tampoco ve los demás plazos del procedimiento administrativo, como la prescripción (LGRA 74).
+  await expect(panel.getByText(/Prescripción de faltas/u)).toHaveCount(0);
   await stage.selectOption('criminal_investigation');
   await panel.getByTestId('apply-procedure').click();
   await expect(panel.getByTestId('procedure-criminal-stage')).toContainText('Investigación penal');

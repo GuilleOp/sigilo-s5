@@ -3,16 +3,20 @@
 // de los 3 días para corregirlo (art. 195), la abstención se cierra después de la ventana de la
 // inconformidad (arts. 102 y 103), y la caducidad y la prescripción solo cuando ya corrieron sus
 // plazos (art. 74). Se cuentan con el mismo cálculo de días hábiles, el mismo calendario y el mismo
-// reloj del nodo que los plazos del panel. Si falta el día desde el que corre un plazo, se responde
-// lo prudente: todavía no.
+// reloj del nodo que los plazos del panel. La audiencia inicial no se celebra antes de 10 días
+// hábiles desde el emplazamiento (art. 208 fr. III), la instrucción se cierra vencidos los alegatos
+// (arts. 208 fr. IX y 209 fr. III) y la medida cautelar se concede o se niega vencida la vista
+// (arts. 126 y 127). Si falta el día desde el que corre un plazo, se responde lo prudente:
+// todavía no.
 import {
   findDeadlineRule,
+  formatLegalReference,
   offenseSeverity,
   remedyKindForFilingDeadline,
   STAGE_WAIT_TEXTS,
 } from '@sigilo/contracts';
 import type { AdministrativeStage, DeadlineKey, RemedyKind } from '@sigilo/contracts';
-import { evaluateDeadline } from '@sigilo/core';
+import { computeDueDate, evaluateDeadline } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import type { ComplaintRecord } from '../db/complaints-repository.ts';
 import { nodeCalendar } from './calendar.ts';
@@ -107,7 +111,61 @@ function waitMessage(key: DeadlineKey, dueOn: string | null): string {
   if (dueOn === null) {
     return `${what}: no se sabe desde cuándo corre el plazo, así que el sistema no permite este paso todavía.`;
   }
-  return `${what} hasta el ${formatLegalDay(dueOn)}. Este paso procede a partir del día siguiente, o antes si el recurso presentado ya se resolvió (LGRA, art. 206).`;
+  // Solo los plazos para presentar un recurso se acortan al resolverse el recurso (art. 206).
+  const tail =
+    remedyKindForFilingDeadline(key) === undefined
+      ? `(${legalBasisText(key)})`
+      : 'o antes si el recurso presentado ya se resolvió (LGRA, art. 206)';
+  return `${what} hasta el ${formatLegalDay(dueOn)}. Este paso procede a partir del día siguiente, ${tail}.`;
+}
+
+/** «LGRA, art. 208, fracc. IX; LGRA, art. 209, fracc. III»: fundamento del plazo `key`. */
+function legalBasisText(key: DeadlineKey): string {
+  const references = findDeadlineRule(key)?.legalBasis ?? [];
+  return references.length === 0 ? 'LGRA' : references.map(formatLegalReference).join('; ');
+}
+
+/** Primer día en que procede el acto de un plazo con mínimo (`minAmount`), o `null`. */
+export function earliestDayOf(ctx: AppContext, key: DeadlineKey, start: string): string | null {
+  const rule = findDeadlineRule(key);
+  if (rule?.minAmount === undefined) return null;
+  try {
+    return computeDueDate(start, { unit: rule.unit, amount: rule.minAmount }, nodeCalendar(ctx));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Impedimento para dar un paso que no procede antes del mínimo del plazo `key` (la audiencia
+ * inicial, 10 días hábiles después del emplazamiento; LGRA, art. 208 fr. III), o `null`.
+ */
+export function earliestStageWait(
+  ctx: AppContext,
+  state: LifecycleState,
+  key: DeadlineKey,
+  today: string,
+): string | null {
+  const what = STAGE_WAIT_TEXTS[key] ?? `El paso espera el plazo «${findDeadlineRule(key)?.name}»`;
+  const enteredOn = state.stageEnteredOn;
+  const earliest = enteredOn === null ? null : earliestDayOf(ctx, key, enteredOn);
+  if (earliest === null) {
+    return `${what}: no se sabe desde cuándo corre el plazo, así que el sistema no permite este paso todavía.`;
+  }
+  if (today >= earliest) return null;
+  return `${what} (${legalBasisText(key)}): procede a partir del ${formatLegalDay(earliest)}.`;
+}
+
+/**
+ * Impedimento para conceder o negar una medida cautelar: antes se da vista 5 días hábiles a quienes
+ * afecta (LGRA, arts. 126 y 127). Mientras tanto solo cabe concederla provisionalmente.
+ */
+export function precautionaryWait(ctx: AppContext, requestedOn: string, today: string) {
+  const { isOpen, dueOn } = dueOnIfOpen(ctx, 'precautionary_hearing', requestedOn, today);
+  if (!isOpen) return null;
+  return dueOn === null
+    ? 'Todavía corre la vista de 5 días hábiles sobre la medida cautelar: mientras tanto solo se puede conceder provisionalmente (LGRA, arts. 126 y 127).'
+    : `La vista sobre la medida cautelar corre hasta el ${formatLegalDay(dueOn)}: mientras tanto solo se puede conceder provisionalmente; concederla o negarla procede a partir del día siguiente (LGRA, arts. 126 y 127).`;
 }
 
 /**

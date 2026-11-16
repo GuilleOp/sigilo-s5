@@ -583,6 +583,7 @@
       "explanation": "La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento. Este es el último día.",
       "unit": "business_days",
       "amount": 15,
+      "minAmount": 10,
       "startsFrom": "Desde el emplazamiento de la persona señalada.",
       "consequence": "La audiencia fuera de plazo puede impugnarse.",
       "warning": { "unit": "business_days", "amount": 5 },
@@ -980,6 +981,7 @@
       "to": "initial_hearing",
       "fn": "substantiation",
       "action": "stage_advanced",
+      "afterMinimumOf": "initial_hearing_window",
       "label": "Registrar la audiencia inicial",
       "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "III a VII" }]
     },
@@ -1017,6 +1019,7 @@
       "to": "instruction_closed",
       "fn": "substantiation",
       "action": "stage_advanced",
+      "afterDeadlines": ["closing_arguments"],
       "label": "Cerrar la instrucción",
       "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "X" }]
     },
@@ -1066,6 +1069,7 @@
       "to": "court_instruction_closed",
       "fn": "court",
       "action": "stage_advanced",
+      "afterDeadlines": ["closing_arguments"],
       "label": "Cerrar la instrucción en el Tribunal",
       "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "IV" }]
     },
@@ -1352,7 +1356,7 @@
         "court_closing_arguments",
         "court_instruction_closed",
         "resolution",
-        "court_resolution"
+        "final"
       ],
       "legalBasis": [
         { "law": "LGRA", "article": "196" },

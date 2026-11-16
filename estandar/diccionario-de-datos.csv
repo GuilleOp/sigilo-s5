@@ -197,6 +197,8 @@ Path,Variable,Obligatorio,Formato,Tipo de dato,Público,Descripción,Esquema,Res
 /DeadlineView,remaining,Sí,Numérico,Number,No,"Días que faltan en remainingUnit (0 el último día, negativo si venció).",DeadlineView,,,2492
 /DeadlineView,remainingUnit,Sí,Alfanumérico,String (enum),No,Unidad de remaining: días naturales o días hábiles.,DeadlineView,,natural_days; business_days,natural_days
 /DeadlineView,legalBasis,Sí,Arreglo,Array of String,No,Fundamentos con el nombre de la ley.,DeadlineView,,,
+/DeadlineView,earliestOn,No,Fecha en formato ISO 8601,Date,No,"Solo en plazos con mínimo: primer día en que procede el acto (la audiencia inicial, no antes de 10 días hábiles después del emplazamiento; LGRA, art. 208 fr. III).",DeadlineView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
+/DeadlineView,isEarliestReached,No,Booleano,Boolean,No,"Solo en plazos con mínimo: si hoy ya procede el acto, según el reloj del nodo.",DeadlineView,,,
 /ClosureView,on,Sí,Fecha en formato ISO 8601,Date,No,"Fecha redondeada al día, en UTC (AAAA-MM-DD).",ClosureView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
 /ClosureView,legalOn,Sí,Fecha en formato ISO 8601,Date,No,Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.,ClosureView,patrón ^\d{4}-\d{2}-\d{2}$,,2026-11-05
 /ClosureView,reason,Sí,Alfanumérico,String (enum),No,Motivo de cierre del flujo de gestión. Nombres y explicaciones en CLOSURE_REASONS.,ClosureView,,attended (Atendido); channeled (Canalizado); inadmissible (Improcedente); insufficient_information (Información insuficiente); joined (Acumulado); other (Otro),

@@ -34,6 +34,7 @@ import {
   hasAnyFunction,
   hasFunction,
   isCriminalStage,
+  isClosureAllowedAt,
   isLegalClosureAllowedAt,
   isManagementTransition,
   MAX_REASSIGNMENTS,
@@ -54,10 +55,11 @@ import {
   currentInconformity,
   isBlockedByRemedy,
   lifecycleStateOf,
+  isPrecautionaryPending,
   pendingRemedies,
 } from './lifecycle-state.ts';
 import type { ActingFunction, LifecycleState } from './lifecycle-state.ts';
-import { closureWait, openStageWait } from './legal-waits.ts';
+import { closureWait, earliestStageWait, openStageWait, precautionaryWait } from './legal-waits.ts';
 import {
   ABSTENTION_NOTICE,
   ARCHIVE_NOTICE,
@@ -479,7 +481,8 @@ function plan(
       if (complaint.legalStage === null || !stages.includes(complaint.legalStage)) {
         throw new ApiFailure('conflict');
       }
-      if (state.precautionary !== null && state.precautionary.decidedOn === null) {
+      // Una medida a la vez: sin resolver o concedida provisionalmente, sigue pendiente.
+      if (state.precautionary !== null && isPrecautionaryPending(state.precautionary)) {
         throw new ApiFailure('conflict');
       }
       const actor = actAs('investigation');
@@ -493,13 +496,22 @@ function plan(
     }
     case 'decide_precautionary': {
       requireAccepted();
-      if (state.precautionary === null || state.precautionary.decidedOn !== null) {
+      const pending = state.precautionary;
+      if (pending === null || !isPrecautionaryPending(pending)) throw new ApiFailure('conflict');
+      // La provisional se dicta una vez; después se concede o se niega en definitiva.
+      if (pending.outcome === 'provisional' && request.outcome === 'provisional') {
         throw new ApiFailure('conflict');
       }
       // Resuelve la substanciadora o, en las etapas del Tribunal, el Tribunal (LGRA, art. 123).
       const isCourt =
         complaint.legalStage !== null && COURT_ACCESS_STAGES.has(complaint.legalStage);
       const actor = actAs(isCourt ? 'court' : 'substantiation');
+      // Concederla o negarla espera la vista de 5 días hábiles (LGRA, arts. 126 y 127).
+      if (request.outcome !== 'provisional') {
+        const today = toMexicoCentralDay(ctx.deps.now());
+        const wait = precautionaryWait(ctx, pending.requestedOn, today);
+        if (wait !== null) throw new ApiFailure('conflict', wait);
+      }
       return {
         ...base,
         action: 'precautionary_decided',
@@ -696,6 +708,12 @@ function plan(
       const wait = openStageWait(ctx, state, from, transition.afterDeadlines, today);
       if (wait !== null) throw new ApiFailure('conflict', wait.message);
     }
+    // Audiencia inicial: no antes de 10 días hábiles después del emplazamiento (art. 208 fr. III).
+    if (transition.afterMinimumOf !== undefined) {
+      const today = toMexicoCentralDay(ctx.deps.now());
+      const wait = earliestStageWait(ctx, state, transition.afterMinimumOf, today);
+      if (wait !== null) throw new ApiFailure('conflict', wait);
+    }
     const actor = actAs(transition.fn);
     const isNonSerious = request.qualification?.severity === 'non_serious';
     const defaultNote =
@@ -739,6 +757,13 @@ function plan(
         : functionInChargeAt(stage);
     const actor = actAs(inCharge);
     requireTransition('closed');
+    // Dictada la sentencia, el Tribunal no cierra: la declara firme vencidos los recursos.
+    if (!isClosureAllowedAt(stage)) {
+      throw new ApiFailure(
+        'conflict',
+        'Dictada la sentencia, la denuncia no se cierra en el Tribunal: se declara firme cuando vencen los recursos (LGRA, art. 206) y la autoridad que ejecuta la cierra con su motivo legal.',
+      );
+    }
     // Con un recurso pendiente no se cierra: primero se registra su resolución.
     if (isPendingRemedy) {
       throw new ApiFailure(

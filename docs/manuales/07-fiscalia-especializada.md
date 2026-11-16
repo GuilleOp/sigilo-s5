@@ -51,8 +51,11 @@ Tu cuenta tiene, en la demostración, las funciones `intake` + `investigation`: 
 llama igual que la de un OIC. Lo que te distingue es el **papel `prosecution`** de tu autoridad (en
 el directorio de red o, sin directorio, en el archivo de cuentas del nodo; la sesión lo indica con
 `account.isProsecution`). Con ese papel **solo llevas la vía penal**: no ves «Iniciar la
-investigación» (administrativa), «Dar vista al Ministerio Público» ni el plazo «Iniciar ante una
-posible falta grave (LGRA 64)», porque tú eres el Ministerio Público. Te llegan:
+investigación» (administrativa), «Dar vista al Ministerio Público» ni los plazos del procedimiento
+administrativo («Iniciar ante una posible falta grave (LGRA 64)», «Prescripción de faltas graves»
+o «no graves» (LGRA 74), audiencia, alegatos…), porque tú eres el Ministerio Público. En «Plazos»
+solo ves los de la vía penal, como el de impugnar la determinación del Ministerio Público. Te
+llegan:
 
 - denuncias que la persona envió **directo** a la fiscalía desde la ventanilla (en «Revisión»,
   eligiendo la fiscalía como «También competente» u «Otra del directorio» para una conducta que

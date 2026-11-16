@@ -392,6 +392,13 @@ export const DeadlineViewSchema = z
       .enum(['natural_days', 'business_days'])
       .meta({ description: 'Unidad de remaining: días naturales o días hábiles.' }),
     legalBasis: z.array(z.string()).meta({ description: 'Fundamentos con el nombre de la ley.' }),
+    earliestOn: LegalDaySchema.optional().meta({
+      description:
+        'Solo en plazos con mínimo: primer día en que procede el acto (la audiencia inicial, no antes de 10 días hábiles después del emplazamiento; LGRA, art. 208 fr. III).',
+    }),
+    isEarliestReached: z.boolean().optional().meta({
+      description: 'Solo en plazos con mínimo: si hoy ya procede el acto, según el reloj del nodo.',
+    }),
   })
   .meta({
     description: 'Plazo legal con su vencimiento y situación (en curso, por vencer, vencido).',

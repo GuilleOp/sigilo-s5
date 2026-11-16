@@ -696,6 +696,8 @@ export interface DeadlineRule {
   unit: DeadlineUnit;
   amount: number;
   maxAmount?: number;
+  /** Mínimo: el acto no procede antes de que pasen estos días (audiencia inicial, 10 hábiles). */
+  minAmount?: number;
   /** Desde cuándo corre, en lenguaje sencillo. */
   startsFrom: string;
   /** Qué pasa si vence. */
@@ -841,6 +843,7 @@ export const DEADLINE_RULES: readonly DeadlineRule[] = [
       'La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento. Este es el último día.',
     unit: 'business_days',
     amount: 15,
+    minAmount: 10,
     startsFrom: 'Desde el emplazamiento de la persona señalada.',
     consequence: 'La audiencia fuera de plazo puede impugnarse.',
     warning: { unit: 'business_days', amount: 5 },

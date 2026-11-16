@@ -697,7 +697,9 @@ export function dictionaryToMarkdown(
       DEADLINE_RULES.map((rule) => [
         code(rule.key),
         rule.name,
-        termText(rule.amount, rule.maxAmount, rule.unit),
+        rule.minAmount === undefined
+          ? termText(rule.amount, rule.maxAmount, rule.unit)
+          : `${termText(rule.amount, rule.maxAmount, rule.unit)} (no antes de ${rule.minAmount})`,
         rule.startsFrom,
         rule.consequence,
         termText(rule.warning.amount, undefined, rule.warning.unit),

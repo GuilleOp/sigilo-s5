@@ -45,6 +45,12 @@ export interface StageTransition {
    * presentó en la etapa y ya se resolvió, el paso procede sin esperar (LGRA, art. 206).
    */
   afterDeadlines?: readonly DeadlineKey[];
+  /**
+   * Plazo con mínimo (`minAmount`) que debe haberse cumplido para dar el paso, contado desde que la
+   * denuncia entró a la etapa de origen: la audiencia inicial no se celebra antes de 10 días hábiles
+   * después del emplazamiento (LGRA, art. 208 fr. III).
+   */
+  afterMinimumOf?: DeadlineKey;
   /** Qué dice el botón del panel. */
   label: string;
   legalBasis: readonly LegalReference[];
@@ -142,6 +148,7 @@ export const ADMINISTRATIVE_TRANSITIONS: readonly StageTransition[] = [
     to: 'initial_hearing',
     fn: 'substantiation',
     action: 'stage_advanced',
+    afterMinimumOf: 'initial_hearing_window',
     label: 'Registrar la audiencia inicial',
     legalBasis: [LGRA('208', 'III a VII')],
   },
@@ -176,6 +183,7 @@ export const ADMINISTRATIVE_TRANSITIONS: readonly StageTransition[] = [
     to: 'instruction_closed',
     fn: 'substantiation',
     action: 'stage_advanced',
+    afterDeadlines: ['closing_arguments'],
     label: 'Cerrar la instrucción',
     legalBasis: [LGRA('208', 'X')],
   },
@@ -225,6 +233,7 @@ export const ADMINISTRATIVE_TRANSITIONS: readonly StageTransition[] = [
     to: 'court_instruction_closed',
     fn: 'court',
     action: 'stage_advanced',
+    afterDeadlines: ['closing_arguments'],
     label: 'Cerrar la instrucción en el Tribunal',
     legalBasis: [LGRA('209', 'IV')],
   },
@@ -323,6 +332,9 @@ export const STAGE_WAIT_TEXTS: Readonly<Partial<Record<DeadlineKey, string>>> = 
   court_appeal_filing: 'La sentencia todavía puede apelarse',
   review_filing: 'Todavía se puede pedir la revisión de la sentencia',
   report_correction: 'La autoridad investigadora todavía puede corregir el informe',
+  closing_arguments: 'Las partes todavía pueden presentar sus alegatos',
+  initial_hearing_window:
+    'La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento',
 };
 
 /** Recurso que se presenta dentro del plazo `key` (revocación, apelación…), o `undefined`. */
@@ -615,7 +627,8 @@ export const LEGAL_CLOSURE_REASONS: readonly LegalClosureReasonOption[] = [
       'El procedimiento terminó sin resolver el fondo por una causa de la ley (por ejemplo, improcedencia, muerte de la persona señalada o derogación de la falta).',
     s5Reasons: ['other', 'inadmissible'],
     status: 'final_no_sanction',
-    stages: [...AFTER_ADMISSION, 'resolution', 'court_resolution'],
+    // Dictada la sentencia, la de sobreseimiento se cierra hasta que queda firme.
+    stages: [...AFTER_ADMISSION, 'resolution', 'final'],
     legalBasis: [LGRA('196'), LGRA('197')],
   },
   {
@@ -665,11 +678,25 @@ export function findLegalClosureReason(key: string): LegalClosureReasonOption | 
   return LEGAL_CLOSURE_REASONS.find((reason) => reason.key === key);
 }
 
+/**
+ * Etapas en que nadie cierra la denuncia: dictada la sentencia, el Tribunal la declara firme cuando
+ * vencen los recursos (LGRA, art. 206) y la autoridad que ejecuta la cierra después con su motivo.
+ */
+export const NO_CLOSURE_STAGES: ReadonlySet<AdministrativeStage> = new Set<AdministrativeStage>([
+  'court_resolution',
+]);
+
+/** Indica si se puede cerrar la denuncia en la etapa `stage`. */
+export function isClosureAllowedAt(stage: AdministrativeStage | null): boolean {
+  return stage === null || !NO_CLOSURE_STAGES.has(stage);
+}
+
 /** Indica si el motivo legal `reason` cabe en la etapa `stage`. */
 export function isLegalClosureAllowedAt(
   reason: LegalClosureReasonOption,
   stage: AdministrativeStage | null,
 ): boolean {
+  if (!isClosureAllowedAt(stage)) return false;
   if (stage === null) return reason.allowsNoStage === true;
   return reason.stages === undefined || reason.stages.includes(stage);
 }

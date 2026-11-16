@@ -91,8 +91,17 @@ Mientras haya una **inconformidad pendiente** no puedes admitir el informe ni ce
   **72 horas** antes. La persona denunciante identificada es tercera y su seguimiento le dice que
   puede participar (LGRA, arts. 116, fr. IV, 193 y 208, fr. II a IV).
 
-> **Limitación conocida del prototipo.** El sistema todavía no exige esos 10 días hábiles: deja
-> «Registrar la audiencia inicial» el mismo día del emplazamiento. Cuenta tú el plazo.
+- **El sistema exige los 10 días hábiles.** Hasta el décimo día hábil después del emplazamiento,
+  «Registrar la audiencia inicial» no aparece en «Etapa» y el panel dice:
+
+  > «Registrar la audiencia inicial»: La audiencia inicial se celebra entre 10 y 15 días hábiles
+  > después del emplazamiento. Podrás hacerlo a partir del … (LGRA, art. 208, fracc. III).
+
+  Por la API, el nodo responde `409`: «La audiencia inicial se celebra entre 10 y 15 días hábiles
+  después del emplazamiento (LGRA, art. 208, fracc. III): procede a partir del ….»
+
+- **En la demostración**, quien opera la red adelanta el reloj simulado antes de este paso con
+  `npm run demo:reloj -- +10dh` (ver `docs/demo.md`). Solo para la demostración.
 
 ### 5.3 Audiencia inicial
 
@@ -109,8 +118,10 @@ Mientras haya una **inconformidad pendiente** no puedes admitir el informe ni ce
    VIII).
 2. **«Abrir el periodo de alegatos»** → «Alegatos» (5 dh; fr. IX).
 3. **«Cerrar la instrucción»** → «Cierre de la instrucción» (resolver en 30 + 30 dh; fr. X).
-   **Limitación conocida del prototipo:** el sistema todavía deja cerrar la instrucción con los 5 dh
-   de alegatos abiertos; espera tú a que venzan.
+   **Espera a que venzan los 5 dh de alegatos.** Mientras corren, la opción no aparece y el panel
+   dice: «Cerrar la instrucción»: Las partes todavía pueden presentar sus alegatos hasta el ….
+   Podrás hacerlo a partir del … (LGRA, art. 208, fracc. IX; LGRA, art. 209, fracc. III). En la
+   demostración, adelanta el reloj con `npm run demo:reloj -- +6dh` antes de este paso.
 4. **«Resolver la falta no grave»** → «Resolución (falta no grave)». Notificar en 10 dh (fr. XI).
    Fundamento de la sanción: arts. 75 y 77.
 
@@ -156,9 +167,15 @@ formulario: «Recurso»: «Reclamación».
   «Negada» → «Fundamento legal» → «Aplicar».
 - En las etapas del Tribunal la resuelve el Tribunal. La persona denunciante no ve la medida.
 
-> **Limitación conocida del prototipo.** El sistema deja conceder o negar la medida antes de que
-> venza la vista de 5 días a la persona señalada (LGRA, arts. 126 y 127). Antes de ese plazo usa
-> solo «Concedida provisionalmente».
+- **Mientras corre la vista de 5 días hábiles** a quienes afecta la medida (LGRA, arts. 126 y 127),
+  la lista solo ofrece «Concedida provisionalmente» y el panel dice: «Resolver la medida cautelar»:
+  la vista a quienes afecta corre hasta el …. Mientras tanto solo puedes concederla
+  provisionalmente; podrás concederla o negarla a partir del … (LGRA, arts. 126 y 127).
+- Vencida la vista, la resuelves en definitiva («Concedida» o «Negada»), también si antes la
+  concediste provisionalmente (la provisional se dicta una sola vez). Mientras la medida esté
+  pendiente o solo provisional, la investigadora no pide otra.
+- Por la API, conceder o negar antes de tiempo da `409`. En la demostración, adelanta el reloj con
+  `npm run demo:reloj -- +6dh` después de pedir la medida.
 
 ### 5.9 Firmeza
 
@@ -217,7 +234,8 @@ formulario: «Recurso»: «Reclamación».
 
 Otros cierres que te tocan después de la admisión: **«Caducidad de la instancia»**,
 **«Sobreseimiento»** (LGRA, arts. 196 y 197), «Prescripción» (art. 74) e «Incompetencia y
-remisión». La caducidad y la prescripción solo proceden con su plazo corrido; antes, el nodo lo
+remisión». Si la sentencia del Tribunal fue de sobreseimiento, cierras tú con ese motivo cuando
+quede firme: dictada la sentencia, el Tribunal ya no cierra la denuncia. La caducidad y la prescripción solo proceden con su plazo corrido; antes, el nodo lo
 rechaza con «La caducidad procede con más de 6 meses sin actuación: la última fue el … y el plazo
 vence el … (LGRA, art. 74).» o «La facultad de sancionar todavía no prescribe: con hechos de …, lo
 más pronto sería después del … (LGRA, art. 74).»
@@ -248,6 +266,9 @@ identidad sellada; con una fiscalía fuera del nodo, se remite por oficio.
 | No puedo admitir el informe                                | Hay una inconformidad pendiente                                                      |
 | No aparece «Declarar la resolución firme»                  | Corre la revocación (lee «Podrás hacerlo a partir del …») o hay un recurso pendiente |
 | No aparece «Cerrar con fundamento»                         | Hay un recurso pendiente: registra su resolución                                     |
+| No aparece «Registrar la audiencia inicial»                | No han pasado 10 dh desde el emplazamiento (lee «Podrás hacerlo a partir del …»)     |
+| No aparece «Cerrar la instrucción»                         | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                    |
+| Solo puedo elegir «Concedida provisionalmente»             | Corre la vista de 5 dh de la medida cautelar                                         |
 | «Resolución firme con sanción» está desactivada            | Primero «Registrar la inscripción de la sanción (S3)»                                |
 | «El sistema no aceptó los datos» al registrar un recurso   | Elige a mano «Quién lo presentó» y marca la casilla de firma                         |
 | «Tu función no tiene acciones del trámite en este estado.» | La etapa es del Tribunal o de la investigadora                                       |
@@ -257,9 +278,6 @@ identidad sellada; con una fiscalía fuera del nodo, se remite por oficio.
 
 - Los plazos de los recursos se cuentan desde que se entra a la etapa, no desde la notificación,
   que todavía no se registra.
-- La audiencia inicial se puede registrar sin esperar los 10 días hábiles del emplazamiento.
-- La instrucción se puede cerrar con los alegatos abiertos.
-- La medida cautelar se puede conceder o negar antes de la vista de 5 días.
 - La bandeja muestra denuncias sin IPRA.
 - Sin integración real con el S3; la comparecencia de terceros se hace fuera del sistema.
 
