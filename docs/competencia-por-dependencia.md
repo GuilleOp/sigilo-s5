@@ -190,7 +190,8 @@ ninguna denuncia.
   Autónoma y la Legislatura, con su OIC nombrado sin alta; los demás autónomos, pendientes; los
   demás municipios no se listan y van a la receptora. Tribunal: Sala Especializada y Cuarta Sección
   (ficticias); fiscalía anticorrupción ficticia con llaves; la ESFE ficticia marcada «solo
-  identificadas».
+  identificadas». El nodo no tiene supervisora con segunda llave: los avisos de la receptora y de
+  la Contraloría van a su titular (`alertsTo` en el archivo de cuentas, no en la tabla), sin copia.
 - **Federal** (formato 2): los OIC de los dos entes ficticios del escenario, dos OIC reales nombrados
   sin alta (IMSS y SAT, ficticios), la oficina ficticia de aduanas «sin OIC designado → la SABG»,
   la ASF (faltas graves), el TFJA (Sala Especializada y Tercera Sección) y la FGR.

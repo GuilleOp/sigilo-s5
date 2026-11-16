@@ -287,7 +287,10 @@ anterior al arranque del sistema o lleva una hora sin renovarse.
   por persona con su seudónimo, su autoridad, sus funciones (`functions`; un archivo anterior con
   una sola `function` se sigue leyendo) y su digesto scrypt
   (`scrypt$logN$r$p$sal$digesto`, costo mínimo 2^14), y opcionalmente `requireMfa: true` para
-  exigirle el segundo factor aunque el nodo use `SIGILO_MFA=opcional`. `createAuthorityRegistry`
+  exigirle el segundo factor aunque el nodo use `SIGILO_MFA=opcional`. Cada autoridad puede
+  declarar `supervisorId` (la supervisora que custodia la segunda llave) y `alertsTo` (la autoridad,
+  puede ser ella misma, cuya supervisión recibe sus avisos cuando el nodo no tiene segunda llave:
+  ve el aviso y la escalada, nunca la copia). `createAuthorityRegistry`
   lo valida al arrancar; el nodo admite una sola supervisora (una segunda llave). Sin archivo, el panel queda
   cerrado. `SIGILO_AUTHORITY_TOKEN` se retiró: el servidor no arranca si se define.
 - `POST authLogin` compara contra un digesto de igual costo aunque el usuario no exista y responde
@@ -347,8 +350,11 @@ authorityIdentityApprovals` (otra persona; `409` si ya aprobó, si ya se abrió 
   `POST authorityIdentityEnvelope` (solo para quien aprobó). Ver `docs/criptografia.md`.
 - `runEscalationRules(ctx)` corre en la tarea periódica, después del cierre diario de la bitácora,
   y registra cada regla cumplida una vez por denuncia y día de inicio (`rule.triggered`, exento del
-  tope diario). `GET authorityEscalations` y `POST authorityEscalationEnvelope` son solo para la
-  supervisión de la supervisora y solo para denuncias escaladas.
+  tope diario). El aviso va a la supervisora de la autoridad, a la del nodo o, si el nodo no tiene
+  segunda llave, a la autoridad de `alertsTo`. `GET authorityEscalations` es para toda cuenta de
+  supervisión: lista lo que se le dirigió y los avisos guardados sin destinatario de las
+  autoridades que le mandan sus avisos, con `canOpenCopy`. `POST authorityEscalationEnvelope` sigue
+  siendo solo para la supervisión de la supervisora y solo para denuncias escaladas.
 - PRV-23: el envío se rechaza (`400`) si el texto libre trae caracteres invisibles o de marca que
   la web siempre quita (`hasInvisibleCharacters`).
 

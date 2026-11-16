@@ -22,6 +22,9 @@ Internos de Control», Federal, con **segunda llave**).
     (dos aprobaciones, al menos una de supervisión).
 - **Con segunda llave** (si tu autoridad supervisada la tiene configurada), recibes además una
   **copia cerrada** de los hechos y las pruebas de la denuncia escalada, **nunca** la identidad.
+- **Sin segunda llave** (por ejemplo, la titular de la Contraloría de Querétaro), recibes los avisos
+  y las denuncias escaladas de las autoridades que te los mandan (`alertsTo` en el archivo de
+  cuentas del nodo), pero **sin copia**: solo la supervisora con segunda llave la abre.
 - No investigas, no substancias, no turnas. Tampoco **recibes** denuncias turnadas: una supervisora
   sin cuenta de recepción no aparece en la lista «Autoridad» del turnado ni de la reasignación.
 
@@ -31,7 +34,7 @@ Internos de Control», Federal, con **segunda llave**).
 | ----------------------------------------------------------- | ---------------------------------------------------------------------- |
 | «Denuncias de tu institución» y sus cierres                 | La identidad de la persona en un escalamiento: la copia nunca la lleva |
 | «Escalamientos que recibiste», agrupados por regla          | Denuncias de otras instituciones que no supervisas                     |
-| Con segunda llave: hechos y pruebas de la denuncia escalada |                                                                        |
+| Con segunda llave: hechos y pruebas de la denuncia escalada | Sin segunda llave: la copia cerrada de la denuncia escalada            |
 | La identidad, solo si participas en una apertura aprobada   |                                                                        |
 
 ## 3. Cómo entras
@@ -57,6 +60,12 @@ Arriba, la lista de denuncias de tu institución. Abajo, **«Escalamientos que r
 denuncia llegó aquí porque se cumplió una regla pública. Las escaladas traen una copia que la
 persona cerró con tu segunda llave, sin su identidad: ábrela con «Abrir». Los avisos no traen copia;
 la denuncia sigue con su autoridad.»
+
+Sin segunda llave, además verás: «Tu autoridad recibe los avisos de las reglas públicas, pero no
+custodia la segunda llave: ves cada aviso sin la copia de la denuncia. Pide cuentas a la autoridad
+de origen por los medios de tu institución.» Cada grupo dice «Aviso, sin copia» y, en una denuncia
+escalada, en lugar de «Abrir» verás «Sin copia: la copia cerrada solo la abre la supervisora con
+segunda llave, y tu autoridad no la custodia. Requiere a … que actúe.»
 
 Se agrupan por regla, de la más grave a la menos grave. Reglas del catálogo:
 
@@ -88,13 +97,11 @@ Se agrupan por regla, de la más grave a la menos grave. Reglas del catálogo:
 5. Actúa por los medios de tu institución: requerir a la autoridad, ordenar que se excuse o se
    reasigne, o dar vista a quien corresponda. **El expediente sigue con la autoridad original.**
 
-> **Limitación conocida del prototipo.**
->
-> - En Querétaro la Contraloría **no** tiene supervisora con segunda llave: llegan solo avisos
->   («Aviso, sin copia»).
-> - Con `contraloria.titular`, «Escalamientos que recibiste» mostró «Tu función no permite esta
->   acción» y ningún aviso, aunque el folio sembrado `P8GT-DBF6-FA6C` estaba «Vencida». Para mostrar
->   escalamientos usa `supervision-oic` en el nodo Federal (caso sintético `ZCH3-Q437-KDYK`).
+> **En Querétaro (sin segunda llave).** La Contraloría no tiene supervisora con segunda llave. Con
+> `contraloria.titular`, «Escalamientos que recibiste» lista los avisos de la unidad receptora y de
+> la Contraloría (por ejemplo, la «Meta de turnado del S5 vencida» de la denuncia que llegó por la
+> ventanilla y nadie aceptó), todos «Aviso, sin copia». Para abrir una copia escalada usa
+> `supervision-oic` en el nodo Federal (caso sintético `ZCH3-Q437-KDYK`).
 
 ### 5.2 Segunda aprobación de una apertura de identidad
 
@@ -132,14 +139,14 @@ excusa no se hizo antes de resolver, la denuncia te llegó escalada.
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | «El código no es válido o ya se usó…»                | Espera el código siguiente (demostración: `npm run demo:codigo -- <usuario> --siguiente`)                |
 | No puedo abrir la copia escalada                     | Usa la **segunda llave**, no la llave de la autoridad                                                    |
-| «Tu función no permite esta acción»                  | Limitación conocida en Querétaro; ver 5.1                                                                |
+| No aparece «Abrir» en una denuncia escalada          | Tu autoridad no custodia la segunda llave: recibes el aviso sin copia (ver 5.1)                          |
 | No aparece «Recibir el sobre para el recurso»        | Faltan aprobaciones o venció el plazo de la Sala («Puede que la ventana del recurso ya haya terminado.») |
 | «Ya aprobaste. Falta la aprobación de otra persona…» | Espera a la otra persona                                                                                 |
 
 ## 7. Limitaciones conocidas del prototipo
 
-- Querétaro no tiene segunda llave; la cuenta del titular no lista escalamientos en vivo (pendiente
-  de corregir).
+- Querétaro no tiene segunda llave: la cuenta del titular recibe los avisos, sin copia. Los OIC
+  municipales no le mandan sus avisos (la Contraloría del Ejecutivo no los supervisa).
 - La regla de dos personas la aplica el nodo, no la criptografía.
 - El escalamiento informa; las órdenes a la autoridad se dan fuera del sistema.
 

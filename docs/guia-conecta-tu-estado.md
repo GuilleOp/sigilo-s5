@@ -97,6 +97,13 @@ No la escribes a mano: la arma la bandeja «Solicitudes de alta» de tu panel a 
 llenó la institución. La competencia sirve para ofrecer alternativas a quien denuncia; quién
 investiga a cada ente lo decide tu tabla de funciones (sección 2).
 
+Si tu estado no tiene supervisora con segunda llave, declara en el archivo de cuentas
+(`authority-accounts.json`) el campo `alertsTo` de cada autoridad: la autoridad cuya cuenta de
+supervisión (por ejemplo, la persona titular de la contraloría) recibe sus avisos de las reglas
+públicas. Recibe el aviso y la denuncia escalada, nunca la copia cerrada. Puede apuntar a la misma
+autoridad. No lo pongas en un OIC municipal hacia la contraloría del Ejecutivo: no lo supervisa
+(CPEUM, art. 115).
+
 Tu **buzón general** (papel `inbox`) lo crea `./sigilo instalar`: recibe lo que tu tabla no asigna y
 una persona de la autoridad receptora que designe tu estado lo turna (no quien opera el nodo, salvo
 que tu ley se lo asigne).
