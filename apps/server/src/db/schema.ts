@@ -876,6 +876,24 @@ CREATE TABLE authority_mfa (
 ) STRICT, WITHOUT ROWID;
 `;
 
+/**
+ * Migración 18: versiones de la tabla de funciones que la operación del nodo firmó desde el panel
+ * «Competencia por dependencia» (formato 2), con el resumen de cambios. Se entregan a la SESNA y
+ * entran al directorio cuando los testigos lo cofirman; aquí solo queda el registro de quién firmó.
+ */
+const FUNCTION_TABLE_PROPOSALS = `
+CREATE TABLE function_table_proposals (
+  proposal_id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL,
+  signed_on TEXT NOT NULL,
+  signed_by TEXT NOT NULL,
+  signed_table TEXT NOT NULL,
+  changes_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+CREATE INDEX function_table_proposals_by_time ON function_table_proposals (created_at);
+`;
+
 /** Migraciones en orden de aplicación. Nunca se editan: se agregan nuevas. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SCHEMA },
@@ -895,6 +913,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 15, sql: PDN_STATISTICS },
   { version: 16, sql: ENCRYPTED_EVIDENCE },
   { version: 17, sql: AUTHORITY_MFA },
+  { version: 18, sql: FUNCTION_TABLE_PROPOSALS },
 ];
 
 /** Versión más reciente del esquema. */

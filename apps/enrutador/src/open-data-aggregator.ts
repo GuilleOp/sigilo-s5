@@ -1,6 +1,8 @@
 // Agregador nacional de datos abiertos (Bases de la PDN, arts. 60 y 61): en cada corte descarga el
 // CSV público de cada nodo del directorio, lo valida, suma por entidad, conducta, mes y estatus,
-// vuelve a aplicar la celda mínima y guarda el último corte para servirlo en JSON y en CSV.
+// vuelve a aplicar la celda mínima y guarda el último corte para servirlo en JSON y en CSV. El
+// corte trae también la cobertura de órganos internos de control de cada estado con nodo y de la
+// federación, calculada con la tabla firmada de cada nodo y el catálogo de entes de la PDN.
 // Igual que en el S1, la SESNA consulta números y pruebas, nunca denuncias: el enrutador solo lee
 // la ruta pública que cualquiera puede descargar.
 import {
@@ -12,6 +14,7 @@ import {
   ROUTES,
   StateCodeSchema,
 } from '@sigilo/contracts';
+import { REAL_ENTITIES } from '@sigilo/contracts/entes';
 import type {
   AuthorityDirectory,
   ComplaintStatus,
@@ -20,9 +23,11 @@ import type {
   NationalOpenData,
   NationalOpenDataCell,
   NationalOpenDataNode,
+  OicCoverageRow,
 } from '@sigilo/contracts';
-import { toHourDate } from '@sigilo/core';
-import type { FetchLike } from '@sigilo/red';
+import { toDayDate, toHourDate } from '@sigilo/core';
+import { oicCoverageRows } from '@sigilo/red';
+import type { CompetenceEntity, FetchLike } from '@sigilo/red';
 import type { NationalLedgerService } from './national-ledger-service.ts';
 
 /** Encabezado exacto del CSV de cada nodo (y del nacional). */
@@ -137,6 +142,8 @@ export interface NationalCutInput {
   /** Celda mínima después de sumar; por omisión, la misma de cada nodo. */
   nationalMinCell?: number;
   nodes: readonly NodeOpenDataInput[];
+  /** Cobertura de OIC por estado (`oicCoverageRows`); sin ella, el corte no la trae. */
+  oicCoverage?: readonly OicCoverageRow[];
 }
 
 /**
@@ -194,8 +201,23 @@ export function buildNationalOpenData(input: NationalCutInput): NationalOpenData
     nodes,
     cells,
     suppressed,
+    ...(input.oicCoverage === undefined ? {} : { oicCoverage: [...input.oicCoverage] }),
   };
 }
+
+/** Entes del catálogo de la PDN por entidad (`00`, los federales), para la cobertura de OIC. */
+function catalogEntities(): (stateCode: string) => readonly CompetenceEntity[] {
+  const byState = new Map<string, CompetenceEntity[]>();
+  for (const entity of REAL_ENTITIES) {
+    const code = entity.stateCode ?? '00';
+    const list = byState.get(code) ?? [];
+    list.push({ id: entity.id, level: entity.level });
+    byState.set(code, list);
+  }
+  return (stateCode) => byState.get(stateCode) ?? [];
+}
+
+const ENTITIES_OF = catalogEntities();
 
 /** CSV del corte nacional: mismas columnas que el de cada nodo y su fila final de suprimidas. */
 export function nationalOpenDataCsv(data: NationalOpenData): string {
@@ -277,6 +299,7 @@ export function createOpenDataAggregator(deps: OpenDataAggregatorDeps): OpenData
         },
         ...(deps.nationalMinCell === undefined ? {} : { nationalMinCell: deps.nationalMinCell }),
         nodes,
+        oicCoverage: oicCoverageRows(directory, ENTITIES_OF, toDayDate(cutAt)),
       });
       return latest;
     },

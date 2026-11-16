@@ -58,3 +58,11 @@ export {
   WEIGHT_ANONYMITY_UNKNOWN,
   withAnonymityFactor,
 } from './risk-factor.ts';
+
+export { competenceHintsFor } from './competence-hints.ts';
+export type {
+  CompetenceHintRow,
+  CompetenceHintsFile,
+  CoverageMatrixRow,
+  HintEntity,
+} from './competence-hints.ts';

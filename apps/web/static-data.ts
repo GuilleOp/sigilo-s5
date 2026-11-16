@@ -1,13 +1,21 @@
 // Datos estáticos que la web publica en su mismo origen, bajo /datos/: el catálogo del grupo de
 // anonimato (sintético en la demo, o el de datos/grupos-anonimato con VITE_ANONYMITY_DATA=real), la
 // matriz de cobertura, los conjuntos de datos abiertos agregados de datos/abiertos y los entes
-// públicos reales de la PDN partidos en un fragmento por entidad (/datos/entes/<clave>.json).
+// públicos reales de la PDN partidos en un fragmento por entidad (/datos/entes/<clave>.json) y las
+// pistas de la competencia por dependencia (/datos/competencia/<clave>.json).
 // Seguridad: así la web nunca pide datos a otro origen; todo sale del mismo servidor que la sirve.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import type { Plugin } from 'vite';
+import { competenceHintsFor, parseAnonymityFragment } from '@sigilo/anonimato';
+import type { CoverageMatrixRow } from '@sigilo/anonimato';
 import { DEMO_FILES } from '@sigilo/anonimato/demo';
-import { ENTITY_FRAGMENT_BASE_PATH, entityFragmentsFrom, STATES } from '@sigilo/contracts';
+import {
+  COMPETENCE_HINTS_BASE_PATH,
+  ENTITY_FRAGMENT_BASE_PATH,
+  entityFragmentsFrom,
+  STATES,
+} from '@sigilo/contracts';
 import type { RealEntityCatalogFile } from '@sigilo/contracts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '../..');
@@ -51,6 +59,47 @@ export function entityFragmentFiles(): StaticFiles {
   return files;
 }
 
+/**
+ * Pistas de la pantalla «Competencia por dependencia» (/datos/competencia/<clave>.json): por cada
+ * ente real de la entidad, si aparece en el S1 (en cubeta) y si contrata (S2), con los fragmentos
+ * de datos/grupos-anonimato y la matriz de datos/cobertura. Son datos agregados ya publicados; se
+ * calculan aquí, sin conexión, y la pantalla de la operación los descarga del mismo origen.
+ */
+export function competenceHintFiles(): StaticFiles {
+  const catalog = JSON.parse(
+    readFileSync(join(REPO_ROOT, 'packages/contracts/src/entes/entes-pdn.json'), 'utf8'),
+  ) as RealEntityCatalogFile;
+  const anonymity = join(REPO_ROOT, 'datos/grupos-anonimato');
+  const index = JSON.parse(readFileSync(join(anonymity, 'indice.json'), 'utf8')) as {
+    fechaCorte: string;
+    entidades: { clave: string; archivo: string | null }[];
+  };
+  const coverage = (
+    JSON.parse(readFileSync(join(REPO_ROOT, 'datos/cobertura/matriz.json'), 'utf8')) as {
+      filas: CoverageMatrixRow[];
+    }
+  ).filas;
+  const files: StaticFiles = new Map();
+  for (const code of ['00', ...STATES.map((state) => state.code)]) {
+    const file = index.entidades.find((item) => item.clave === code)?.archivo ?? null;
+    const fragment =
+      file === null
+        ? null
+        : parseAnonymityFragment(JSON.parse(readFileSync(join(anonymity, file), 'utf8')));
+    const entities = (catalog.entidades[code] ?? []).map(([id, name, , , , sourceName]) => ({
+      id,
+      name,
+      ...(sourceName === undefined ? {} : { sourceName }),
+    }));
+    const hints = competenceHintsFor(code, entities, fragment, index.fechaCorte, coverage);
+    files.set(
+      `${COMPETENCE_HINTS_BASE_PATH}${code}.json`,
+      new TextEncoder().encode(JSON.stringify(hints)),
+    );
+  }
+  return files;
+}
+
 /** Reúne los archivos que se publican bajo /datos/. */
 export function collectStaticData(anonymitySource: string | undefined): StaticFiles {
   const files: StaticFiles = new Map();
@@ -75,6 +124,7 @@ export function collectStaticData(anonymitySource: string | undefined): StaticFi
   // Equivalencias con el catálogo de faltas del S5: artículo de la ley de cada estado.
   addDirectory(files, join(REPO_ROOT, 'packages/contracts/src/s5'), '/datos/s5/', /\.json$/u);
   for (const [path, content] of entityFragmentFiles()) files.set(path, content);
+  for (const [path, content] of competenceHintFiles()) files.set(path, content);
   return files;
 }
 

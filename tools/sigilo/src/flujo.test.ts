@@ -536,6 +536,30 @@ describe('instalación de punta a punta (sin Docker)', () => {
     );
     expect(proposal.directory.previousDigest).not.toBe('0'.repeat(64));
 
+    // Competencia por dependencia en CSV: exportar, nombrar el OIC de un ente y revisar los cambios.
+    const exported = await run(dirs.nodo, ['tabla', 'exportar']);
+    expect(exported.code, exported.text).toBe(0);
+    const competencePath = join(dirs.nodo, 'config', 'competencia-por-dependencia.csv');
+    expect(readFileSync(competencePath, 'utf8')).toBe(
+      'ente,nombre,estado,quien,fundamento,solo_identificada\n',
+    );
+    writeFileSync(
+      competencePath,
+      `${readFileSync(competencePath, 'utf8')}PDN-20-5800,Caminos Bienestar,asignado,"institucion:Órgano Interno de Control de Caminos Bienestar (ficticio)","LGRA, art. 10",\n`,
+    );
+    const competence = await run(dirs.nodo, ['tabla', 'revisar']);
+    expect(competence.code, competence.text).toBe(0);
+    expect(competence.text).toContain('formato 2');
+    expect(competence.text).toContain(
+      'Caminos Bienestar: OIC Órgano Interno de Control de Caminos Bienestar (ficticio).',
+    );
+    expect(competence.text).toContain('1 OIC nombrado, falta alta');
+    writeFileSync(competencePath, 'ente,nombre,estado\n');
+    const broken = await run(dirs.nodo, ['tabla', 'revisar']);
+    expect(broken.code).toBe(2);
+    expect(broken.text).toContain('competencia-por-dependencia.csv');
+    writeFileSync(competencePath, 'ente,nombre,estado,quien,fundamento,solo_identificada\n');
+
     writeFileSync(
       join(dirs.nodo, 'config', 'dias-inhabiles.csv'),
       'fecha,nombre,fundamento\n2026-11-02,Día de Muertos,"Acuerdo ficticio 3/2026"\n',
