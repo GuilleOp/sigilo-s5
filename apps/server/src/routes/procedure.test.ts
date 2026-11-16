@@ -478,7 +478,16 @@ describe('separación de funciones y competencia', () => {
         (await act(server, 'oicSubstantiation', folio, { action: 'advance_stage', stage })).status,
       ).toBe(200);
     }
-    expect((await act(server, 'oicSubstantiation', folio, CLOSE)).status).toBe(200);
+    // En la resolución, el cierre lleva su motivo legal (aquí, sobreseimiento).
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          ...CLOSE,
+          reason: 'other',
+          legalOutcome: 'dismissed',
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it('otra autoridad recibe 404, igual que un folio inexistente', async () => {

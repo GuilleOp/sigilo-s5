@@ -123,7 +123,9 @@ export function createAppFromContext(ctx: AppContext): Hono {
   app.onError((error, c) =>
     isPdnPath(c.req.path)
       ? pdnInternalError(c)
-      : errorResponse(c, error instanceof ApiFailure ? error.code : 'internal'),
+      : error instanceof ApiFailure
+        ? errorResponse(c, error.code, error.message)
+        : errorResponse(c, 'internal'),
   );
   return app;
 }

@@ -22,6 +22,7 @@ import {
   createTestServer,
   credentialsFor,
   getAsAuthority,
+  messageBody,
   postJson,
   procedureAs,
   submitComplaint,
@@ -31,6 +32,14 @@ import {
   testToken,
 } from '../test-support/harness.ts';
 import type { TestAccountName, TestServer } from '../test-support/harness.ts';
+import {
+  addBusinessDays,
+  DEFAULT_BUSINESS_CALENDAR,
+  fromBase64Url,
+  keyIdFor,
+  sealMailboxMessage,
+  toMexicoCentralDay,
+} from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 
 const BASIS = 'LGRA: fundamento sintético de la actuación de prueba (art. 208).';
@@ -47,12 +56,17 @@ function qualification(severity: 'serious' | 'non_serious') {
   } as const;
 }
 
-async function setup(server: TestServer = createTestServer(), offenseCode?: string) {
+async function setup(
+  server: TestServer = createTestServer(),
+  offenseCode?: string,
+  occurredPeriod?: string,
+) {
   const reporter = createReporter();
   const request = await buildComplaintRequest(server, {
     mode: 'sealed',
     reporter,
     ...(offenseCode === undefined ? {} : { offenseCode }),
+    ...(occurredPeriod === undefined ? {} : { occurredPeriod }),
   });
   const { folio } = await submitComplaint(server, request);
   return { server, reporter, folio };
@@ -100,9 +114,32 @@ async function detail(server: TestServer, name: TestAccountName, folio: string) 
   };
 }
 
+/** Día legal de hoy en el reloj del servidor de prueba. */
+function today(server: TestServer): string {
+  return toMexicoCentralDay(server.ctx.deps.now());
+}
+
+/** Mediodía (hora del centro) del día que sigue en `amount` días hábiles a `from`. */
+function businessDaysAfter(from: string, amount: number): Date {
+  return new Date(`${addBusinessDays(from, amount, DEFAULT_BUSINESS_CALENDAR)}T18:00:00Z`);
+}
+
+/** Mensaje del error de la API. */
+function errorMessage(body: unknown): string {
+  return (body as { error?: { message?: string } }).error?.message ?? '';
+}
+
 /** Turna, acepta, investiga, califica y presenta el IPRA. */
-async function toReportFiled(severity: 'serious' | 'non_serious', server?: TestServer) {
-  const context = await setup(server, severity === 'serious' ? undefined : 'LGRA-50');
+async function toReportFiled(
+  severity: 'serious' | 'non_serious',
+  server?: TestServer,
+  occurredPeriod?: string,
+) {
+  const context = await setup(
+    server,
+    severity === 'serious' ? undefined : 'LGRA-50',
+    occurredPeriod,
+  );
   const { folio } = context;
   await ok(context.server, 'inboxIntake', folio, {
     action: 'route',
@@ -514,6 +551,18 @@ describe('prevención del informe y abstención', () => {
       stage: 'report_prevented',
       legalBasis: BASIS,
     });
+    // LGRA, art. 195: solo vencidos los 3 días para corregirlo se tiene por no presentado.
+    const notFiled: ProcedureActionRequest = {
+      action: 'advance_stage',
+      stage: 'investigation',
+      legalBasis: BASIS,
+    };
+    const early = await act(server, 'oicSubstantiation', folio, notFiled);
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain(
+      'La autoridad investigadora todavía puede corregir el informe hasta el',
+    );
+    server.setNow(businessDaysAfter(today(server), 4));
     const back = await ok(server, 'oicSubstantiation', folio, {
       action: 'advance_stage',
       stage: 'investigation',
@@ -846,16 +895,194 @@ describe('motivos legales de cierre', () => {
     expect(titles(view)).toContain('Se recibió un escrito de desistimiento');
   });
 
-  it('la prescripción cabe en cualquier etapa y deja su estatus', async () => {
-    const { server, folio } = await toReportFiled('non_serious');
-    const closed = await ok(server, 'oicSubstantiation', folio, {
+  it('la prescripción cabe en cualquier etapa, solo con el plazo corrido, y deja su estatus', async () => {
+    const prescribed: ProcedureActionRequest = {
       action: 'close',
       reason: 'other',
       legalOutcome: 'prescribed',
       legalBasis: 'LGRA, art. 74: prescribió la facultad de sancionar (sintético).',
       agreement: SYNTHETIC_AGREEMENT,
-    });
+    };
+    // Hechos de agosto de 2026: una falta no grave prescribe en 3 años (LGRA, art. 74).
+    const recent = await toReportFiled('non_serious');
+    const early = await act(recent.server, 'oicSubstantiation', recent.folio, prescribed);
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain('todavía no prescribe');
+    // Hechos de enero de 2023: ya pasaron los 3 años.
+    const old = await toReportFiled('non_serious', undefined, '2023-01');
+    const closed = await ok(old.server, 'oicSubstantiation', old.folio, prescribed);
     expect(closed.status).toBe('prescribed_or_expired');
+  });
+});
+
+describe('firmeza y cierres conforme a los plazos (LGRA, arts. 27, 74, 101 y 206)', () => {
+  const COURT_STAGES = [
+    'court_received',
+    'court_evidence_hearing',
+    'court_closing_arguments',
+    'court_instruction_closed',
+    'court_resolution',
+  ] as const;
+  const NON_SERIOUS_STAGES = [
+    'evidence_hearing',
+    'closing_arguments',
+    'instruction_closed',
+    'resolution',
+  ] as const;
+  const toFinal: ProcedureActionRequest = { action: 'advance_stage', stage: 'final' };
+
+  it('no permite la firmeza de la sentencia antes de que venzan la apelación y la revisión', async () => {
+    const { server, folio } = await toInitialHearing('serious');
+    await advance(server, 'oicSubstantiation', folio, 'case_file_sent');
+    for (const stage of COURT_STAGES) await advance(server, 'court', folio, stage);
+    const sentencedOn = today(server);
+    const early = await act(server, 'court', folio, toFinal);
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain('La sentencia todavía puede apelarse hasta el');
+    // Venció la revisión (10 días hábiles), pero la apelación (15) sigue abierta.
+    server.setNow(businessDaysAfter(sentencedOn, 11));
+    expect((await act(server, 'court', folio, toFinal)).status).toBe(409);
+    // El último día de la apelación todavía no queda firme.
+    server.setNow(businessDaysAfter(sentencedOn, 15));
+    expect((await act(server, 'court', folio, toFinal)).status).toBe(409);
+    server.setNow(businessDaysAfter(sentencedOn, 16));
+    expect((await advance(server, 'court', folio, 'final')).legalStage).toBe('final');
+  });
+
+  it('la resolución no grave queda firme al vencer la revocación', async () => {
+    const { server, folio } = await toInitialHearing('non_serious');
+    for (const stage of NON_SERIOUS_STAGES)
+      await advance(server, 'oicSubstantiation', folio, stage);
+    const resolvedOn = today(server);
+    const early = await act(server, 'oicSubstantiation', folio, toFinal);
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain('recurso de revocación hasta el');
+    server.setNow(businessDaysAfter(resolvedOn, 16));
+    expect((await advance(server, 'oicSubstantiation', folio, 'final')).legalStage).toBe('final');
+  });
+
+  it('no cierra con un recurso pendiente y exige la inscripción en el S3 para cerrar con sanción', async () => {
+    const { server, folio } = await toInitialHearing('non_serious');
+    for (const stage of NON_SERIOUS_STAGES)
+      await advance(server, 'oicSubstantiation', folio, stage);
+    await ok(server, 'oicSubstantiation', folio, {
+      action: 'file_remedy',
+      kind: 'revocation',
+      filedBy: 'accused',
+      signed: true,
+    });
+    const dismissed = await act(server, 'oicSubstantiation', folio, {
+      action: 'close',
+      reason: 'other',
+      legalOutcome: 'dismissed',
+      legalBasis: BASIS,
+      agreement: SYNTHETIC_AGREEMENT,
+    });
+    expect(dismissed.status).toBe(409);
+    expect(errorMessage(dismissed.body)).toContain('Hay un recurso pendiente');
+    await ok(server, 'oicSubstantiation', folio, {
+      action: 'resolve_remedy',
+      kind: 'revocation',
+      outcome: 'confirmed',
+      legalBasis: BASIS,
+    });
+    // Con la revocación resuelta, la firmeza no espera el resto del plazo.
+    await advance(server, 'oicSubstantiation', folio, 'final');
+    const sanctioned: ProcedureActionRequest = {
+      action: 'close',
+      reason: 'attended',
+      legalOutcome: 'sanctioned',
+      legalBasis: 'LGRA, arts. 206 y 27: resolución firme con sanción inscrita (sintético).',
+      agreement: SYNTHETIC_AGREEMENT,
+    };
+    const unregistered = await act(server, 'oicSubstantiation', folio, sanctioned);
+    expect(unregistered.status).toBe(409);
+    expect(errorMessage(unregistered.body)).toContain('inscripción de la sanción');
+    // La sanción firme se inscribe sin esperar a la ejecución (LGRA, art. 27).
+    await ok(server, 'oicSubstantiation', folio, {
+      action: 'register_sanction',
+      registryReference: 'S3-SINTETICO-0002',
+      legalBasis: 'LGRA, art. 27: inscripción sintética en el sistema de sancionados.',
+    });
+    expect((await ok(server, 'oicSubstantiation', folio, sanctioned)).status).toBe(
+      'final_sanction',
+    );
+  });
+
+  it('desde el informe el cierre lleva su motivo legal', async () => {
+    const { server, folio } = await toReportFiled('serious');
+    const bare = await act(server, 'oicSubstantiation', folio, {
+      action: 'close',
+      reason: 'insufficient_information',
+      legalBasis: 'LGRA, art. 100: archivo sintético que ya no procede.',
+      agreement: SYNTHETIC_AGREEMENT,
+    });
+    expect(bare.status).toBe(409);
+    expect(errorMessage(bare.body)).toContain('debe llevar su motivo legal');
+  });
+
+  it('la abstención se cierra hasta que vence la inconformidad, contada desde la notificación', async () => {
+    const { server, folio } = await toReportFiled('non_serious');
+    await ok(server, 'oicSubstantiation', folio, {
+      action: 'advance_stage',
+      stage: 'abstention',
+      legalBasis: BASIS,
+      agreement: SYNTHETIC_AGREEMENT,
+    });
+    const closeAbstention: ProcedureActionRequest = {
+      action: 'close',
+      reason: 'attended',
+      legalOutcome: 'abstention',
+      legalBasis: 'LGRA, art. 101: abstención no impugnada (sintético).',
+      agreement: SYNTHETIC_AGREEMENT,
+    };
+    const unnotified = await act(server, 'oicSubstantiation', folio, closeAbstention);
+    expect(unnotified.status).toBe(409);
+    expect(errorMessage(unnotified.body)).toContain('Primero notifica la abstención');
+    // La autoridad notifica por el buzón: corren los 5 días hábiles.
+    const panel = (await detail(server, 'oicInvestigator', folio)).body;
+    if (panel === null) throw new Error('Falta el detalle.');
+    const reporterBox = fromBase64Url(panel.reporterKeys.boxPublicKey);
+    const notice = await sealMailboxMessage(
+      'Te notificamos la abstención (sintético).',
+      { keyId: keyIdFor(reporterBox), publicKey: reporterBox },
+      server.authoritySigning.privateKey,
+      { folio, from: 'authority', sequence: 0 },
+    );
+    const sent = await postJson(
+      server.app,
+      ROUTES.authorityMessages(folio),
+      messageBody(notice),
+      testToken('oicInvestigator'),
+    );
+    expect(sent.status).toBe(201);
+    const notifiedOn = today(server);
+    const open = await act(server, 'oicSubstantiation', folio, closeAbstention);
+    expect(open.status).toBe(409);
+    expect(errorMessage(open.body)).toContain('todavía puede inconformarse');
+    server.setNow(businessDaysAfter(notifiedOn, 6));
+    expect((await ok(server, 'oicSubstantiation', folio, closeAbstention)).status).toBe(
+      'final_no_sanction',
+    );
+  });
+
+  it('la caducidad exige 6 meses sin actuación en el procedimiento', async () => {
+    const { server, folio } = await toReportFiled('serious');
+    await advance(server, 'oicSubstantiation', folio, 'report_admitted');
+    const expired: ProcedureActionRequest = {
+      action: 'close',
+      reason: 'other',
+      legalOutcome: 'expired',
+      legalBasis: 'LGRA, art. 74: caducidad de la instancia (sintético).',
+      agreement: SYNTHETIC_AGREEMENT,
+    };
+    const early = await act(server, 'oicSubstantiation', folio, expired);
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain('más de 6 meses sin actuación');
+    server.setNow(new Date('2027-05-03T18:00:00Z'));
+    expect((await ok(server, 'oicSubstantiation', folio, expired)).status).toBe(
+      'prescribed_or_expired',
+    );
   });
 });
 

@@ -1,5 +1,5 @@
 // Cliente HTTP de bajo nivel: mismo origen, sin caché, sin referer y con respuestas validadas.
-import { API_PREFIX, ApiErrorSchema, ROUTES } from '@sigilo/contracts';
+import { API_ERROR_MESSAGES, API_PREFIX, ApiErrorSchema, ROUTES } from '@sigilo/contracts';
 import { markAuthorityActivity, notifySessionExpired } from './session-activity.ts';
 import type { ApiErrorCode } from '@sigilo/contracts';
 
@@ -35,13 +35,22 @@ const MESSAGES: Readonly<Record<ClientErrorCode, string>> = {
     'Tu sesión se cerró por inactividad; vuelve a entrar. Lo que escribiste sigue aquí.',
 };
 
+/**
+ * Mensaje del nodo que se muestra tal cual: solo el de un `conflict` por un plazo legal abierto
+ * («La sentencia todavía puede apelarse hasta el …»); los demás usan el texto fijo de la interfaz.
+ */
+function conflictDetail(code: ClientErrorCode, serverMessage: string | undefined) {
+  if (code !== 'conflict' || serverMessage === undefined) return undefined;
+  return serverMessage === API_ERROR_MESSAGES.conflict ? undefined : serverMessage;
+}
+
 /** Error de la API con un mensaje en español listo para mostrarse. */
 export class ApiRequestError extends Error {
   readonly code: ClientErrorCode;
   readonly status: number;
 
-  constructor(code: ClientErrorCode, status: number) {
-    super(MESSAGES[code]);
+  constructor(code: ClientErrorCode, status: number, serverMessage?: string) {
+    super(conflictDetail(code, serverMessage) ?? MESSAGES[code]);
     this.name = 'ApiRequestError';
     this.code = code;
     this.status = status;
@@ -87,6 +96,7 @@ export function apiErrorFrom(status: number, body: unknown): ApiRequestError {
   return new ApiRequestError(
     parsed.success ? parsed.data.error.code : statusToCode(status),
     status,
+    parsed.success ? parsed.data.error.message : undefined,
   );
 }
 
@@ -190,9 +200,13 @@ export function createApiClient(
     }
     if (!response.ok) {
       let code = statusToCode(response.status);
+      let serverMessage: string | undefined;
       try {
         const parsed = ApiErrorSchema.safeParse(await response.json());
-        if (parsed.success) code = parsed.data.error.code;
+        if (parsed.success) {
+          code = parsed.data.error.code;
+          serverMessage = parsed.data.error.message;
+        }
       } catch {
         // Cuerpo no JSON: basta el código de estado.
       }
@@ -203,7 +217,7 @@ export function createApiClient(
         notifySessionExpired();
         throw new ApiRequestError('session_expired', response.status);
       }
-      throw new ApiRequestError(code, response.status);
+      throw new ApiRequestError(code, response.status, serverMessage);
     }
     if (options.bearer !== undefined) markAuthorityActivity();
     return response;

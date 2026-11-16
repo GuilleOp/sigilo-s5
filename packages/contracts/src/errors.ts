@@ -29,9 +29,10 @@ export const ApiErrorSchema = z
     error: z
       .object({
         code: ApiErrorCodeSchema.meta({ description: 'Código estable del error.' }),
-        message: z
-          .string()
-          .meta({ description: 'Mensaje fijo en español; nunca incluye datos de la solicitud.' }),
+        message: z.string().meta({
+          description:
+            'Mensaje fijo en español; nunca incluye datos de la solicitud. Un `conflict` por un plazo legal abierto dice hasta qué día corre (por ejemplo, «La sentencia todavía puede apelarse hasta el …»).',
+        }),
       })
       .meta({ description: 'Código y mensaje del error.' }),
   })

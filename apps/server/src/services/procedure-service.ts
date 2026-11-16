@@ -57,6 +57,7 @@ import {
   pendingRemedies,
 } from './lifecycle-state.ts';
 import type { ActingFunction, LifecycleState } from './lifecycle-state.ts';
+import { closureWait, openStageWait } from './legal-waits.ts';
 import {
   ABSTENTION_NOTICE,
   ARCHIVE_NOTICE,
@@ -126,6 +127,12 @@ export function hasCourtAccounts(ctx: AppContext): boolean {
 export function reassignmentsOf(ctx: AppContext, folio: string): number {
   return ctx.procedure.listSteps(folio).filter((step) => step.action === 'reassigned').length;
 }
+
+/** Etapas en que se puede cerrar sin motivo legal: las de la investigación (LGRA, art. 100). */
+const ARCHIVABLE_STAGES: ReadonlySet<AdministrativeStage> = new Set<AdministrativeStage>([
+  'investigation',
+  'qualification',
+]);
 
 const CLASSIFIED_STAGES: ReadonlySet<LegalStage> = new Set<LegalStage>([
   'qualification',
@@ -522,7 +529,8 @@ function plan(
     case 'register_sanction': {
       // Solo se registra el acto de inscripción en el S3 (LGRA art. 27); no hay integración.
       requireAccepted();
-      if (complaint.legalStage !== 'executed' || state.sanctionRegistered !== null) {
+      const stage = complaint.legalStage;
+      if ((stage !== 'final' && stage !== 'executed') || state.sanctionRegistered !== null) {
         throw new ApiFailure('conflict');
       }
       const actor = actAs('substantiation');
@@ -610,6 +618,12 @@ function plan(
     // Un recurso pendiente detiene el inicio del procedimiento (inconformidad, LGRA art. 102) o la
     // firmeza (revocación, apelación y revisión).
     if (isBlockedByRemedy(state, stage)) throw new ApiFailure('conflict');
+    // Firmeza e informe no presentado: solo vencidos sus plazos (LGRA, arts. 195 y 206).
+    if (from !== null && transition.afterDeadlines !== undefined) {
+      const today = toMexicoCentralDay(ctx.deps.now());
+      const wait = openStageWait(ctx, state, from, transition.afterDeadlines, today);
+      if (wait !== null) throw new ApiFailure('conflict', wait.message);
+    }
     const actor = actAs(transition.fn);
     const isNonSerious = request.qualification?.severity === 'non_serious';
     const defaultNote =
@@ -653,7 +667,22 @@ function plan(
         : functionInChargeAt(stage);
     const actor = actAs(inCharge);
     requireTransition('closed');
+    // Con un recurso pendiente no se cierra: primero se registra su resolución.
+    if (isPendingRemedy) {
+      throw new ApiFailure(
+        'conflict',
+        'Hay un recurso pendiente: primero registra su resolución y después cierra la denuncia.',
+      );
+    }
     const legalOutcome = close.legalOutcome ?? null;
+    // Desde que se presenta el informe (IPRA), el cierre es del procedimiento y lleva su motivo
+    // legal; el archivo sin motivo es de la investigación (LGRA, art. 100).
+    if (legalOutcome === null && stage !== null && !ARCHIVABLE_STAGES.has(stage)) {
+      throw new ApiFailure(
+        'conflict',
+        'Desde que se presentó el informe de presunta responsabilidad, el cierre debe llevar su motivo legal.',
+      );
+    }
     if (legalOutcome !== null) {
       const option = findLegalClosureReason(legalOutcome);
       if (option === undefined || !option.s5Reasons.includes(close.reason)) {
@@ -672,6 +701,21 @@ function plan(
       ) {
         throw new ApiFailure('conflict');
       }
+      // La sanción firme se inscribe en el S3 antes de cerrar (LGRA, art. 27).
+      if (legalOutcome === 'sanctioned' && state.sanctionRegistered === null) {
+        throw new ApiFailure(
+          'conflict',
+          'Primero registra la inscripción de la sanción en el registro de sancionados (S3, LGRA art. 27).',
+        );
+      }
+      const wait = closureWait(
+        ctx,
+        complaint,
+        state,
+        legalOutcome,
+        toMexicoCentralDay(ctx.deps.now()),
+      );
+      if (wait !== null) throw new ApiFailure('conflict', wait);
     } else if (close.destination !== undefined) {
       throw new ApiFailure('bad_request');
     }

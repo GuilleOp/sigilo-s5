@@ -960,6 +960,7 @@
       "fn": "substantiation",
       "action": "report_not_filed",
       "requires": ["legalBasis"],
+      "afterDeadlines": ["report_correction"],
       "label": "Tener el informe por no presentado (no se corrigió)",
       "legalBasis": [{ "law": "LGRA", "article": "195" }]
     },
@@ -1084,6 +1085,7 @@
       "to": "final",
       "fn": "substantiation",
       "action": "stage_advanced",
+      "afterDeadlines": ["revocation_filing"],
       "label": "Declarar la resolución firme",
       "legalBasis": [{ "law": "LGRA", "article": "206" }]
     },
@@ -1092,6 +1094,7 @@
       "to": "final",
       "fn": "court",
       "action": "stage_advanced",
+      "afterDeadlines": ["court_appeal_filing", "review_filing"],
       "label": "Declarar la sentencia firme",
       "legalBasis": [{ "law": "LGRA", "article": "206" }]
     },
@@ -1372,10 +1375,10 @@
     {
       "key": "sanctioned",
       "name": "Resolución firme con sanción",
-      "explanation": "La resolución que sanciona quedó firme y la sanción se ejecutó.",
+      "explanation": "La resolución que sanciona quedó firme (o la sanción ya se ejecutó) y la sanción está inscrita en el registro de sancionados (S3, LGRA art. 27).",
       "s5Reasons": ["attended"],
       "status": "final_sanction",
-      "stages": ["executed"],
+      "stages": ["final", "executed"],
       "legalBasis": [
         { "law": "LGRA", "article": "206" },
         { "law": "LGRA", "article": "222" }

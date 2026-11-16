@@ -6,7 +6,8 @@ import type { ApiError, ApiErrorCode } from '@sigilo/contracts';
 
 // El estatus y el mensaje de cada código vienen del contrato, que también los publica en el
 // estándar. Seguridad: los mensajes son fijos; nunca incluyen detalles internos ni datos de la
-// solicitud.
+// solicitud. La única excepción es un `conflict` por un plazo legal abierto, que dice hasta qué día
+// corre (un dato del propio trámite que la autoridad ya ve en su panel).
 const STATUS_BY_CODE: Readonly<Record<ApiErrorCode, ContentfulStatusCode>> = API_ERROR_HTTP_STATUS;
 const MESSAGE_BY_CODE = API_ERROR_MESSAGES;
 
@@ -14,20 +15,24 @@ const MESSAGE_BY_CODE = API_ERROR_MESSAGES;
 export class ApiFailure extends Error {
   readonly code: ApiErrorCode;
 
-  constructor(code: ApiErrorCode) {
-    super(MESSAGE_BY_CODE[code]);
+  /**
+   * `message` solo se usa en un `conflict` por un plazo legal abierto («La sentencia todavía puede
+   * apelarse hasta el …»); nunca lleva datos de la solicitud.
+   */
+  constructor(code: ApiErrorCode, message?: string) {
+    super(code === 'conflict' && message !== undefined ? message : MESSAGE_BY_CODE[code]);
     this.name = 'ApiFailure';
     this.code = code;
   }
 }
 
 /** Cuerpo de error con el formato del contrato. */
-export function errorBody(code: ApiErrorCode): ApiError {
-  return { error: { code, message: MESSAGE_BY_CODE[code] } };
+export function errorBody(code: ApiErrorCode, message: string = MESSAGE_BY_CODE[code]): ApiError {
+  return { error: { code, message } };
 }
 
 /** Responde con el error uniforme del código dado. */
-export function errorResponse(c: Context, code: ApiErrorCode): Response {
+export function errorResponse(c: Context, code: ApiErrorCode, message?: string): Response {
   if (code === 'unauthorized') c.header('WWW-Authenticate', 'Bearer');
-  return c.json(errorBody(code), STATUS_BY_CODE[code]);
+  return c.json(errorBody(code, message), STATUS_BY_CODE[code]);
 }
