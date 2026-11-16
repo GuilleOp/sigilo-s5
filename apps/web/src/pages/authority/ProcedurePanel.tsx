@@ -252,7 +252,8 @@ interface Draft {
   registryReference: string;
   /** Día de la notificación; vacío: hoy según el reloj del nodo. */
   notifiedOn: string;
-  recipients: NotificationRecipient[];
+  /** A quién se notificó; `null` mientras no se toca: los de inicio del acto. */
+  recipients: NotificationRecipient[] | null;
 }
 
 function emptyDraft(detail: ComplaintDetail, session: AuthoritySession): Draft {
@@ -281,7 +282,7 @@ function emptyDraft(detail: ComplaintDetail, session: AuthoritySession): Draft {
     prosecutor: '',
     registryReference: '',
     notifiedOn: '',
-    recipients: notificationOption(session.account, detail)?.defaultRecipients ?? [],
+    recipients: null,
   };
 }
 
@@ -305,6 +306,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
   const isMounted = useRef(true);
   const current = detail.summary.assignedAuthorityId;
   const network = useNetworkState();
+  const recipients = draft.recipients ?? notification?.defaultRecipients ?? [];
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((previous) => ({ ...previous, [key]: value }));
 
@@ -468,7 +470,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     if (action === 'register_sanction' && draft.registryReference.trim().length < 3) {
       found['sanction-registry'] = 'Escribe la referencia de la inscripción.';
     }
-    if (action === 'record_notification' && draft.recipients.length === 0) {
+    if (action === 'record_notification' && recipients.length === 0) {
       found['notification-recipient-first'] = 'Elige a quién se notificó.';
     }
     if (action === 'record_notification' && draft.notifiedOn !== '') {
@@ -607,7 +609,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
       case 'record_notification':
         return {
           action,
-          recipients: draft.recipients,
+          recipients,
           ...(draft.notifiedOn === '' ? {} : { notifiedOn: draft.notifiedOn }),
           ...withNote,
           ...courtRecord(),
@@ -1234,7 +1236,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                           ? 'notification-recipient-first'
                           : `notification-recipient-${item.key}`
                       }
-                      checked={draft.recipients.includes(item.key)}
+                      checked={recipients.includes(item.key)}
                       aria-invalid={
                         index === 0 && errors['notification-recipient-first'] !== undefined
                           ? true
@@ -1244,8 +1246,8 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                         set(
                           'recipients',
                           event.target.checked
-                            ? [...draft.recipients, item.key]
-                            : draft.recipients.filter((key) => key !== item.key),
+                            ? [...recipients, item.key]
+                            : recipients.filter((key) => key !== item.key),
                         )
                       }
                       data-testid={`notification-recipient-${item.key}`}
