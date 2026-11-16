@@ -1,6 +1,7 @@
 // Catálogos reales en el asistente: municipios del INEGI de cualquier entidad y entes de la PDN
-// descargados del mismo origen solo para la entidad elegida (y los federales). Los casos de prueba
-// siguen usando oficinas ficticias, marcadas «(ficticia)».
+// descargados del mismo origen al empezar, los de todas las entidades (ADR 0012), para que las
+// peticiones no revelen la entidad elegida. Los casos de prueba siguen usando oficinas ficticias,
+// marcadas «(ficticia)».
 import { expect, test } from './support/fixtures.ts';
 import { continueTo, startReport } from './support/report-wizard.ts';
 
@@ -51,14 +52,9 @@ test('el asistente ofrece municipios e instituciones reales de la entidad elegid
   await page.getByTestId('state-select').selectOption('31');
   await expect(entity).toHaveValue('');
 
-  // Solo se descargaron los fragmentos de las entidades elegidas y el federal; nada de terceros.
-  await expect
-    .poll(() => [...new Set(fragments)].sort())
-    .toEqual([
-      '/datos/entes/00.json',
-      '/datos/entes/09.json',
-      '/datos/entes/22.json',
-      '/datos/entes/31.json',
-    ]);
+  // Se descargaron los 33 fragmentos (federal y 32 entidades), cada uno una sola vez, sin importar
+  // cuáles se eligieron; nada de terceros.
+  await expect.poll(() => new Set(fragments).size).toBe(33);
+  expect(fragments).toHaveLength(33);
   expect(externalRequests).toEqual([]);
 });
