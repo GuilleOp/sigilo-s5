@@ -10,7 +10,7 @@ todavía no tiene esa especificación. Esta carpeta la propone con el mismo form
 cualquier autoridad pueda implementar un nodo compatible, la SESNA lo pueda revisar con sus propias
 herramientas y cualquier persona pueda comprobar que lo es.
 
-Versión actual: **0.3.0** (ver [`CHANGELOG.md`](CHANGELOG.md)).
+Versión actual: **0.4.0** (ver [`CHANGELOG.md`](CHANGELOG.md)).
 
 ## Contenido
 
@@ -181,7 +181,7 @@ Reglas generales:
 ## Versionado
 
 El estándar se versiona con [SemVer](https://semver.org/lang/es/), aparte de la versión del
-software (`STANDARD_VERSION`, hoy 0.3.0, en `info.version` de cada OpenAPI, y `STANDARD_DATE`, la
+software (`STANDARD_VERSION`, hoy 0.4.0, en `info.version` de cada OpenAPI, y `STANDARD_DATE`, la
 fecha del encabezado de los diccionarios). Los cambios de cada versión están en
 [`CHANGELOG.md`](CHANGELOG.md):
 

@@ -40,6 +40,7 @@ export const E2E_ACCOUNTS = {
   iffeInvestigator2: 'oic-equipamiento.persona2',
   iffeSupervision: 'oic-equipamiento.titular',
   iffeSubstantiation: 'oic-equipamiento.substanciacion',
+  court: 'tribunal.federal',
   supervisor: 'supervision-oic',
   operation: 'operacion.federal',
 } as const;

@@ -1,0 +1,65 @@
+[
+  {
+    "clave": "archived",
+    "valor": "Archivo por falta de elementos",
+    "motivosS5": "insufficient_information",
+    "estatus": "archived",
+    "fundamento": "LGRA, art. 100"
+  },
+  {
+    "clave": "abstention",
+    "valor": "Abstención",
+    "motivosS5": "attended",
+    "estatus": "final_no_sanction",
+    "fundamento": "LGRA, art. 101"
+  },
+  {
+    "clave": "prescribed",
+    "valor": "Prescripción",
+    "motivosS5": "other",
+    "estatus": "prescribed_or_expired",
+    "fundamento": "LGRA, art. 74"
+  },
+  {
+    "clave": "expired",
+    "valor": "Caducidad de la instancia",
+    "motivosS5": "other",
+    "estatus": "prescribed_or_expired",
+    "fundamento": "LGRA, art. 74"
+  },
+  {
+    "clave": "dismissed",
+    "valor": "Sobreseimiento",
+    "motivosS5": "other|inadmissible",
+    "estatus": "final_no_sanction",
+    "fundamento": "LGRA, art. 196; LGRA, art. 197"
+  },
+  {
+    "clave": "incompetence",
+    "valor": "Incompetencia y remisión",
+    "motivosS5": "channeled",
+    "estatus": "resolved",
+    "fundamento": "LGRA, art. 14; LGRA, art. 196, fracc. II"
+  },
+  {
+    "clave": "sanctioned",
+    "valor": "Resolución firme con sanción",
+    "motivosS5": "attended",
+    "estatus": "final_sanction",
+    "fundamento": "LGRA, art. 206; LGRA, art. 222"
+  },
+  {
+    "clave": "responsible_no_sanction",
+    "valor": "Resolución firme: responsable sin sanción",
+    "motivosS5": "attended",
+    "estatus": "final_no_sanction",
+    "fundamento": "LGRA, art. 77; LGRA, art. 206"
+  },
+  {
+    "clave": "not_responsible",
+    "valor": "Resolución firme: no responsable",
+    "motivosS5": "attended",
+    "estatus": "final_no_sanction",
+    "fundamento": "LGRA, art. 206"
+  }
+]

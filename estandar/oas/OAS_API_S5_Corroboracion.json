@@ -3,7 +3,7 @@
   "info": {
     "title": "S5 - Corroboración ciega",
     "description": "Corroboración ciega con VOPRF (RFC 9497): el evaluador OPRF y el índice de coincidencias, dos servicios con operación separada. Propuesta de SIGILO; no es una especificación oficial de la SESNA.",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "license": { "name": "CC BY-NC 4.0", "url": "https://creativecommons.org/licenses/by-nc/4.0/" }
   },
   "servers": [

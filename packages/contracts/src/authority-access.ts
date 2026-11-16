@@ -2,8 +2,7 @@
 // sesión con vencimiento y el archivo local de cuentas (que nunca se versiona).
 import { z } from 'zod';
 import { AuthorityIdSchema } from './network.ts';
-import { AdministrativeStageSchema } from './procedure.ts';
-import type { LegalStage } from './procedure.ts';
+import type { AdministrativeStage, LegalStage } from './procedure.ts';
 import { Base64UrlSchema } from './primitives.ts';
 
 /** Identificador estable de una autoridad (definido con el directorio de la red). */
@@ -39,15 +38,19 @@ export type AccountId = z.infer<typeof AccountIdSchema>;
  * - `operation` (operación del nodo) solo revisa y resuelve las solicitudes de alta de
  *   autoridades y la competencia por dependencia: no ve denuncias, no turna ni abre identidades, y
  *   no se combina con otra función.
- * - `court` (Tribunal de Justicia Administrativa, LGRA arts. 12 y 209): resuelve faltas graves y
- *   de particulares y la alzada. Nunca se combina con otra función.
+ * - `court` (Tribunal de Justicia Administrativa, LGRA arts. 12 y 209) resuelve faltas graves y de
+ *   particulares y la alzada: solo actúa en las etapas del Tribunal (`COURT_STAGES`, desde que
+ *   recibe el expediente hasta su sentencia), en la reclasificación, en las medidas cautelares de
+ *   esas etapas y en los recursos que resuelve (inconformidad, apelación y revisión). No se combina
+ *   con otra función. Si el estado no da cuentas al Tribunal, la substanciación registra sus
+ *   actuaciones con número de expediente y fundamento («registro de actuación del Tribunal»).
  * Quien solo turna nunca puede abrir identidades.
  */
 export const AuthorityFunctionSchema = z
   .enum(['intake', 'investigation', 'supervision', 'substantiation', 'operation', 'court'])
   .meta({
     description:
-      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (tribunal: faltas graves, de particulares y alzada).',
+      'Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (Tribunal: solo sus etapas y los recursos que resuelve: faltas graves, de particulares y alzada).',
   });
 export type AuthorityFunction = z.infer<typeof AuthorityFunctionSchema>;
 
@@ -103,30 +106,94 @@ export function hasAnyFunction(
   return account.functions.some((fn) => allowed.includes(fn));
 }
 
+/** Función del procedimiento: investiga, substancia (y resuelve no graves) o es el Tribunal. */
+export type ProcedureFunction = 'investigation' | 'substantiation' | 'court';
+
 /**
- * Función que avanza una etapa legal. Corte (LGRA art. 3 fr. III y art. 100): la autoridad
- * investigadora califica la falta y presenta el IPRA (`report_filed`); la substanciadora dirige el
- * procedimiento desde la admisión del informe, así que toda etapa administrativa posterior
- * (`case_file_sent` en adelante, hasta la resolución) es suya. La vía penal es de la fiscalía, que
- * investiga.
+ * Etapas del Tribunal (LGRA, art. 209 fr. II a V): desde que recibe el expediente hasta su
+ * sentencia. Solo la función `court` las avanza (o la substanciación, como registro, si el estado
+ * no dio cuentas al Tribunal).
  */
-export function functionForStage(stage: LegalStage): 'investigation' | 'substantiation' {
-  return SUBSTANTIATION_STAGES.has(stage) ? 'substantiation' : 'investigation';
+export const COURT_STAGES: ReadonlySet<LegalStage> = new Set<AdministrativeStage>([
+  'court_received',
+  'court_evidence_hearing',
+  'court_closing_arguments',
+  'court_instruction_closed',
+  'court_resolution',
+]);
+
+/**
+ * Etapas en las que una cuenta del Tribunal puede ver y actuar sobre la denuncia: las suyas y el
+ * expediente enviado que todavía no recibe (`case_file_sent`).
+ */
+export const COURT_ACCESS_STAGES: ReadonlySet<LegalStage> = new Set<LegalStage>([
+  'case_file_sent',
+  ...COURT_STAGES,
+]);
+
+/** Etapas que conduce la autoridad investigadora: hasta presentar el IPRA. */
+const INVESTIGATION_STAGES: ReadonlySet<LegalStage> = new Set<AdministrativeStage>([
+  'investigation',
+  'qualification',
+  'report_filed',
+]);
+
+/**
+ * Función que entra a una etapa legal. Corte (LGRA art. 3 fr. II y III, art. 100 y art. 209): la
+ * investigadora califica y presenta el IPRA (`report_filed`); la substanciadora previene, se
+ * abstiene o admite el informe, emplaza, celebra la audiencia inicial y, en no graves, sigue hasta
+ * la resolución (art. 208); en graves y de particulares envía el expediente (`case_file_sent`) y
+ * desde ahí es del Tribunal (`COURT_STAGES`). La firmeza y la ejecución las registra la
+ * substanciadora. La vía penal la registra quien investiga (la fiscalía o el OIC coadyuvante, art.
+ * 42). Las excepciones (por ejemplo, el IPRA que se tiene por no presentado o la devolución del
+ * Tribunal) están en `ADMINISTRATIVE_TRANSITIONS`.
+ */
+export function functionForStage(stage: LegalStage): ProcedureFunction {
+  if (COURT_STAGES.has(stage)) return 'court';
+  if (INVESTIGATION_STAGES.has(stage) || !ADMINISTRATIVE_STAGE_SET.has(stage)) {
+    return 'investigation';
+  }
+  return 'substantiation';
 }
 
 /**
  * Función que lleva la denuncia mientras está en `stage` (la que la cierra): investigación hasta
- * la calificación; substanciación desde que el IPRA se presentó (`report_filed`), porque desde ahí
- * el expediente es de la autoridad substanciadora.
+ * la calificación; substanciación desde que el IPRA se presentó; el Tribunal desde que se le envía
+ * el expediente hasta su sentencia.
  */
-export function functionInChargeAt(stage: LegalStage): 'investigation' | 'substantiation' {
-  return stage === 'report_filed' ? 'substantiation' : functionForStage(stage);
+export function functionInChargeAt(stage: LegalStage): ProcedureFunction {
+  if (COURT_ACCESS_STAGES.has(stage)) return 'court';
+  if (stage === 'report_filed') return 'substantiation';
+  return functionForStage(stage);
 }
 
-/** Etapas administrativas posteriores a la presentación del IPRA (`report_filed`). */
+const ADMINISTRATIVE_STAGE_SET: ReadonlySet<LegalStage> = new Set<AdministrativeStage>([
+  'investigation',
+  'qualification',
+  'report_filed',
+  'report_prevented',
+  'abstention',
+  'report_admitted',
+  'summoned',
+  'initial_hearing',
+  'evidence_hearing',
+  'closing_arguments',
+  'instruction_closed',
+  'resolution',
+  'case_file_sent',
+  'court_received',
+  'court_evidence_hearing',
+  'court_closing_arguments',
+  'court_instruction_closed',
+  'court_resolution',
+  'final',
+  'executed',
+]);
+
+/** Etapas administrativas que lleva la substanciadora (desde la presentación del IPRA). */
 export const SUBSTANTIATION_STAGES: ReadonlySet<LegalStage> = new Set(
-  AdministrativeStageSchema.options.slice(
-    AdministrativeStageSchema.options.indexOf('report_filed') + 1,
+  [...ADMINISTRATIVE_STAGE_SET].filter(
+    (stage) => functionInChargeAt(stage) === 'substantiation' && stage !== 'report_filed',
   ),
 );
 

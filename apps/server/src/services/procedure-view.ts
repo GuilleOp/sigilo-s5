@@ -4,17 +4,23 @@
 import {
   CLOSURE_REASONS,
   describeLegalReference,
+  FEDERAL_FUNDS_RULE,
   findClosureReason,
   findDeadlineRule,
   findEscalationRule,
+  findLegalClosureReason,
   findLegalStage,
   findManagementState,
+  findRemedyKind,
+  findRemedyOutcome,
   offenseSeverity,
 } from '@sigilo/contracts';
 import type {
   DeadlineView,
   ProcedureStep,
+  ProcedureStepRecord,
   ProcedureView,
+  RemedyView,
   RuleTriggerView,
 } from '@sigilo/contracts';
 import { activeDeadlines, evaluateDeadline, toMexicoCentralDay } from '@sigilo/core';
@@ -31,7 +37,13 @@ import {
   qualificationView,
 } from './qualification-service.ts';
 import { conflictFacts, sanctionCheckView } from './pdn-context.ts';
-import { assignedAuthorityOf } from './procedure-service.ts';
+import { assignedAuthorityOf, hasCourtAccounts, lifecycleOf } from './procedure-service.ts';
+import { abstentionView, inconformableAct, inconformityView } from './qualification-service.ts';
+import { criminalStageOfStep, currentInconformity, pendingRemedies } from './lifecycle-state.ts';
+import type { LifecycleState } from './lifecycle-state.ts';
+
+/** Quién lee la vista: la persona denunciante (seguimiento) o la autoridad (panel). */
+export type ProcedureAudience = 'reporter' | 'authority';
 import { turnPendingSince } from './turn-semaphore.ts';
 
 /** Día legal (hora del centro) de un mensaje fechado a la hora en UTC (`AAAA-MM-DDTHH:00Z`). */
@@ -40,14 +52,15 @@ function legalDayOfHour(hour: string): string {
 }
 
 function isFirstStage(step: StoredStep): boolean {
-  return (
-    step.action === 'stage_advanced' &&
-    (step.legalStage === 'investigation' || step.legalStage === 'criminal_investigation')
-  );
+  if (step.action !== 'stage_advanced') return false;
+  const criminal = criminalStageOfStep(step);
+  if (criminal !== null) return criminal === 'criminal_investigation';
+  return step.legalStage === 'investigation';
 }
 
 function isQualificationOrLater(step: StoredStep): boolean {
   if (step.action !== 'stage_advanced' || step.legalStage === null) return false;
+  if (criminalStageOfStep(step) !== null) return false;
   return (
     findLegalStage(step.legalStage)?.track === 'administrative' &&
     step.legalStage !== 'investigation'
@@ -71,6 +84,10 @@ export function procedureSnapshot(ctx: AppContext, complaint: ComplaintRecord): 
   const actionDays = steps.filter((step) => step.actorId !== null).map((step) => step.legalOn);
   const lastActivityOn = [complaint.receivedLegalOn, ...actionDays, ...authorityDays].sort().at(-1);
   const qualification = ctx.qualifications.lastQualification(complaint.folio);
+  const state = lifecycleOf(ctx, complaint);
+  const inconformity = currentInconformity(state);
+  const act = inconformableAct(ctx, complaint, state);
+  const pending = pendingRemedies(state);
   return {
     receivedOn: complaint.receivedLegalOn,
     mode: complaint.mode,
@@ -95,18 +112,54 @@ export function procedureSnapshot(ctx: AppContext, complaint: ComplaintRecord): 
     downgradeSignalCount: downgradeSignalCount(ctx, complaint.folio),
     transferPendingOn: unconfirmedTransferOn(ctx, complaint.folio),
     turnPendingOn: turnPendingSince(complaint, steps),
+    stageEnteredOn: state.stageEnteredOn,
+    criminalStage: complaint.criminalStage,
+    criminalStageEnteredOn: state.criminalStageEnteredOn,
+    inconformityNotifiedOn: act?.notifiedOn ?? null,
+    inconformitySignedOn: inconformity?.filedOn ?? null,
+    inconformityResolved: inconformity?.status === 'resolved',
+    pendingRemedies: pending.map((remedy) => ({ kind: remedy.kind, filedOn: remedy.filedOn })),
+    filedRemedies: state.remedies
+      .filter((remedy) => remedy.stage === complaint.legalStage)
+      .map((remedy) => remedy.kind),
+    precautionaryRequestedOn:
+      state.precautionary !== null && state.precautionary.decidedOn === null
+        ? state.precautionary.requestedOn
+        : null,
+    reclassificationOrderedOn: state.reclassificationOrderedOn,
+    isSeriousTrack: isSeriousTrack(ctx, complaint, state),
   };
+}
+
+/** La denuncia va por la rama del Tribunal: falta grave o de particulares que no se devolvió. */
+function isSeriousTrack(
+  ctx: AppContext,
+  complaint: ComplaintRecord,
+  state: LifecycleState,
+): boolean {
+  if (state.returnedByCourt) return false;
+  const qualification = ctx.qualifications.lastQualification(complaint.folio);
+  if (qualification !== null) return qualification.severity === 'serious';
+  return offenseSeverity(complaint.facts.offenseCode) !== 'non_serious';
 }
 
 function authorityName(ctx: AppContext, authorityId: string): string {
   return ctx.authorities.authority(authorityId)?.name ?? 'otra autoridad';
 }
 
-function stepView(ctx: AppContext, step: StoredStep): ProcedureStep {
+function stepView(ctx: AppContext, step: StoredStep, audience: ProcedureAudience): ProcedureStep {
   const state = findManagementState(step.managementState);
-  const stage = step.legalStage === null ? undefined : findLegalStage(step.legalStage);
+  const criminal = criminalStageOfStep(step);
+  const stageKey = criminal ?? step.legalStage;
+  const stage = stageKey === null ? undefined : findLegalStage(stageKey);
   const reason = step.closureReason === null ? undefined : findClosureReason(step.closureReason);
   const name = authorityName(ctx, step.authorityId);
+  const details = step.details ?? {};
+  const remedy = details.remedyKind === undefined ? undefined : findRemedyKind(details.remedyKind);
+  const remedyName = remedy?.name.toLowerCase() ?? 'recurso';
+  const outcome =
+    details.remedyOutcome === undefined ? undefined : findRemedyOutcome(details.remedyOutcome);
+  const isOwnRemedy = details.remedyFiledBy === 'reporter';
   const titles: Record<StoredStep['action'], string> = {
     received: 'Recibida',
     routed: `Turnada a ${name}`,
@@ -118,8 +171,35 @@ function stepView(ctx: AppContext, step: StoredStep): ProcedureStep {
     conflict_excused: 'La autoridad se excusó por un posible conflicto de interés',
     conflict_justified: 'La autoridad explicó por qué no tiene conflicto de interés',
     transferred: `Turnada a ${name}, en otro nodo de la red`,
-    appeal_filed: 'Presentaste tu inconformidad contra la calificación',
+    appeal_filed: 'Aviso de inconformidad (falta el escrito con firma)',
+    abstention_declared: 'La autoridad se abstuvo de iniciar el procedimiento',
+    report_not_filed: 'El informe se tuvo por no presentado y volvió a la investigación',
+    returned_by_court: 'El Tribunal devolvió el expediente: no es falta grave',
+    reclassification_ordered: 'El Tribunal ordenó reclasificar la falta',
+    precautionary_requested: 'Se pidió una medida cautelar',
+    precautionary_decided:
+      details.precautionaryOutcome === 'denied'
+        ? 'Se resolvió la medida cautelar'
+        : 'Se dictaron medidas para proteger la investigación',
+    remedy_filed:
+      remedy?.key === 'inconformity'
+        ? 'Inconformidad presentada con firma'
+        : audience === 'reporter' && !isOwnRemedy
+          ? `Se presentó un recurso de ${remedyName}`
+          : `Recurso de ${remedyName} presentado`,
+    remedy_resolved: `Recurso de ${remedyName}: ${outcome?.name.toLowerCase() ?? 'resuelto'}`,
+    criminal_referral_filed: 'Se dio vista al Ministerio Público (denuncia penal)',
+    federal_funds_flagged: 'La denuncia involucra recursos federales',
+    federal_notice_sent: 'Se dio aviso a las autoridades federales',
+    sanction_registered: 'Sanción inscrita en el registro de sancionados (S3)',
+    withdrawal_received: 'Se recibió un escrito de desistimiento',
   };
+  if (step.action === 'stage_advanced' && criminal !== null) {
+    titles.stage_advanced = `Vía penal: ${stage?.name ?? 'sin nombre'}`;
+  }
+  if (details.recordedForCourt === true) {
+    titles[step.action] = `Registro de actuación del Tribunal: ${titles[step.action]}`;
+  }
   const explanations: Partial<Record<StoredStep['action'], string>> = {
     stage_advanced: stage?.explanation ?? '',
     closed: reason?.explanation ?? '',
@@ -130,8 +210,33 @@ function stepView(ctx: AppContext, step: StoredStep): ProcedureStep {
     transferred:
       'Tu denuncia pasó a una autoridad de otro nodo de la red. Viajó cifrada: nadie en medio pudo leerla.',
     appeal_filed:
-      'Te inconformaste ante la autoridad investigadora, que debe enviar el recurso con el expediente y su informe a la Sala Especializada en Responsabilidades Administrativas (LGRA, art. 104). La Sala resuelve en un plazo no mayor a 30 días hábiles (art. 107). Mientras tanto, no se inicia el procedimiento de responsabilidad (art. 102). Abriste tu identidad solo para el recurso: queda registrado quién la abrió, cuándo y para qué.',
+      'Diste el aviso de inconformidad desde este seguimiento. Todavía no es el recurso: para que cuente, entrega el escrito con tu nombre, domicilio y firma autógrafa ante la autoridad investigadora dentro del plazo (LGRA, arts. 103, 104 y 109); sin firma no se tiene por presentado. Cuando la autoridad registre que lo recibió firmado, lo envía a la Sala, que resuelve en 30 días hábiles (art. 107). Abriste tu identidad solo para el recurso: queda registrado quién la abrió, cuándo y para qué.',
+    abstention_declared: findLegalStage('abstention')?.explanation ?? '',
+    report_not_filed: findLegalStage('report_prevented')?.explanation ?? '',
+    returned_by_court:
+      'El Tribunal revisó el expediente y consideró que la falta no es grave: lo devolvió a la autoridad substanciadora, que sigue el procedimiento de falta no grave (LGRA, art. 209 fr. II).',
+    reclassification_ordered:
+      'El Tribunal consideró que es otra falta grave y ordenó a la autoridad investigadora reclasificarla en 3 días hábiles (LGRA, art. 209 fr. II).',
+    precautionary_requested:
+      'La autoridad investigadora pidió una medida para proteger la investigación (LGRA, arts. 123 y 124). Se da vista a quienes afecta y se resuelve en 5 días hábiles.',
+    precautionary_decided:
+      'La autoridad resolvió una medida cautelar para proteger la investigación (LGRA, arts. 123 a 129). Los detalles son reservados.',
+    remedy_filed: remedy === undefined ? '' : `${remedy.effect} ${remedy.against}`,
+    remedy_resolved: outcome?.explanation ?? '',
+    criminal_referral_filed: findLegalStage('criminal_complaint_filed')?.explanation ?? '',
+    federal_funds_flagged: `${FEDERAL_FUNDS_RULE.notice} Las responsabilidades por esos recursos las determinan las autoridades federales (Ley de Coordinación Fiscal, art. 49).`,
+    federal_notice_sent:
+      'La autoridad avisó a las autoridades federales competentes porque la denuncia involucra recursos federales (Ley de Coordinación Fiscal, art. 49).',
+    sanction_registered:
+      'La sanción firme se inscribió en el sistema de servidores públicos y particulares sancionados de la Plataforma Digital Nacional (LGRA, art. 27).',
+    withdrawal_received:
+      'Quedó registrado el escrito de desistimiento. La investigación también es de oficio: retirar la denuncia no obliga a cerrarla si hay elementos (LGRA, arts. 91 y 94).',
   };
+  if (details.recordedForCourt === true) {
+    const base = explanations[step.action] ?? stage?.explanation ?? '';
+    explanations[step.action] =
+      `${base} Este acto lo registró la autoridad substanciadora, con el número de expediente del Tribunal, porque el Tribunal no tiene cuenta en el sistema.`.trim();
+  }
   const explanation = explanations[step.action] ?? state?.explanation ?? '';
   return {
     on: step.on,
@@ -143,7 +248,88 @@ function stepView(ctx: AppContext, step: StoredStep): ProcedureStep {
     title: titles[step.action],
     explanation,
     ...(step.note === null ? {} : { note: step.note }),
+    ...recordOf(details, audience),
   };
+}
+
+/** Datos del acto que puede ver cada audiencia. */
+function recordOf(
+  details: NonNullable<StoredStep['details']>,
+  audience: ProcedureAudience,
+): { record?: ProcedureStepRecord } {
+  const record: ProcedureStepRecord = {
+    ...(details.recordedForCourt === true ? { recordedForCourt: true as const } : {}),
+    ...(details.courtFileNumber === undefined ? {} : { courtFileNumber: details.courtFileNumber }),
+    ...(details.legalBasis === undefined ? {} : { legalBasis: details.legalBasis }),
+    ...(details.remedyKind === undefined ? {} : { remedyKind: details.remedyKind }),
+    ...(details.remedyOutcome === undefined ? {} : { remedyOutcome: details.remedyOutcome }),
+    // Seguridad (B14): la persona denunciante solo ve quién recurrió si fue ella.
+    ...(details.remedyFiledBy === undefined ||
+    (audience === 'reporter' && details.remedyFiledBy !== 'reporter')
+      ? {}
+      : { remedyFiledBy: details.remedyFiledBy }),
+    // La medida cautelar concreta es reservada: la persona solo ve que se dictaron medidas.
+    ...(details.precautionaryOutcome === undefined || audience === 'reporter'
+      ? {}
+      : { precautionaryOutcome: details.precautionaryOutcome }),
+    ...(details.criminalStage === undefined ? {} : { criminalStage: details.criminalStage }),
+    ...(details.legalOutcome === undefined ? {} : { legalOutcome: details.legalOutcome }),
+    ...(details.destination === undefined ? {} : { destination: details.destination }),
+    ...(details.funding === undefined ? {} : { funding: details.funding }),
+    ...(details.recipients === undefined ? {} : { recipients: details.recipients }),
+    ...(details.prosecutor === undefined ? {} : { prosecutor: details.prosecutor }),
+    ...(details.registryReference === undefined
+      ? {}
+      : { registryReference: details.registryReference }),
+  };
+  return Object.keys(record).length === 0 ? {} : { record };
+}
+
+/** Pasos que la persona denunciante no ve: la petición de una medida cautelar (reservada). */
+function isVisibleTo(step: StoredStep, audience: ProcedureAudience): boolean {
+  if (audience === 'authority') return true;
+  if (step.action === 'precautionary_requested') return false;
+  // Una medida negada no se anuncia a la persona; una concedida, sí, sin detalles.
+  return !(
+    step.action === 'precautionary_decided' && step.details?.precautionaryOutcome === 'denied'
+  );
+}
+
+/** Recursos del trámite con su situación. */
+function remedyViews(
+  state: LifecycleState,
+  ctx: AppContext,
+  audience: ProcedureAudience,
+): RemedyView[] {
+  return state.remedies.map((remedy) => {
+    const kind = findRemedyKind(remedy.kind);
+    const outcome = remedy.outcome === null ? undefined : findRemedyOutcome(remedy.outcome);
+    const deadline = kind?.resolutionDeadline;
+    let resolutionDueOn: string | null = null;
+    if (deadline !== undefined && remedy.status !== 'resolved') {
+      try {
+        resolutionDueOn = evaluateDeadline(deadline, remedy.filedOn, remedy.filedOn, {
+          calendar: nodeCalendar(ctx),
+        }).dueOn;
+      } catch {
+        resolutionDueOn = null;
+      }
+    }
+    return {
+      kind: remedy.kind,
+      name: kind?.name ?? remedy.kind,
+      filedOn: remedy.filedOn,
+      ...(audience === 'authority' || remedy.filedBy === 'reporter'
+        ? { filedBy: remedy.filedBy }
+        : {}),
+      status: remedy.status,
+      ...(remedy.outcome === null ? {} : { outcome: remedy.outcome }),
+      ...(outcome === undefined ? {} : { outcomeName: outcome.name }),
+      ...(remedy.resolvedOn === null ? {} : { resolvedOn: remedy.resolvedOn }),
+      ...(resolutionDueOn === null ? {} : { resolutionDueOn }),
+      effect: kind?.effect ?? '',
+    };
+  });
 }
 
 function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: string): DeadlineView[] {
@@ -204,9 +390,28 @@ export function ruleTriggerView(trigger: StoredRuleTrigger): RuleTriggerView {
  * versión pública, plazos que corren y reglas cumplidas. Los plazos se calculan con el día legal
  * de hoy (hora del centro de México).
  */
-export function buildProcedureView(ctx: AppContext, complaint: ComplaintRecord): ProcedureView {
+export function buildProcedureView(
+  ctx: AppContext,
+  complaint: ComplaintRecord,
+  audience: ProcedureAudience = 'authority',
+): ProcedureView {
   const state = findManagementState(complaint.managementState);
   const stage = complaint.legalStage === null ? undefined : findLegalStage(complaint.legalStage);
+  const criminal =
+    complaint.criminalStage === null ? undefined : findLegalStage(complaint.criminalStage);
+  const lifecycle = lifecycleOf(ctx, complaint);
+  const legalOutcome =
+    complaint.managementState === 'closed'
+      ? (ctx.procedure.lastClosure(complaint.folio)?.legalOutcome ?? null)
+      : null;
+  const outcomeOption = legalOutcome === null ? undefined : findLegalClosureReason(legalOutcome);
+  const abstention = abstentionView(ctx, complaint);
+  const inconformity = inconformityView(ctx, complaint);
+  const remedies = remedyViews(lifecycle, ctx, audience);
+  const funding =
+    complaint.fundingSource === null
+      ? undefined
+      : FEDERAL_FUNDS_RULE.fundings.find((item) => item.key === complaint.fundingSource);
   const closure =
     complaint.managementState === 'closed' ? ctx.procedure.lastClosure(complaint.folio) : null;
   const reason =
@@ -219,6 +424,9 @@ export function buildProcedureView(ctx: AppContext, complaint: ComplaintRecord):
     ...(complaint.legalStage === null || stage === undefined
       ? {}
       : { legalStage: complaint.legalStage, legalStageName: stage.name }),
+    ...(complaint.criminalStage === null || criminal === undefined
+      ? {}
+      : { criminalStage: complaint.criminalStage, criminalStageName: criminal.name }),
     ...(closure === null || reason === undefined
       ? {}
       : {
@@ -231,10 +439,55 @@ export function buildProcedureView(ctx: AppContext, complaint: ComplaintRecord):
             legalBasis: closure.legalBasis,
             agreement: closure.agreement,
             ...sanctionOf(ctx, complaint.folio),
+            ...(outcomeOption === undefined
+              ? {}
+              : {
+                  legalOutcome: outcomeOption.key,
+                  legalOutcomeName: outcomeOption.name,
+                  legalOutcomeExplanation: outcomeOption.explanation,
+                }),
+            ...(closure.destination === null ? {} : { destination: closure.destination }),
           },
         }),
     ...qualificationOf(ctx, complaint),
-    steps: ctx.procedure.listSteps(complaint.folio).map((step) => stepView(ctx, step)),
+    ...(abstention === null ? {} : { abstention }),
+    ...(inconformity === null ? {} : { inconformity }),
+    ...(remedies.length === 0 ? {} : { remedies }),
+    ...(lifecycle.precautionary === null ||
+    (audience === 'reporter' &&
+      (lifecycle.precautionary.outcome === null || lifecycle.precautionary.outcome === 'denied'))
+      ? {}
+      : {
+          precautionary: {
+            requestedOn: lifecycle.precautionary.requestedOn,
+            ...(lifecycle.precautionary.decidedOn === null
+              ? {}
+              : { decidedOn: lifecycle.precautionary.decidedOn }),
+            ...(lifecycle.precautionary.outcome === null
+              ? {}
+              : { outcome: lifecycle.precautionary.outcome }),
+          },
+        }),
+    ...(funding === undefined || lifecycle.federal === null
+      ? {}
+      : {
+          federalFunds: {
+            funding: funding.key,
+            fundingName: funding.name,
+            flaggedOn: lifecycle.federal.flaggedOn,
+            ...(lifecycle.federal.noticeSentOn === null
+              ? {}
+              : { noticeSentOn: lifecycle.federal.noticeSentOn }),
+          },
+        }),
+    ...(audience === 'authority' ? { courtRecording: !hasCourtAccounts(ctx) } : {}),
+    ...(lifecycle.sanctionRegistered === null
+      ? {}
+      : { sanctionRegistered: lifecycle.sanctionRegistered }),
+    steps: ctx.procedure
+      .listSteps(complaint.folio)
+      .filter((step) => isVisibleTo(step, audience))
+      .map((step) => stepView(ctx, step, audience)),
     deadlines: deadlineViews(ctx, complaint, today),
     rules: ctx.procedure.listRuleTriggers(complaint.folio).map(ruleTriggerView),
   };

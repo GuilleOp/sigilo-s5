@@ -24,6 +24,7 @@ export * from './procedure.ts';
 export * from './rest-days.ts';
 export * from './escalation.ts';
 export * from './criminal-opening.ts';
+export * from './lifecycle.ts';
 
 const STATE_BY_CODE: ReadonlyMap<string, StateOption> = new Map(
   STATES.map((state) => [state.code, state]),

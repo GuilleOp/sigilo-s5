@@ -3,7 +3,7 @@
   "info": {
     "title": "Estándar S5",
     "description": "Especificación abierta del Sistema de denuncias públicas de faltas administrativas y hechos de corrupción (S5) de la Plataforma Digital Nacional, propuesta por SIGILO. Prototipo para el Datatón Anticorrupción 2026; no es el sistema oficial.\n\nLa identidad de la persona denunciante se cifra en su navegador hacia la llave de la autoridad (HPKE, RFC 9180) y el servidor nunca la ve. El seguimiento usa un folio aleatorio y una llave derivada de un recibo de 8 palabras. Toda acción de la autoridad queda en una bitácora pública encadenada y firmada.\n\nEl grupo «Red» describe la red federada: el directorio de autoridades firmado y cofirmado por testigos, el enrutador ciego (que solo ve el destino), el registro de nodos y la bitácora nacional cofirmada m de n. Lo sirve el enrutador, salvo el buzón de red, que lo sirve cada nodo.\n\nEl grupo «PDN» describe al nodo como proveedor de la Plataforma Digital Nacional con la metodología de las APIs del S2 y del S3: su servidor de autorización OAuth 2.0 (`POST /oauth/token`) y la estadística agregada de denuncias con paginación (`POST /v1/denuncias/estadisticas`), que consulta la SESNA para el portal. Lo sirve cada nodo.\n\nEl grupo «Corroboración» describe la corroboración ciega con VOPRF (RFC 9497): el evaluador OPRF, que ve solo elementos cegados, y el índice de coincidencias, que ve solo etiquetas y cuenta fuentes independientes. Son dos servicios con operación separada.\n\nDocumento generado desde `packages/contracts` con `npm run standard:build`. Los esquemas son el subconjunto de JSON Schema de OpenAPI 3.0.3, convertidos sin perder significado desde el documento en OpenAPI 3.1 (`openapi.yaml`), que es la referencia. Las peticiones y respuestas no admiten campos que no estén en su esquema. El diccionario de datos, los catálogos y los ejemplos están en la misma carpeta; los cambios de cada versión, en `CHANGELOG.md`. El perfil de conexión con la PDN (solo lo que consume la SESNA) y un documento por grupo están en `oas/`, en OpenAPI 3.0.3.",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "license": { "name": "CC BY-NC 4.0", "url": "https://creativecommons.org/licenses/by-nc/4.0/" }
   },
   "servers": [
@@ -8314,7 +8314,29 @@
                               "total": null
                             },
                             { "clave": "ARCHIVADA", "valor": "Archivada", "total": null },
-                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null }
+                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null },
+                            {
+                              "clave": "EN_PROCEDIMIENTO",
+                              "valor": "En procedimiento de responsabilidad",
+                              "total": null
+                            },
+                            { "clave": "EN_TRIBUNAL", "valor": "En el Tribunal", "total": null },
+                            { "clave": "EN_RECURSO", "valor": "En recurso", "total": null },
+                            {
+                              "clave": "CONCLUIDA_CON_SANCION",
+                              "valor": "Concluida con sanción firme",
+                              "total": null
+                            },
+                            {
+                              "clave": "CONCLUIDA_SIN_SANCION",
+                              "valor": "Concluida sin sanción",
+                              "total": null
+                            },
+                            {
+                              "clave": "PRESCRITA_O_CADUCADA",
+                              "valor": "Prescrita o caducada",
+                              "total": null
+                            }
                           ],
                           "tiemposMedianosDiasHabiles": {
                             "turno": 1,
@@ -8768,7 +8790,29 @@
                               "total": null
                             },
                             { "clave": "ARCHIVADA", "valor": "Archivada", "total": null },
-                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null }
+                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null },
+                            {
+                              "clave": "EN_PROCEDIMIENTO",
+                              "valor": "En procedimiento de responsabilidad",
+                              "total": null
+                            },
+                            { "clave": "EN_TRIBUNAL", "valor": "En el Tribunal", "total": null },
+                            { "clave": "EN_RECURSO", "valor": "En recurso", "total": null },
+                            {
+                              "clave": "CONCLUIDA_CON_SANCION",
+                              "valor": "Concluida con sanción firme",
+                              "total": null
+                            },
+                            {
+                              "clave": "CONCLUIDA_SIN_SANCION",
+                              "valor": "Concluida sin sanción",
+                              "total": null
+                            },
+                            {
+                              "clave": "PRESCRITA_O_CADUCADA",
+                              "valor": "Prescrita o caducada",
+                              "total": null
+                            }
                           ],
                           "tiemposMedianosDiasHabiles": {
                             "turno": 1,
@@ -10699,6 +10743,24 @@
           "explanation": { "type": "string", "description": "Qué significa el estado actual." },
           "legalStage": { "$ref": "#/components/schemas/LegalStage" },
           "legalStageName": { "description": "Nombre de la etapa legal.", "type": "string" },
+          "criminalStage": {
+            "description": "Etapa de la vía penal, que corre en paralelo a la administrativa.",
+            "type": "string",
+            "enum": [
+              "criminal_complaint_filed",
+              "criminal_investigation",
+              "prosecutor_determination",
+              "judicial_review",
+              "intermediate_stage",
+              "alternative_exit",
+              "trial",
+              "sentence"
+            ]
+          },
+          "criminalStageName": {
+            "description": "Nombre de la etapa de la vía penal.",
+            "type": "string"
+          },
           "closure": { "$ref": "#/components/schemas/ClosureView" },
           "qualification": {
             "type": "object",
@@ -10749,7 +10811,7 @@
                   "filedOn": {
                     "type": "string",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                    "description": "Fecha redondeada al día, en UTC (AAAA-MM-DD).",
+                    "description": "Día del aviso en línea.",
                     "example": "2026-11-05"
                   },
                   "legalOn": {
@@ -10760,10 +10822,22 @@
                   },
                   "reasons": {
                     "type": "string",
-                    "description": "Motivos por los que estima indebida la calificación."
+                    "description": "Motivos por los que estima indebida la calificación o la abstención."
+                  },
+                  "filingDueOn": {
+                    "description": "Último día para entregar el escrito firmado ante la autoridad investigadora (LGRA, arts. 103 y 109).",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "example": "2026-11-05"
+                  },
+                  "signedOn": {
+                    "description": "Día en que la autoridad registró el escrito con firma autógrafa.",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "example": "2026-11-05"
                   },
                   "resolutionDueOn": {
-                    "description": "Plazo de la Sala para resolver: 30 días hábiles (LGRA, art. 107).",
+                    "description": "Plazo de la Sala para resolver: 30 días hábiles (LGRA, art. 107), desde el escrito firmado.",
                     "type": "string",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
                     "example": "2026-11-05"
@@ -10771,7 +10845,7 @@
                 },
                 "required": ["filedOn", "legalOn", "reasons"],
                 "additionalProperties": false,
-                "description": "Recurso de inconformidad presentado contra la calificación."
+                "description": "Aviso de inconformidad y, si ya llegó, el escrito firmado."
               }
             },
             "required": [
@@ -10785,6 +10859,249 @@
             ],
             "additionalProperties": false,
             "description": "Calificación de la falta (LGRA, arts. 100 y 102)."
+          },
+          "abstention": {
+            "type": "object",
+            "properties": {
+              "legalOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "legalBasis": { "type": "string", "description": "Fundamento de la abstención." },
+              "agreement": {
+                "type": "string",
+                "description": "Acuerdo de abstención en versión pública."
+              },
+              "explanation": {
+                "type": "string",
+                "description": "Qué significa y cómo inconformarse, en lenguaje sencillo."
+              }
+            },
+            "required": ["legalOn", "legalBasis", "agreement", "explanation"],
+            "additionalProperties": false,
+            "description": "Abstención con su fundamento y acuerdo en versión pública."
+          },
+          "inconformity": {
+            "type": "object",
+            "properties": {
+              "against": {
+                "type": "string",
+                "enum": ["non_serious", "abstention"],
+                "description": "Acto que se impugna: non_serious (calificación de no grave) o abstention (abstención)."
+              },
+              "notifiedOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "filingDueOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "filingRemaining": {
+                "description": "Días hábiles que faltan para entregar el escrito, contados por el nodo con su reloj y su calendario.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "filingStatus": { "$ref": "#/components/schemas/DeadlineStatus" },
+              "notice": {
+                "type": "object",
+                "properties": {
+                  "filedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Día del aviso en línea.",
+                    "example": "2026-11-05"
+                  },
+                  "legalOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                    "example": "2026-11-05"
+                  },
+                  "reasons": {
+                    "type": "string",
+                    "description": "Motivos por los que estima indebida la calificación o la abstención."
+                  },
+                  "filingDueOn": {
+                    "description": "Último día para entregar el escrito firmado ante la autoridad investigadora (LGRA, arts. 103 y 109).",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "example": "2026-11-05"
+                  },
+                  "signedOn": {
+                    "description": "Día en que la autoridad registró el escrito con firma autógrafa.",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "example": "2026-11-05"
+                  },
+                  "resolutionDueOn": {
+                    "description": "Plazo de la Sala para resolver: 30 días hábiles (LGRA, art. 107), desde el escrito firmado.",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "example": "2026-11-05"
+                  }
+                },
+                "required": ["filedOn", "legalOn", "reasons"],
+                "additionalProperties": false,
+                "description": "Aviso de inconformidad y, si ya llegó, el escrito firmado."
+              },
+              "signedOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "resolutionDueOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "outcome": {
+                "type": "string",
+                "enum": ["admitted", "inadmissible", "confirmed", "revoked", "modified"],
+                "description": "Resultado del recurso: admitted (procedente, sigue en trámite), inadmissible (improcedente), confirmed (confirmada), revoked (revocada) o modified (modificada)."
+              }
+            },
+            "required": ["against"],
+            "additionalProperties": false,
+            "description": "Inconformidad: plazo, aviso, escrito firmado y resultado."
+          },
+          "remedies": {
+            "description": "Recursos presentados.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["inconformity", "claim", "revocation", "appeal", "review"],
+                  "description": "Recurso: inconformity (inconformidad), claim (reclamación), revocation (revocación), appeal (apelación) o review (revisión). Detalle en REMEDY_KINDS."
+                },
+                "name": { "type": "string", "description": "Nombre del recurso." },
+                "filedOn": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                  "example": "2026-11-05"
+                },
+                "filedBy": {
+                  "description": "Quién lo presentó. En el seguimiento solo aparece si fue la propia persona denunciante.",
+                  "type": "string",
+                  "enum": ["reporter", "accused", "investigating_authority", "other_party"]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["pending", "admitted", "resolved"],
+                  "description": "pending (presentado), admitted (admitido, sin resolver) o resolved (resuelto)."
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": ["admitted", "inadmissible", "confirmed", "revoked", "modified"],
+                  "description": "Resultado del recurso: admitted (procedente, sigue en trámite), inadmissible (improcedente), confirmed (confirmada), revoked (revocada) o modified (modificada)."
+                },
+                "outcomeName": { "description": "Nombre del resultado.", "type": "string" },
+                "resolvedOn": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                  "example": "2026-11-05"
+                },
+                "resolutionDueOn": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                  "example": "2026-11-05"
+                },
+                "effect": { "type": "string", "description": "Efecto del recurso en el trámite." }
+              },
+              "required": ["kind", "name", "filedOn", "status", "effect"],
+              "additionalProperties": false,
+              "description": "Recurso presentado y su resultado."
+            }
+          },
+          "precautionary": {
+            "description": "Última medida cautelar pedida y su resultado, sin la medida concreta.",
+            "type": "object",
+            "properties": {
+              "requestedOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "decidedOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "outcome": {
+                "type": "string",
+                "enum": ["granted", "provisional", "denied"],
+                "description": "Medida cautelar: granted (concedida), provisional (concedida provisionalmente, art. 127) o denied (negada)."
+              }
+            },
+            "required": ["requestedOn"],
+            "additionalProperties": false
+          },
+          "federalFunds": {
+            "type": "object",
+            "properties": {
+              "funding": {
+                "type": "string",
+                "enum": ["aportaciones", "convenio_federal"],
+                "description": "Recursos federales en un ente local: aportaciones (Ramo 33) o convenio_federal (convenios y subsidios). Regla en FEDERAL_FUNDS_RULE."
+              },
+              "fundingName": {
+                "type": "string",
+                "description": "Nombre del origen de los recursos."
+              },
+              "flaggedOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "noticeSentOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              }
+            },
+            "required": ["funding", "fundingName", "flaggedOn"],
+            "additionalProperties": false,
+            "description": "La denuncia involucra recursos federales: guía de la regla."
+          },
+          "courtRecording": {
+            "description": "Solo en el panel: el estado no dio cuentas al Tribunal y la substanciación registra sus actuaciones.",
+            "type": "boolean"
+          },
+          "sanctionRegistered": {
+            "description": "Inscripción de la sanción en el S3, registrada como acto.",
+            "type": "object",
+            "properties": {
+              "legalOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Día civil en la hora del centro de México (America/Mexico_City) con el que se cuentan los plazos legales; puede diferir del día UTC.",
+                "example": "2026-11-05"
+              },
+              "registryReference": {
+                "type": "string",
+                "description": "Referencia de la inscripción en el S3 (registrada como acto)."
+              }
+            },
+            "required": ["legalOn", "registryReference"],
+            "additionalProperties": false
           },
           "steps": {
             "type": "array",
@@ -10842,6 +11159,103 @@
             "minLength": 1,
             "maxLength": 2000,
             "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+          },
+          "record": {
+            "type": "object",
+            "properties": {
+              "recordedForCourt": {
+                "description": "Registro de actuación del Tribunal: lo capturó otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal.",
+                "type": "boolean",
+                "enum": [true]
+              },
+              "courtFileNumber": { "description": "Expediente del Tribunal.", "type": "string" },
+              "legalBasis": { "description": "Fundamento del acto.", "type": "string" },
+              "remedyKind": {
+                "type": "string",
+                "enum": ["inconformity", "claim", "revocation", "appeal", "review"],
+                "description": "Recurso: inconformity (inconformidad), claim (reclamación), revocation (revocación), appeal (apelación) o review (revisión). Detalle en REMEDY_KINDS."
+              },
+              "remedyOutcome": {
+                "type": "string",
+                "enum": ["admitted", "inadmissible", "confirmed", "revoked", "modified"],
+                "description": "Resultado del recurso: admitted (procedente, sigue en trámite), inadmissible (improcedente), confirmed (confirmada), revoked (revocada) o modified (modificada)."
+              },
+              "remedyFiledBy": {
+                "type": "string",
+                "enum": ["reporter", "accused", "investigating_authority", "other_party"],
+                "description": "Quién presentó el recurso: reporter (la persona denunciante, también como tercera), accused (la persona señalada), investigating_authority (la autoridad investigadora) u other_party."
+              },
+              "precautionaryOutcome": {
+                "type": "string",
+                "enum": ["granted", "provisional", "denied"],
+                "description": "Medida cautelar: granted (concedida), provisional (concedida provisionalmente, art. 127) o denied (negada)."
+              },
+              "criminalStage": {
+                "type": "string",
+                "enum": [
+                  "criminal_complaint_filed",
+                  "criminal_investigation",
+                  "prosecutor_determination",
+                  "judicial_review",
+                  "intermediate_stage",
+                  "alternative_exit",
+                  "trial",
+                  "sentence"
+                ],
+                "description": "Etapa del proceso penal por hechos de corrupción (CNPP, art. 211)."
+              },
+              "legalOutcome": {
+                "type": "string",
+                "enum": [
+                  "archived",
+                  "abstention",
+                  "prescribed",
+                  "expired",
+                  "dismissed",
+                  "incompetence",
+                  "sanctioned",
+                  "responsible_no_sanction",
+                  "not_responsible"
+                ],
+                "description": "Motivo legal del cierre (aparte del motivo del S5). Nombres, fundamento y requisitos en LEGAL_CLOSURE_REASONS."
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["network", "outside"],
+                    "description": "network: autoridad de la red (por ejemplo, otro nodo); outside: institución sin nodo."
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300,
+                    "description": "Nombre de la autoridad de destino."
+                  }
+                },
+                "required": ["kind", "name"],
+                "additionalProperties": false,
+                "description": "A quién se remitió el asunto (LGRA, arts. 14 y 196 fr. II)."
+              },
+              "funding": {
+                "type": "string",
+                "enum": ["aportaciones", "convenio_federal"],
+                "description": "Recursos federales en un ente local: aportaciones (Ramo 33) o convenio_federal (convenios y subsidios). Regla en FEDERAL_FUNDS_RULE."
+              },
+              "recipients": {
+                "description": "Autoridades federales a las que se dio aviso.",
+                "type": "array",
+                "items": { "type": "string", "enum": ["asf", "sabg", "fgr"] }
+              },
+              "prosecutor": { "description": "Fiscalía que recibió la vista.", "type": "string" },
+              "registryReference": {
+                "description": "Referencia de la inscripción de la sanción en el S3.",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Datos del acto registrados con el paso."
           }
         },
         "required": ["on", "legalOn", "action", "managementState", "title", "explanation"],
@@ -10957,6 +11371,45 @@
             "required": ["checkedOn", "outcome", "explanation", "unverifiable"],
             "additionalProperties": false,
             "description": "Resultado de verificar la sanción declarada contra S3."
+          },
+          "legalOutcome": {
+            "type": "string",
+            "enum": [
+              "archived",
+              "abstention",
+              "prescribed",
+              "expired",
+              "dismissed",
+              "incompetence",
+              "sanctioned",
+              "responsible_no_sanction",
+              "not_responsible"
+            ],
+            "description": "Motivo legal del cierre (aparte del motivo del S5). Nombres, fundamento y requisitos en LEGAL_CLOSURE_REASONS."
+          },
+          "legalOutcomeName": { "description": "Nombre del motivo legal.", "type": "string" },
+          "legalOutcomeExplanation": {
+            "description": "Qué significa el motivo legal, en lenguaje sencillo.",
+            "type": "string"
+          },
+          "destination": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["network", "outside"],
+                "description": "network: autoridad de la red (por ejemplo, otro nodo); outside: institución sin nodo."
+              },
+              "name": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 300,
+                "description": "Nombre de la autoridad de destino."
+              }
+            },
+            "required": ["kind", "name"],
+            "additionalProperties": false,
+            "description": "A quién se remitió el asunto (LGRA, arts. 14 y 196 fr. II)."
           }
         },
         "required": [
@@ -11948,6 +12401,39 @@
                 "required": ["severity", "legalBasis", "agreement"],
                 "additionalProperties": false,
                 "description": "Calificación de la falta como grave o no grave, con fundamento y acuerdo en versión pública. Si es no grave, se notifica a quien denunció y puede inconformarse (LGRA, arts. 102 y 103)."
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              },
+              "agreement": {
+                "type": "string",
+                "minLength": 50,
+                "maxLength": 20000,
+                "description": "Versión pública del acuerdo de cierre, sin datos personales. Queda disponible para el auditor y para la persona denunciante."
+              },
+              "courtRecord": {
+                "type": "object",
+                "properties": {
+                  "fileNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 80,
+                    "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} /.\\-_º°]*$",
+                    "description": "Número de expediente del Tribunal."
+                  },
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 1000,
+                    "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+                  }
+                },
+                "required": ["fileNumber", "legalBasis"],
+                "additionalProperties": false,
+                "description": "Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento."
               }
             },
             "required": ["action", "stage"],
@@ -12007,6 +12493,61 @@
                 "required": ["fileNumber", "personName", "sanction", "institution", "stateCode"],
                 "additionalProperties": false,
                 "description": "Sanción declarada en el cierre, para verificarla contra S3."
+              },
+              "legalOutcome": {
+                "type": "string",
+                "enum": [
+                  "archived",
+                  "abstention",
+                  "prescribed",
+                  "expired",
+                  "dismissed",
+                  "incompetence",
+                  "sanctioned",
+                  "responsible_no_sanction",
+                  "not_responsible"
+                ],
+                "description": "Motivo legal del cierre (aparte del motivo del S5). Nombres, fundamento y requisitos en LEGAL_CLOSURE_REASONS."
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["network", "outside"],
+                    "description": "network: autoridad de la red (por ejemplo, otro nodo); outside: institución sin nodo."
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300,
+                    "description": "Nombre de la autoridad de destino."
+                  }
+                },
+                "required": ["kind", "name"],
+                "additionalProperties": false,
+                "description": "A quién se remitió el asunto (LGRA, arts. 14 y 196 fr. II)."
+              },
+              "courtRecord": {
+                "type": "object",
+                "properties": {
+                  "fileNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 80,
+                    "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} /.\\-_º°]*$",
+                    "description": "Número de expediente del Tribunal."
+                  },
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 1000,
+                    "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+                  }
+                },
+                "required": ["fileNumber", "legalBasis"],
+                "additionalProperties": false,
+                "description": "Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento."
               }
             },
             "required": ["action", "reason", "legalBasis", "agreement"],
@@ -12030,9 +12571,316 @@
             },
             "required": ["action", "response", "note"],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["order_reclassification"] },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+              },
+              "courtRecord": {
+                "type": "object",
+                "properties": {
+                  "fileNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 80,
+                    "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} /.\\-_º°]*$",
+                    "description": "Número de expediente del Tribunal."
+                  },
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 1000,
+                    "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+                  }
+                },
+                "required": ["fileNumber", "legalBasis"],
+                "additionalProperties": false,
+                "description": "Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento."
+              }
+            },
+            "required": ["action", "legalBasis"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["request_precautionary"] },
+              "measure": {
+                "type": "string",
+                "minLength": 10,
+                "maxLength": 2000,
+                "description": "Medida que se pide (LGRA, art. 124). Es privada del nodo: la persona denunciante solo ve que se pidió una medida."
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              }
+            },
+            "required": ["action", "measure", "legalBasis"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["decide_precautionary"] },
+              "outcome": {
+                "type": "string",
+                "enum": ["granted", "provisional", "denied"],
+                "description": "Medida cautelar: granted (concedida), provisional (concedida provisionalmente, art. 127) o denied (negada)."
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              },
+              "courtRecord": {
+                "type": "object",
+                "properties": {
+                  "fileNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 80,
+                    "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} /.\\-_º°]*$",
+                    "description": "Número de expediente del Tribunal."
+                  },
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 1000,
+                    "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+                  }
+                },
+                "required": ["fileNumber", "legalBasis"],
+                "additionalProperties": false,
+                "description": "Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento."
+              }
+            },
+            "required": ["action", "outcome", "legalBasis"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["file_remedy"] },
+              "kind": {
+                "type": "string",
+                "enum": ["inconformity", "claim", "revocation", "appeal", "review"],
+                "description": "Recurso: inconformity (inconformidad), claim (reclamación), revocation (revocación), appeal (apelación) o review (revisión). Detalle en REMEDY_KINDS."
+              },
+              "filedBy": {
+                "type": "string",
+                "enum": ["reporter", "accused", "investigating_authority", "other_party"],
+                "description": "Quién presentó el recurso: reporter (la persona denunciante, también como tercera), accused (la persona señalada), investigating_authority (la autoridad investigadora) u other_party."
+              },
+              "signed": {
+                "type": "boolean",
+                "description": "La autoridad declara que recibió el escrito con firma autógrafa (LGRA, art. 109). Sin firma no hay recurso.",
+                "enum": [true]
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+              },
+              "courtRecord": {
+                "type": "object",
+                "properties": {
+                  "fileNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 80,
+                    "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} /.\\-_º°]*$",
+                    "description": "Número de expediente del Tribunal."
+                  },
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 1000,
+                    "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+                  }
+                },
+                "required": ["fileNumber", "legalBasis"],
+                "additionalProperties": false,
+                "description": "Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento."
+              }
+            },
+            "required": ["action", "kind", "filedBy", "signed"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["resolve_remedy"] },
+              "kind": {
+                "type": "string",
+                "enum": ["inconformity", "claim", "revocation", "appeal", "review"],
+                "description": "Recurso: inconformity (inconformidad), claim (reclamación), revocation (revocación), appeal (apelación) o review (revisión). Detalle en REMEDY_KINDS."
+              },
+              "outcome": {
+                "type": "string",
+                "enum": ["admitted", "inadmissible", "confirmed", "revoked", "modified"],
+                "description": "Resultado del recurso: admitted (procedente, sigue en trámite), inadmissible (improcedente), confirmed (confirmada), revoked (revocada) o modified (modificada)."
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+              },
+              "courtRecord": {
+                "type": "object",
+                "properties": {
+                  "fileNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 80,
+                    "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} /.\\-_º°]*$",
+                    "description": "Número de expediente del Tribunal."
+                  },
+                  "legalBasis": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 1000,
+                    "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+                  }
+                },
+                "required": ["fileNumber", "legalBasis"],
+                "additionalProperties": false,
+                "description": "Registro de actuación del Tribunal hecho por otra autoridad (la substanciadora) porque el estado no dio cuentas al Tribunal: número de expediente y fundamento."
+              }
+            },
+            "required": ["action", "kind", "outcome", "legalBasis"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["refer_to_prosecutor"] },
+              "basis": {
+                "type": "string",
+                "enum": ["internal_control", "superior_audit", "public_servant"],
+                "description": "Fundamento: internal_control (LGRA, art. 10 fr. III), superior_audit (LGRA, art. 98) o public_servant (CNPP, art. 222)."
+              },
+              "prosecutor": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 300,
+                "description": "Fiscalía que recibe la vista."
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+              }
+            },
+            "required": ["action", "basis", "prosecutor"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["flag_federal_funds"] },
+              "funding": {
+                "type": "string",
+                "enum": ["aportaciones", "convenio_federal"],
+                "description": "Recursos federales en un ente local: aportaciones (Ramo 33) o convenio_federal (convenios y subsidios). Regla en FEDERAL_FUNDS_RULE."
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+              }
+            },
+            "required": ["action", "funding"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["send_federal_notice"] },
+              "recipients": {
+                "minItems": 1,
+                "maxItems": 3,
+                "type": "array",
+                "items": { "type": "string", "enum": ["asf", "sabg", "fgr"] },
+                "description": "Autoridades federales a las que se da vista o aviso."
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              }
+            },
+            "required": ["action", "recipients", "legalBasis"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["register_sanction"] },
+              "registryReference": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 200,
+                "description": "Referencia de la inscripción en el sistema de sancionados (S3). Solo se registra el acto; no hay integración con el S3."
+              },
+              "legalBasis": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1000,
+                "description": "Fundamento legal y motivo; la persona denunciante lo ve."
+              }
+            },
+            "required": ["action", "registryReference", "legalBasis"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "enum": ["record_withdrawal"] },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Nota pública de la autoridad; la persona denunciante la lee tal cual."
+              }
+            },
+            "required": ["action", "note"],
+            "additionalProperties": false
           }
         ],
-        "description": "Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage, close (con sanción opcional, que se verifica contra S3) o respond_conflict (excusa o justificación ante un posible conflicto). Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
+        "description": "Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification, request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento."
       },
       "ProcedureState": {
         "type": "object",
@@ -12046,6 +12894,20 @@
           "status": { "$ref": "#/components/schemas/ComplaintStatus" },
           "managementState": { "$ref": "#/components/schemas/ManagementState" },
           "legalStage": { "$ref": "#/components/schemas/LegalStage" },
+          "criminalStage": {
+            "type": "string",
+            "enum": [
+              "criminal_complaint_filed",
+              "criminal_investigation",
+              "prosecutor_determination",
+              "judicial_review",
+              "intermediate_stage",
+              "alternative_exit",
+              "trial",
+              "sentence"
+            ],
+            "description": "Etapa del proceso penal por hechos de corrupción (CNPP, art. 211)."
+          },
           "closureReason": { "$ref": "#/components/schemas/ClosureReason" },
           "assignedAuthorityId": {
             "type": "string",
@@ -12056,7 +12918,7 @@
         },
         "required": ["folio", "status", "managementState", "assignedAuthorityId"],
         "additionalProperties": false,
-        "description": "Estado del trámite: estatus, flujo de gestión, etapa y autoridad."
+        "description": "Estado del trámite: estatus, flujo de gestión, etapa administrativa, etapa penal (en paralelo) y autoridad."
       },
       "OpenIdentityRequest": {
         "type": "object",
@@ -12346,7 +13208,7 @@
         },
         "required": ["folio", "authKey", "reasons", "revealIdentityForAppeal"],
         "additionalProperties": false,
-        "description": "Recurso de inconformidad de la persona denunciante, con sus credenciales."
+        "description": "Aviso de inconformidad de la persona denunciante, con sus credenciales. El recurso cuenta cuando la autoridad registra el escrito con firma autógrafa (LGRA, art. 109)."
       },
       "AppealResponse": {
         "type": "object",
@@ -12354,7 +13216,7 @@
           "filedOn": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "Día de presentación.",
+            "description": "Día del aviso.",
             "example": "2026-11-05"
           },
           "openingId": {
@@ -12362,14 +13224,19 @@
             "pattern": "^[0-9a-f]{32}$",
             "description": "Identificador aleatorio de una apertura de identidad (16 bytes en hexadecimal)."
           },
+          "filingDueOn": {
+            "description": "Último día para entregar el escrito con firma autógrafa ante la autoridad investigadora (5 días hábiles desde la notificación, LGRA arts. 103 y 109).",
+            "type": "string"
+          },
           "resolutionDueOn": {
-            "description": "Plazo de la Sala para resolver (30 días hábiles, LGRA art. 107).",
+            "description": "Obsoleto desde el estándar 0.4.0: el plazo de la Sala (LGRA, art. 107) corre desde que la autoridad registra el escrito firmado y se lee en el trámite. Ya no se envía.",
+            "deprecated": true,
             "type": "string"
           }
         },
         "required": ["filedOn", "openingId"],
         "additionalProperties": false,
-        "description": "Inconformidad registrada y apertura de identidad para el recurso."
+        "description": "Aviso de inconformidad registrado y apertura de identidad para el recurso. Falta el escrito firmado."
       },
       "TransferComplaintRequest": {
         "type": "object",
@@ -12963,9 +13830,15 @@
           "investigating",
           "classified",
           "archived",
-          "resolved"
+          "resolved",
+          "in_procedure",
+          "in_court",
+          "under_remedy",
+          "final_sanction",
+          "final_no_sanction",
+          "prescribed_or_expired"
         ],
-        "description": "Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.\n\n- `received`: Recibida. Tu denuncia llegó y está en espera de revisión.\n- `routing`: Buscando a la autoridad que debe atenderla. Estamos buscando qué autoridad debe atender tu denuncia.\n- `routed`: Turnada a la autoridad competente. La autoridad competente ya la tiene.\n- `investigating`: En investigación. La autoridad está investigando los hechos.\n- `classified`: Revisada: la autoridad decidió si la falta es grave. La autoridad ya decidió si la falta es grave o no.\n- `archived`: Archivada. Se cerró por ahora; puede reabrirse si hay nuevos elementos.\n- `resolved`: Concluida. La autoridad terminó el trámite."
+        "description": "Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.\n\n- `received`: Recibida. Tu denuncia llegó y está en espera de revisión.\n- `routing`: Buscando a la autoridad que debe atenderla. Estamos buscando qué autoridad debe atender tu denuncia.\n- `routed`: Turnada a la autoridad competente. La autoridad competente ya la tiene.\n- `investigating`: En investigación. La autoridad está investigando los hechos.\n- `classified`: Revisada: la autoridad decidió si la falta es grave. La autoridad ya decidió si la falta es grave o no.\n- `archived`: Archivada. Se cerró por ahora; puede reabrirse si hay nuevos elementos.\n- `resolved`: Concluida. La autoridad terminó el trámite.\n- `in_procedure`: En procedimiento de responsabilidad. La autoridad substanciadora admitió el informe y sigue el procedimiento contra la persona señalada.\n- `in_court`: En el Tribunal. La falta es grave o de particulares: el expediente está en el Tribunal de Justicia Administrativa, que la resuelve.\n- `under_remedy`: En recurso. Alguien presentó un recurso contra una decisión del trámite (inconformidad, reclamación, revocación, apelación o revisión) y está pendiente de resolverse.\n- `final_sanction`: Concluida con sanción firme. La resolución que sanciona quedó firme y la sanción se ejecutó.\n- `final_no_sanction`: Concluida sin sanción. Terminó sin sanción: la persona no fue responsable, la autoridad se abstuvo o se sobreseyó el procedimiento.\n- `prescribed_or_expired`: Prescrita o caducada. Pasó el tiempo que la ley da para sancionar (prescripción) o el procedimiento estuvo parado más de 6 meses (caducidad)."
       },
       "LedgerEventType": {
         "type": "string",
@@ -13030,17 +13903,33 @@
           "investigation",
           "qualification",
           "report_filed",
-          "case_file_sent",
+          "report_prevented",
+          "abstention",
+          "report_admitted",
+          "summoned",
+          "initial_hearing",
           "evidence_hearing",
           "closing_arguments",
           "instruction_closed",
           "resolution",
+          "case_file_sent",
+          "court_received",
+          "court_evidence_hearing",
+          "court_closing_arguments",
+          "court_instruction_closed",
+          "court_resolution",
+          "final",
+          "executed",
+          "criminal_complaint_filed",
           "criminal_investigation",
+          "prosecutor_determination",
+          "judicial_review",
           "intermediate_stage",
+          "alternative_exit",
           "trial",
           "sentence"
         ],
-        "description": "Etapa legal de cualquiera de las dos vías. Nombres y explicaciones en LEGAL_STAGES.\n\n- `investigation`: Investigación. La autoridad investigadora reúne información y pruebas: pide documentos, hace requerimientos y revisa los hechos. Tu identidad sigue protegida.\n- `qualification`: Calificación de la falta. Con lo investigado, la autoridad decide si hubo una falta y si es grave o no grave. Si no encuentra elementos, archiva el expediente y debe avisarte si eres identificable. Si la califica como no grave, puedes inconformarte.\n- `report_filed`: Envío del Informe de Presunta Responsabilidad Administrativa. La autoridad investigadora escribe un informe con la falta que encontró y sus pruebas, y lo entrega a la autoridad substanciadora. Con esto empieza el procedimiento contra la persona señalada.\n- `case_file_sent`: Envío del expediente. En faltas graves y faltas de particulares, la autoridad substanciadora envía el expediente al Tribunal de Justicia Administrativa, que es quien resuelve.\n- `evidence_hearing`: Admisión y desahogo de pruebas. Se reciben y se revisan las pruebas de las partes. La persona señalada tiene derecho a defenderse.\n- `closing_arguments`: Alegatos. Las partes presentan por escrito sus últimos argumentos.\n- `instruction_closed`: Cierre de la instrucción. Ya no se reciben más pruebas ni argumentos: el asunto queda listo para que se resuelva.\n- `resolution`: Resolución. La autoridad resolutora decide si la persona es responsable y, en su caso, qué sanción le corresponde.\n- `criminal_investigation`: Investigación. La fiscalía investiga si los hechos son un delito y quién podría haberlo cometido.\n- `intermediate_stage`: Etapa intermedia. Ante un juez de control, la fiscalía presenta su acusación y se decide qué pruebas irán a juicio.\n- `trial`: Juicio. Un tribunal escucha a las partes y revisa las pruebas en audiencia.\n- `sentence`: Sentencia. El tribunal decide si la persona acusada es culpable o inocente y, en su caso, la pena."
+        "description": "Etapa legal de cualquiera de las dos vías. Nombres y explicaciones en LEGAL_STAGES.\n\n- `investigation`: Investigación. La autoridad investigadora reúne información y pruebas: pide documentos, hace requerimientos y revisa los hechos. Tu identidad sigue protegida.\n- `qualification`: Calificación de la falta. Con lo investigado, la autoridad decide si hubo una falta y si es grave o no grave. Si no encuentra elementos, archiva el expediente y debe avisarte si eres identificable. Si la califica como no grave, puedes inconformarte.\n- `report_filed`: Informe de Presunta Responsabilidad Administrativa presentado. La autoridad investigadora escribió un informe con la falta que encontró y sus pruebas, y lo entregó a la autoridad substanciadora, que es otra área. Esa autoridad tiene 3 días para revisarlo: puede pedir que se corrija, abstenerse o admitirlo.\n- `report_prevented`: Informe con observaciones (prevención). La autoridad substanciadora encontró defectos en el informe y pidió a la investigadora corregirlos en 3 días. Si no los corrige, el informe se tiene por no presentado y vuelve a la investigación; puede presentarse de nuevo mientras la falta no prescriba.\n- `abstention`: Abstención. La autoridad decidió no iniciar el procedimiento (o no sancionar) porque no hubo daño a la hacienda pública y el caso era de criterio opinable o se corrigió de forma espontánea. Si eres identificable y no estás de acuerdo, puedes inconformarte; si nadie se inconforma, el expediente se cierra.\n- `report_admitted`: Procedimiento iniciado (informe admitido). La autoridad substanciadora admitió el informe: con esto empieza el procedimiento de responsabilidad contra la persona señalada. Desde aquí el procedimiento no puede quedarse parado más de 6 meses.\n- `summoned`: Emplazamiento. Se citó en persona a la persona señalada, con copia del informe, para que se defienda en la audiencia inicial, que debe celebrarse entre 10 y 15 días hábiles después. Si te identificaste, te citan como tercera 72 horas antes.\n- `initial_hearing`: Audiencia inicial. Se celebró la audiencia inicial: la persona señalada declaró y ofreció sus pruebas, y las demás partes (también tú, si te identificaste como tercera) pudieron hablar y ofrecer las suyas. Después ya no se reciben más pruebas, salvo las supervenientes. Si la falta es no grave, sigue con la misma autoridad; si es grave, el expediente va al Tribunal.\n- `evidence_hearing`: Admisión y desahogo de pruebas. Se admiten y se revisan las pruebas de las partes. La persona señalada tiene derecho a defenderse. En faltas no graves lo hace la autoridad substanciadora y resolutora.\n- `closing_arguments`: Alegatos. Las partes presentan por escrito sus últimos argumentos, en 5 días hábiles.\n- `instruction_closed`: Cierre de la instrucción. Ya no se reciben más pruebas ni argumentos: la autoridad resolutora tiene 30 días hábiles para resolver (puede ampliarlos una vez por otros 30).\n- `resolution`: Resolución (falta no grave). El órgano interno de control o la contraloría decidió si la persona es responsable de la falta no grave y, en su caso, qué sanción le corresponde. Se te notifica para tu conocimiento. La persona sancionada puede pedir la revocación en 15 días hábiles.\n- `case_file_sent`: Envío del expediente al Tribunal. Como la falta es grave o de particulares, la autoridad substanciadora envió el expediente original al Tribunal de Justicia Administrativa, que es el único que puede sancionarla.\n- `court_received`: Recibido en el Tribunal. El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena reclasificarla en 3 días hábiles. Después admite las pruebas en 15 días hábiles.\n- `court_evidence_hearing`: Pruebas en el Tribunal. El Tribunal admite y desahoga las pruebas de las partes.\n- `court_closing_arguments`: Alegatos en el Tribunal. Las partes presentan sus últimos argumentos ante el Tribunal, en 5 días hábiles.\n- `court_instruction_closed`: Cierre de la instrucción en el Tribunal. El Tribunal cerró la instrucción y tiene 30 días hábiles para dictar sentencia (puede ampliarlos una vez por otros 30).\n- `court_resolution`: Sentencia del Tribunal. El Tribunal decidió si la persona es responsable de la falta grave o de particulares y, en su caso, la sanción. Se te notifica para tu conocimiento. Las partes pueden apelar en 15 días hábiles (tú también, como tercera, si te identificaste) y las autoridades pueden pedir la revisión en 10 días hábiles.\n- `final`: Resolución firme. La resolución quedó firme: no se recurrió a tiempo o ya se resolvieron los recursos. Desde aquí se ejecuta la sanción, si la hay.\n- `executed`: Sanción ejecutada. La sanción se ejecutó (por ejemplo, la destitución, la inhabilitación o el cobro de la sanción económica) y debe inscribirse en el sistema de servidores públicos y particulares sancionados de la Plataforma Digital Nacional.\n- `criminal_complaint_filed`: Denuncia penal presentada (vista al Ministerio Público). La autoridad que investiga vio hechos que pueden ser delito y dio vista al Ministerio Público, como manda la ley. La vía penal corre aparte y al mismo tiempo que la administrativa: una no detiene a la otra.\n- `criminal_investigation`: Investigación penal. La fiscalía investiga si los hechos son un delito y quién podría haberlo cometido.\n- `prosecutor_determination`: Determinación del Ministerio Público. La fiscalía decidió no seguir por ahora: se abstuvo de investigar, archivó temporalmente, aplicó un criterio de oportunidad o decidió no ejercer la acción penal. Si eres víctima u ofendida, puedes impugnarlo ante un juez en 10 días.\n- `judicial_review`: Control judicial de la determinación. Un juez revisa la decisión de la fiscalía porque se impugnó. Puede confirmarla o pedir que siga la investigación.\n- `intermediate_stage`: Etapa intermedia. Ante un juez de control, la fiscalía presenta su acusación y se decide qué pruebas irán a juicio.\n- `alternative_exit`: Solución alterna. El proceso terminó o se suspendió con un acuerdo reparatorio o una suspensión condicional, sin juicio.\n- `trial`: Juicio. Un tribunal escucha a las partes y revisa las pruebas en audiencia.\n- `sentence`: Sentencia. El tribunal decide si la persona acusada es culpable o inocente y, en su caso, la pena."
       },
       "ProcedureActor": {
         "type": "string",
@@ -13055,7 +13944,7 @@
           "prosecutor",
           "criminal_court"
         ],
-        "description": "Quién actúa en un estado o etapa. Nombres en PROCEDURE_ACTORS.\n\n- `reporter`: Persona denunciante. Quien presentó la denuncia. Puede dar seguimiento con su folio y su recibo.\n- `inbox_operator`: Operadora del buzón general. Área que recibe las denuncias que la tabla de funciones no asigna y decide a qué institución enviarlas. En la versión de pruebas del S5 es la Secretaría Ejecutiva del Sistema Nacional Anticorrupción. En una red con un nodo por estado, es la autoridad receptora que designe cada estado, no quien opera el nodo: que una Secretaría Ejecutiva estatal turne depende de la ley de cada estado.\n- `receiving_institution`: Institución que recibe el turno. Institución a la que se envió la denuncia, por ejemplo el órgano interno de control de una dependencia. Decide si le corresponde atenderla.\n- `investigating_authority`: Autoridad investigadora. Reúne información y pruebas para saber si hubo una falta administrativa.\n- `substantiating_authority`: Autoridad substanciadora. Conduce el procedimiento contra la persona señalada: la cita, recibe sus pruebas y sus argumentos. Es distinta de la que investigó.\n- `resolving_authority`: Autoridad resolutora. Decide si la persona es responsable y qué sanción corresponde. En faltas no graves es la propia institución; en faltas graves, el Tribunal de Justicia Administrativa.\n- `administrative_court`: Tribunal de Justicia Administrativa. Resuelve las faltas graves y las faltas de particulares, y el recurso de inconformidad en su Sala.\n- `prosecutor`: Fiscalía (Ministerio Público). Investiga los hechos que pueden ser delitos por corrupción y acusa ante un juez.\n- `criminal_court`: Juez o tribunal penal. Conduce las audiencias del proceso penal y dicta la sentencia."
+        "description": "Quién actúa en un estado o etapa. Nombres en PROCEDURE_ACTORS.\n\n- `reporter`: Persona denunciante. Quien presentó la denuncia. Puede dar seguimiento con su folio y su recibo.\n- `inbox_operator`: Operadora del buzón general. Área que recibe las denuncias que la tabla de funciones no asigna y decide a qué institución enviarlas. En la versión de pruebas del S5 es la Secretaría Ejecutiva del Sistema Nacional Anticorrupción. En una red con un nodo por estado, es la autoridad receptora que designe cada estado, no quien opera el nodo: que una Secretaría Ejecutiva estatal turne depende de la ley de cada estado.\n- `receiving_institution`: Institución que recibe el turno. Institución a la que se envió la denuncia, por ejemplo el órgano interno de control de una dependencia. Decide si le corresponde atenderla.\n- `investigating_authority`: Autoridad investigadora. Reúne información y pruebas para saber si hubo una falta administrativa.\n- `substantiating_authority`: Autoridad substanciadora. Conduce el procedimiento contra la persona señalada: la cita, recibe sus pruebas y sus argumentos. Es distinta de la que investigó.\n- `resolving_authority`: Autoridad resolutora. Decide si la persona es responsable y qué sanción corresponde. En faltas no graves es la propia institución; en faltas graves, el Tribunal de Justicia Administrativa.\n- `administrative_court`: Tribunal de Justicia Administrativa. Resuelve las faltas graves y las faltas de particulares, el recurso de inconformidad en su Sala, la apelación y la revisión. Cada estado dice qué cuentas tiene; si no tiene, la autoridad substanciadora registra lo que el Tribunal resolvió, con el número de expediente.\n- `prosecutor`: Fiscalía (Ministerio Público). Investiga los hechos que pueden ser delitos por corrupción y acusa ante un juez.\n- `criminal_court`: Juez o tribunal penal. Conduce las audiencias del proceso penal y dicta la sentencia."
       },
       "DeadlineKey": {
         "type": "string",
@@ -13067,14 +13956,34 @@
           "appeal_resolution",
           "prescription_non_serious",
           "prescription_serious",
-          "inactivity_expiry"
+          "inactivity_expiry",
+          "report_correction",
+          "report_admission",
+          "initial_hearing_window",
+          "parties_summons",
+          "evidence_admission",
+          "closing_arguments",
+          "resolution_term",
+          "resolution_notice",
+          "court_referral",
+          "reclassification",
+          "precautionary_hearing",
+          "precautionary_decision",
+          "claim_filing",
+          "claim_resolution",
+          "revocation_filing",
+          "revocation_resolution",
+          "court_appeal_filing",
+          "review_filing",
+          "execution_report",
+          "prosecutor_determination_challenge"
         ],
-        "description": "Plazo legal del catálogo DEADLINE_RULES.\n\n- `serious_offense_start`: Iniciar ante una posible falta grave. Cuando la autoridad conoce una conducta que podría ser falta grave, falta de particulares o acto de corrupción, tiene 30 días naturales para iniciar el procedimiento.\n- `archive_notification`: Notificar el archivo. Si la autoridad archiva la investigación por falta de elementos, debe notificarlo a las personas denunciantes identificables.\n- `information_request`: Atender un requerimiento. Quien recibe un requerimiento de la autoridad investigadora debe responder en el plazo que ésta fije, de 5 a 15 días hábiles; puede ampliarse por causa justificada.\n- `appeal_filing`: Presentar la inconformidad. Si la falta se calificó como no grave, la persona denunciante puede inconformarse. La inconformidad exige nombre, domicilio y firma autógrafa.\n- `appeal_resolution`: Resolver la inconformidad. La Sala del Tribunal tiene 30 días hábiles para resolver la inconformidad.\n- `prescription_non_serious`: Prescripción de faltas no graves. La facultad para sancionar una falta no grave prescribe en 3 años. La calificación de la falta interrumpe la prescripción.\n- `prescription_serious`: Prescripción de faltas graves. La facultad para sancionar una falta grave o una falta de particulares prescribe en 7 años. La calificación de la falta interrumpe la prescripción.\n- `inactivity_expiry`: Caducidad por inactividad. Admitido el Informe de Presunta Responsabilidad Administrativa, el procedimiento no puede detenerse más de 6 meses sin causa justificada; si ocurre, se decreta la caducidad de la instancia a solicitud del presunto infractor. No aplica durante la investigación."
+        "description": "Plazo legal del catálogo DEADLINE_RULES. appeal_filing y appeal_resolution son los de la inconformidad (LGRA, arts. 103 y 107); la apelación es court_appeal_filing.\n\n- `serious_offense_start`: Iniciar ante una posible falta grave. Cuando la autoridad conoce una conducta que podría ser falta grave, falta de particulares o acto de corrupción, tiene 30 días naturales para iniciar el procedimiento correspondiente. SIGILO lo da por cumplido con el acuerdo de inicio que registra la autoridad: es una lectura prudente, porque la ley no precisa qué acto cuenta como «iniciar».\n- `archive_notification`: Notificar el archivo. Si la autoridad archiva la investigación por falta de elementos, debe notificarlo a las personas denunciantes identificables.\n- `information_request`: Atender un requerimiento. Quien recibe un requerimiento de la autoridad investigadora debe responder en el plazo que ésta fije, de 5 a 15 días hábiles; puede ampliarse por causa justificada.\n- `appeal_filing`: Presentar la inconformidad con firma. Si la falta se calificó como no grave o la autoridad se abstuvo, la persona denunciante puede inconformarse. El escrito se entrega ante la autoridad investigadora con nombre, domicilio y firma autógrafa: sin firma no se tiene por presentado. Un aviso en línea no basta.\n- `appeal_resolution`: Resolver la inconformidad. La Sala del Tribunal tiene 30 días hábiles para resolver la inconformidad.\n- `prescription_non_serious`: Prescripción de faltas no graves. La facultad para sancionar una falta no grave prescribe en 3 años. La calificación de la falta interrumpe la prescripción.\n- `prescription_serious`: Prescripción de faltas graves. La facultad para sancionar una falta grave o una falta de particulares prescribe en 7 años. La calificación de la falta interrumpe la prescripción.\n- `inactivity_expiry`: Caducidad por inactividad. Admitido el Informe de Presunta Responsabilidad Administrativa, el procedimiento no puede detenerse más de 6 meses sin causa justificada; si ocurre, se decreta la caducidad de la instancia a solicitud del presunto infractor. No aplica durante la investigación.\n- `report_correction`: Corregir el informe (prevención). Si el Informe de Presunta Responsabilidad Administrativa tiene defectos, la autoridad investigadora tiene 3 días para corregirlos.\n- `report_admission`: Pronunciarse sobre la admisión del informe. La autoridad substanciadora tiene 3 días para admitir el informe, prevenir que se corrija o abstenerse.\n- `initial_hearing_window`: Celebrar la audiencia inicial. La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento. Este es el último día.\n- `parties_summons`: Citar a las demás partes. Las demás partes (también la persona denunciante identificada, como tercera) se citan al menos 72 horas antes de la audiencia inicial.\n- `evidence_admission`: Admitir las pruebas. Después de la audiencia inicial (en no graves) o de recibir el expediente (en el Tribunal), la autoridad tiene 15 días hábiles para admitir las pruebas.\n- `closing_arguments`: Presentar alegatos. Las partes tienen 5 días hábiles comunes para presentar sus alegatos.\n- `resolution_term`: Resolver. Cerrada la instrucción, la autoridad resolutora o el Tribunal tiene 30 días hábiles para resolver; puede ampliarlos una sola vez por otros 30, con causa justificada.\n- `resolution_notice`: Notificar la resolución. La resolución se notifica en 10 días hábiles: en persona a la persona señalada y, para su conocimiento, a la persona denunciante.\n- `court_referral`: Enviar el expediente al Tribunal. En faltas graves y de particulares, la autoridad substanciadora envía los autos originales al Tribunal en 3 días hábiles después de la audiencia inicial.\n- `reclassification`: Reclasificar la falta. Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para hacerlo.\n- `precautionary_hearing`: Vista sobre la medida cautelar. Pedida una medida cautelar, se da vista a quienes afecta para que digan lo que les convenga en 5 días hábiles.\n- `precautionary_decision`: Resolver la medida cautelar. La autoridad substanciadora o el Tribunal resuelve la medida cautelar en 5 días hábiles, por resolución interlocutoria que no admite recurso.\n- `claim_filing`: Presentar la reclamación. Contra el auto que admite, desecha o tiene por no presentado el informe, la contestación o una prueba, el que sobresee antes del cierre o el que admite o rechaza a un tercero, las partes pueden presentar reclamación en 5 días hábiles ante la autoridad que lo dictó.\n- `claim_resolution`: Resolver la reclamación. La autoridad que dictó el auto resuelve la reclamación en 5 días hábiles, sin recurso posterior.\n- `revocation_filing`: Pedir la revocación. La persona sancionada por una falta no grave puede pedir la revocación en 15 días hábiles ante la autoridad que resolvió.\n- `revocation_resolution`: Resolver la revocación. La autoridad que resolvió admite la revocación en 3 días hábiles y la resuelve en 30 días hábiles. Contra lo que resuelva cabe juicio ante el Tribunal.\n- `court_appeal_filing`: Apelar la sentencia. Contra la sentencia del Tribunal que sanciona o absuelve, las personas responsables o los terceros (también la persona denunciante identificada) pueden apelar en 15 días hábiles ante el Tribunal que resolvió.\n- `review_filing`: Pedir la revisión. Las autoridades (la Secretaría, el órgano interno de control o la entidad de fiscalización) pueden pedir la revisión de la sentencia definitiva en 10 días hábiles. Ante quién y quién la resuelve lo dicen la ley federal o la de cada estado, y lo declara cada nodo.\n- `execution_report`: Informar la ejecución. En faltas graves, el Tribunal ordena ejecutar la sanción sin que nadie lo pida, y el superior y la Secretaría informan en 10 días que la ejecutaron.\n- `prosecutor_determination_challenge`: Impugnar la determinación del Ministerio Público. La víctima u ofendida puede impugnar ante el juez de control la abstención, el archivo temporal, el criterio de oportunidad o el no ejercicio de la acción penal en 10 días."
       },
       "DeadlineUnit": {
         "type": "string",
-        "enum": ["natural_days", "business_days", "months", "years"],
-        "description": "Unidad del plazo: días naturales, días hábiles, meses o años."
+        "enum": ["natural_days", "business_days", "months", "years", "hours"],
+        "description": "Unidad del plazo: días naturales, días hábiles, meses, años u horas."
       },
       "DeadlineStatus": {
         "type": "string",
@@ -13104,9 +14013,22 @@
           "conflict_excused",
           "conflict_justified",
           "transferred",
-          "appeal_filed"
+          "appeal_filed",
+          "abstention_declared",
+          "report_not_filed",
+          "returned_by_court",
+          "reclassification_ordered",
+          "precautionary_requested",
+          "precautionary_decided",
+          "remedy_filed",
+          "remedy_resolved",
+          "criminal_referral_filed",
+          "federal_funds_flagged",
+          "federal_notice_sent",
+          "sanction_registered",
+          "withdrawal_received"
         ],
-        "description": "Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo o inconformidad de la persona denunciante."
+        "description": "Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, reclasificación, medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento."
       },
       "OffenseSeverity": {
         "type": "string",
@@ -13143,7 +14065,7 @@
       "AuthorityFunction": {
         "type": "string",
         "enum": ["intake", "investigation", "supervision", "substantiation", "operation", "court"],
-        "description": "Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (tribunal: faltas graves, de particulares y alzada)."
+        "description": "Función de la cuenta: intake (recepción y turnado), investigation (investigación), supervision (supervisión), substantiation (substanciación y resolución), operation (operación del nodo: solo solicitudes de alta y competencia por dependencia) o court (Tribunal: solo sus etapas y los recursos que resuelve: faltas graves, de particulares y alzada)."
       },
       "AccountId": {
         "type": "string",
@@ -16018,9 +16940,15 @@
                       "EN_INVESTIGACION",
                       "CALIFICADA",
                       "ARCHIVADA",
-                      "CONCLUIDA"
+                      "CONCLUIDA",
+                      "EN_PROCEDIMIENTO",
+                      "EN_TRIBUNAL",
+                      "EN_RECURSO",
+                      "CONCLUIDA_CON_SANCION",
+                      "CONCLUIDA_SIN_SANCION",
+                      "PRESCRITA_O_CADUCADA"
                     ],
-                    "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida)."
+                    "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada)."
                   }
                 ]
               }
@@ -16364,8 +17292,8 @@
             "nullable": true
           },
           "estatusAlCierre": {
-            "minItems": 7,
-            "maxItems": 7,
+            "minItems": 13,
+            "maxItems": 13,
             "type": "array",
             "items": {
               "type": "object",
@@ -16379,9 +17307,15 @@
                     "EN_INVESTIGACION",
                     "CALIFICADA",
                     "ARCHIVADA",
-                    "CONCLUIDA"
+                    "CONCLUIDA",
+                    "EN_PROCEDIMIENTO",
+                    "EN_TRIBUNAL",
+                    "EN_RECURSO",
+                    "CONCLUIDA_CON_SANCION",
+                    "CONCLUIDA_SIN_SANCION",
+                    "PRESCRITA_O_CADUCADA"
                   ],
-                  "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida)."
+                  "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada)."
                 },
                 "valor": {
                   "type": "string",
@@ -16799,8 +17733,8 @@
                   "nullable": true
                 },
                 "estatusAlCierre": {
-                  "minItems": 7,
-                  "maxItems": 7,
+                  "minItems": 13,
+                  "maxItems": 13,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -16814,9 +17748,15 @@
                           "EN_INVESTIGACION",
                           "CALIFICADA",
                           "ARCHIVADA",
-                          "CONCLUIDA"
+                          "CONCLUIDA",
+                          "EN_PROCEDIMIENTO",
+                          "EN_TRIBUNAL",
+                          "EN_RECURSO",
+                          "CONCLUIDA_CON_SANCION",
+                          "CONCLUIDA_SIN_SANCION",
+                          "PRESCRITA_O_CADUCADA"
                         ],
-                        "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida)."
+                        "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada)."
                       },
                       "valor": {
                         "type": "string",

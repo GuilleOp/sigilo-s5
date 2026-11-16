@@ -7,7 +7,7 @@ import {
   hasFunction,
   IDENTITY_APPROVAL_THRESHOLD,
   IDENTITY_REQUEST_TTL_DAYS,
-  isCriminalStage,
+  isCriminalRoute,
   parseCriminalOpeningBasis,
 } from '@sigilo/contracts';
 import {
@@ -154,12 +154,13 @@ function openIfApproved(
 
 /**
  * Vía penal (CNPP, art. 109 fr. XXVI): el resguardo de la identidad cede solo ante una resolución
- * del Órgano jurisdiccional o un requerimiento del Ministerio Público. Si la denuncia está en una
- * etapa del proceso penal, la solicitud debe citar uno de `CRIMINAL_OPENING_GROUNDS` con el número
- * de la resolución (`formatCriminalOpeningBasis`); un fundamento libre se rechaza con `bad_request`.
+ * del Órgano jurisdiccional o un requerimiento del Ministerio Público. Si la denuncia va solo por
+ * la vía penal (tiene etapa penal y ninguna administrativa, `isCriminalRoute`), la solicitud debe
+ * citar uno de `CRIMINAL_OPENING_GROUNDS` con el número de la resolución
+ * (`formatCriminalOpeningBasis`); un fundamento libre se rechaza con `bad_request`.
  */
 function assertCriminalBasis(complaint: ComplaintRecord, legalBasis: string): void {
-  if (!isCriminalStage(complaint.legalStage)) return;
+  if (!isCriminalRoute(complaint)) return;
   if (parseCriminalOpeningBasis(legalBasis) === null) throw new ApiFailure('bad_request');
 }
 

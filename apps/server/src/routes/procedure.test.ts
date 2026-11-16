@@ -443,7 +443,7 @@ describe('separación de funciones y competencia', () => {
       (
         await act(server, 'oicSubstantiation', folio, {
           action: 'advance_stage',
-          stage: 'evidence_hearing',
+          stage: 'report_admitted',
         })
       ).status,
     ).toBe(409);
@@ -451,12 +451,29 @@ describe('separación de funciones y competencia', () => {
     // Investigación (sola o con recepción) ya no avanza ni cierra lo que se substancia.
     for (const name of ['oicInvestigator', 'oicIntakeInvestigator'] as const) {
       expect(
-        (await act(server, name, folio, { action: 'advance_stage', stage: 'evidence_hearing' }))
+        (await act(server, name, folio, { action: 'advance_stage', stage: 'report_admitted' }))
           .status,
       ).toBe(403);
       expect((await act(server, name, folio, CLOSE)).status).toBe(403);
     }
-    for (const stage of ['evidence_hearing', 'closing_arguments', 'resolution'] as const) {
+    // Ni saltos de etapa: después del informe sigue la admisión, no las pruebas.
+    expect(
+      (
+        await act(server, 'oicSubstantiation', folio, {
+          action: 'advance_stage',
+          stage: 'evidence_hearing',
+        })
+      ).status,
+    ).toBe(409);
+    for (const stage of [
+      'report_admitted',
+      'summoned',
+      'initial_hearing',
+      'evidence_hearing',
+      'closing_arguments',
+      'instruction_closed',
+      'resolution',
+    ] as const) {
       expect(
         (await act(server, 'oicSubstantiation', folio, { action: 'advance_stage', stage })).status,
       ).toBe(200);

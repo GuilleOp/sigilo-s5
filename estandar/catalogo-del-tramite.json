@@ -1,5 +1,5 @@
 {
-  "standardVersion": "0.3.0",
+  "standardVersion": "0.4.0",
   "managementStates": [
     {
       "key": "received_in_inbox",
@@ -133,77 +133,249 @@
     {
       "key": "report_filed",
       "track": "administrative",
-      "name": "Envío del Informe de Presunta Responsabilidad Administrativa",
-      "explanation": "La autoridad investigadora escribe un informe con la falta que encontró y sus pruebas, y lo entrega a la autoridad substanciadora. Con esto empieza el procedimiento contra la persona señalada.",
+      "name": "Informe de Presunta Responsabilidad Administrativa presentado",
+      "explanation": "La autoridad investigadora escribió un informe con la falta que encontró y sus pruebas, y lo entregó a la autoridad substanciadora, que es otra área. Esa autoridad tiene 3 días para revisarlo: puede pedir que se corrija, abstenerse o admitirlo.",
       "actors": ["investigating_authority", "substantiating_authority"],
-      "deadlines": ["inactivity_expiry"],
-      "legalBasis": [{ "law": "LGRA", "article": "100" }]
+      "deadlines": ["report_admission"],
+      "startsOnEntry": ["report_admission"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "100" },
+        { "law": "LGRA", "article": "194" }
+      ]
     },
     {
-      "key": "case_file_sent",
+      "key": "report_prevented",
       "track": "administrative",
-      "name": "Envío del expediente",
-      "explanation": "En faltas graves y faltas de particulares, la autoridad substanciadora envía el expediente al Tribunal de Justicia Administrativa, que es quien resuelve.",
-      "actors": ["substantiating_authority", "administrative_court"],
+      "name": "Informe con observaciones (prevención)",
+      "explanation": "La autoridad substanciadora encontró defectos en el informe y pidió a la investigadora corregirlos en 3 días. Si no los corrige, el informe se tiene por no presentado y vuelve a la investigación; puede presentarse de nuevo mientras la falta no prescriba.",
+      "actors": ["substantiating_authority", "investigating_authority"],
+      "deadlines": ["report_correction"],
+      "startsOnEntry": ["report_correction"],
+      "legalBasis": [{ "law": "LGRA", "article": "195" }]
+    },
+    {
+      "key": "abstention",
+      "track": "administrative",
+      "name": "Abstención",
+      "explanation": "La autoridad decidió no iniciar el procedimiento (o no sancionar) porque no hubo daño a la hacienda pública y el caso era de criterio opinable o se corrigió de forma espontánea. Si eres identificable y no estás de acuerdo, puedes inconformarte; si nadie se inconforma, el expediente se cierra.",
+      "actors": ["substantiating_authority", "resolving_authority"],
+      "deadlines": ["appeal_filing", "appeal_resolution"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "101" },
+        { "law": "LGRA", "article": "102" }
+      ]
+    },
+    {
+      "key": "report_admitted",
+      "track": "administrative",
+      "name": "Procedimiento iniciado (informe admitido)",
+      "explanation": "La autoridad substanciadora admitió el informe: con esto empieza el procedimiento de responsabilidad contra la persona señalada. Desde aquí el procedimiento no puede quedarse parado más de 6 meses.",
+      "actors": ["substantiating_authority"],
       "deadlines": ["inactivity_expiry"],
-      "legalBasis": [{ "law": "LGRA", "article": "209" }]
+      "legalBasis": [
+        { "law": "LGRA", "article": "112" },
+        { "law": "LGRA", "article": "113" },
+        { "law": "LGRA", "article": "208", "fraction": "I" }
+      ]
+    },
+    {
+      "key": "summoned",
+      "track": "administrative",
+      "name": "Emplazamiento",
+      "explanation": "Se citó en persona a la persona señalada, con copia del informe, para que se defienda en la audiencia inicial, que debe celebrarse entre 10 y 15 días hábiles después. Si te identificaste, te citan como tercera 72 horas antes.",
+      "actors": ["substantiating_authority"],
+      "deadlines": ["initial_hearing_window", "parties_summons", "inactivity_expiry"],
+      "startsOnEntry": ["initial_hearing_window"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "193" },
+        { "law": "LGRA", "article": "208", "fraction": "II" }
+      ]
+    },
+    {
+      "key": "initial_hearing",
+      "track": "administrative",
+      "name": "Audiencia inicial",
+      "explanation": "Se celebró la audiencia inicial: la persona señalada declaró y ofreció sus pruebas, y las demás partes (también tú, si te identificaste como tercera) pudieron hablar y ofrecer las suyas. Después ya no se reciben más pruebas, salvo las supervenientes. Si la falta es no grave, sigue con la misma autoridad; si es grave, el expediente va al Tribunal.",
+      "actors": ["substantiating_authority"],
+      "deadlines": ["evidence_admission", "court_referral", "inactivity_expiry"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "208", "fraction": "III a VII" },
+        { "law": "LGRA", "article": "116", "fraction": "IV" }
+      ]
     },
     {
       "key": "evidence_hearing",
       "track": "administrative",
       "name": "Admisión y desahogo de pruebas",
-      "explanation": "Se reciben y se revisan las pruebas de las partes. La persona señalada tiene derecho a defenderse.",
-      "actors": ["substantiating_authority", "administrative_court"],
-      "deadlines": ["inactivity_expiry"],
-      "legalBasis": [
-        { "law": "LGRA", "article": "208" },
-        { "law": "LGRA", "article": "209" }
-      ]
+      "explanation": "Se admiten y se revisan las pruebas de las partes. La persona señalada tiene derecho a defenderse. En faltas no graves lo hace la autoridad substanciadora y resolutora.",
+      "actors": ["substantiating_authority"],
+      "deadlines": ["evidence_admission", "inactivity_expiry"],
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "VIII" }]
     },
     {
       "key": "closing_arguments",
       "track": "administrative",
       "name": "Alegatos",
-      "explanation": "Las partes presentan por escrito sus últimos argumentos.",
-      "actors": ["substantiating_authority", "administrative_court"],
-      "deadlines": ["inactivity_expiry"],
-      "legalBasis": [
-        { "law": "LGRA", "article": "208" },
-        { "law": "LGRA", "article": "209" }
-      ]
+      "explanation": "Las partes presentan por escrito sus últimos argumentos, en 5 días hábiles.",
+      "actors": ["substantiating_authority"],
+      "deadlines": ["closing_arguments", "inactivity_expiry"],
+      "startsOnEntry": ["closing_arguments"],
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "IX" }]
     },
     {
       "key": "instruction_closed",
       "track": "administrative",
       "name": "Cierre de la instrucción",
-      "explanation": "Ya no se reciben más pruebas ni argumentos: el asunto queda listo para que se resuelva.",
+      "explanation": "Ya no se reciben más pruebas ni argumentos: la autoridad resolutora tiene 30 días hábiles para resolver (puede ampliarlos una vez por otros 30).",
       "actors": ["resolving_authority"],
-      "deadlines": ["inactivity_expiry"],
-      "legalBasis": [
-        { "law": "LGRA", "article": "208" },
-        { "law": "LGRA", "article": "209" }
-      ]
+      "deadlines": ["resolution_term", "inactivity_expiry"],
+      "startsOnEntry": ["resolution_term"],
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "X" }]
     },
     {
       "key": "resolution",
       "track": "administrative",
-      "name": "Resolución",
-      "explanation": "La autoridad resolutora decide si la persona es responsable y, en su caso, qué sanción le corresponde.",
+      "name": "Resolución (falta no grave)",
+      "explanation": "El órgano interno de control o la contraloría decidió si la persona es responsable de la falta no grave y, en su caso, qué sanción le corresponde. Se te notifica para tu conocimiento. La persona sancionada puede pedir la revocación en 15 días hábiles.",
+      "actors": ["resolving_authority"],
+      "deadlines": ["resolution_notice", "revocation_filing"],
+      "startsOnEntry": ["resolution_notice", "revocation_filing"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "208", "fraction": "X y XI" },
+        { "law": "LGRA", "article": "75" },
+        { "law": "LGRA", "article": "77" }
+      ]
+    },
+    {
+      "key": "case_file_sent",
+      "track": "administrative",
+      "name": "Envío del expediente al Tribunal",
+      "explanation": "Como la falta es grave o de particulares, la autoridad substanciadora envió el expediente original al Tribunal de Justicia Administrativa, que es el único que puede sancionarla.",
+      "actors": ["substantiating_authority", "administrative_court"],
+      "deadlines": ["court_referral", "inactivity_expiry"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "12" },
+        { "law": "LGRA", "article": "209", "fraction": "I" }
+      ]
+    },
+    {
+      "key": "court_received",
+      "track": "administrative",
+      "name": "Recibido en el Tribunal",
+      "explanation": "El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena reclasificarla en 3 días hábiles. Después admite las pruebas en 15 días hábiles.",
+      "actors": ["administrative_court"],
+      "deadlines": ["evidence_admission", "reclassification", "inactivity_expiry"],
+      "startsOnEntry": ["evidence_admission"],
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "II" }]
+    },
+    {
+      "key": "court_evidence_hearing",
+      "track": "administrative",
+      "name": "Pruebas en el Tribunal",
+      "explanation": "El Tribunal admite y desahoga las pruebas de las partes.",
+      "actors": ["administrative_court"],
+      "deadlines": ["inactivity_expiry"],
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "II" }]
+    },
+    {
+      "key": "court_closing_arguments",
+      "track": "administrative",
+      "name": "Alegatos en el Tribunal",
+      "explanation": "Las partes presentan sus últimos argumentos ante el Tribunal, en 5 días hábiles.",
+      "actors": ["administrative_court"],
+      "deadlines": ["closing_arguments", "inactivity_expiry"],
+      "startsOnEntry": ["closing_arguments"],
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "III" }]
+    },
+    {
+      "key": "court_instruction_closed",
+      "track": "administrative",
+      "name": "Cierre de la instrucción en el Tribunal",
+      "explanation": "El Tribunal cerró la instrucción y tiene 30 días hábiles para dictar sentencia (puede ampliarlos una vez por otros 30).",
+      "actors": ["administrative_court"],
+      "deadlines": ["resolution_term", "inactivity_expiry"],
+      "startsOnEntry": ["resolution_term"],
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "IV" }]
+    },
+    {
+      "key": "court_resolution",
+      "track": "administrative",
+      "name": "Sentencia del Tribunal",
+      "explanation": "El Tribunal decidió si la persona es responsable de la falta grave o de particulares y, en su caso, la sanción. Se te notifica para tu conocimiento. Las partes pueden apelar en 15 días hábiles (tú también, como tercera, si te identificaste) y las autoridades pueden pedir la revisión en 10 días hábiles.",
+      "actors": ["administrative_court"],
+      "deadlines": ["resolution_notice", "court_appeal_filing", "review_filing"],
+      "startsOnEntry": ["resolution_notice", "court_appeal_filing", "review_filing"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "207" },
+        { "law": "LGRA", "article": "209", "fraction": "IV y V" }
+      ]
+    },
+    {
+      "key": "final",
+      "track": "administrative",
+      "name": "Resolución firme",
+      "explanation": "La resolución quedó firme: no se recurrió a tiempo o ya se resolvieron los recursos. Desde aquí se ejecuta la sanción, si la hay.",
+      "actors": ["resolving_authority", "administrative_court"],
+      "deadlines": ["execution_report"],
+      "legalBasis": [{ "law": "LGRA", "article": "206" }]
+    },
+    {
+      "key": "executed",
+      "track": "administrative",
+      "name": "Sanción ejecutada",
+      "explanation": "La sanción se ejecutó (por ejemplo, la destitución, la inhabilitación o el cobro de la sanción económica) y debe inscribirse en el sistema de servidores públicos y particulares sancionados de la Plataforma Digital Nacional.",
       "actors": ["resolving_authority"],
       "deadlines": [],
       "legalBasis": [
-        { "law": "LGRA", "article": "208" },
-        { "law": "LGRA", "article": "209" }
+        { "law": "LGRA", "article": "222" },
+        { "law": "LGRA", "article": "225" },
+        { "law": "LGRA", "article": "27" }
+      ]
+    },
+    {
+      "key": "criminal_complaint_filed",
+      "track": "criminal",
+      "name": "Denuncia penal presentada (vista al Ministerio Público)",
+      "explanation": "La autoridad que investiga vio hechos que pueden ser delito y dio vista al Ministerio Público, como manda la ley. La vía penal corre aparte y al mismo tiempo que la administrativa: una no detiene a la otra.",
+      "actors": ["investigating_authority", "prosecutor"],
+      "deadlines": [],
+      "legalBasis": [
+        { "law": "LGRA", "article": "10", "fraction": "III" },
+        { "law": "CNPP", "article": "222" }
       ]
     },
     {
       "key": "criminal_investigation",
       "track": "criminal",
-      "name": "Investigación",
+      "name": "Investigación penal",
       "explanation": "La fiscalía investiga si los hechos son un delito y quién podría haberlo cometido.",
       "actors": ["prosecutor"],
       "deadlines": [],
       "legalBasis": [{ "law": "CNPP", "article": "211" }]
+    },
+    {
+      "key": "prosecutor_determination",
+      "track": "criminal",
+      "name": "Determinación del Ministerio Público",
+      "explanation": "La fiscalía decidió no seguir por ahora: se abstuvo de investigar, archivó temporalmente, aplicó un criterio de oportunidad o decidió no ejercer la acción penal. Si eres víctima u ofendida, puedes impugnarlo ante un juez en 10 días.",
+      "actors": ["prosecutor"],
+      "deadlines": ["prosecutor_determination_challenge"],
+      "startsOnEntry": ["prosecutor_determination_challenge"],
+      "legalBasis": [
+        { "law": "CNPP", "article": "253" },
+        { "law": "CNPP", "article": "254" },
+        { "law": "CNPP", "article": "255" },
+        { "law": "CNPP", "article": "256" }
+      ]
+    },
+    {
+      "key": "judicial_review",
+      "track": "criminal",
+      "name": "Control judicial de la determinación",
+      "explanation": "Un juez revisa la decisión de la fiscalía porque se impugnó. Puede confirmarla o pedir que siga la investigación.",
+      "actors": ["criminal_court"],
+      "deadlines": [],
+      "legalBasis": [{ "law": "CNPP", "article": "258" }]
     },
     {
       "key": "intermediate_stage",
@@ -213,6 +385,15 @@
       "actors": ["prosecutor", "criminal_court"],
       "deadlines": [],
       "legalBasis": [{ "law": "CNPP", "article": "211" }]
+    },
+    {
+      "key": "alternative_exit",
+      "track": "criminal",
+      "name": "Solución alterna",
+      "explanation": "El proceso terminó o se suspendió con un acuerdo reparatorio o una suspensión condicional, sin juicio.",
+      "actors": ["prosecutor", "criminal_court"],
+      "deadlines": [],
+      "legalBasis": [{ "law": "CNPP", "article": "183 a 200" }]
     },
     {
       "key": "trial",
@@ -267,7 +448,7 @@
     {
       "key": "administrative_court",
       "name": "Tribunal de Justicia Administrativa",
-      "explanation": "Resuelve las faltas graves y las faltas de particulares, y el recurso de inconformidad en su Sala."
+      "explanation": "Resuelve las faltas graves y las faltas de particulares, el recurso de inconformidad en su Sala, la apelación y la revisión. Cada estado dice qué cuentas tiene; si no tiene, la autoridad substanciadora registra lo que el Tribunal resolvió, con el número de expediente."
     },
     {
       "key": "prosecutor",
@@ -284,7 +465,7 @@
     {
       "key": "serious_offense_start",
       "name": "Iniciar ante una posible falta grave",
-      "explanation": "Cuando la autoridad conoce una conducta que podría ser falta grave, falta de particulares o acto de corrupción, tiene 30 días naturales para iniciar el procedimiento.",
+      "explanation": "Cuando la autoridad conoce una conducta que podría ser falta grave, falta de particulares o acto de corrupción, tiene 30 días naturales para iniciar el procedimiento correspondiente. SIGILO lo da por cumplido con el acuerdo de inicio que registra la autoridad: es una lectura prudente, porque la ley no precisa qué acto cuenta como «iniciar».",
       "unit": "natural_days",
       "amount": 30,
       "startsFrom": "Desde que la autoridad tiene conocimiento de la conducta.",
@@ -317,14 +498,18 @@
     },
     {
       "key": "appeal_filing",
-      "name": "Presentar la inconformidad",
-      "explanation": "Si la falta se calificó como no grave, la persona denunciante puede inconformarse. La inconformidad exige nombre, domicilio y firma autógrafa.",
+      "name": "Presentar la inconformidad con firma",
+      "explanation": "Si la falta se calificó como no grave o la autoridad se abstuvo, la persona denunciante puede inconformarse. El escrito se entrega ante la autoridad investigadora con nombre, domicilio y firma autógrafa: sin firma no se tiene por presentado. Un aviso en línea no basta.",
       "unit": "business_days",
       "amount": 5,
-      "startsFrom": "Desde que se notifica la calificación.",
-      "consequence": "Pasado el plazo ya no se puede impugnar la calificación.",
+      "startsFrom": "Desde que se notifica la calificación o la abstención.",
+      "consequence": "Pasado el plazo sin el escrito firmado, ya no se puede impugnar la calificación ni la abstención.",
       "warning": { "unit": "business_days", "amount": 2 },
-      "legalBasis": [{ "law": "LGRA", "article": "103" }]
+      "legalBasis": [
+        { "law": "LGRA", "article": "103" },
+        { "law": "LGRA", "article": "104" },
+        { "law": "LGRA", "article": "109" }
+      ]
     },
     {
       "key": "appeal_resolution",
@@ -332,7 +517,7 @@
       "explanation": "La Sala del Tribunal tiene 30 días hábiles para resolver la inconformidad.",
       "unit": "business_days",
       "amount": 30,
-      "startsFrom": "Desde que la Sala recibe el recurso.",
+      "startsFrom": "Desde que la autoridad registra que recibió el escrito firmado (la investigadora lo envía a la Sala).",
       "consequence": "El retraso se puede señalar ante los órganos de control del Tribunal.",
       "warning": { "unit": "business_days", "amount": 5 },
       "legalBasis": [{ "law": "LGRA", "article": "107" }]
@@ -369,6 +554,251 @@
       "consequence": "Decretada la caducidad, termina la instancia y la prescripción se reanuda desde la admisión del informe.",
       "warning": { "unit": "natural_days", "amount": 30 },
       "legalBasis": [{ "law": "LGRA", "article": "74" }]
+    },
+    {
+      "key": "report_correction",
+      "name": "Corregir el informe (prevención)",
+      "explanation": "Si el Informe de Presunta Responsabilidad Administrativa tiene defectos, la autoridad investigadora tiene 3 días para corregirlos.",
+      "unit": "business_days",
+      "amount": 3,
+      "startsFrom": "Desde que la autoridad substanciadora previene a la investigadora.",
+      "consequence": "Si no se corrige, el informe se tiene por no presentado; puede presentarse de nuevo mientras la falta no prescriba.",
+      "warning": { "unit": "business_days", "amount": 1 },
+      "legalBasis": [{ "law": "LGRA", "article": "195" }]
+    },
+    {
+      "key": "report_admission",
+      "name": "Pronunciarse sobre la admisión del informe",
+      "explanation": "La autoridad substanciadora tiene 3 días para admitir el informe, prevenir que se corrija o abstenerse.",
+      "unit": "business_days",
+      "amount": 3,
+      "startsFrom": "Desde que recibe el Informe de Presunta Responsabilidad Administrativa.",
+      "consequence": "El retraso se puede señalar ante la autoridad supervisora.",
+      "warning": { "unit": "business_days", "amount": 1 },
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "I" }]
+    },
+    {
+      "key": "initial_hearing_window",
+      "name": "Celebrar la audiencia inicial",
+      "explanation": "La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento. Este es el último día.",
+      "unit": "business_days",
+      "amount": 15,
+      "startsFrom": "Desde el emplazamiento de la persona señalada.",
+      "consequence": "La audiencia fuera de plazo puede impugnarse.",
+      "warning": { "unit": "business_days", "amount": 5 },
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "III" }]
+    },
+    {
+      "key": "parties_summons",
+      "name": "Citar a las demás partes",
+      "explanation": "Las demás partes (también la persona denunciante identificada, como tercera) se citan al menos 72 horas antes de la audiencia inicial.",
+      "unit": "hours",
+      "amount": 72,
+      "startsFrom": "Día de la audiencia inicial: el plazo se cuenta hacia atrás.",
+      "consequence": "Sin la cita a tiempo, la parte puede pedir que se repita la diligencia.",
+      "warning": { "unit": "natural_days", "amount": 1 },
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "IV" }]
+    },
+    {
+      "key": "evidence_admission",
+      "name": "Admitir las pruebas",
+      "explanation": "Después de la audiencia inicial (en no graves) o de recibir el expediente (en el Tribunal), la autoridad tiene 15 días hábiles para admitir las pruebas.",
+      "unit": "business_days",
+      "amount": 15,
+      "startsFrom": "Desde el cierre de la audiencia inicial o desde que el Tribunal recibe el expediente.",
+      "consequence": "El retraso cuenta para la caducidad de la instancia.",
+      "warning": { "unit": "business_days", "amount": 3 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "208", "fraction": "VIII" },
+        { "law": "LGRA", "article": "209", "fraction": "II" }
+      ]
+    },
+    {
+      "key": "closing_arguments",
+      "name": "Presentar alegatos",
+      "explanation": "Las partes tienen 5 días hábiles comunes para presentar sus alegatos.",
+      "unit": "business_days",
+      "amount": 5,
+      "startsFrom": "Desde que se abre el periodo de alegatos.",
+      "consequence": "Pasado el plazo, la instrucción se cierra sin esos alegatos.",
+      "warning": { "unit": "business_days", "amount": 2 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "208", "fraction": "IX" },
+        { "law": "LGRA", "article": "209", "fraction": "III" }
+      ]
+    },
+    {
+      "key": "resolution_term",
+      "name": "Resolver",
+      "explanation": "Cerrada la instrucción, la autoridad resolutora o el Tribunal tiene 30 días hábiles para resolver; puede ampliarlos una sola vez por otros 30, con causa justificada.",
+      "unit": "business_days",
+      "amount": 30,
+      "maxAmount": 60,
+      "startsFrom": "Desde el cierre de la instrucción.",
+      "consequence": "El retraso se puede señalar ante la autoridad supervisora o los órganos de control.",
+      "warning": { "unit": "business_days", "amount": 5 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "208", "fraction": "X" },
+        { "law": "LGRA", "article": "209", "fraction": "IV" }
+      ]
+    },
+    {
+      "key": "resolution_notice",
+      "name": "Notificar la resolución",
+      "explanation": "La resolución se notifica en 10 días hábiles: en persona a la persona señalada y, para su conocimiento, a la persona denunciante.",
+      "unit": "business_days",
+      "amount": 10,
+      "startsFrom": "Desde que se dicta la resolución.",
+      "consequence": "Los plazos de los recursos corren desde la notificación.",
+      "warning": { "unit": "business_days", "amount": 3 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "208", "fraction": "XI" },
+        { "law": "LGRA", "article": "209", "fraction": "V" }
+      ]
+    },
+    {
+      "key": "court_referral",
+      "name": "Enviar el expediente al Tribunal",
+      "explanation": "En faltas graves y de particulares, la autoridad substanciadora envía los autos originales al Tribunal en 3 días hábiles después de la audiencia inicial.",
+      "unit": "business_days",
+      "amount": 3,
+      "startsFrom": "Desde el cierre de la audiencia inicial.",
+      "consequence": "El retraso se puede señalar ante la autoridad supervisora.",
+      "warning": { "unit": "business_days", "amount": 1 },
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "I" }]
+    },
+    {
+      "key": "reclassification",
+      "name": "Reclasificar la falta",
+      "explanation": "Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para hacerlo.",
+      "unit": "business_days",
+      "amount": 3,
+      "startsFrom": "Desde que el Tribunal lo ordena.",
+      "consequence": "El retraso se puede señalar ante el Tribunal y la autoridad supervisora.",
+      "warning": { "unit": "business_days", "amount": 1 },
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "II" }]
+    },
+    {
+      "key": "precautionary_hearing",
+      "name": "Vista sobre la medida cautelar",
+      "explanation": "Pedida una medida cautelar, se da vista a quienes afecta para que digan lo que les convenga en 5 días hábiles.",
+      "unit": "business_days",
+      "amount": 5,
+      "startsFrom": "Desde que la autoridad investigadora pide la medida.",
+      "consequence": "Después se resuelve con lo que haya.",
+      "warning": { "unit": "business_days", "amount": 2 },
+      "legalBasis": [{ "law": "LGRA", "article": "126" }]
+    },
+    {
+      "key": "precautionary_decision",
+      "name": "Resolver la medida cautelar",
+      "explanation": "La autoridad substanciadora o el Tribunal resuelve la medida cautelar en 5 días hábiles, por resolución interlocutoria que no admite recurso.",
+      "unit": "business_days",
+      "amount": 5,
+      "startsFrom": "Desde que termina la vista a los afectados.",
+      "consequence": "El retraso se puede señalar ante la autoridad supervisora.",
+      "warning": { "unit": "business_days", "amount": 2 },
+      "legalBasis": [{ "law": "LGRA", "article": "127" }]
+    },
+    {
+      "key": "claim_filing",
+      "name": "Presentar la reclamación",
+      "explanation": "Contra el auto que admite, desecha o tiene por no presentado el informe, la contestación o una prueba, el que sobresee antes del cierre o el que admite o rechaza a un tercero, las partes pueden presentar reclamación en 5 días hábiles ante la autoridad que lo dictó.",
+      "unit": "business_days",
+      "amount": 5,
+      "startsFrom": "Desde que se notifica el auto.",
+      "consequence": "Pasado el plazo, el auto ya no se puede reclamar.",
+      "warning": { "unit": "business_days", "amount": 2 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "213" },
+        { "law": "LGRA", "article": "214" }
+      ]
+    },
+    {
+      "key": "claim_resolution",
+      "name": "Resolver la reclamación",
+      "explanation": "La autoridad que dictó el auto resuelve la reclamación en 5 días hábiles, sin recurso posterior.",
+      "unit": "business_days",
+      "amount": 5,
+      "startsFrom": "Desde que se presenta la reclamación.",
+      "consequence": "El retraso se puede señalar ante la autoridad supervisora.",
+      "warning": { "unit": "business_days", "amount": 2 },
+      "legalBasis": [{ "law": "LGRA", "article": "214" }]
+    },
+    {
+      "key": "revocation_filing",
+      "name": "Pedir la revocación",
+      "explanation": "La persona sancionada por una falta no grave puede pedir la revocación en 15 días hábiles ante la autoridad que resolvió.",
+      "unit": "business_days",
+      "amount": 15,
+      "startsFrom": "Desde que se notifica la resolución.",
+      "consequence": "Si nadie la pide, la resolución queda firme.",
+      "warning": { "unit": "business_days", "amount": 3 },
+      "legalBasis": [{ "law": "LGRA", "article": "210" }]
+    },
+    {
+      "key": "revocation_resolution",
+      "name": "Resolver la revocación",
+      "explanation": "La autoridad que resolvió admite la revocación en 3 días hábiles y la resuelve en 30 días hábiles. Contra lo que resuelva cabe juicio ante el Tribunal.",
+      "unit": "business_days",
+      "amount": 30,
+      "startsFrom": "Desde que se presenta la revocación.",
+      "consequence": "El retraso se puede señalar ante la autoridad supervisora.",
+      "warning": { "unit": "business_days", "amount": 5 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "210" },
+        { "law": "LGRA", "article": "211" }
+      ]
+    },
+    {
+      "key": "court_appeal_filing",
+      "name": "Apelar la sentencia",
+      "explanation": "Contra la sentencia del Tribunal que sanciona o absuelve, las personas responsables o los terceros (también la persona denunciante identificada) pueden apelar en 15 días hábiles ante el Tribunal que resolvió.",
+      "unit": "business_days",
+      "amount": 15,
+      "startsFrom": "Desde que se notifica la sentencia.",
+      "consequence": "Si nadie apela ni se pide la revisión, la sentencia queda firme.",
+      "warning": { "unit": "business_days", "amount": 3 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "215" },
+        { "law": "LGRA", "article": "216" }
+      ]
+    },
+    {
+      "key": "review_filing",
+      "name": "Pedir la revisión",
+      "explanation": "Las autoridades (la Secretaría, el órgano interno de control o la entidad de fiscalización) pueden pedir la revisión de la sentencia definitiva en 10 días hábiles. Ante quién y quién la resuelve lo dicen la ley federal o la de cada estado, y lo declara cada nodo.",
+      "unit": "business_days",
+      "amount": 10,
+      "startsFrom": "Desde que se notifica la sentencia.",
+      "consequence": "Pasado el plazo, la autoridad ya no puede pedirla.",
+      "warning": { "unit": "business_days", "amount": 3 },
+      "legalBasis": [
+        { "law": "LGRA", "article": "220" },
+        { "law": "LGRA", "article": "221" }
+      ]
+    },
+    {
+      "key": "execution_report",
+      "name": "Informar la ejecución",
+      "explanation": "En faltas graves, el Tribunal ordena ejecutar la sanción sin que nadie lo pida, y el superior y la Secretaría informan en 10 días que la ejecutaron.",
+      "unit": "business_days",
+      "amount": 10,
+      "startsFrom": "Desde que la resolución queda firme.",
+      "consequence": "No cumplir la ejecución es causa de responsabilidad.",
+      "warning": { "unit": "business_days", "amount": 3 },
+      "legalBasis": [{ "law": "LGRA", "article": "225" }]
+    },
+    {
+      "key": "prosecutor_determination_challenge",
+      "name": "Impugnar la determinación del Ministerio Público",
+      "explanation": "La víctima u ofendida puede impugnar ante el juez de control la abstención, el archivo temporal, el criterio de oportunidad o el no ejercicio de la acción penal en 10 días.",
+      "unit": "natural_days",
+      "amount": 10,
+      "startsFrom": "Desde que se notifica la determinación.",
+      "consequence": "Pasado el plazo, la determinación ya no se puede impugnar.",
+      "warning": { "unit": "natural_days", "amount": 3 },
+      "legalBasis": [{ "law": "CNPP", "article": "258" }]
     }
   ],
   "complaintStatuses": [
@@ -415,8 +845,664 @@
       "name": "Concluida",
       "explanation": "La autoridad terminó el trámite.",
       "managementState": "closed"
+    },
+    {
+      "key": "in_procedure",
+      "name": "En procedimiento de responsabilidad",
+      "explanation": "La autoridad substanciadora admitió el informe y sigue el procedimiento contra la persona señalada.",
+      "managementState": "accepted",
+      "legalStage": "report_admitted"
+    },
+    {
+      "key": "in_court",
+      "name": "En el Tribunal",
+      "explanation": "La falta es grave o de particulares: el expediente está en el Tribunal de Justicia Administrativa, que la resuelve.",
+      "managementState": "accepted",
+      "legalStage": "court_received"
+    },
+    {
+      "key": "under_remedy",
+      "name": "En recurso",
+      "explanation": "Alguien presentó un recurso contra una decisión del trámite (inconformidad, reclamación, revocación, apelación o revisión) y está pendiente de resolverse.",
+      "managementState": "accepted"
+    },
+    {
+      "key": "final_sanction",
+      "name": "Concluida con sanción firme",
+      "explanation": "La resolución que sanciona quedó firme y la sanción se ejecutó.",
+      "managementState": "closed"
+    },
+    {
+      "key": "final_no_sanction",
+      "name": "Concluida sin sanción",
+      "explanation": "Terminó sin sanción: la persona no fue responsable, la autoridad se abstuvo o se sobreseyó el procedimiento.",
+      "managementState": "closed"
+    },
+    {
+      "key": "prescribed_or_expired",
+      "name": "Prescrita o caducada",
+      "explanation": "Pasó el tiempo que la ley da para sancionar (prescripción) o el procedimiento estuvo parado más de 6 meses (caducidad).",
+      "managementState": "closed"
     }
   ],
+  "administrativeTransitions": [
+    {
+      "from": null,
+      "to": "investigation",
+      "fn": "investigation",
+      "action": "stage_advanced",
+      "label": "Iniciar la investigación",
+      "legalBasis": [
+        { "law": "LGRA", "article": "94" },
+        { "law": "LGRA", "article": "64", "fraction": "II" }
+      ]
+    },
+    {
+      "from": "investigation",
+      "to": "qualification",
+      "fn": "investigation",
+      "action": "stage_advanced",
+      "requires": ["qualification"],
+      "label": "Calificar la falta",
+      "legalBasis": [{ "law": "LGRA", "article": "100" }]
+    },
+    {
+      "from": "qualification",
+      "to": "report_filed",
+      "fn": "investigation",
+      "action": "stage_advanced",
+      "label": "Presentar el Informe de Presunta Responsabilidad Administrativa",
+      "legalBasis": [
+        { "law": "LGRA", "article": "100" },
+        { "law": "LGRA", "article": "194" }
+      ]
+    },
+    {
+      "from": "report_filed",
+      "to": "report_prevented",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "requires": ["legalBasis"],
+      "label": "Prevenir: pedir que se corrija el informe",
+      "legalBasis": [{ "law": "LGRA", "article": "195" }]
+    },
+    {
+      "from": "report_filed",
+      "to": "abstention",
+      "fn": "substantiation",
+      "action": "abstention_declared",
+      "requires": ["legalBasis", "agreement"],
+      "label": "Abstenerse de iniciar el procedimiento",
+      "legalBasis": [{ "law": "LGRA", "article": "101" }]
+    },
+    {
+      "from": "report_filed",
+      "to": "report_admitted",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Admitir el informe e iniciar el procedimiento",
+      "legalBasis": [
+        { "law": "LGRA", "article": "112" },
+        { "law": "LGRA", "article": "208", "fraction": "I" }
+      ]
+    },
+    {
+      "from": "report_prevented",
+      "to": "report_filed",
+      "fn": "investigation",
+      "action": "stage_advanced",
+      "label": "Presentar el informe corregido",
+      "legalBasis": [{ "law": "LGRA", "article": "195" }]
+    },
+    {
+      "from": "report_prevented",
+      "to": "investigation",
+      "fn": "substantiation",
+      "action": "report_not_filed",
+      "requires": ["legalBasis"],
+      "label": "Tener el informe por no presentado (no se corrigió)",
+      "legalBasis": [{ "law": "LGRA", "article": "195" }]
+    },
+    {
+      "from": "report_admitted",
+      "to": "summoned",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Emplazar a la persona señalada",
+      "legalBasis": [
+        { "law": "LGRA", "article": "193" },
+        { "law": "LGRA", "article": "208", "fraction": "II" }
+      ]
+    },
+    {
+      "from": "summoned",
+      "to": "initial_hearing",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Registrar la audiencia inicial",
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "III a VII" }]
+    },
+    {
+      "from": "initial_hearing",
+      "to": "evidence_hearing",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "severities": ["non_serious"],
+      "label": "Admitir las pruebas (falta no grave)",
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "VIII" }]
+    },
+    {
+      "from": "initial_hearing",
+      "to": "case_file_sent",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "severities": ["serious"],
+      "label": "Enviar el expediente al Tribunal (falta grave o de particulares)",
+      "legalBasis": [
+        { "law": "LGRA", "article": "12" },
+        { "law": "LGRA", "article": "209", "fraction": "I" }
+      ]
+    },
+    {
+      "from": "evidence_hearing",
+      "to": "closing_arguments",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Abrir el periodo de alegatos",
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "IX" }]
+    },
+    {
+      "from": "closing_arguments",
+      "to": "instruction_closed",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Cerrar la instrucción",
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "X" }]
+    },
+    {
+      "from": "instruction_closed",
+      "to": "resolution",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Resolver la falta no grave",
+      "legalBasis": [{ "law": "LGRA", "article": "208", "fraction": "X y XI" }]
+    },
+    {
+      "from": "case_file_sent",
+      "to": "court_received",
+      "fn": "court",
+      "action": "stage_advanced",
+      "label": "Recibir el expediente en el Tribunal",
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "II" }]
+    },
+    {
+      "from": "court_received",
+      "to": "evidence_hearing",
+      "fn": "court",
+      "action": "returned_by_court",
+      "requires": ["legalBasis"],
+      "label": "Devolver a la autoridad substanciadora: no es falta grave",
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "II" }]
+    },
+    {
+      "from": "court_received",
+      "to": "court_evidence_hearing",
+      "fn": "court",
+      "action": "stage_advanced",
+      "label": "Admitir las pruebas en el Tribunal",
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "II" }]
+    },
+    {
+      "from": "court_evidence_hearing",
+      "to": "court_closing_arguments",
+      "fn": "court",
+      "action": "stage_advanced",
+      "label": "Abrir los alegatos en el Tribunal",
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "III" }]
+    },
+    {
+      "from": "court_closing_arguments",
+      "to": "court_instruction_closed",
+      "fn": "court",
+      "action": "stage_advanced",
+      "label": "Cerrar la instrucción en el Tribunal",
+      "legalBasis": [{ "law": "LGRA", "article": "209", "fraction": "IV" }]
+    },
+    {
+      "from": "court_instruction_closed",
+      "to": "court_resolution",
+      "fn": "court",
+      "action": "stage_advanced",
+      "label": "Dictar la sentencia",
+      "legalBasis": [
+        { "law": "LGRA", "article": "207" },
+        { "law": "LGRA", "article": "209", "fraction": "IV y V" }
+      ]
+    },
+    {
+      "from": "resolution",
+      "to": "final",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Declarar la resolución firme",
+      "legalBasis": [{ "law": "LGRA", "article": "206" }]
+    },
+    {
+      "from": "court_resolution",
+      "to": "final",
+      "fn": "court",
+      "action": "stage_advanced",
+      "label": "Declarar la sentencia firme",
+      "legalBasis": [{ "law": "LGRA", "article": "206" }]
+    },
+    {
+      "from": "final",
+      "to": "executed",
+      "fn": "substantiation",
+      "action": "stage_advanced",
+      "label": "Registrar la ejecución de la sanción",
+      "legalBasis": [
+        { "law": "LGRA", "article": "222" },
+        { "law": "LGRA", "article": "225" }
+      ]
+    }
+  ],
+  "criminalTransitions": [
+    { "from": null, "to": "criminal_investigation", "label": "Iniciar la investigación penal" },
+    {
+      "from": "criminal_complaint_filed",
+      "to": "criminal_investigation",
+      "label": "El Ministerio Público inició la investigación"
+    },
+    {
+      "from": "criminal_investigation",
+      "to": "prosecutor_determination",
+      "label": "Determinación del Ministerio Público"
+    },
+    { "from": "criminal_investigation", "to": "intermediate_stage", "label": "Etapa intermedia" },
+    { "from": "criminal_investigation", "to": "alternative_exit", "label": "Solución alterna" },
+    {
+      "from": "prosecutor_determination",
+      "to": "judicial_review",
+      "label": "Se impugnó la determinación ante el juez"
+    },
+    {
+      "from": "prosecutor_determination",
+      "to": "criminal_investigation",
+      "label": "Se reabrió la investigación"
+    },
+    {
+      "from": "judicial_review",
+      "to": "criminal_investigation",
+      "label": "El juez ordenó seguir la investigación"
+    },
+    {
+      "from": "judicial_review",
+      "to": "prosecutor_determination",
+      "label": "El juez confirmó la determinación"
+    },
+    { "from": "intermediate_stage", "to": "trial", "label": "Juicio" },
+    { "from": "intermediate_stage", "to": "alternative_exit", "label": "Solución alterna" },
+    { "from": "trial", "to": "sentence", "label": "Sentencia" }
+  ],
+  "remedyKinds": [
+    {
+      "key": "inconformity",
+      "name": "Inconformidad",
+      "against": "La calificación de la falta como no grave o la abstención de iniciar el procedimiento.",
+      "filedBy": ["reporter"],
+      "filedBefore": "La autoridad investigadora, que la envía con el expediente a la Sala del Tribunal.",
+      "recordedBy": ["investigation"],
+      "resolvedBy": "court",
+      "stages": ["qualification", "report_filed", "abstention"],
+      "filingDeadline": "appeal_filing",
+      "resolutionDeadline": "appeal_resolution",
+      "blocks": ["report_admitted"],
+      "effect": "Mientras se resuelve no se inicia el procedimiento de responsabilidad ni se cierra por abstención. El escrito exige firma autógrafa: sin ella no se tiene por presentado y no hay prevención.",
+      "onRevoked": "Si se revoca la calificación de no grave, la autoridad investigadora vuelve a calificar; si se revoca la abstención, la autoridad substanciadora debe pronunciarse de nuevo sobre el informe.",
+      "legalBasis": [
+        { "law": "LGRA", "article": "102" },
+        { "law": "LGRA", "article": "103" },
+        { "law": "LGRA", "article": "104" },
+        { "law": "LGRA", "article": "107" },
+        { "law": "LGRA", "article": "109" },
+        { "law": "LGRA", "article": "110" }
+      ]
+    },
+    {
+      "key": "claim",
+      "name": "Reclamación",
+      "against": "Los autos que admiten, desechan o tienen por no presentado el informe, la contestación o una prueba; los que sobreseen antes del cierre de la instrucción, y los que admiten o rechazan a un tercero.",
+      "filedBy": ["accused", "investigating_authority", "reporter", "other_party"],
+      "filedBefore": "La autoridad que dictó el auto.",
+      "recordedBy": ["substantiation", "court"],
+      "resolvedBy": "in_charge",
+      "stages": [
+        "report_admitted",
+        "summoned",
+        "initial_hearing",
+        "evidence_hearing",
+        "closing_arguments",
+        "instruction_closed",
+        "case_file_sent",
+        "court_received",
+        "court_evidence_hearing",
+        "court_closing_arguments",
+        "court_instruction_closed"
+      ],
+      "filingDeadline": "claim_filing",
+      "resolutionDeadline": "claim_resolution",
+      "blocks": [],
+      "effect": "No suspende el procedimiento. Se resuelve en 5 días hábiles y no admite recurso.",
+      "onRevoked": "El auto reclamado queda sin efecto y la autoridad que lo dictó lo repone; el cambio se registra con la etapa que corresponda.",
+      "legalBasis": [
+        { "law": "LGRA", "article": "213" },
+        { "law": "LGRA", "article": "214" }
+      ]
+    },
+    {
+      "key": "revocation",
+      "name": "Revocación",
+      "against": "La resolución que sanciona por una falta no grave.",
+      "filedBy": ["accused"],
+      "filedBefore": "La autoridad que resolvió (órgano interno de control o contraloría).",
+      "recordedBy": ["substantiation"],
+      "resolvedBy": "substantiation",
+      "stages": ["resolution"],
+      "filingDeadline": "revocation_filing",
+      "resolutionDeadline": "revocation_resolution",
+      "blocks": ["final"],
+      "effect": "Mientras se resuelve, la resolución no queda firme. Contra lo que se resuelva cabe juicio ante el Tribunal.",
+      "onRevoked": "La resolución queda sin efecto o se modifica: la autoridad registra la nueva resolución antes de declararla firme.",
+      "legalBasis": [
+        { "law": "LGRA", "article": "210" },
+        { "law": "LGRA", "article": "211" },
+        { "law": "LGRA", "article": "212" }
+      ]
+    },
+    {
+      "key": "appeal",
+      "name": "Apelación",
+      "against": "La sentencia del Tribunal que sanciona o que absuelve.",
+      "filedBy": ["accused", "reporter", "investigating_authority", "other_party"],
+      "filedBefore": "El Tribunal que resolvió; la resuelve su segunda instancia.",
+      "recordedBy": ["court", "investigation"],
+      "resolvedBy": "court",
+      "stages": ["court_resolution"],
+      "filingDeadline": "court_appeal_filing",
+      "blocks": ["final"],
+      "effect": "Mientras se resuelve, la sentencia no queda firme. La persona denunciante identificada puede apelar como tercera.",
+      "onRevoked": "La sentencia se revoca o se modifica en segunda instancia; lo que resuelva la alzada es lo que queda firme.",
+      "legalBasis": [
+        { "law": "LGRA", "article": "215" },
+        { "law": "LGRA", "article": "216" },
+        { "law": "LGRA", "article": "217" },
+        { "law": "LGRA", "article": "218" },
+        { "law": "LGRA", "article": "219" },
+        { "law": "LGRA", "article": "116", "fraction": "IV" }
+      ]
+    },
+    {
+      "key": "review",
+      "name": "Revisión",
+      "against": "Las sentencias definitivas del Tribunal.",
+      "filedBy": ["investigating_authority", "other_party"],
+      "filedBefore": "El Tribunal que resolvió, según la ley de cada estado.",
+      "recordedBy": ["court", "investigation"],
+      "resolvedBy": "court",
+      "stages": ["court_resolution"],
+      "filingDeadline": "review_filing",
+      "blocks": ["final"],
+      "effect": "Mientras se resuelve, la sentencia no queda firme.",
+      "onRevoked": "La sentencia se revoca o se modifica; lo que se resuelva es lo que queda firme.",
+      "legalBasis": [
+        { "law": "LGRA", "article": "220" },
+        { "law": "LGRA", "article": "221" }
+      ]
+    }
+  ],
+  "remedyOutcomes": [
+    {
+      "key": "admitted",
+      "name": "Procedente (admitido)",
+      "explanation": "El recurso se admitió y sigue en trámite hasta que se resuelva."
+    },
+    {
+      "key": "inadmissible",
+      "name": "Improcedente",
+      "explanation": "El recurso no se admitió (por ejemplo, fuera de plazo o sin firma autógrafa). El acto recurrido sigue igual."
+    },
+    {
+      "key": "confirmed",
+      "name": "Confirmada",
+      "explanation": "Se confirmó el acto recurrido: sigue igual."
+    },
+    { "key": "revoked", "name": "Revocada", "explanation": "El acto recurrido quedó sin efecto." },
+    { "key": "modified", "name": "Modificada", "explanation": "El acto recurrido se modificó." }
+  ],
+  "legalClosureReasons": [
+    {
+      "key": "archived",
+      "name": "Archivo por falta de elementos",
+      "explanation": "La investigación no encontró elementos para acreditar la falta. Se puede reabrir con nuevos indicios mientras no prescriba.",
+      "s5Reasons": ["insufficient_information"],
+      "status": "archived",
+      "stages": ["investigation", "qualification"],
+      "allowsNoStage": true,
+      "legalBasis": [{ "law": "LGRA", "article": "100" }]
+    },
+    {
+      "key": "abstention",
+      "name": "Abstención",
+      "explanation": "La autoridad se abstuvo de iniciar el procedimiento o de sancionar (sin daño a la hacienda pública y por criterio opinable o corrección espontánea), y la abstención no se impugnó o se confirmó.",
+      "s5Reasons": ["attended"],
+      "status": "final_no_sanction",
+      "stages": ["abstention"],
+      "legalBasis": [{ "law": "LGRA", "article": "101" }]
+    },
+    {
+      "key": "prescribed",
+      "name": "Prescripción",
+      "explanation": "Pasó el plazo para sancionar: 3 años en faltas no graves y 7 en graves o de particulares.",
+      "s5Reasons": ["other"],
+      "status": "prescribed_or_expired",
+      "allowsNoStage": true,
+      "legalBasis": [{ "law": "LGRA", "article": "74" }]
+    },
+    {
+      "key": "expired",
+      "name": "Caducidad de la instancia",
+      "explanation": "Admitido el informe, el procedimiento estuvo parado más de 6 meses sin causa justificada y se decretó la caducidad a petición de la persona señalada.",
+      "s5Reasons": ["other"],
+      "status": "prescribed_or_expired",
+      "stages": [
+        "report_admitted",
+        "summoned",
+        "initial_hearing",
+        "evidence_hearing",
+        "closing_arguments",
+        "instruction_closed",
+        "case_file_sent",
+        "court_received",
+        "court_evidence_hearing",
+        "court_closing_arguments",
+        "court_instruction_closed"
+      ],
+      "legalBasis": [{ "law": "LGRA", "article": "74" }]
+    },
+    {
+      "key": "dismissed",
+      "name": "Sobreseimiento",
+      "explanation": "El procedimiento terminó sin resolver el fondo por una causa de la ley (por ejemplo, improcedencia, muerte de la persona señalada o derogación de la falta).",
+      "s5Reasons": ["other", "inadmissible"],
+      "status": "final_no_sanction",
+      "stages": [
+        "report_admitted",
+        "summoned",
+        "initial_hearing",
+        "evidence_hearing",
+        "closing_arguments",
+        "instruction_closed",
+        "case_file_sent",
+        "court_received",
+        "court_evidence_hearing",
+        "court_closing_arguments",
+        "court_instruction_closed",
+        "resolution",
+        "court_resolution"
+      ],
+      "legalBasis": [
+        { "law": "LGRA", "article": "196" },
+        { "law": "LGRA", "article": "197" }
+      ]
+    },
+    {
+      "key": "incompetence",
+      "name": "Incompetencia y remisión",
+      "explanation": "La autoridad no es competente y remitió el asunto a la que sí lo es (dentro o fuera de la red), con fundamento y por oficio.",
+      "s5Reasons": ["channeled"],
+      "status": "resolved",
+      "allowsNoStage": true,
+      "requiresDestination": true,
+      "legalBasis": [
+        { "law": "LGRA", "article": "14" },
+        { "law": "LGRA", "article": "196", "fraction": "II" }
+      ]
+    },
+    {
+      "key": "sanctioned",
+      "name": "Resolución firme con sanción",
+      "explanation": "La resolución que sanciona quedó firme y la sanción se ejecutó.",
+      "s5Reasons": ["attended"],
+      "status": "final_sanction",
+      "stages": ["executed"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "206" },
+        { "law": "LGRA", "article": "222" }
+      ]
+    },
+    {
+      "key": "responsible_no_sanction",
+      "name": "Resolución firme: responsable sin sanción",
+      "explanation": "La resolución firme declaró la responsabilidad, pero la autoridad se abstuvo de sancionar porque no hubo dolo ni antecedentes.",
+      "s5Reasons": ["attended"],
+      "status": "final_no_sanction",
+      "stages": ["final"],
+      "legalBasis": [
+        { "law": "LGRA", "article": "77" },
+        { "law": "LGRA", "article": "206" }
+      ]
+    },
+    {
+      "key": "not_responsible",
+      "name": "Resolución firme: no responsable",
+      "explanation": "La resolución firme declaró que la persona señalada no es responsable.",
+      "s5Reasons": ["attended"],
+      "status": "final_no_sanction",
+      "stages": ["final"],
+      "legalBasis": [{ "law": "LGRA", "article": "206" }]
+    }
+  ],
+  "precautionaryRule": {
+    "requestedBy": "investigation",
+    "stages": [
+      "report_filed",
+      "report_prevented",
+      "report_admitted",
+      "summoned",
+      "initial_hearing",
+      "evidence_hearing",
+      "closing_arguments",
+      "instruction_closed",
+      "case_file_sent",
+      "court_received",
+      "court_evidence_hearing",
+      "court_closing_arguments",
+      "court_instruction_closed"
+    ],
+    "examples": [
+      "Suspensión temporal del presunto responsable de su empleo, cargo o comisión (art. 124 fr. I)",
+      "Exhibición de documentos originales",
+      "Apercibimiento de multa",
+      "Embargo precautorio de bienes"
+    ],
+    "deadlines": ["precautionary_hearing", "precautionary_decision"],
+    "outcomes": [
+      { "key": "granted", "name": "Concedida" },
+      { "key": "provisional", "name": "Concedida provisionalmente" },
+      { "key": "denied", "name": "Negada" }
+    ],
+    "legalBasis": [
+      { "law": "LGRA", "article": "123" },
+      { "law": "LGRA", "article": "124" },
+      { "law": "LGRA", "article": "125" },
+      { "law": "LGRA", "article": "126" },
+      { "law": "LGRA", "article": "127" },
+      { "law": "LGRA", "article": "129" }
+    ]
+  },
+  "criminalReferralBases": [
+    {
+      "key": "internal_control",
+      "name": "Órgano interno de control o Secretaría",
+      "legalBasis": [{ "law": "LGRA", "article": "10", "fraction": "III" }],
+      "explanation": "Los órganos internos de control y las Secretarías presentan denuncia ante la fiscalía anticorrupción cuando ven un posible delito."
+    },
+    {
+      "key": "superior_audit",
+      "name": "Entidad de fiscalización (ASF o del estado)",
+      "legalBasis": [{ "law": "LGRA", "article": "98" }],
+      "explanation": "La Auditoría Superior de la Federación y las entidades de fiscalización de los estados denuncian ante el Ministerio Público los delitos que resulten de sus investigaciones."
+    },
+    {
+      "key": "public_servant",
+      "name": "Cualquier persona servidora pública",
+      "legalBasis": [{ "law": "CNPP", "article": "222" }],
+      "explanation": "Quien en ejercicio de funciones públicas conozca un probable delito debe denunciarlo de inmediato."
+    }
+  ],
+  "federalFundsRule": {
+    "question": "¿La denuncia involucra recursos federales (aportaciones del Ramo 33 o convenios con la Federación)?",
+    "fundings": [
+      {
+        "key": "aportaciones",
+        "name": "Aportaciones federales (Ramo 33)",
+        "explanation": "Fondos como FAIS, FORTAMUN, FONE o FASSA: son federales y condicionados aunque los ejerza el estado o el municipio."
+      },
+      {
+        "key": "convenio_federal",
+        "name": "Convenio o subsidio federal",
+        "explanation": "Recursos que la Federación entrega por convenio a un estado, un municipio o un particular."
+      }
+    ],
+    "authorities": [
+      {
+        "key": "asf",
+        "name": "Auditoría Superior de la Federación (ASF)",
+        "role": "Fiscaliza los recursos federales e investiga las faltas graves, que lleva al Tribunal Federal de Justicia Administrativa.",
+        "legalBasis": [
+          { "law": "LFRCF", "article": "47" },
+          { "law": "LFRCF", "article": "66 Bis" }
+        ]
+      },
+      {
+        "key": "sabg",
+        "name": "Secretaría Anticorrupción y Buen Gobierno (SABG)",
+        "role": "Recibe el aviso inmediato de la autoridad local; las responsabilidades las determinan las autoridades federales.",
+        "legalBasis": [{ "law": "LCF", "article": "49" }]
+      },
+      {
+        "key": "fgr",
+        "name": "Fiscalía Especializada en materia de Combate a la Corrupción de la FGR",
+        "role": "Investiga el delito: es federal porque quien lo comete maneja recursos económicos federales.",
+        "legalBasis": [{ "law": "CPF", "article": "212" }]
+      }
+    ],
+    "noticeLegalBasis": [{ "law": "LCF", "article": "49" }],
+    "notice": "La autoridad local que detecte el desvío de aportaciones debe avisar «en forma inmediata» a la ASF y a la Secretaría federal.",
+    "transfer": "Si la competencia es federal, turna la denuncia al nodo Federal con «Turnar a otro nodo»; la investigación local del control durante el ejercicio puede seguir.",
+    "towardState": "En el nodo Federal, si la denuncia es sobre un ente estatal o municipal y no involucra recursos federales (o tiene faltas locales además de las federales), turna esa parte al nodo del estado con «Turnar a otro nodo»."
+  },
   "turnSemaphore": {
     "unit": "business_days",
     "warningAfter": 1,
@@ -444,7 +1530,7 @@
         "key": "vencida",
         "name": "Vencida",
         "symbol": "■",
-        "explanation": "Cumplió dos días hábiles o más esperando; la supervisión recibe un aviso."
+        "explanation": "Cumplió dos días hábiles o más esperando; la supervisión recibe un aviso. Es la meta del S5, no un plazo legal."
       }
     ]
   },

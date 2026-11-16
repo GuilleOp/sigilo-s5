@@ -63,6 +63,12 @@ export const PDN_STATUS_KEYS = {
   classified: 'CALIFICADA',
   archived: 'ARCHIVADA',
   resolved: 'CONCLUIDA',
+  in_procedure: 'EN_PROCEDIMIENTO',
+  in_court: 'EN_TRIBUNAL',
+  under_remedy: 'EN_RECURSO',
+  final_sanction: 'CONCLUIDA_CON_SANCION',
+  final_no_sanction: 'CONCLUIDA_SIN_SANCION',
+  prescribed_or_expired: 'PRESCRITA_O_CADUCADA',
 } as const satisfies Record<ComplaintStatus, string>;
 
 /** Clave de la PDN de un motivo de cierre. */

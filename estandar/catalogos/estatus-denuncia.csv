@@ -6,3 +6,9 @@ EN_INVESTIGACION,En investigación,investigating
 CALIFICADA,Revisada: la autoridad decidió si la falta es grave,classified
 ARCHIVADA,Archivada,archived
 CONCLUIDA,Concluida,resolved
+EN_PROCEDIMIENTO,En procedimiento de responsabilidad,in_procedure
+EN_TRIBUNAL,En el Tribunal,in_court
+EN_RECURSO,En recurso,under_remedy
+CONCLUIDA_CON_SANCION,Concluida con sanción firme,final_sanction
+CONCLUIDA_SIN_SANCION,Concluida sin sanción,final_no_sanction
+PRESCRITA_O_CADUCADA,Prescrita o caducada,prescribed_or_expired

@@ -1,0 +1,6 @@
+clave,valor,plazoPresentacion,plazoResolucion,resuelve,fundamento
+inconformity,Inconformidad,appeal_filing,appeal_resolution,court,"LGRA, art. 102; LGRA, art. 103; LGRA, art. 104; LGRA, art. 107; LGRA, art. 109; LGRA, art. 110"
+claim,Reclamación,claim_filing,claim_resolution,in_charge,"LGRA, art. 213; LGRA, art. 214"
+revocation,Revocación,revocation_filing,revocation_resolution,substantiation,"LGRA, art. 210; LGRA, art. 211; LGRA, art. 212"
+appeal,Apelación,court_appeal_filing,,court,"LGRA, art. 215; LGRA, art. 216; LGRA, art. 217; LGRA, art. 218; LGRA, art. 219; LGRA, art. 116, fracc. IV"
+review,Revisión,review_filing,,court,"LGRA, art. 220; LGRA, art. 221"

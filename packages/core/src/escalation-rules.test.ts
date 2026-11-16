@@ -254,10 +254,79 @@ describe('plazos que corren', () => {
     expect(activeDeadlines(qualified, { isAccepted: true })).toEqual([
       { key: 'appeal_filing', startsOn: '2026-12-10' },
     ]);
-    const appealed = marta({ ...qualified, appealFiledOn: '2026-12-14' });
-    expect(activeDeadlines(appealed, { isAccepted: true })).toEqual([
-      { key: 'appeal_resolution', startsOn: '2026-12-14' },
+    // El aviso en línea no detiene el plazo: la inconformidad cuenta con el escrito firmado (B04).
+    const noticed = marta({ ...qualified, appealFiledOn: '2026-12-14' });
+    expect(activeDeadlines(noticed, { isAccepted: true })).toEqual([
+      { key: 'appeal_filing', startsOn: '2026-12-10' },
     ]);
+    // Con el escrito firmado corre el plazo de la Sala (LGRA, art. 107), y deja de correr al
+    // resolverse.
+    const signed = marta({ ...noticed, inconformitySignedOn: '2026-12-15' });
+    expect(activeDeadlines(signed, { isAccepted: true })).toEqual([
+      { key: 'appeal_resolution', startsOn: '2026-12-15' },
+    ]);
+    expect(
+      activeDeadlines(marta({ ...signed, inconformityResolved: true }), { isAccepted: true }),
+    ).toEqual([]);
+  });
+
+  it('los plazos de la etapa corren desde que entra y dependen de la rama', () => {
+    const base = marta({
+      investigationStartedOn: '2026-11-10',
+      qualifiedOn: '2026-12-09',
+      qualificationSeverity: 'serious',
+      qualificationOn: '2026-12-09',
+    });
+    const keys = (snapshot: ProcedureSnapshot) =>
+      activeDeadlines(snapshot, { isAccepted: true }).map((item) => item.key);
+    expect(keys({ ...base, legalStage: 'report_filed', stageEnteredOn: '2026-12-11' })).toEqual([
+      'report_admission',
+    ]);
+    // Al cerrar la audiencia inicial: envío al Tribunal si es grave, admisión de pruebas si no.
+    const hearing = {
+      ...base,
+      legalStage: 'initial_hearing' as const,
+      stageEnteredOn: '2027-01-20',
+    };
+    expect(keys({ ...hearing, isSeriousTrack: true })).toEqual([
+      'inactivity_expiry',
+      'court_referral',
+    ]);
+    expect(keys({ ...hearing, isSeriousTrack: false })).toEqual([
+      'inactivity_expiry',
+      'evidence_admission',
+    ]);
+    // La sentencia abre la apelación y la revisión; una apelación presentada cierra su plazo.
+    const sentence = {
+      ...base,
+      legalStage: 'court_resolution' as const,
+      stageEnteredOn: '2027-03-01',
+    };
+    expect(keys(sentence)).toEqual(['resolution_notice', 'court_appeal_filing', 'review_filing']);
+    expect(keys({ ...sentence, filedRemedies: ['appeal'] })).toEqual([
+      'resolution_notice',
+      'review_filing',
+    ]);
+    // Los recursos pendientes, la medida cautelar y la reclasificación tienen su plazo.
+    expect(
+      keys({
+        ...base,
+        legalStage: 'resolution',
+        stageEnteredOn: '2027-03-01',
+        filedRemedies: ['revocation'],
+        pendingRemedies: [{ kind: 'revocation', filedOn: '2027-03-05' }],
+        precautionaryRequestedOn: '2027-03-02',
+      }),
+    ).toEqual(['resolution_notice', 'revocation_resolution', 'precautionary_hearing']);
+    // La vía penal corre en paralelo con su propio plazo.
+    expect(
+      keys({
+        ...base,
+        legalStage: 'investigation',
+        criminalStage: 'prosecutor_determination',
+        criminalStageEnteredOn: '2027-01-05',
+      }),
+    ).toEqual(['prosecutor_determination_challenge']);
   });
 });
 

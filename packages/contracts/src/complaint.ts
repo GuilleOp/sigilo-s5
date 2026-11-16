@@ -25,8 +25,28 @@ export const ComplaintModeSchema = z.enum(['anonymous', 'sealed']).meta({
 });
 export type ComplaintMode = z.infer<typeof ComplaintModeSchema>;
 
+/**
+ * Estatus de la API v1. Los siete primeros son los de siempre; desde el estándar 0.4.0 se agregan
+ * los del procedimiento después del IPRA, los recursos y los cierres legales, sin cambiar el
+ * significado de los anteriores (un cliente que no los conoce los puede leer como `classified` o
+ * `resolved`, ver `COMPLAINT_STATUSES`).
+ */
 export const ComplaintStatusSchema = z
-  .enum(['received', 'routing', 'routed', 'investigating', 'classified', 'archived', 'resolved'])
+  .enum([
+    'received',
+    'routing',
+    'routed',
+    'investigating',
+    'classified',
+    'archived',
+    'resolved',
+    'in_procedure',
+    'in_court',
+    'under_remedy',
+    'final_sanction',
+    'final_no_sanction',
+    'prescribed_or_expired',
+  ])
   .meta({
     description:
       'Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.',

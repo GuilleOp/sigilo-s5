@@ -337,8 +337,11 @@ describe('red del escenario de la demostración', () => {
     const { openingId } = AppealResponseSchema.parse(await appeal.json());
     seen = await tracking(federal, folio, marta);
     expect(seen.identityAccess.at(-1)).toMatchObject({ actorRole: 'reporter', openingId });
-    expect(seen.procedure?.qualification?.appeal?.resolutionDueOn).toBeDefined();
-    expect(seen.procedure?.deadlines.map((deadline) => deadline.key)).toContain(
+    // Es un aviso: el plazo para el escrito firmado sigue corriendo y la Sala todavía no (B04).
+    expect(seen.procedure?.qualification?.appeal?.filingDueOn).toBeDefined();
+    expect(seen.procedure?.qualification?.appeal?.resolutionDueOn).toBeUndefined();
+    expect(seen.procedure?.deadlines.map((deadline) => deadline.key)).toContain('appeal_filing');
+    expect(seen.procedure?.deadlines.map((deadline) => deadline.key)).not.toContain(
       'appeal_resolution',
     );
     // Una segunda inconformidad no procede.
@@ -368,6 +371,21 @@ describe('red del escenario de la demostración', () => {
     // La entrega queda en el seguimiento y en la bitácora (identity.released).
     seen = await tracking(federal, folio, marta);
     expect(seen.identityReleases?.map((item) => item.openingId)).toEqual([openingId]);
+    // La autoridad investigadora registra el escrito con firma autógrafa: corre el plazo de la Sala.
+    const signed = await asAccount(federal, 'iffeInvestigator', ROUTES.authorityProcedure(folio), {
+      action: 'file_remedy',
+      kind: 'inconformity',
+      filedBy: 'reporter',
+      signed: true,
+    });
+    expect(signed.status).toBe(200);
+    seen = await tracking(federal, folio, marta);
+    expect(seen.procedure?.qualification?.appeal?.signedOn).toBeDefined();
+    expect(seen.procedure?.qualification?.appeal?.resolutionDueOn).toBeDefined();
+    expect(seen.procedure?.deadlines.map((deadline) => deadline.key)).toEqual(
+      expect.arrayContaining(['appeal_resolution']),
+    );
+    expect(seen.status).toBe('under_remedy');
 
     // La cabeza del nodo se publicó en la bitácora nacional; Querétaro, testigo, hizo su vuelta.
     expect((await federal.tasks.run()).publishedSeq).toBeNull();

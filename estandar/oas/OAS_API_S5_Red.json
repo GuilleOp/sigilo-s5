@@ -3,7 +3,7 @@
   "info": {
     "title": "S5 - Red federada",
     "description": "Red federada del S5: directorio de autoridades firmado, enrutador ciego, registro y salud de nodos, bitácora nacional cofirmada y buzón de red de cada nodo. Lo sirve el enrutador (la SESNA), salvo el buzón de red, que lo sirve cada nodo. Propuesta de SIGILO; no es una especificación oficial de la SESNA.",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "license": { "name": "CC BY-NC 4.0", "url": "https://creativecommons.org/licenses/by-nc/4.0/" }
   },
   "servers": [
@@ -2019,7 +2019,29 @@
                               "total": null
                             },
                             { "clave": "ARCHIVADA", "valor": "Archivada", "total": null },
-                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null }
+                            { "clave": "CONCLUIDA", "valor": "Concluida", "total": null },
+                            {
+                              "clave": "EN_PROCEDIMIENTO",
+                              "valor": "En procedimiento de responsabilidad",
+                              "total": null
+                            },
+                            { "clave": "EN_TRIBUNAL", "valor": "En el Tribunal", "total": null },
+                            { "clave": "EN_RECURSO", "valor": "En recurso", "total": null },
+                            {
+                              "clave": "CONCLUIDA_CON_SANCION",
+                              "valor": "Concluida con sanción firme",
+                              "total": null
+                            },
+                            {
+                              "clave": "CONCLUIDA_SIN_SANCION",
+                              "valor": "Concluida sin sanción",
+                              "total": null
+                            },
+                            {
+                              "clave": "PRESCRITA_O_CADUCADA",
+                              "valor": "Prescrita o caducada",
+                              "total": null
+                            }
                           ],
                           "tiemposMedianosDiasHabiles": {
                             "turno": 1,
@@ -2385,9 +2407,15 @@
           "investigating",
           "classified",
           "archived",
-          "resolved"
+          "resolved",
+          "in_procedure",
+          "in_court",
+          "under_remedy",
+          "final_sanction",
+          "final_no_sanction",
+          "prescribed_or_expired"
         ],
-        "description": "Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.\n\n- `received`: Recibida. Tu denuncia llegó y está en espera de revisión.\n- `routing`: Buscando a la autoridad que debe atenderla. Estamos buscando qué autoridad debe atender tu denuncia.\n- `routed`: Turnada a la autoridad competente. La autoridad competente ya la tiene.\n- `investigating`: En investigación. La autoridad está investigando los hechos.\n- `classified`: Revisada: la autoridad decidió si la falta es grave. La autoridad ya decidió si la falta es grave o no.\n- `archived`: Archivada. Se cerró por ahora; puede reabrirse si hay nuevos elementos.\n- `resolved`: Concluida. La autoridad terminó el trámite."
+        "description": "Estatus de la denuncia en la API v1. Su lugar en el flujo de gestión y en las etapas legales está en el catálogo COMPLAINT_STATUSES.\n\n- `received`: Recibida. Tu denuncia llegó y está en espera de revisión.\n- `routing`: Buscando a la autoridad que debe atenderla. Estamos buscando qué autoridad debe atender tu denuncia.\n- `routed`: Turnada a la autoridad competente. La autoridad competente ya la tiene.\n- `investigating`: En investigación. La autoridad está investigando los hechos.\n- `classified`: Revisada: la autoridad decidió si la falta es grave. La autoridad ya decidió si la falta es grave o no.\n- `archived`: Archivada. Se cerró por ahora; puede reabrirse si hay nuevos elementos.\n- `resolved`: Concluida. La autoridad terminó el trámite.\n- `in_procedure`: En procedimiento de responsabilidad. La autoridad substanciadora admitió el informe y sigue el procedimiento contra la persona señalada.\n- `in_court`: En el Tribunal. La falta es grave o de particulares: el expediente está en el Tribunal de Justicia Administrativa, que la resuelve.\n- `under_remedy`: En recurso. Alguien presentó un recurso contra una decisión del trámite (inconformidad, reclamación, revocación, apelación o revisión) y está pendiente de resolverse.\n- `final_sanction`: Concluida con sanción firme. La resolución que sanciona quedó firme y la sanción se ejecutó.\n- `final_no_sanction`: Concluida sin sanción. Terminó sin sanción: la persona no fue responsable, la autoridad se abstuvo o se sobreseyó el procedimiento.\n- `prescribed_or_expired`: Prescrita o caducada. Pasó el tiempo que la ley da para sancionar (prescripción) o el procedimiento estuvo parado más de 6 meses (caducidad)."
       },
       "SignedAuthorityDirectory": {
         "type": "object",
@@ -4279,8 +4307,8 @@
                   "nullable": true
                 },
                 "estatusAlCierre": {
-                  "minItems": 7,
-                  "maxItems": 7,
+                  "minItems": 13,
+                  "maxItems": 13,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -4294,9 +4322,15 @@
                           "EN_INVESTIGACION",
                           "CALIFICADA",
                           "ARCHIVADA",
-                          "CONCLUIDA"
+                          "CONCLUIDA",
+                          "EN_PROCEDIMIENTO",
+                          "EN_TRIBUNAL",
+                          "EN_RECURSO",
+                          "CONCLUIDA_CON_SANCION",
+                          "CONCLUIDA_SIN_SANCION",
+                          "PRESCRITA_O_CADUCADA"
                         ],
-                        "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida)."
+                        "description": "Estatus de la denuncia: RECIBIDA (Recibida), BUSCANDO_AUTORIDAD (Buscando a la autoridad que debe atenderla), TURNADA (Turnada a la autoridad competente), EN_INVESTIGACION (En investigación), CALIFICADA (Revisada: la autoridad decidió si la falta es grave), ARCHIVADA (Archivada), CONCLUIDA (Concluida), EN_PROCEDIMIENTO (En procedimiento de responsabilidad), EN_TRIBUNAL (En el Tribunal), EN_RECURSO (En recurso), CONCLUIDA_CON_SANCION (Concluida con sanción firme), CONCLUIDA_SIN_SANCION (Concluida sin sanción), PRESCRITA_O_CADUCADA (Prescrita o caducada)."
                       },
                       "valor": {
                         "type": "string",

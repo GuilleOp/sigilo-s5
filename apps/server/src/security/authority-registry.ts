@@ -6,6 +6,7 @@ import type {
   AuthorityAccountRecord,
   AuthorityAccountsFile,
   AuthorityAccountView,
+  AuthorityFunction,
   AuthorityProfile,
 } from '@sigilo/contracts';
 import { MIN_SCRYPT_LOG_N, parsePasswordHash } from './passwords.ts';
@@ -29,6 +30,8 @@ export interface AuthorityRegistry {
   supervisedBy(authorityId: string): string[];
   findByUsername(username: string): AuthorityAccount | null;
   findAccount(accountId: string): AuthorityAccount | null;
+  /** Indica si alguna cuenta del nodo tiene la función `fn` (por ejemplo, si el estado dio cuentas al Tribunal). */
+  hasAccountWith(fn: AuthorityFunction): boolean;
 }
 
 /** Vista pública de una cuenta: seudónimo, autoridad y funciones. */
@@ -125,6 +128,7 @@ export function createAuthorityRegistry(
         .map((profile) => profile.authorityId),
     findByUsername: (username) => byUsername.get(username) ?? null,
     findAccount: (accountId) => byId.get(accountId) ?? null,
+    hasAccountWith: (fn) => [...byId.values()].some((account) => account.functions.includes(fn)),
   };
 }
 

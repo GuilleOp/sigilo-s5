@@ -1,11 +1,18 @@
 // Evaluación pura de las reglas públicas de escalamiento y de alerta (`ESCALATION_RULES`) y de los
 // plazos legales que corren para una denuncia. Con los mismos datos del trámite, cualquiera obtiene
 // el mismo resultado. Todos los días son días civiles en la hora del centro de México.
-import { ESCALATION_RULES, POST_ADMISSION_STAGES } from '@sigilo/contracts';
+import {
+  ESCALATION_RULES,
+  POST_ADMISSION_STAGES,
+  findLegalStage,
+  findRemedyKind,
+} from '@sigilo/contracts';
 import type {
   ClosureReason,
   ComplaintMode,
+  CriminalStage,
   DeadlineKey,
+  RemedyKind,
   EscalationRule,
   EscalationRuleKey,
   LegalStage,
@@ -58,6 +65,30 @@ export interface ProcedureSnapshot {
   turnPendingOn?: string | null;
   /** Señales AUD-01, AUD-03 y AUD-04 del auditor sobre la calificación. */
   downgradeSignalCount?: number;
+  /** Día en que la denuncia entró a su etapa administrativa vigente. */
+  stageEnteredOn?: string | null;
+  /** Etapa de la vía penal, que corre en paralelo, y día en que entró a ella. */
+  criminalStage?: CriminalStage | null;
+  criminalStageEnteredOn?: string | null;
+  /**
+   * Notificación del acto que se puede impugnar con inconformidad (calificación de no grave o
+   * abstención), cuando todavía se puede impugnar; tiene prioridad sobre `qualificationNotifiedOn`.
+   */
+  inconformityNotifiedOn?: string | null;
+  /** Día en que la autoridad registró el escrito de inconformidad con firma autógrafa. */
+  inconformitySignedOn?: string | null;
+  /** La inconformidad ya se resolvió (o se declaró improcedente). */
+  inconformityResolved?: boolean;
+  /** Recursos presentados y todavía sin resolver, con el día en que se presentaron. */
+  pendingRemedies?: readonly { kind: RemedyKind; filedOn: string }[];
+  /** Recursos presentados contra la etapa vigente (cierran su plazo de presentación). */
+  filedRemedies?: readonly RemedyKind[];
+  /** Medida cautelar pedida y todavía sin resolver. */
+  precautionaryRequestedOn?: string | null;
+  /** Reclasificación ordenada por el Tribunal y todavía pendiente. */
+  reclassificationOrderedOn?: string | null;
+  /** La calificación vigente es grave (rama del Tribunal). */
+  isSeriousTrack?: boolean;
 }
 
 /** Regla cumplida: desde qué día corrió, cuándo vencía y su efecto. */
@@ -252,18 +283,74 @@ export function activeDeadlines(
     });
   }
   const isNonSerious = snapshot.qualificationSeverity === 'non_serious';
-  const appealFiledOn = snapshot.appealFiledOn ?? null;
-  const notifiedOn = snapshot.qualificationNotifiedOn ?? null;
-  if (isNonSerious && snapshot.mode === 'sealed' && appealFiledOn === null && notifiedOn !== null) {
-    deadlines.push({ key: 'appeal_filing', startsOn: notifiedOn });
+  // La inconformidad corre desde la notificación hasta que la autoridad registra el escrito con
+  // firma autógrafa (LGRA, arts. 103 y 109): el aviso en línea de la persona no la detiene.
+  const notifiedOn =
+    snapshot.inconformityNotifiedOn ??
+    (isNonSerious ? (snapshot.qualificationNotifiedOn ?? null) : null);
+  const signedOn = snapshot.inconformitySignedOn ?? null;
+  const isResolved = snapshot.inconformityResolved ?? false;
+  if (snapshot.mode === 'sealed' && notifiedOn !== null && signedOn === null && !isResolved) {
+    if (!isClosed) deadlines.push({ key: 'appeal_filing', startsOn: notifiedOn });
   }
-  if (appealFiledOn !== null) {
-    deadlines.push({ key: 'appeal_resolution', startsOn: appealFiledOn });
+  // La Sala resuelve en 30 días hábiles desde que recibe el escrito firmado (art. 107).
+  if (signedOn !== null && !isResolved) {
+    deadlines.push({ key: 'appeal_resolution', startsOn: signedOn });
   }
   const stage = snapshot.legalStage ?? null;
   const isAdmitted = stage !== null && POST_ADMISSION_STAGES.includes(stage);
   if (options.isAccepted && !isClosed && isAdmitted) {
     deadlines.push({ key: 'inactivity_expiry', startsOn: snapshot.lastActivityOn });
+  }
+  if (!options.isAccepted || isClosed) return deadlines;
+  deadlines.push(...stageDeadlines(snapshot));
+  for (const remedy of snapshot.pendingRemedies ?? []) {
+    const rule = findRemedyKind(remedy.kind);
+    if (remedy.kind === 'inconformity' || rule?.resolutionDeadline === undefined) continue;
+    deadlines.push({ key: rule.resolutionDeadline, startsOn: remedy.filedOn });
+  }
+  const precautionaryOn = snapshot.precautionaryRequestedOn ?? null;
+  if (precautionaryOn !== null) {
+    deadlines.push({ key: 'precautionary_hearing', startsOn: precautionaryOn });
+  }
+  const reclassificationOn = snapshot.reclassificationOrderedOn ?? null;
+  if (reclassificationOn !== null) {
+    deadlines.push({ key: 'reclassification', startsOn: reclassificationOn });
+  }
+  return deadlines;
+}
+
+/** Plazos que corren desde que la denuncia entró a su etapa administrativa y a su etapa penal. */
+function stageDeadlines(snapshot: ProcedureSnapshot): ActiveDeadline[] {
+  const deadlines: ActiveDeadline[] = [];
+  const stage = snapshot.legalStage ?? null;
+  const enteredOn = snapshot.stageEnteredOn ?? null;
+  const filed = new Set(snapshot.filedRemedies ?? []);
+  const filingKeyOf = new Map<DeadlineKey, RemedyKind>([
+    ['revocation_filing', 'revocation'],
+    ['court_appeal_filing', 'appeal'],
+    ['review_filing', 'review'],
+  ]);
+  if (stage !== null && enteredOn !== null) {
+    const keys: DeadlineKey[] = [...(findLegalStage(stage)?.startsOnEntry ?? [])];
+    // Al cerrar la audiencia inicial corre el envío al Tribunal (grave, art. 209 fr. I) o la
+    // admisión de pruebas (no grave, art. 208 fr. VIII).
+    if (stage === 'initial_hearing') {
+      keys.push(snapshot.isSeriousTrack === true ? 'court_referral' : 'evidence_admission');
+    }
+    if (stage === 'final' && snapshot.isSeriousTrack === true) keys.push('execution_report');
+    for (const key of keys) {
+      const remedy = filingKeyOf.get(key);
+      if (remedy !== undefined && filed.has(remedy)) continue;
+      deadlines.push({ key, startsOn: enteredOn });
+    }
+  }
+  const criminal = snapshot.criminalStage ?? null;
+  const criminalOn = snapshot.criminalStageEnteredOn ?? null;
+  if (criminal !== null && criminalOn !== null) {
+    for (const key of findLegalStage(criminal)?.startsOnEntry ?? []) {
+      deadlines.push({ key, startsOn: criminalOn });
+    }
   }
   return deadlines;
 }

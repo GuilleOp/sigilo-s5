@@ -36,11 +36,13 @@ export function turnSemaphoreSentence(semaphore: TurnSemaphore): string {
       ? 'Espera en el buzón general a que la turnen'
       : 'Espera a que la autoridad turnada la acepte';
   const since = `${what} desde el ${formatDayDate(semaphore.sinceOn)}`;
+  // B09: el semáforo es una meta de servicio del S5; la LGRA no fija plazo para turnar.
+  const goal = ' Es la meta del S5, no un plazo legal.';
   if (semaphore.status === 'vencida') {
-    return `${since}: lleva ${days(semaphore.elapsedDays)} y venció el ${formatDayDate(semaphore.overdueOn)}. La supervisión recibe un aviso.`;
+    return `${since}: lleva ${days(semaphore.elapsedDays)} y venció el ${formatDayDate(semaphore.overdueOn)}. La supervisión recibe un aviso.${goal}`;
   }
   if (semaphore.status === 'por_vencer') {
-    return `${since}. Vence el ${formatDayDate(semaphore.overdueOn)}: atiéndela hoy.`;
+    return `${since}. Vence el ${formatDayDate(semaphore.overdueOn)}: atiéndela hoy.${goal}`;
   }
-  return `${since}. Pasa a «por vencer» el ${formatDayDate(semaphore.warningOn)} y vence el ${formatDayDate(semaphore.overdueOn)}.`;
+  return `${since}. Pasa a «por vencer» el ${formatDayDate(semaphore.warningOn)} y vence el ${formatDayDate(semaphore.overdueOn)}.${goal}`;
 }

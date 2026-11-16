@@ -113,8 +113,11 @@ export const TrackingViewSchema = z
 export type TrackingView = z.infer<typeof TrackingViewSchema>;
 
 /**
- * Inconformidad contra la calificación de no grave (LGRA, arts. 102 a 110). La ley pide nombre,
- * domicilio y firma (art. 109): la persona acepta abrir su identidad sellada solo para el recurso.
+ * Aviso de inconformidad contra la calificación de no grave o la abstención (LGRA, arts. 101 a
+ * 110). No es la inconformidad: la ley pide un escrito con nombre, domicilio y firma autógrafa ante
+ * la autoridad investigadora, y sin firma «no se tendrá por presentado» (art. 109). El aviso deja
+ * los motivos y permite que la autoridad abra la identidad sellada solo para el recurso; la
+ * inconformidad cuenta cuando la autoridad registra que recibió el escrito firmado.
  */
 export const AppealRequestSchema = TrackingCredentialsSchema.extend({
   reasons: z
@@ -127,19 +130,29 @@ export const AppealRequestSchema = TrackingCredentialsSchema.extend({
       'Acepta que la autoridad investigadora abra su identidad sellada solo para el recurso (LGRA, art. 109).',
   }),
 }).meta({
-  description: 'Recurso de inconformidad de la persona denunciante, con sus credenciales.',
+  description:
+    'Aviso de inconformidad de la persona denunciante, con sus credenciales. El recurso cuenta cuando la autoridad registra el escrito con firma autógrafa (LGRA, art. 109).',
 });
 export type AppealRequest = z.infer<typeof AppealRequestSchema>;
 
 export const AppealResponseSchema = z
   .object({
-    filedOn: DayDateSchema.meta({ description: 'Día de presentación.' }),
+    filedOn: DayDateSchema.meta({ description: 'Día del aviso.' }),
     openingId: OpeningIdSchema,
+    filingDueOn: z.string().optional().meta({
+      description:
+        'Último día para entregar el escrito con firma autógrafa ante la autoridad investigadora (5 días hábiles desde la notificación, LGRA arts. 103 y 109).',
+    }),
     resolutionDueOn: z.string().optional().meta({
-      description: 'Plazo de la Sala para resolver (30 días hábiles, LGRA art. 107).',
+      description:
+        'Obsoleto desde el estándar 0.4.0: el plazo de la Sala (LGRA, art. 107) corre desde que la autoridad registra el escrito firmado y se lee en el trámite. Ya no se envía.',
+      deprecated: true,
     }),
   })
-  .meta({ description: 'Inconformidad registrada y apertura de identidad para el recurso.' });
+  .meta({
+    description:
+      'Aviso de inconformidad registrado y apertura de identidad para el recurso. Falta el escrito firmado.',
+  });
 export type AppealResponse = z.infer<typeof AppealResponseSchema>;
 
 export const ReporterMessageRequestSchema = TrackingCredentialsSchema.extend({

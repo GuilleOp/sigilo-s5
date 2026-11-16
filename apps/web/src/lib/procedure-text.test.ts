@@ -54,6 +54,36 @@ describe('textos del trámite', () => {
     expect(appealWindow(view, '2026-12-18')?.status).toBe('overdue');
   });
 
+  it('la ventana usa los días que cuenta el nodo, no el reloj de este dispositivo', () => {
+    // Antes: con el reloj del nodo adelantado (demostración), el dispositivo decía «faltan 29 días
+    // hábiles» junto al plazo de 5. Ahora se muestra lo mismo que en «Plazos que corren».
+    const view = procedure({
+      managementState: 'accepted',
+      legalStage: 'qualification',
+      qualification: NON_SERIOUS,
+      inconformity: {
+        against: 'non_serious',
+        notifiedOn: '2026-12-10',
+        filingDueOn: '2026-12-17',
+        filingRemaining: 5,
+        filingStatus: 'running',
+      },
+    });
+    expect(appealWindow(view, '2026-11-16')).toEqual({
+      dueOn: '2026-12-17',
+      status: 'running',
+      remaining: 5,
+      remainingUnit: 'business_days',
+    });
+    // Con el escrito firmado ya no hay ventana; la abstención tiene su propio encabezado.
+    const signed = procedure({
+      ...view,
+      inconformity: { against: 'non_serious', signedOn: '2026-12-12' },
+    });
+    expect(appealWindow(signed, '2026-12-12')).toBeNull();
+    expect(procedureHeadline(procedure({ legalStage: 'abstention' })).title).toBe('Abstención');
+  });
+
   it('sin calificación de no grave, o ya inconformada, no hay ventana', () => {
     expect(appealWindow(procedure(), '2026-12-10')).toBeNull();
     const filed = procedure({

@@ -86,8 +86,8 @@ const AUTHORITY_INTRO: Readonly<Record<AuthorityRole, TourStep>> = {
     text: 'Revisas las solicitudes de alta de las instituciones y asignas el órgano interno de control de cada dependencia. No ves denuncias.',
   },
   court: {
-    title: 'Tu función: tribunal',
-    text: 'Resuelves las faltas graves y las de particulares, y la alzada. No investigas ni turnas.',
+    title: 'Tu función: Tribunal',
+    text: 'Resuelves las faltas graves y las de particulares, y la alzada. Ves solo los expedientes que te envían y los recursos que resuelves; no investigas, no turnas ni ves el buzón de la persona ni su nombre.',
   },
 };
 
@@ -117,8 +117,8 @@ const AUTHORITY_DETAIL: Readonly<Record<AuthorityRole, TourStep>> = {
     text: 'Llama a la institución y pide que te lea su huella. Solo si coincide con la que calcula tu navegador puedes aprobar.',
   },
   court: {
-    title: 'Solo lo que te remiten',
-    text: 'Ves los expedientes que la autoridad substanciadora te envía. Nunca abres nombres sellados.',
+    title: 'Tus etapas',
+    text: 'Recibes el expediente, verificas que la falta sea grave (o lo devuelves), admites pruebas, abres alegatos, cierras la instrucción y dictas sentencia. También resuelves la inconformidad, la apelación y la revisión. Nunca abres nombres sellados.',
   },
 };
 

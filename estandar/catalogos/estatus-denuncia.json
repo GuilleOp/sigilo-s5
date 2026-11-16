@@ -13,5 +13,27 @@
     "claveApi": "classified"
   },
   { "clave": "ARCHIVADA", "valor": "Archivada", "claveApi": "archived" },
-  { "clave": "CONCLUIDA", "valor": "Concluida", "claveApi": "resolved" }
+  { "clave": "CONCLUIDA", "valor": "Concluida", "claveApi": "resolved" },
+  {
+    "clave": "EN_PROCEDIMIENTO",
+    "valor": "En procedimiento de responsabilidad",
+    "claveApi": "in_procedure"
+  },
+  { "clave": "EN_TRIBUNAL", "valor": "En el Tribunal", "claveApi": "in_court" },
+  { "clave": "EN_RECURSO", "valor": "En recurso", "claveApi": "under_remedy" },
+  {
+    "clave": "CONCLUIDA_CON_SANCION",
+    "valor": "Concluida con sanción firme",
+    "claveApi": "final_sanction"
+  },
+  {
+    "clave": "CONCLUIDA_SIN_SANCION",
+    "valor": "Concluida sin sanción",
+    "claveApi": "final_no_sanction"
+  },
+  {
+    "clave": "PRESCRITA_O_CADUCADA",
+    "valor": "Prescrita o caducada",
+    "claveApi": "prescribed_or_expired"
+  }
 ]

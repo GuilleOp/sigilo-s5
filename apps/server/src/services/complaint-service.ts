@@ -199,6 +199,8 @@ export function submitComplaint(
       assignedAuthorityId: ctx.authorities.inboxAuthorityId,
       managementState: 'received_in_inbox',
       legalStage: null,
+      criminalStage: null,
+      fundingSource: null,
       closureReason: null,
       escalationEnvelope: request.escalationEnvelope ?? null,
       corroborationDigest:

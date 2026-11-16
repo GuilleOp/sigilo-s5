@@ -3,6 +3,8 @@
 import type { Context, Hono } from 'hono';
 import {
   API_PREFIX,
+  COURT_ACCESS_STAGES,
+  hasFunction,
   ApproveIdentityRequestSchema,
   AuthorityMessageRequestSchema,
   EvidenceKeyGrantsRequestSchema,
@@ -40,7 +42,11 @@ import {
   requestIdentityOpening,
 } from '../services/identity-service.ts';
 import { recordMessage } from '../services/mailbox-service.ts';
-import { applyProcedureAction, isCompetent } from '../services/procedure-service.ts';
+import {
+  applyProcedureAction,
+  isCompetent,
+  isCourtCompetent,
+} from '../services/procedure-service.ts';
 import { importClosures } from '../services/closure-import-service.ts';
 import { confirmTransfer, transferComplaint } from '../services/transfer-service.ts';
 import { buildComplaintDetail } from '../services/views.ts';
@@ -96,6 +102,35 @@ function findCompetent(ctx: AppContext, c: Context, account: AuthorityAccount): 
   return complaint;
 }
 
+/**
+ * Denuncia que la cuenta puede ver en el detalle y en el trámite: la de su autoridad o, si es una
+ * cuenta del Tribunal, la que está en sus etapas o tiene un recurso que él resuelve.
+ * Seguridad (SEC-17): fuera de eso responde igual que una inexistente.
+ */
+function findReachable(ctx: AppContext, c: Context, account: AuthorityAccount): ComplaintRecord {
+  const complaint = ctx.complaints.find(folioOf(c));
+  const isReachable =
+    complaint !== null &&
+    (isCompetent(ctx, account, complaint) || isCourtCompetent(ctx, account, complaint));
+  if (!isReachable) throw new ApiFailure('not_found');
+  return complaint;
+}
+
+/** Denuncias del Tribunal del nodo: las de sus etapas y las que tienen un recurso que él resuelve. */
+function listForCourt(ctx: AppContext, account: AuthorityAccount, offset: number, limit: number) {
+  const withRemedies = ctx.procedure.listFoliosWithAction('remedy_filed').filter((folio) => {
+    const complaint = ctx.complaints.find(folio);
+    return complaint !== null && isCourtCompetent(ctx, account, complaint);
+  });
+  return ctx.complaints.listForCourt(
+    [...COURT_ACCESS_STAGES],
+    withRemedies,
+    ctx.authorities.inboxAuthorityId,
+    offset,
+    limit,
+  );
+}
+
 function serveEvidence(ctx: AppContext, c: Context): Response {
   const account = currentAccount(c);
   const evidenceId = c.req.param('evidenceId') ?? '';
@@ -129,7 +164,7 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   // Seguridad: la cuenta de operación del nodo solo resuelve solicitudes de alta; nunca ve
   // denuncias, autoridades ni nada del panel.
   app.use(`${API_PREFIX}/authority/*`, async (c, next) => {
-    requireFunction(ctx, c, ['intake', 'investigation', 'supervision', 'substantiation']);
+    requireFunction(ctx, c, ['intake', 'investigation', 'supervision', 'substantiation', 'court']);
     await next();
   });
 
@@ -139,20 +174,25 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
   app.get(ROUTES.authorityComplaints, (c) => {
     const account = currentAccount(c);
     const { offset, limit } = parsePage(c);
+    // El Tribunal ve solo las denuncias de sus etapas y de los recursos que resuelve.
+    const listed = hasFunction(account, 'court')
+      ? listForCourt(ctx, account, offset, limit)
+      : ctx.complaints.listForAuthority(
+          account.authorityId,
+          ctx.authorities.inboxAuthorityId,
+          offset,
+          limit,
+        );
     // Cada resumen lleva el semáforo de turnado si espera turno o aceptación.
-    return c.json(
-      ctx.complaints
-        .listForAuthority(account.authorityId, ctx.authorities.inboxAuthorityId, offset, limit)
-        .map((listed) => listedWithSemaphore(ctx, listed)),
-    );
+    return c.json(listed.map((item) => listedWithSemaphore(ctx, item)));
   });
 
   app.get(ROUTES.authorityComplaint(':folio'), (c) =>
-    c.json(buildComplaintDetail(ctx, findCompetent(ctx, c, currentAccount(c)), currentAccount(c))),
+    c.json(buildComplaintDetail(ctx, findReachable(ctx, c, currentAccount(c)), currentAccount(c))),
   );
 
   app.post(ROUTES.authorityProcedure(':folio'), jsonBodyLimit, async (c) => {
-    const account = requireFunction(ctx, c, ['intake', 'investigation', 'substantiation']);
+    const account = requireFunction(ctx, c, ['intake', 'investigation', 'substantiation', 'court']);
     const folio = folioOf(c);
     const request = await readJson(c, ProcedureActionRequestSchema);
     return c.json(applyProcedureAction(ctx, account, folio, request));

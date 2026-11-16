@@ -135,3 +135,20 @@ export function parseCriminalOpeningBasis(text: string): CriminalOpeningBasis | 
     basis.reason === basis.reason.trim();
   return isCanonical && criminalOpeningBasisError(basis) === null ? basis : null;
 }
+
+/**
+ * Indica si la denuncia va solo por la vía penal: tiene etapa penal y ninguna administrativa (por
+ * ejemplo, la tiene la fiscalía). Ahí una apertura de identidad exige un fundamento de
+ * `CRIMINAL_OPENING_GROUNDS`. Una vista al Ministerio Público en paralelo no cambia el fundamento
+ * de las aperturas que pide la autoridad administrativa.
+ */
+export function isCriminalRoute(procedure: {
+  legalStage?: string | null | undefined;
+  criminalStage?: string | null | undefined;
+}): boolean {
+  const hasAdministrative = procedure.legalStage != null && !isCriminalStage(procedure.legalStage);
+  return (
+    !hasAdministrative &&
+    (isCriminalStage(procedure.criminalStage) || isCriminalStage(procedure.legalStage))
+  );
+}
