@@ -32,12 +32,8 @@ import type { AuthorityAccount } from '../security/authority-registry.ts';
 import { isCompetent } from './procedure-service.ts';
 import { REPORTER_REQUESTER } from './qualification-service.ts';
 
-/**
- * Funciones que pueden solicitar y aprobar aperturas: nunca recepción y turnado sola (el buzón
- * general nunca abre identidades) ni substanciación. Una cuenta de recepción e investigación las
- * abre por su función de investigación.
- */
-export const IDENTITY_CUSTODIAN_FUNCTIONS = ['investigation', 'supervision'] as const;
+/** Funciones que solicitan y aprueban aperturas (el catálogo vive en los contratos). */
+export { IDENTITY_CUSTODIAN_FUNCTIONS } from '@sigilo/contracts';
 
 /** Indica si la aprobación es de una cuenta de supervisión. */
 function isSupervisionAccount(ctx: AppContext, accountId: string): boolean {

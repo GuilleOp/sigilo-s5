@@ -273,9 +273,8 @@ export interface CriminalTransition {
 
 /**
  * Máquina de estados de la vía penal. Empieza con la vista al Ministerio Público (acción
- * `refer_to_prosecutor`) o, si la denuncia llegó a la fiscalía, con la investigación penal. La
- * registra quien investiga (la fiscalía o el órgano interno de control como coadyuvante, LGRA
- * art. 42).
+ * `refer_to_prosecutor`) o, si la denuncia llegó a la fiscalía, con la investigación penal. Solo
+ * la fiscalía (papel `prosecution`) la avanza; la investigadora y la substanciadora solo dan vista.
  */
 export const CRIMINAL_TRANSITIONS: readonly CriminalTransition[] = [
   { from: null, to: 'criminal_investigation', label: 'Iniciar la investigación penal' },

@@ -106,6 +106,13 @@ export function hasAnyFunction(
   return account.functions.some((fn) => allowed.includes(fn));
 }
 
+/**
+ * Funciones que pueden solicitar y aprobar aperturas de identidad: nunca recepción y turnado sola
+ * (el buzón general nunca abre identidades), substanciación, operación ni el Tribunal. Una cuenta
+ * de recepción e investigación las abre por su función de investigación.
+ */
+export const IDENTITY_CUSTODIAN_FUNCTIONS = ['investigation', 'supervision'] as const;
+
 /** Función del procedimiento: investiga, substancia (y resuelve no graves) o es el Tribunal. */
 export type ProcedureFunction = 'investigation' | 'substantiation' | 'court';
 
@@ -228,6 +235,10 @@ export const AuthorityProfileSchema = z
     isInbox: z
       .boolean()
       .meta({ description: 'Si es el buzón general del nodo, que recibe y turna.' }),
+    canReceive: z.boolean().meta({
+      description:
+        'Si es destino válido para turnar o reasignar: no es el buzón general y alguna de sus cuentas tiene la función intake, la única que acepta una denuncia turnada. El Tribunal, una supervisora sin recepción o una autoridad sin cuentas no lo son.',
+    }),
   })
   .meta({ description: 'Autoridad alojada en el nodo.' });
 export type AuthorityProfile = z.infer<typeof AuthorityProfileSchema>;
@@ -238,6 +249,10 @@ export const AuthorityAccountViewSchema = z
     accountId: AccountIdSchema,
     authorityId: AuthorityIdSchema,
     functions: AuthorityFunctionsSchema,
+    isProsecution: z.literal(true).optional().meta({
+      description:
+        'Presente si la autoridad de la cuenta es una fiscalía (papel prosecution del directorio o del archivo de cuentas): solo ella avanza la vía penal y no lleva la vía administrativa.',
+    }),
   })
   .meta({ description: 'Cuenta de la sesión: seudónimo, autoridad y funciones.' });
 export type AuthorityAccountView = z.infer<typeof AuthorityAccountViewSchema>;
@@ -462,6 +477,11 @@ export const AuthorityAccountsFileSchema = z.strictObject({
         authorityId: AuthorityIdSchema,
         name: z.string().min(1).max(200),
         supervisorId: AuthorityIdSchema.optional(),
+        /**
+         * Papel de la autoridad cuando el nodo no tiene directorio de red (o no la lista): `prosecution`
+         * marca a la fiscalía, la única que avanza la vía penal. Con directorio manda su `role`.
+         */
+        role: z.literal('prosecution').optional(),
         /**
          * Persona titular (sintética en la demo), para revisar el conflicto de interés antes de
          * turnar con S1 y S2. `stateCode` es la clave INEGI o `00` para lo federal.

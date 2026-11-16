@@ -164,6 +164,55 @@ describe('flujo del buzón general', () => {
     expect(page).not.toContain('acct-');
   });
 
+  it('solo turna o reasigna a una autoridad que pueda aceptarla: nunca al Tribunal ni a quien no recibe', async () => {
+    const { server, folio } = await setup();
+    // El listado lo dice con `canReceive` (el panel filtra los destinos con él).
+    const listed = (await (
+      await getAsAuthority(server.app, ROUTES.authorityAuthorities, testToken('inboxIntake'))
+    ).json()) as { authorityId: string; canReceive: boolean }[];
+    const canReceive = Object.fromEntries(
+      listed.map((item) => [item.authorityId, item.canReceive]),
+    );
+    expect(canReceive).toEqual({
+      [TEST_AUTHORITIES.inbox]: false,
+      [TEST_AUTHORITIES.oic]: true,
+      [TEST_AUTHORITIES.other]: true,
+      [TEST_AUTHORITIES.supervisor]: false,
+      [TEST_AUTHORITIES.court]: false,
+      [TEST_AUTHORITIES.prosecutor]: true,
+    });
+    const note = 'Se turna a la autoridad competente para el ente (motivo sintético).';
+    for (const authorityId of [
+      TEST_AUTHORITIES.court,
+      TEST_AUTHORITIES.supervisor,
+      TEST_AUTHORITIES.inbox,
+    ]) {
+      expect(
+        (await act(server, 'inboxIntake', folio, { action: 'route', authorityId, note })).status,
+      ).toBe(400);
+    }
+    await act(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note,
+    });
+    for (const authorityId of [TEST_AUTHORITIES.court, TEST_AUTHORITIES.supervisor]) {
+      expect(
+        (await act(server, 'oicIntake', folio, { action: 'reassign', authorityId, note })).status,
+      ).toBe(400);
+    }
+    // La fiscalía sí es destino: la denuncia penal directa es legítima.
+    expect(
+      (
+        await act(server, 'oicIntake', folio, {
+          action: 'reassign',
+          authorityId: TEST_AUTHORITIES.prosecutor,
+          note: 'Los hechos pueden ser delito: corresponden a la fiscalía (nota sintética).',
+        })
+      ).status,
+    ).toBe(200);
+  });
+
   it('reasigna y devuelve al buzón general con nota obligatoria', async () => {
     const { server, folio, reporter } = await setup();
     await act(server, 'inboxIntake', folio, {

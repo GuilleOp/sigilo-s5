@@ -68,9 +68,12 @@ test('en la vía penal la apertura exige el fundamento y el número de la resolu
   const prepared = await prepareSealedComplaint(request, 'Persona Sintética Vía Penal');
   const { folio, words } = await seedPreparedComplaint(request, prepared);
   await routeToInvestigation(request, folio);
+  // La vista al Ministerio Público antes de la investigación administrativa la deja solo en la vía
+  // penal (la fiscalía la avanza; el OIC conserva la custodia de la identidad).
   await applyProcedure(request, E2E_ACCOUNTS.iffeInvestigator, folio, {
-    action: 'advance_stage',
-    stage: 'criminal_investigation',
+    action: 'refer_to_prosecutor',
+    basis: 'internal_control',
+    prosecutor: 'Fiscalía Ficticia Especializada en Hechos de Corrupción',
   });
 
   const authority = await openIsolatedPage();

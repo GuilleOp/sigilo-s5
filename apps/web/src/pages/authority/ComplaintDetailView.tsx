@@ -2,7 +2,7 @@
 // de conflicto, corroboración, señales del auditor, pruebas, trámite, quién sigue según la tabla de
 // funciones, turnado entre nodos, identidad y buzón.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { findMunicipality, findOffense, findState } from '@sigilo/contracts';
+import { findMunicipality, findOffense, findState, hasAnyFunction } from '@sigilo/contracts';
 import type { ComplaintDetail, EvidenceDescriptor } from '@sigilo/contracts';
 import { Alert } from '../../components/Alert.tsx';
 import { openForAuthority } from '../../crypto/evidence.ts';
@@ -210,14 +210,17 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
       {detail.evidenceCustody !== undefined && (
         <CustodyPanel detail={detail} custody={detail.evidenceCustody} />
       )}
-      {detail.evidence.length > 0 && detail.storedEvidenceCount !== undefined && (
-        <DiscardEvidencePanel
-          token={session.token}
-          folio={folio}
-          storedCount={detail.storedEvidenceCount}
-          onDiscarded={() => void reload()}
-        />
-      )}
+      {/* Solo recepción o investigación descartan pruebas (el nodo responde 403 a las demás). */}
+      {detail.evidence.length > 0 &&
+        detail.storedEvidenceCount !== undefined &&
+        hasAnyFunction(session.account, ['intake', 'investigation']) && (
+          <DiscardEvidencePanel
+            token={session.token}
+            folio={folio}
+            storedCount={detail.storedEvidenceCount}
+            onDiscarded={() => void reload()}
+          />
+        )}
       <ProcedurePanel
         // Cada acto nuevo vuelve a pintar el formulario con las acciones que siguen.
         key={`${summary.managementState ?? ''}-${detail.procedure?.legalStage ?? ''}-${detail.procedure?.steps.length ?? 0}`}

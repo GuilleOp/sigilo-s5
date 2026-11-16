@@ -160,9 +160,19 @@ export function requiresLegalOutcome(detail: ComplaintDetail): boolean {
   return stage !== null && stage !== 'investigation' && stage !== 'qualification';
 }
 
-/** Etapas (administrativas y penales) a las que la cuenta puede pasar la denuncia. */
+/** Indica si la cuenta es de una fiscalía (el nodo lo dice en la sesión). */
+export function isProsecutionAccount(
+  account: Pick<AuthorityAccountView, 'isProsecution'>,
+): boolean {
+  return account.isProsecution === true;
+}
+
+/**
+ * Etapas (administrativas y penales) a las que la cuenta puede pasar la denuncia. La fiscalía solo
+ * avanza la vía penal; las demás, solo la administrativa (dan vista al Ministerio Público aparte).
+ */
 export function stageOptions(
-  account: Pick<AuthorityAccountView, 'functions'>,
+  account: Pick<AuthorityAccountView, 'functions' | 'isProsecution'>,
   detail: ComplaintDetail,
 ): StageOption[] {
   const procedure = detail.procedure;
@@ -170,7 +180,8 @@ export function stageOptions(
   const stage = administrativeStage(procedure);
   const severity = branchSeverity(procedure);
   const options: StageOption[] = [];
-  for (const transition of transitionsFrom(stage)) {
+  const isProsecution = isProsecutionAccount(account);
+  for (const transition of isProsecution ? [] : transitionsFrom(stage)) {
     if (transition.severities !== undefined && severity !== null) {
       if (!transition.severities.includes(severity)) continue;
     }
@@ -187,8 +198,8 @@ export function stageOptions(
       mode,
     });
   }
-  // La vía penal corre aparte: la registra quien investiga.
-  if (hasFunction(account, 'investigation')) {
+  // La vía penal corre aparte: solo la registra la fiscalía.
+  if (isProsecution && hasFunction(account, 'investigation')) {
     const criminal = procedure?.criminalStage ?? null;
     for (const transition of CRIMINAL_TRANSITIONS) {
       if (transition.from !== criminal) continue;

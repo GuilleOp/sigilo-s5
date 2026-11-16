@@ -8,7 +8,8 @@
     "authorityId": "authority.oic-iffe",
     "name": "Órgano Interno de Control Ficticio",
     "supervisorId": "authority.oversight-federal",
-    "isInbox": false
+    "isInbox": false,
+    "canReceive": true
   },
   "idleTimeoutSeconds": 900,
   "absoluteTimeoutSeconds": 28800

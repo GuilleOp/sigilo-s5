@@ -1970,7 +1970,8 @@
                         "authorityId": "authority.oic-iffe",
                         "name": "Órgano Interno de Control Ficticio",
                         "supervisorId": "authority.oversight-federal",
-                        "isInbox": false
+                        "isInbox": false,
+                        "canReceive": true
                       },
                       "idleTimeoutSeconds": 900,
                       "absoluteTimeoutSeconds": 28800
@@ -2050,12 +2051,14 @@
                         "authorityId": "authority.oic-iffe",
                         "name": "Órgano Interno de Control Ficticio",
                         "supervisorId": "authority.oversight-federal",
-                        "isInbox": false
+                        "isInbox": false,
+                        "canReceive": true
                       },
                       {
                         "authorityId": "authority.oversight-federal",
                         "name": "Unidad Ficticia de Supervisión",
-                        "isInbox": false
+                        "isInbox": false,
+                        "canReceive": false
                       }
                     ]
                   }
@@ -11847,6 +11850,11 @@
             "items": { "$ref": "#/components/schemas/AuthorityFunction" },
             "description": "Funciones de la cuenta: una sola, o intake e investigation juntas (recepción e investigación en la misma área). substantiation, supervision, operation y court nunca se combinan.",
             "example": ["investigation"]
+          },
+          "isProsecution": {
+            "description": "Presente si la autoridad de la cuenta es una fiscalía (papel prosecution del directorio o del archivo de cuentas): solo ella avanza la vía penal y no lleva la vía administrativa.",
+            "type": "boolean",
+            "enum": [true]
           }
         },
         "required": ["accountId", "authorityId", "functions"],
@@ -11877,9 +11885,13 @@
           "isInbox": {
             "type": "boolean",
             "description": "Si es el buzón general del nodo, que recibe y turna."
+          },
+          "canReceive": {
+            "type": "boolean",
+            "description": "Si es destino válido para turnar o reasignar: no es el buzón general y alguna de sus cuentas tiene la función intake, la única que acepta una denuncia turnada. El Tribunal, una supervisora sin recepción o una autoridad sin cuentas no lo son."
           }
         },
-        "required": ["authorityId", "name", "isInbox"],
+        "required": ["authorityId", "name", "isInbox", "canReceive"],
         "additionalProperties": false,
         "description": "Autoridad alojada en el nodo."
       },

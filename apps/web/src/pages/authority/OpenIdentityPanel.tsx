@@ -10,6 +10,8 @@ import {
   CRIMINAL_OPENING_GROUNDS,
   criminalOpeningBasisProblem,
   formatCriminalOpeningBasis,
+  hasAnyFunction,
+  IDENTITY_CUSTODIAN_FUNCTIONS,
   isCriminalRoute,
   MAX_RESOLUTION_REFERENCE,
 } from '@sigilo/contracts';
@@ -74,6 +76,9 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
   }, []);
 
   const accountId = session.account.accountId;
+  // Como el nodo: solo investigación y supervisión solicitan, aprueban y abren; el buzón (solo
+  // recepción) y la substanciación ven el estado, sin acciones.
+  const isCustodian = hasAnyFunction(session.account, IDENTITY_CUSTODIAN_FUNCTIONS);
   const allRequests = detail.identityRequests ?? [];
   const appeal = allRequests.find(
     (item) => item.status === 'approved' && item.purpose === 'appeal',
@@ -257,7 +262,7 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
           <p>
             Aprobaciones: {appeal.approvals.length} de {appeal.threshold}.
           </p>
-          {canReleaseAppeal ? (
+          {!isCustodian ? null : canReleaseAppeal ? (
             <button
               type="button"
               className="button button--danger"
@@ -319,7 +324,12 @@ export function OpenIdentityPanel({ session, detail, onOpened }: OpenIdentityPan
           {canApprove ? '' : ' Espera la aprobación de otra persona.'}
         </p>
       )}
-      {approved !== undefined ? (
+      {!isCustodian ? (
+        <p data-testid="identity-custodian-only">
+          Tu función no solicita ni aprueba aperturas: lo hacen la investigación y la supervisión de
+          la autoridad que tiene la denuncia.
+        </p>
+      ) : approved !== undefined ? (
         <button
           type="button"
           className="button button--danger"

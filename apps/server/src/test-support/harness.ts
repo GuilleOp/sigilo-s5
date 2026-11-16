@@ -60,6 +60,8 @@ export const TEST_AUTHORITIES = {
   supervisor: 'authority.supervision-prueba',
   /** Tribunal de Justicia Administrativa sintético: solo actúa en sus etapas. */
   court: 'authority.tribunal-prueba',
+  /** Fiscalía sintética (`role: 'prosecution'`): solo ella avanza la vía penal. */
+  prosecutor: 'authority.fiscalia-prueba',
 } as const;
 
 /** Cuentas sintéticas del nodo de prueba: autoridad, función, usuario y contraseña. */
@@ -146,6 +148,20 @@ export const TEST_ACCOUNTS = {
     authorityId: TEST_AUTHORITIES.court,
     functions: ['court'],
   },
+  /** Recepción de la otra autoridad: la que acepta lo que se le turna o reasigna. */
+  otherIntake: {
+    accountId: 'acct-000000000000000e',
+    username: 'recepcion.otra',
+    authorityId: TEST_AUTHORITIES.other,
+    functions: ['intake'],
+  },
+  /** Fiscalía: recibe lo que se le turna, lo acepta y lleva la vía penal. */
+  prosecutor: {
+    accountId: 'acct-000000000000000f',
+    username: 'fiscalia.prueba',
+    authorityId: TEST_AUTHORITIES.prosecutor,
+    functions: ['intake', 'investigation'],
+  },
 } as const;
 
 /** Nombre de una cuenta sintética de prueba. */
@@ -217,6 +233,11 @@ export function testAuthorityRegistryWith(
         {
           authorityId: TEST_AUTHORITIES.court,
           name: 'Sala de prueba en materia de responsabilidades administrativas',
+        },
+        {
+          authorityId: TEST_AUTHORITIES.prosecutor,
+          name: 'Fiscalía de prueba en hechos de corrupción',
+          role: 'prosecution',
         },
       ],
       accounts: accounts.map(([name, account]) => ({

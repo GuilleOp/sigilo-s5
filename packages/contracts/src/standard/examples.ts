@@ -258,6 +258,7 @@ const authorityProfile: AuthorityProfile = {
   name: 'Órgano Interno de Control Ficticio',
   supervisorId: 'authority.oversight-federal',
   isInbox: false,
+  canReceive: true,
 };
 
 const loginRequest: LoginRequest = {
@@ -891,6 +892,7 @@ export const STANDARD_EXAMPLES = {
       authorityId: 'authority.oversight-federal',
       name: 'Unidad Ficticia de Supervisión',
       isInbox: false,
+      canReceive: false,
     },
   ],
   'apply-procedure-action.request': procedureRequest,

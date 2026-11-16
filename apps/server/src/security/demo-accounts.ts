@@ -101,6 +101,8 @@ const DEMO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
   {
     authorityId: 'authority.prosecutor-anticorruption',
     name: 'Fiscalía Ficticia Especializada en Hechos de Corrupción',
+    // Solo la fiscalía avanza la vía penal (el directorio de red dice lo mismo con su `role`).
+    role: 'prosecution',
   },
   {
     // Cuentas del Tribunal (función `court`): solo actúa en sus etapas y en los recursos que
@@ -151,7 +153,7 @@ export const DEMO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
     authorityId: DEMO_SUPERVISOR_AUTHORITY,
     functions: ['supervision'],
   },
-  // La fiscalía recibe lo que se le turna, lo acepta y lo investiga.
+  // La fiscalía recibe lo que se le turna, lo acepta y lleva la vía penal (no la administrativa).
   {
     username: 'fiscalia',
     authorityId: 'authority.prosecutor-anticorruption',
@@ -175,7 +177,11 @@ const QUERETARO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
   { authorityId: 'authority.oic-municipio-queretaro', name: QUERETARO_NAMES.oicMunicipioQueretaro },
   { authorityId: 'authority.oic-el-marques', name: QUERETARO_NAMES.oicElMarques },
   { authorityId: 'authority.oic-cea-queretaro', name: QUERETARO_NAMES.oicCea },
-  { authorityId: 'authority.prosecutor-queretaro', name: QUERETARO_NAMES.fiscalia },
+  {
+    authorityId: 'authority.prosecutor-queretaro',
+    name: QUERETARO_NAMES.fiscalia,
+    role: 'prosecution',
+  },
   { authorityId: 'authority.esfe-queretaro', name: QUERETARO_NAMES.esfe },
   { authorityId: DEMO_QUERETARO_COURT_AUTHORITY, name: QUERETARO_NAMES.sala },
 ];

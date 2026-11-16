@@ -3,7 +3,7 @@
 // si se resuelve sin responder, una regla pública escala la denuncia a la supervisora.
 import { useRef, useState } from 'react';
 import { TableScroll } from '../../components/TableScroll.tsx';
-import { hasFunction } from '@sigilo/contracts';
+import { hasAnyFunction } from '@sigilo/contracts';
 import type { ComplaintDetail, ConflictReview } from '@sigilo/contracts';
 import { ConflictGraph } from '../../components/a/ConflictGraph.tsx';
 import { SystemBadge } from '../../components/a/SystemBadge.tsx';
@@ -54,7 +54,9 @@ export function ConflictPanel({ session, detail, review, onChanged }: ConflictPa
   const canRespond =
     review.requiresResponse &&
     review.response === undefined &&
-    !hasFunction(session.account, 'supervision') &&
+    // Como el nodo: se excusa o justifica quien recibe, investiga o substancia; nunca supervisión
+    // ni el Tribunal.
+    hasAnyFunction(session.account, ['intake', 'investigation', 'substantiation']) &&
     detail.summary.managementState !== 'closed';
   const isPossibleConflict = review.outcome === 'possible-conflict';
 

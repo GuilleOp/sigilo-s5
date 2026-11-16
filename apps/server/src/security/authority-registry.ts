@@ -32,14 +32,26 @@ export interface AuthorityRegistry {
   findAccount(accountId: string): AuthorityAccount | null;
   /** Indica si alguna cuenta del nodo tiene la función `fn` (por ejemplo, si el estado dio cuentas al Tribunal). */
   hasAccountWith(fn: AuthorityFunction): boolean;
+  /**
+   * Indica si el archivo de cuentas marca la autoridad como fiscalía (`role: 'prosecution'`). Con
+   * directorio de red manda su papel; ver `isProsecutionAuthority`.
+   */
+  isProsecution(authorityId: string): boolean;
 }
 
-/** Vista pública de una cuenta: seudónimo, autoridad y funciones. */
-export function accountView(account: AuthorityAccount): AuthorityAccountView {
+/**
+ * Vista pública de una cuenta: seudónimo, autoridad y funciones; `isProsecution` solo si su
+ * autoridad es una fiscalía.
+ */
+export function accountView(
+  account: AuthorityAccount,
+  isProsecution = false,
+): AuthorityAccountView {
   return {
     accountId: account.accountId,
     authorityId: account.authorityId,
     functions: account.functions,
+    ...(isProsecution ? { isProsecution: true as const } : {}),
   };
 }
 
@@ -73,6 +85,8 @@ export function createAuthorityRegistry(
       name: item.name,
       ...(item.supervisorId === undefined ? {} : { supervisorId: item.supervisorId }),
       isInbox: item.authorityId === file.inboxAuthorityId,
+      // Se completa al leer las cuentas: solo una cuenta `intake` acepta lo turnado.
+      canReceive: false,
     });
   }
   if (!authorities.has(file.inboxAuthorityId)) {
@@ -108,7 +122,14 @@ export function createAuthorityRegistry(
     }
     byUsername.set(account.username, account);
     byId.set(account.accountId, account);
+    const profile = authorities.get(account.authorityId);
+    if (profile !== undefined && !profile.isInbox && account.functions.includes('intake')) {
+      profile.canReceive = true;
+    }
   }
+  const prosecutions = new Set(
+    file.authorities.filter((item) => item.role === 'prosecution').map((item) => item.authorityId),
+  );
   const supervisorAuthorityId = [...supervisors][0] ?? null;
   const heads = new Map(
     file.authorities.flatMap((item) =>
@@ -129,6 +150,7 @@ export function createAuthorityRegistry(
     findByUsername: (username) => byUsername.get(username) ?? null,
     findAccount: (accountId) => byId.get(accountId) ?? null,
     hasAccountWith: (fn) => [...byId.values()].some((account) => account.functions.includes(fn)),
+    isProsecution: (authorityId) => prosecutions.has(authorityId),
   };
 }
 
