@@ -48,7 +48,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   `firmar`, con el resumen de cambios respecto de la versión vigente.
 - «¿Quién atiende tu denuncia en tu estado?»: búsqueda por dependencia y cobertura de OIC por
   estado. El corte nacional de datos abiertos trae `oicCoverage`.
-- Función de cuenta `court` (mínima: el procedimiento del tribunal lo completa el trámite).
 - Demostración de Querétaro: unidad receptora de la Secretaría de la Contraloría (ficticia), SESEA
   solo en la operación, OIC ficticios de los municipios de Querétaro y El Marqués y de la CEA,
   Sala Especializada, fiscalía anticorrupción y ESFE ficticias, y cuentas nuevas (segunda persona
@@ -73,6 +72,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   aceptar lo que se le turna.
 - «Quién sigue en el trámite» y la página pública muestran al CPC aparte: vigila el sistema, no ve
   casos (B05). Nombres de la demostración de Querétaro según su ley (B08).
+
+- Documentación: revisión de consistencia después de integrar el ciclo de vida legal y la
+  competencia por dependencia. «Cómo funciona SIGILO en 10 líneas» en el README; cuentas, tablas
+  (Querétaro y federal en formato 2, Oaxaca en formato 1) y segundo factor de la demostración al
+  día; nombres de las funciones de la tabla («Autoridad receptora (recepción y turnado)»,
+  «Tribunal (faltas graves, de particulares y alzada)» y «Vigilancia del sistema (CPC), sin acceso
+  a casos»); matriz de requisitos y proceso legal sin afirmar como pendiente lo que ya existe
+  (Tribunal, recursos, medidas cautelares, vista al Ministerio Público y recursos federales);
+  cifras de pruebas; guía nueva para una auditoría externa (`docs/auditoria-guia.md`).
 
 ### Corregido
 

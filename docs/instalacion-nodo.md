@@ -4,6 +4,14 @@ Para: el equipo de TI de la SESEA o de la contraloría que opera el nodo del est
 minutos, más la espera de la SESNA. Los conceptos (autoridades, tabla de funciones, llaves y
 directorio) están en [guia-conecta-tu-estado.md](guia-conecta-tu-estado.md); aquí solo se instala.
 
+Operar el nodo no es recibir ni turnar denuncias: la cuenta del buzón general que crea la
+instalación es para la **autoridad receptora** que designe tu estado (por ejemplo, la unidad de
+quejas y denuncias de la contraloría), no para quien opera el nodo. Si la ley de tu estado faculta a
+tu SESEA para recibir y turnar, la tabla de funciones lo declara en `settings.operatorReceives` con
+su fundamento ([guía, sección 2.1](guia-conecta-tu-estado.md#21-el-oic-de-cada-dependencia-competencia-por-dependencia)).
+Después de instalar, la cuenta de operación asigna el OIC de cada dependencia en la pestaña
+«Competencia por dependencia» del panel ([competencia-por-dependencia.md](competencia-por-dependencia.md)).
+
 Son tres comandos:
 
 ```sh
@@ -129,6 +137,7 @@ Lo que deja en la carpeta:
 ```text
 red.json, .env                      red de la SESNA; imagen, usuario y dominio para compose
 config/   nodo.env, Caddyfile, instalacion.json, tabla-de-funciones.csv, dias-inhabiles.csv
+          (y competencia-por-dependencia.csv, que escribe ./sigilo tabla exportar)
 datos/    (0700) llaves y archivos del nodo: el único volumen del contenedor
 llaves/   (0700) llave de enlace con la SESNA, fuera del volumen
 salida/   solicitud de alta, llave del buzón (para sacarla), respaldos y diagnósticos
@@ -211,20 +220,21 @@ deja `salida/diagnostico-<fecha>.txt` sin secretos ni datos de denuncias.
 
 ## Después de instalar
 
-| Tarea                            | Comando                                                                                      |
-| -------------------------------- | -------------------------------------------------------------------------------------------- |
-| Dar de alta autoridades          | Bandeja «Solicitudes de alta» del panel ([guía](guia-conecta-tu-estado.md))                  |
-| Completar la tabla de funciones  | Edita `config/tabla-de-funciones.csv`; `./sigilo tabla revisar` y `./sigilo tabla firmar`    |
-| Crear cuentas del panel          | `./sigilo cuenta nueva` (contraseña temporal; reinicia el nodo)                              |
-| Reiniciar el segundo factor      | `./sigilo cuenta reiniciar-mfa <usuario> --confirmo` (teléfono y códigos perdidos)           |
-| Días inhábiles locales           | Edita `config/dias-inhabiles.csv` (`fecha,nombre,fundamento`); `./sigilo calendario revisar` |
-| Respaldo                         | `./sigilo respaldar` (frase de 8 palabras en papel; `--frase-de-archivo` para cron)          |
-| Revisar un respaldo              | `./sigilo respaldar --verificar salida/respaldos/<archivo>`                                  |
-| Restaurar                        | `./sigilo restaurar <archivo>` (a una carpeta) o `--sobrescribir` (detiene el nodo)          |
-| Actualizar                       | `./sigilo actualizar 1.2.0` (respaldo, imagen, diagnóstico y regreso si falla)               |
-| Regresar a la versión anterior   | `./sigilo actualizar --regresar`                                                             |
-| Rotar los secretos con la SESNA  | `./sigilo rotar-llaves --enlace`, enviar el archivo, y `--aplicar` cuando confirme           |
-| Ver registros / estado / detener | `./sigilo registros` · `./sigilo estado` · `./sigilo detener`                                |
+| Tarea                              | Comando                                                                                                                                                                                  |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dar de alta autoridades            | Bandeja «Solicitudes de alta» del panel ([guía](guia-conecta-tu-estado.md))                                                                                                              |
+| Completar la tabla de funciones    | Edita `config/tabla-de-funciones.csv`; `./sigilo tabla revisar` y `./sigilo tabla firmar`                                                                                                |
+| Asignar el OIC de cada dependencia | Pestaña «Competencia por dependencia» del panel (cuenta de operación), o `./sigilo tabla exportar`, edita `config/competencia-por-dependencia.csv` y `./sigilo tabla revisar` y `firmar` |
+| Crear cuentas del panel            | `./sigilo cuenta nueva` (contraseña temporal; reinicia el nodo)                                                                                                                          |
+| Reiniciar el segundo factor        | `./sigilo cuenta reiniciar-mfa <usuario> --confirmo` (teléfono y códigos perdidos)                                                                                                       |
+| Días inhábiles locales             | Edita `config/dias-inhabiles.csv` (`fecha,nombre,fundamento`); `./sigilo calendario revisar`                                                                                             |
+| Respaldo                           | `./sigilo respaldar` (frase de 8 palabras en papel; `--frase-de-archivo` para cron)                                                                                                      |
+| Revisar un respaldo                | `./sigilo respaldar --verificar salida/respaldos/<archivo>`                                                                                                                              |
+| Restaurar                          | `./sigilo restaurar <archivo>` (a una carpeta) o `--sobrescribir` (detiene el nodo)                                                                                                      |
+| Actualizar                         | `./sigilo actualizar 1.2.0` (respaldo, imagen, diagnóstico y regreso si falla)                                                                                                           |
+| Regresar a la versión anterior     | `./sigilo actualizar --regresar`                                                                                                                                                         |
+| Rotar los secretos con la SESNA    | `./sigilo rotar-llaves --enlace`, enviar el archivo, y `--aplicar` cuando confirme                                                                                                       |
+| Ver registros / estado / detener   | `./sigilo registros` · `./sigilo estado` · `./sigilo detener`                                                                                                                            |
 
 Los días inhábiles locales se suman a los oficiales (LFT, art. 74) en los plazos, las reglas de
 escalamiento, el auditor y el semáforo de turnado, y el nodo los publica en

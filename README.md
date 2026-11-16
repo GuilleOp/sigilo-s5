@@ -16,6 +16,37 @@ personas, empresas y casos son [sintéticos](docs/datos-sinteticos.md); los cat�
 públicos (directorio de la PDN) y de municipios (INEGI) son reales, y ninguna institución real
 aparece denunciada en la demostración.
 
+## Cómo funciona SIGILO en 10 líneas
+
+1. Quien denuncia entra a **una sola ventanilla nacional en la SESNA**; un **enrutador ciego** lleva
+   su denuncia cifrada al **nodo de su estado** (uno por estado y uno federal) sin poder leerla.
+2. Cada nodo **firma su tabla de funciones**: quién recibe, investiga, substancia, resuelve, juzga
+   y supervisa, y **qué OIC atiende a cada dependencia**
+   ([competencia por dependencia](docs/competencia-por-dependencia.md)).
+3. Con esa tabla, el navegador **cifra la denuncia hacia la autoridad competente**; si el OIC aún no
+   tiene llaves, va a la autoridad receptora con la nota de a quién turnarla.
+4. El trámite sigue la **LGRA**: investigación, calificación, Informe de Presunta Responsabilidad
+   Administrativa (IPRA), substanciación y **resolución** (no grave) o **Tribunal** (grave o de
+   particulares), y después los **recursos** (inconformidad, reclamación, revocación, apelación y
+   revisión) ([ciclo de vida legal](docs/ciclo-de-vida-legal.md)).
+5. La **vía penal** corre en paralelo: la autoridad da vista al Ministerio Público y la fiscalía la
+   sigue en su propia capa.
+6. Si un ente estatal o municipal ejerce **recursos federales**, el panel ofrece dar vista a la ASF,
+   la SABG y la FGR y turnar al nodo Federal.
+7. Quien denuncia **sigue su caso con el folio y 8 palabras**, sin cuenta ni datos de contacto, y ve
+   cada apertura de su identidad.
+8. La **SESNA recibe solo estadística agregada** por OAuth 2.0, como en el S2 y el S3; nunca una
+   denuncia.
+9. Quien opera un nodo (la SESEA o la contraloría) lo mantiene y da de alta autoridades, pero **no
+   lee ni turna denuncias**, salvo que la ley de su estado lo faculte y su tabla lo declare.
+10. Cada paso queda en una **bitácora firmada y cofirmada por testigos**; si la autoridad deja morir
+    la denuncia, reglas públicas la escalan a su superior.
+
+El detalle legal, paso por paso, está en el [proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md)
+y sus [fuentes legales](docs/fuentes-legales.md); la protección de quien denuncia, en
+[¿quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md). Para auditar el proyecto:
+[guía para la auditoría](docs/auditoria-guia.md).
+
 ## El modelo: un S5, muchas llaves
 
 **Un estándar nacional:** las mismas etapas para los 32 estados y la federación; cada nodo declara
@@ -35,10 +66,11 @@ Oaxaca son solo el ejemplo de la demostración
   estado. Que la SESEA turne depende de la ley de cada estado (por ejemplo, Michoacán lo prevé y
   Querétaro no).
 - **Una tabla de funciones por nodo**, firmada por el estado: quién recibe, investiga, substancia,
-  resuelve y supervisa para cada orden de gobierno y ente (cada municipio, con su propio OIC; las
-  faltas graves, con la Sala Especializada del tribunal). Con ella el navegador propone la
-  autoridad competente. Viaja en un **directorio firmado** que cofirman testigos m de n. El CPC
-  vigila el sistema con datos agregados, no los casos.
+  resuelve, juzga (el Tribunal y su alzada) y supervisa, y, en el formato 2, el órgano interno de
+  control de **cada dependencia** (cada municipio, con su propio OIC; las faltas graves, con la Sala
+  Especializada del tribunal). Con ella el navegador propone la autoridad competente. Viaja en un
+  **directorio firmado** que cofirman testigos m de n. El CPC vigila el sistema con datos
+  agregados, no los casos ([competencia por dependencia](docs/competencia-por-dependencia.md)).
 - **APIs con la SESNA como las de la PDN** (OAuth 2.0, igual que S2 y S3): entregas al buzón del
   nodo y estadística agregada para el portal.
 
@@ -66,9 +98,15 @@ minuto; la primera vez descarga la imagen de Node y los paquetes de npm.
 | Ventanilla única (SESNA)   | <http://127.0.0.1:8790/>                                                                          |
 | Paneles de los nodos       | <http://127.0.0.1:8781/autoridad>, `:8782/autoridad` y `:8783/autoridad`                          |
 | Cuentas del panel          | `.red-demo/nodos/<nodo>/credenciales.json`                                                        |
-| Código del segundo factor  | `npm run demo:codigo -- supervision-oic` (también `operacion.<nodo>` y `fiscalia`)                |
+| Código del segundo factor  | `npm run demo:codigo -- supervision-oic` (ver la lista abajo)                                     |
 | Llaves de las autoridades  | `.red-demo/autoridades/<id>.json`; la del buzón general, en `.red-demo/nodos/<nodo>/llaves-demo/` |
 | Folios y recibos sembrados | `.red-demo/semilla.json`                                                                          |
+
+Cuentas con el segundo factor ya inscrito: `supervision-oic`, `contraloria.titular`,
+`operacion.federal`, `operacion.queretaro`, `operacion.oaxaca`, `fiscalia`, `fiscalia.queretaro` y
+`tja.queretaro`; `oic-programas` lo inscribe al entrar. Las demás entran solo con contraseña
+(`SIGILO_MFA=opcional` en la demostración). Todas las cuentas, por nodo, en
+[demo-escenario.md](docs/demo-escenario.md#22-autoridades).
 
 Usa los puertos 8781, 8782, 8783 y 8790 de `127.0.0.1`; el evaluador y el índice no publican puerto
 (la web llega al evaluador por la ventanilla). Detalle, tiempos y problemas comunes (incluido Linux
@@ -173,6 +211,8 @@ solicitar medidas de protección por el buzón cifrado
 | La instalación                            | [Nodo del estado](docs/instalacion-nodo.md), [SESNA](docs/instalacion-sesna.md) y [demostración](docs/demo.md)                                                                                                                                                                                                                                                                                                          |
 | La seguridad                              | [Modelo de amenazas](docs/modelo-de-amenazas.md), [producción](docs/seguridad-produccion.md), [historial](docs/historial-de-seguridad.md) y [criptografía](docs/criptografia.md)                                                                                                                                                                                                                                        |
 | El manejo de las pruebas                  | [Pruebas cifradas](docs/criptografia.md#pruebas-cifradas-de-extremo-a-extremo) y [cadena de custodia](docs/arquitectura.md#pruebas-y-cadena-de-custodia)                                                                                                                                                                                                                                                                |
+| Cómo auditarlo                            | [Guía para la auditoría](docs/auditoria-guia.md): mapa del repositorio, cómo correr todo, dónde vive cada función y límites conocidos                                                                                                                                                                                                                                                                                   |
+| El ciclo de vida y la competencia         | [Ciclo de vida legal](docs/ciclo-de-vida-legal.md) (etapas, Tribunal, recursos, vía penal y recursos federales) y [competencia por dependencia](docs/competencia-por-dependencia.md) (tabla de funciones formato 2)                                                                                                                                                                                                     |
 | El fundamento legal                       | [El proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md) (quién hace qué, en qué plazo y con qué artículo), sus [fuentes legales](docs/fuentes-legales.md), [Marco legal](docs/requisitos.md#marco-legal) (LGRA, LGSNA, Bases de la PDN, CNPP y LGPDPPSO), [¿quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md) y [ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md) |
 | El uso de IA                              | [Declaración de uso de IA](docs/uso-de-ia.md)                                                                                                                                                                                                                                                                                                                                                                           |
 | El cumplimiento del reto                  | [Matriz de requisitos](docs/requisitos.md)                                                                                                                                                                                                                                                                                                                                                                              |
@@ -204,9 +244,10 @@ cuyo servidor corre en perfil `nodo`).
 Panel de la autoridad (enlace «Panel de autoridad» del pie, o `http://127.0.0.1:5173/autoridad`):
 
 - Cuenta: un usuario y su contraseña de `apps/server/data/authority-demo-credentials.json`, que
-  `accounts:generate` crea (una cuenta por persona, con su autoridad y sus funciones: recepción y
-  turnado, investigación, las dos juntas, substanciación y resolución, supervisión u operación del
-  nodo, que solo ve las solicitudes de alta). Las
+  `accounts:generate` crea con las cuentas del nodo Federal (una cuenta por persona, con su
+  autoridad y sus funciones: recepción y turnado, investigación, las dos juntas, substanciación y
+  resolución, Tribunal, supervisión u operación del nodo, que solo ve las solicitudes de alta y la
+  competencia por dependencia). Las
   denuncias nuevas llegan al buzón general (`buzon.federal`), que las turna. Abrir una identidad exige dos personas de la autoridad.
 - Segundo factor: en desarrollo es opcional (`SIGILO_MFA=opcional`). `supervision-oic`,
   `operacion.federal` y `fiscalia` ya lo tienen inscrito: `npm run demo:codigo -- <usuario>` da el
@@ -255,17 +296,18 @@ npx playwright install chromium       # una sola vez
 npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
 ```
 
-Hay 1,615 pruebas unitarias en 183 archivos, 34 del proceso de datos en Python y 106 de extremo a
-extremo;
-la [integración continua](.github/workflows/ci.yml) las corre en cada push con Node 22.18 y la
+Hay 1,680 pruebas unitarias en 189 archivos, 34 del proceso de datos en Python y 110 de extremo a
+extremo en 26 archivos (`npx playwright test --list`); la [integración continua](.github/workflows/ci.yml) las corre en cada push con Node 22.18 y la
 versión más reciente, junto con `npm audit` de las dependencias de producción.
 
 Las pruebas E2E levantan su propio servidor en un directorio temporal y copian
 `apps/server/data/keys.json`, así que requieren haber ejecutado `npm run keys:generate`. Cubren cero
 peticiones a terceros, denuncia anónima y sellada, limpieza de metadatos, buzón, apertura de
 identidad, bitácora y anclas, datos abiertos, salida rápida, llaves sustituidas, trasplante de
-sobres, confianza verificable (sin peticiones de red hasta enviar), aviso ciudadano, foco y
-accesibilidad WCAG 2.0 AA.
+sobres, confianza verificable (sin peticiones de red hasta enviar), aviso ciudadano, segundo factor,
+medidas de protección, el ciclo de vida legal (del IPRA al Tribunal, abstención con inconformidad
+firmada y vista al Ministerio Público), la competencia por dependencia, foco y accesibilidad WCAG
+2.0 AA.
 
 ## Estructura
 
@@ -316,6 +358,9 @@ Diseño y seguridad:
 - [¿Quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md)
 - [El proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md) y sus
   [fuentes legales](docs/fuentes-legales.md)
+- [Ciclo de vida legal en el estándar](docs/ciclo-de-vida-legal.md) (etapas, Tribunal, recursos,
+  vía penal y recursos federales)
+- [Competencia por dependencia](docs/competencia-por-dependencia.md) (quién investiga a cada ente)
 - [Decisiones de arquitectura](docs/adr/)
 - [Interfaces entre paquetes](docs/interfaces.md)
 
@@ -332,6 +377,7 @@ Adopción y datos:
 Proyecto:
 
 - [Guion de la presentación ante el jurado](docs/guion-presentacion.md)
+- [Guía para la auditoría externa](docs/auditoria-guia.md)
 - [Declaración de uso de IA](docs/uso-de-ia.md)
 - [Plan de trabajo](docs/plan.md)
 - [Convenciones](docs/convenciones.md) y [glosario](docs/glosario.md)

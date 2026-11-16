@@ -49,7 +49,7 @@ Entrada aparte (no se carga en la web) con lo que define el Estándar S5 en `est
 
 | Exporta               | Contenido                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------- |
-| `STANDARD_VERSION`    | Versión SemVer del estándar (0.3.0), independiente de la del software                       |
+| `STANDARD_VERSION`    | Versión SemVer del estándar (0.4.0), independiente de la del software                       |
 | `STANDARD_OPERATIONS` | Cada operación: método, ruta de `ROUTES` en notación OpenAPI, esquemas, seguridad y errores |
 | `STANDARD_COMPONENTS` | Esquemas con nombre en `components.schemas`, en el orden del diccionario                    |
 | `STANDARD_TAGS`       | Secciones del documento                                                                     |
@@ -263,6 +263,9 @@ en `node:sqlite` con migraciones numeradas:
 | 14        | Solicitudes de alta de autoridades (`authority_registrations`) con su huella y la decisión de la operación                                                                                                                                                                                                                                                       |
 | 15        | Estadística para la PDN: filas ya redondeadas y suprimidas de cada mes cerrado, congeladas una sola vez                                                                                                                                                                                                                                                          |
 | 16        | Pruebas cifradas y cadena de custodia: compromiso de cada prueba (`evidence.commitment`), llaves re-cifradas hacia otra autoridad del nodo (`evidence_key_grants`) y eventos de custodia                                                                                                                                                                         |
+| 17        | Segundo factor del panel (`authority_mfa`): secreto TOTP cifrado con `mfa-key`, último paso aceptado y digestos de los códigos de recuperación                                                                                                                                                                                                                   |
+| 18        | Versiones de la tabla de funciones firmadas desde «Competencia por dependencia» (`function_table_proposals`), con su resumen de cambios                                                                                                                                                                                                                          |
+| 19        | Ciclo de vida legal (Estándar 0.4.0): capa penal `criminal_stage`, `funding_source` (recursos federales), etapas `court_*`, `details_json` de cada paso y motivo legal y destino de cada cierre                                                                                                                                                                  |
 
 Las migraciones 3 y 4 cambian el formato y rechazan una base con datos anteriores: piden ejecutar
 `npm run demo:reset -- --yes`. La 4 existe porque, en una tabla con `rowid`, el `rowid` crece con
@@ -326,8 +329,10 @@ anterior al arranque del sistema o lleva una hora sin renovarse.
   (art. 102); el primer mensaje de la autoridad por el buzón desde ese día cuenta como su
   notificación y abre los 5 días hábiles del art. 103. `POST trackingAppeal` registra el
   aviso de inconformidad (`appeals`) con la apertura de identidad para el recurso; el escrito cuenta
-  cuando se entrega con firma autógrafa a la autoridad investigadora (art. 109, fr. IV), y solo
-  entonces corre el plazo de la Sala (art. 107). `409` sin calificación de no grave, si ya se presentó, si venció o si la denuncia
+  cuando la autoridad investigadora lo registra con firma autógrafa (`file_remedy` con
+  `signed: true`; art. 109, fr. IV), y solo entonces corre el plazo de la Sala (art. 107). Las
+  demás acciones del ciclo de vida legal (migración 19) están en
+  [ciclo-de-vida-legal.md](ciclo-de-vida-legal.md). `409` sin calificación de no grave, si ya se presentó, si venció o si la denuncia
   es anónima. Las etapas posteriores a la admisión del informe llegan al auditor como
   `report_admitted`; solo en ellas corre la caducidad de la instancia (art. 74).
 

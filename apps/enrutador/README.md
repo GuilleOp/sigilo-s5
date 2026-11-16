@@ -165,6 +165,10 @@ mismo que cualquiera puede bajar; ninguna ruta de denuncias ni del buzón) y:
    este corte») o `rejected`. Un nodo caído no detiene el corte.
 4. **Cita** la cabeza firmada de la bitácora de cada nodo vigente en la bitácora nacional al hacer
    el corte, y la entrada nacional que la contiene.
+5. **Agrega la cobertura de órganos internos de control** (`oicCoverage`, con `oicCoverageRows` de
+   `@sigilo/red`): por cada tabla de funciones del directorio, cuántas dependencias tienen OIC
+   asignado, con llaves y pendientes. Se calcula con las tablas firmadas y el catálogo de la PDN,
+   sin ninguna denuncia ([competencia por dependencia](../../docs/competencia-por-dependencia.md)).
 
 Qué se verifica y qué no, con honestidad:
 

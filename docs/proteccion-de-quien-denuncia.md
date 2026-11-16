@@ -126,9 +126,12 @@ alternativas que sí existen:
 
 Qué hace hoy SIGILO: la solicitud viaja por el buzón a la **autoridad investigadora**, no al ente
 donde trabaja la persona, para que no la lea primero quien podría ser parte del problema. La
-investigadora es quien debe hacerla llegar al ente o pedir medidas cautelares. SIGILO todavía no
-registra **quién decidió** las medidas ni qué decidió; está previsto en la siguiente versión del
-estándar (ver [proceso legal](proceso-legal-de-la-denuncia.md#paso-15-protección-de-quien-denuncia)).
+investigadora es quien debe hacerla llegar al ente o pedir medidas cautelares. Las **medidas
+cautelares** ya están en el trámite: la investigadora las pide (`request_precautionary`) y la
+substanciadora o el Tribunal las resuelve (`decide_precautionary`); la persona solo ve que se
+dictaron, sin la medida concreta. Lo que SIGILO todavía no registra es **quién decidió** las
+medidas de protección ni qué decidió (acción `protection_decided`, siguiente paso; ver
+[proceso legal](proceso-legal-de-la-denuncia.md#paso-15-protección-de-quien-denuncia)).
 
 ## Derechos como tercera en el procedimiento administrativo
 
@@ -144,8 +147,12 @@ administrativa (LGRA art. 116 fr. IV). Eso le da derechos que van más allá de 
 
 Si denuncia de forma **anónima**, no recibirá notificaciones legales ni podrá inconformarse,
 comparecer como tercera o apelar: no hay a quién notificar. Con **identidad sellada** puede
-revelarse después, solo para eso. Hoy SIGILO prepara el escrito de inconformidad; comparecer en la
-audiencia y apelar se hacen fuera del sistema, ante la autoridad substanciadora o el Tribunal.
+revelarse después, solo para eso. Hoy SIGILO prepara el aviso de inconformidad, y el recurso cuenta
+cuando la autoridad investigadora registra el escrito firmado; la apelación de la persona como
+tercera la registra el Tribunal o la investigadora al recibir su escrito (recurso `appeal`,
+[ciclo de vida legal](ciclo-de-vida-legal.md#recursos)). Comparecer en la audiencia sigue fuera del
+sistema, ante la autoridad substanciadora o el Tribunal (la acción `third_party_appearance` es el
+siguiente paso).
 
 ## Lo que hace SIGILO
 

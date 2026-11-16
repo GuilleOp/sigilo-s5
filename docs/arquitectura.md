@@ -107,13 +107,18 @@ individual (`authority-accounts.json`, fuera del repositorio), que tiene una aut
 función, o recepción e investigación juntas (`AUTHORITY_FUNCTION_SETS`; la LGRA no obliga a
 separarlas). Ninguna otra combinación se admite:
 
-| Función                                        | Puede                                                                                                                                                                | No puede                                    |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Recepción y turnado (`intake`)                 | Turnar desde el buzón general (con motivo de al menos 10 caracteres), aceptar, reasignar (hasta 3 veces), devolver, cerrar lo improcedente del buzón, descartar spam | Solicitar ni aprobar aperturas de identidad |
-| Investigación (`investigation`)                | Investigar y calificar, presentar el informe (IPRA), cerrar lo que investiga, escribir por el buzón, solicitar y aprobar aperturas                                   | Turnar                                      |
-| Substanciación y resolución (`substantiation`) | Avanzar las etapas posteriores al informe y cerrar desde que se presentó (LGRA arts. 3 y 115); nunca es la misma persona que investiga                               | Turnar ni abrir identidades                 |
-| Supervisión (`supervision`)                    | Aprobar aperturas, leer los acuerdos de cierre (auditor) y, en la supervisora, recibir escalamientos y alertas de turnado vencido                                    | Acciones del trámite                        |
-| Operación del nodo (`operation`)               | Revisar y resolver las solicitudes de alta de autoridades                                                                                                            | Ver denuncias, turnar ni abrir identidades  |
+| Función                                        | Puede                                                                                                                                                                                                                                                                         | No puede                                                                 |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Recepción y turnado (`intake`)                 | Turnar desde el buzón general (con motivo de al menos 10 caracteres), aceptar, reasignar (hasta 3 veces), devolver, cerrar lo improcedente del buzón, descartar spam                                                                                                          | Solicitar ni aprobar aperturas de identidad                              |
+| Investigación (`investigation`)                | Investigar y calificar, presentar el informe (IPRA), pedir medidas cautelares, dar vista al Ministerio Público, registrar el escrito firmado de inconformidad, marcar recursos federales, cerrar lo que investiga, escribir por el buzón, solicitar y aprobar aperturas       | Turnar                                                                   |
+| Substanciación y resolución (`substantiation`) | Prevenir, admitir o abstenerse sobre el informe, emplazar, audiencia inicial, pruebas, alegatos, resolver la no grave, enviar la grave al Tribunal, firmeza y ejecución (LGRA arts. 3, 115, 208 y 209); nunca es la misma persona que investiga, tampoco en la misma denuncia | Turnar ni abrir identidades                                              |
+| Tribunal (`court`)                             | Recibir el expediente, avanzar las etapas del Tribunal, devolver o reclasificar, dictar sentencia y declararla firme, resolver las medidas cautelares de sus etapas y los recursos que le tocan (inconformidad, apelación y revisión)                                         | Ver el buzón de la persona ni las aperturas; combinarse con otra función |
+| Supervisión (`supervision`)                    | Aprobar aperturas, leer los acuerdos de cierre (auditor) y, en la supervisora, recibir escalamientos y alertas de turnado vencido                                                                                                                                             | Acciones del trámite                                                     |
+| Operación del nodo (`operation`)               | Revisar y resolver las solicitudes de alta de autoridades y editar y firmar la competencia por dependencia                                                                                                                                                                    | Ver denuncias, turnar ni abrir identidades                               |
+
+Las etapas, las acciones, los recursos y sus plazos son nacionales y están en
+[ciclo-de-vida-legal.md](ciclo-de-vida-legal.md); la vía penal corre en una capa aparte
+(`criminalStage`).
 
 Cada denuncia la tiene una autoridad (el buzón general hasta que se turna). Solo las cuentas de esa
 autoridad la ven: otra recibe `404`, igual que con un folio inexistente. La sesión vence a los 15
@@ -158,8 +163,10 @@ persona identificable sin aviso por el buzón en 10 días hábiles, acto resolut
 excusa (art. 58), archivo o calificación de no grave con dos o más señales del auditor, alertas de
 prescripción a 12, 6 y 3 meses e inactividad a los 5 y 6 meses. Durante la investigación la
 inactividad es solo una alerta; la caducidad de la instancia (art. 74) se alerta únicamente después
-de admitido el informe. La calificación de no grave se notifica por el buzón y la persona puede
-inconformarse desde su seguimiento (arts. 102 a 110), abriendo su identidad solo para el recurso. Cada regla
+de admitido el informe. La calificación de no grave se notifica por el buzón y la persona prepara
+desde su seguimiento el aviso de inconformidad, abriendo su identidad solo para el recurso; el
+recurso cuenta cuando la autoridad investigadora registra el escrito con firma autógrafa (arts. 102
+a 110). Cada regla
 cumplida se registra una vez (`rule.triggered`, actor `system`) y aparece en el seguimiento. Las de
 escalamiento dejan la denuncia disponible para la autoridad supervisora, que recibe la **segunda
 llave**: el sobre de hechos y pruebas (nunca la identidad) que la web cifró al enviar hacia la
@@ -306,8 +313,8 @@ acordado con la SESNA:
 - **El nodo federal** aloja solo autoridades federales y lo opera el lado federal que investiga (la
   Secretaría Anticorrupción y Buen Gobierno), no la SESNA.
 - **Cada nodo declara su tabla de funciones**: qué institución cumple cada función en su entidad
-  (buzón general, operación del nodo, investigación y calificación, substanciación, resolución,
-  supervisión y vía penal) y, aparte, quién observa el sistema (el CPC, que vigila con datos
+  (autoridad receptora, operación del nodo, investigación y calificación, substanciación,
+  resolución, Tribunal, supervisión y vía penal) y, en el formato 2, el OIC de cada dependencia y, aparte, quién observa el sistema (el CPC, que vigila con datos
   agregados y no ve casos; LGSNA arts. 21 y 23). Con esa tabla el navegador propone la autoridad (turnado automático) y el enrutador entrega el sobre a ciegas.
 
 Agrega tres piezas sin cambiar la API v1 del nodo:
@@ -342,15 +349,20 @@ flowchart LR
   navegador fija solo la llave de la operación y las de los testigos (`NetworkTrustAnchor`) y exige
   m cofirmas válidas de testigos fijados distintos. Una versión nueva debe encadenar el digesto
   anterior y llevar m cofirmas de los testigos de la anterior.
-- **Tabla de funciones.** Cada nodo declara, en una `FunctionTable` (formato 1), qué institución
-  cumple cada función para los entes de su entidad (la del nodo federal, para los entes federales).
-  Cada regla dice a qué órdenes de gobierno aplica y, si hace falta, a qué entes específicos y a qué
-  gravedad: «entes estatales → Secretaría de la Contraloría; ente X → su OIC; municipio Y → el OIC
-  de ese municipio; resolución de falta grave → Sala Especializada del Tribunal de Justicia
-  Administrativa». La regla que nombra al ente gana sobre la de todo su orden. Todo municipio tiene
+- **Tabla de funciones.** Cada nodo declara, en una `FunctionTable` (formato 1 o 2; ver
+  [competencia por dependencia](competencia-por-dependencia.md)), qué institución cumple cada
+  función para los entes de su entidad (la del nodo federal, para los entes federales). Cada regla
+  dice a qué órdenes de gobierno aplica y, si hace falta, a qué entes específicos y a qué gravedad:
+  «ente X → su OIC; resolución de falta grave → Sala Especializada del Tribunal de Justicia
+  Administrativa». El **formato 2** agrega la función `court` (el Tribunal, con primera instancia y
+  alzada), la **competencia por dependencia** (`entities[]`: el OIC de cada ente, «sin OIC
+  designado → lo atiende…» con su fundamento, o pendiente), la marca `requiresIdentifiedReporter`
+  (quien solo admite denuncias con nombre y firma) y `settings.operatorReceives` (quien opera el
+  nodo también recibe, solo si la ley del estado lo faculta). La competencia por dependencia gana
+  sobre las reglas, y la regla que nombra al ente, sobre la de todo su orden. Todo municipio tiene
   su propio OIC (CPEUM art. 109 fr. III), así que ninguna regla manda a los municipales a la
-  Contraloría estatal: si el municipio no está en el directorio, la denuncia va al buzón general
-  para turnarla al OIC de ese municipio.
+  Contraloría estatal: si el OIC del municipio no está en el directorio, la denuncia va a la
+  autoridad receptora para turnarla a ese OIC.
   - **Dónde se publica y por qué.** Dentro del directorio (`functionTables`), **firmada por el nodo**
     con su llave de firma del directorio (`sigilo/red/function-table/v1:` + digesto). Así hay dos
     firmas: la del estado, que declara su tabla, y la del directorio, que firma la operación y
@@ -364,13 +376,22 @@ flowchart LR
     nombra autoridades de su propio nodo y entidad (ningún estado vive en el nodo de otro), y el
     buzón y la investigación son autoridades con el papel `inbox` e `investigating`, porque reciben
     sobres cifrados. Las demás funciones pueden ser una institución sin llaves (el tribunal, la
-    fiscalía estatal, quien opera el nodo).
+    fiscalía estatal, quien opera el nodo). En el formato 2 revisa además que cada ente sea de la
+    entidad de la tabla y aparezca una vez, que ninguna regla general mande los entes municipales a
+    una autoridad que no es municipal, que la misma área no investigue y substancie (LGRA art. 115)
+    y que quien opera el nodo no sea la receptora sin `settings.operatorReceives`.
 - **Autoridad competente.** `proposeCompetentAuthority` corre en el navegador: la conducta define
   la ley (LGRA → investigación; CPF → vía penal) y el ente el orden de gobierno. Si el ente es
-  federal manda la tabla del nodo federal; si no, la de la entidad de los hechos. Si la tabla no
-  nombra a una autoridad para el ente, se prueba la ley de una conducta equivalente y, si tampoco,
-  la propuesta es el **buzón general** de esa tabla (papel `inbox`, estado `inbox` de la
-  propuesta). Ahí una persona la turna a quien corresponda, como en la bandeja general del S5: la
+  federal manda la tabla del nodo federal; si no, la de la entidad de los hechos. En la tabla manda
+  primero la competencia por dependencia del ente: si su OIC tiene llaves vigentes, la denuncia se
+  cifra para él; si está pendiente, nombrado sin alta o sin llaves vigentes, la propuesta es el
+  **buzón de la autoridad receptora** con la nota «turnar al OIC de…» (`turnTo`), nunca otra
+  autoridad. Sin competencia por dependencia, gana la regla que nombra al ente y después la de su
+  orden. En una tabla de formato 1 se prueba después la ley de una conducta equivalente; en el
+  formato 2 una falta administrativa sin quien la investigue no se desvía a la vía penal. Si nada
+  aplica, la propuesta es el buzón general de esa tabla (papel `inbox`, estado `inbox` de la
+  propuesta). Una denuncia anónima o sellada nunca se propone a quien
+  solo admite denuncias identificadas. Ahí una persona la turna a quien corresponda, como en la bandeja general del S5: la
   ventanilla es un canal único (Bases de la PDN, art. 56) con protocolos de recepción y turno a la
   autoridad competente (art. 58). Devuelve el razonamiento en lenguaje claro y, como alternativas,
   las demás autoridades cuya competencia declarada atiende al ente. Las supervisoras nunca se
@@ -389,7 +410,8 @@ flowchart LR
     nacional. En `/autoridad` dice que cada autoridad entra por el nodo de su estado.
   - `panel`: la web de cada nodo, solo con `/autoridad`; las demás rutas dicen «La ventanilla
     única está en …» (`VITE_SIGILO_VENTANILLA_URL`). En el detalle de una denuncia, el panel
-    muestra quién sigue según la tabla (substanciación, resolución, supervisión y vía penal); el
+    muestra quién sigue según la tabla (substanciación, resolución, Tribunal, supervisión y vía
+    penal); el
     observador del sistema (CPC) no sigue en el trámite ni ve el caso.
   - `completo` (por omisión): un solo nodo con todas las pantallas, sin red, para pruebas y E2E.
 - **Enrutador ciego.** El navegador cifra con HPKE hacia la llave del nodo una petición de la API

@@ -158,7 +158,8 @@ contra el registro público (ver «Comprobante firmado»).
   los 7 días, y cada entrega registra el evento público `identity.released` con el `receiptTag`
   (G07). El servidor sigue sin descifrar. La firma autógrafa queda fuera del sistema: sin ella el
   escrito «no se tendrá por presentado» (art. 109, fr. IV), así que el evento es un aviso y el
-  recurso cuenta cuando la persona entrega el escrito firmado a la autoridad investigadora.
+  recurso cuenta cuando la persona entrega el escrito firmado a la autoridad investigadora y esta lo
+  registra (`file_remedy` con `signed: true`).
 
 ## Sobre de escalamiento (segunda llave)
 
@@ -738,12 +739,14 @@ red:demo` genera la llave del evaluador y la publica en el directorio, y `compos
 
 ### Tabla de funciones del nodo
 
-La `FunctionTable` (formato 1) la firma el nodo con su llave Ed25519 de firma del directorio sobre
+La `FunctionTable` (formato 1 o 2; ver [competencia por dependencia](competencia-por-dependencia.md))
+la firma el nodo con su llave Ed25519 de firma del directorio sobre
 `sigilo/red/function-table/v1:` + el SHA-256 de su forma canónica (`signFunctionTable` y
 `verifyFunctionTableSignature` en `packages/red/src/function-table.ts`). Viaja dentro del directorio
 (`functionTables`), que además firma la operación y cofirman los testigos: la operación no puede
 cambiar la tabla de un estado sin la llave de ese nodo, y el navegador rechaza un directorio con una
-tabla sin firma válida de su nodo (`functionTableProblems`).
+tabla sin firma válida de su nodo (`functionTableProblems`). Una tabla de formato 1 se firma y se
+verifica igual que antes: parsearla no le agrega campos del formato 2, así que su digesto no cambia.
 
 ### Token de acceso entre la SESNA y los nodos
 

@@ -228,14 +228,16 @@ Los nodos de la demostración usan `SIGILO_MFA=opcional` (en `.red-demo/nodos/<n
 recorrido principal no cambia y solo algunas cuentas piden el código. Un nodo real usa
 `requerido` y ahí todas lo piden.
 
-| Cuentas                                                                                       | Segundo factor                                                          |
-| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `buzon.*`, `oic-equipamiento.*`, `contraloria.*`                                              | No: entran solo con contraseña (el camino sin fricción del guion)       |
-| `supervision-oic`, `operacion.federal`, `operacion.queretaro`, `operacion.oaxaca`, `fiscalia` | Ya inscrito, con secreto sintético en `credenciales.json` (`mfaSecret`) |
-| `oic-programas`                                                                               | Lo inscribe al entrar (`requireMfa`): sirve para mostrar el QR          |
+| Cuentas                                                                                                                                                                                                                              | Segundo factor                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `buzon.*`, `oic-equipamiento.*`, `contraloria.queretaro`, `contraloria.queretaro.persona2`, `contraloria.substanciacion`, `contraloria.oaxaca`, `oic-municipio-queretaro`, `oic-el-marques`, `oic-cea.queretaro`, `tribunal.federal` | No: entran solo con contraseña (el camino sin fricción del guion)       |
+| `supervision-oic`, `contraloria.titular`, `operacion.federal`, `operacion.queretaro`, `operacion.oaxaca`, `fiscalia`, `fiscalia.queretaro`, `tja.queretaro`                                                                          | Ya inscrito, con secreto sintético en `credenciales.json` (`mfaSecret`) |
+| `oic-programas`                                                                                                                                                                                                                      | Lo inscribe al entrar (`requireMfa`): sirve para mostrar el QR          |
 
-`npm run accounts:generate` (un solo nodo) deja igual a `supervision-oic`, `operacion.federal`,
-`fiscalia` y `oic-programas`; `npm run demo:reset` vuelve a inscribir el mismo secreto.
+La lista sale de `DEMO_MFA_USERS` y `DEMO_MFA_ENROLLMENT_USERS`
+(`apps/server/src/security/demo-accounts.ts`). `npm run accounts:generate` (un solo nodo, con las
+cuentas del nodo Federal) deja igual a `supervision-oic`, `operacion.federal`, `fiscalia` y
+`oic-programas`; `npm run demo:reset` vuelve a inscribir el mismo secreto.
 
 Entrar con el código, sin teléfono:
 
@@ -353,8 +355,20 @@ tabla: por ejemplo, para Marta, la resolución de falta no grave es del OIC y la
 Sala Especializada del tribunal federal ficticio. El CPC no sigue en el trámite: vigila el sistema
 con datos agregados y no ve casos (LGSNA arts. 21 y 23).
 
-Pendiente en esta versión: los cierres históricos con sanción declarada, la vista a la fiscalía y
-la resolución de la Sala (el nodo muestra su plazo, pero no la registra).
+El resto del ciclo de vida legal ([ciclo-de-vida-legal.md](ciclo-de-vida-legal.md)) no lo siembra
+`demo:seed`, pero se puede recorrer en vivo con las cuentas de la red:
+
+| Qué mostrar                                         | Cuenta y nodo                                                                                 |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Registrar el escrito de inconformidad con firma     | `oic-equipamiento.persona1` (Federal): «inconformidad presentada con firma»                   |
+| Resolver la inconformidad y las etapas del Tribunal | `tribunal.federal` (Federal) o `tja.queretaro` (Querétaro), con la llave del buzón de su nodo |
+| Admisión, emplazamiento y audiencia inicial         | `oic-equipamiento.substanciacion` (Federal) o `contraloria.substanciacion` (Querétaro)        |
+| Vista al Ministerio Público y vía penal en paralelo | La investigadora da vista; `fiscalia` o `fiscalia.queretaro` la acepta                        |
+| Recursos federales en un ente local                 | `contraloria.queretaro`: marcar «involucra recursos federales», dar vista y turnar al Federal |
+| Competencia por dependencia                         | `operacion.queretaro` u `operacion.federal`: pestaña «Competencia por dependencia»            |
+
+Pendiente en esta versión: los cierres históricos con sanción declarada y una semilla del ciclo
+completo (las pruebas E2E `legal-lifecycle` y `competence` lo recorren sobre un solo nodo).
 
 ## Acto 0. Planteamiento (30 s)
 

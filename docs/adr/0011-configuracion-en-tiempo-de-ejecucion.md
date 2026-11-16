@@ -80,7 +80,9 @@ los 32 estados, y la instalación de un nodo real exigía más de una docena de 
 - Los secretos compartidos con la SESNA (HMAC del buzón y OAuth) ya no viajan: se derivan con X25519
   y HKDF (`docs/criptografia.md`, «Secretos de enlace derivados»).
 - Datos que ya se configuran sin cambiar código: las autoridades y la tabla de funciones (en el
-  directorio firmado; `sigilo tabla revisar|firmar` desde un CSV) y los días inhábiles locales de
+  directorio firmado; `sigilo tabla exportar|revisar|firmar` desde dos CSV, el de la tabla y el de
+  la competencia por dependencia, o la pantalla «Competencia por dependencia» del panel) y los días
+  inhábiles locales de
   cada nodo (`dias-inhabiles.json`, que el nodo publica en `/datos/dias-inhabiles.json`).
 - Trabajo futuro:
   - **Paquete de catálogos firmado** (`SIGILO_CATALOG_DIR`): entes de la PDN, municipios,
