@@ -65,6 +65,9 @@ export const DEMO_INBOX_AUTHORITY = 'authority.buzon-federal';
 /** Supervisora de demostración: custodia la segunda llave (`supervisor-demo-key.json`). */
 export const DEMO_SUPERVISOR_AUTHORITY = 'authority.oversight-federal';
 
+/** Sala del Tribunal de la demostración federal (ficticia). */
+export const DEMO_COURT_AUTHORITY = 'authority.tfja-sala-ra';
+
 const DEMO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
   {
     authorityId: DEMO_INBOX_AUTHORITY,
@@ -94,6 +97,13 @@ const DEMO_AUTHORITIES: AuthorityAccountsFile['authorities'] = [
   {
     authorityId: 'authority.prosecutor-anticorruption',
     name: 'Fiscalía Ficticia Especializada en Hechos de Corrupción',
+  },
+  {
+    // Cuentas del Tribunal (función `court`): solo actúa en sus etapas y en los recursos que
+    // resuelve. Cada estado decide si su Sala tiene cuentas; si no, la substanciación registra sus
+    // actuaciones con número de expediente.
+    authorityId: DEMO_COURT_AUTHORITY,
+    name: 'Sala Especializada Ficticia en Responsabilidades Administrativas del Tribunal Federal de Justicia Administrativa',
   },
 ];
 
@@ -142,6 +152,7 @@ export const DEMO_USERS: readonly Omit<DemoCredential, 'password'>[] = [
     authorityId: 'authority.prosecutor-anticorruption',
     functions: ['investigation'],
   },
+  { username: 'tribunal.federal', authorityId: DEMO_COURT_AUTHORITY, functions: ['court'] },
 ];
 
 /** Buzón general del nodo Querétaro de la demostración. */
