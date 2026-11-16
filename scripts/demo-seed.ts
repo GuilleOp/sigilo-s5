@@ -63,10 +63,7 @@ import { blindCorroboration, finalizeCorroboration, similarityDigest } from '@si
 import type { CorroborationIdentifier } from '@sigilo/corroboracion';
 import { DEMO_HONEST_DIRECTOR, DEMO_OCID, demoCase } from '@sigilo/corroboracion/demo';
 import { openRoutedReply, sealRoutedRequest, verifySignedDirectory } from '@sigilo/red';
-import {
-  buildBareJpeg,
-  buildSyntheticExifJpeg,
-} from '../packages/huella/test-fixtures/synthetic-exif-jpeg.ts';
+import { buildSyntheticPhotoJpeg } from '../packages/huella/test-fixtures/synthetic-photo-jpeg.ts';
 import { fromBase32, hotp, totpStep } from '../apps/server/src/security/totp.ts';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -305,7 +302,7 @@ async function buildRequest(
         contact: 'marta@example.org, 55 0000 0001, Calle Ficticia 1, Villa Ejemplo',
         witnesses: [],
         originalEvidenceSha256:
-          spec.photo === undefined ? [] : [sha256Hex(buildSyntheticExifJpeg())],
+          spec.photo === undefined ? [] : [sha256Hex(buildSyntheticPhotoJpeg())],
       },
       authorityKey(directory, spec.identityAuthority),
       identityContextFor(request),
@@ -532,15 +529,16 @@ function untilDay(): number {
 }
 
 /**
- * Foto sintética de la cotización: el original con EXIF ficticio queda en `.red-demo/fixtures/`
- * para mostrar la limpieza en la web; a la red solo sube la copia sin metadatos, como la deja
- * Huella Cero en el navegador.
+ * Foto sintética de la cotización: el original con EXIF ficticio (GPS, equipo, fecha y autor) queda
+ * en `.red-demo/fixtures/` para mostrar la limpieza en la web. Es una imagen real y pequeña, que el
+ * navegador puede decodificar y limpiar; a la red solo sube la misma imagen sin metadatos, como la
+ * deja Huella Cero en el navegador.
  */
 function martaPhoto(): Uint8Array {
   const dir = join(OUT, 'fixtures');
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'cotizacion-con-exif.jpg'), buildSyntheticExifJpeg());
-  return buildBareJpeg();
+  writeFileSync(join(dir, 'cotizacion-con-exif.jpg'), buildSyntheticPhotoJpeg());
+  return buildSyntheticPhotoJpeg({ exif: false });
 }
 
 /** Solicitud de alta sintética, con su llave privada guardada como la tendría la institución. */

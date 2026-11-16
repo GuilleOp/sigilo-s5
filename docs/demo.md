@@ -94,14 +94,14 @@ recomendada para replicar la demostración en un equipo limpio. Sigue el modelo 
 SESNA: **una sola ventanilla nacional**, que sirve la SESNA junto con el enrutador ciego, y **un nodo
 por estado**, sin nodo común. Los nodos solo tienen el panel de autoridades.
 
-| Servicio                                  | Quién lo opera en la realidad             | Dirección                          |
-| ----------------------------------------- | ----------------------------------------- | ---------------------------------- |
-| Ventanilla única y enrutador ciego        | SESNA (sin llaves: no lee denuncias)      | <http://127.0.0.1:8790/>           |
-| Nodo Querétaro (solo panel)               | SESEA de Querétaro                        | <http://127.0.0.1:8781/autoridad>  |
-| Nodo Federal (solo autoridades federales) | Secretaría Anticorrupción y Buen Gobierno | <http://127.0.0.1:8782/autoridad>  |
-| Nodo Oaxaca (solo panel)                  | Contraloría Ficticia de Oaxaca            | <http://127.0.0.1:8783/autoridad>  |
-| Evaluador OPRF e índice de coincidencias  | Corroboración ciega                       | sin puerto publicado (por el 8790) |
-| Dos testigos                              | CPC de Querétaro y Universidad Ejemplo    | sin puerto publicado               |
+| Servicio                                  | Quién lo opera en la realidad                                                          | Dirección                          |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------- |
+| Ventanilla única y enrutador ciego        | SESNA (sin llaves: no lee denuncias)                                                   | <http://127.0.0.1:8790/>           |
+| Nodo Querétaro (solo panel)               | SESEA de Querétaro (opera el nodo y da de alta autoridades; no lee ni turna denuncias) | <http://127.0.0.1:8781/autoridad>  |
+| Nodo Federal (solo autoridades federales) | Secretaría Anticorrupción y Buen Gobierno                                              | <http://127.0.0.1:8782/autoridad>  |
+| Nodo Oaxaca (solo panel)                  | Contraloría Ficticia de Oaxaca                                                         | <http://127.0.0.1:8783/autoridad>  |
+| Evaluador OPRF e índice de coincidencias  | Corroboración ciega                                                                    | sin puerto publicado (por el 8790) |
+| Dos testigos                              | CPC de Querétaro y Universidad Ejemplo                                                 | sin puerto publicado               |
 
 ### Requisitos
 
@@ -176,9 +176,11 @@ Cada autoridad abre el panel con **su propia llave**, la que corresponde a su en
 directorio firmado: es la llave con la que el navegador de quien denuncia sella la identidad y los
 mensajes hacia esa autoridad. El panel la compara con el directorio verificado y rechaza la de otra
 autoridad o la del buzón. Solo las cuentas del buzón general del nodo (que no está en el directorio)
-entran con `authority-demo-key.json`, la del buzón del nodo. Así, quien opera el nodo custodia la
-llave del buzón, no la de cada autoridad: puede leer los hechos de lo que llega a su nodo, pero
-nunca la identidad sellada para una autoridad.
+entran con `authority-demo-key.json`, la del buzón del nodo. Así, quien atiende el buzón general
+(la autoridad receptora que designa el estado; en Querétaro, la Secretaría de la Contraloría, no la
+SESEA) custodia la llave del buzón, no la de cada autoridad: puede leer los hechos de lo que llega
+al buzón, pero nunca la identidad sellada para una autoridad. Quien opera el nodo solo da de alta
+autoridades y no lee denuncias.
 
 `red:demo` deja en `.red-demo/` las llaves, el directorio firmado con la llave del evaluador, las
 cuentas de cada nodo y el reloj simulado común (`reloj/desfase`, que leen los nodos y el índice).
@@ -187,17 +189,21 @@ cuentas de cada nodo y el reloj simulado común (`reloj/desfase`, que leen los n
 `.red-demo/fixtures/` para mostrar la limpieza en la web), a la persona de Querétaro, las tres
 denuncias del atacante, a Luis (que elige él mismo el buzón general del nodo Federal) y, los días 4 y 6, a las dos
 personas ciudadanas de la ventanilla de licencias (`case.ventanilla-1` y `case.ventanilla-2`), que
-la Contraloría de Querétaro acepta. Después adelanta el reloj:
+la Secretaría de la Contraloría de Querétaro (ficticia) acepta. Después adelanta el reloj:
 el día 30 el OIC califica la falta grave como no grave con su plantilla y lo notifica por el buzón;
 el 31 corren el auditor (AUD-01 y AUD-03) y las reglas (escalamiento por conflicto sin excusa y por
 calificación con señales); el 32 la supervisora abre el expediente con la segunda llave; el 35
-Marta se inconforma por la ventanilla única y abre su identidad solo para el recurso.
+Marta prepara su inconformidad por la ventanilla única y abre su identidad solo para el recurso. El
+escrito cuenta cuando lo entrega firmado a mano a la autoridad investigadora (LGRA, art. 109
+fr. IV); la ventanilla solo deja el aviso y el escrito listo para firmar.
 
 Lo que se ve, comprobado con la red en Docker:
 
 - Seguimiento de Marta (folio y 8 palabras de `semilla.json`, en «Mi denuncia» de la ventanilla
-  única, <http://127.0.0.1:8790/>): la calificación como falta no grave, el aviso del buzón y «Presentaste tu
-  inconformidad…», con el plazo de la Sala.
+  única, <http://127.0.0.1:8790/>): la calificación como falta no grave, el aviso del buzón y el
+  aviso de inconformidad, con la fecha límite para entregar el escrito firmado a mano a la
+  autoridad investigadora. En voz: «no basta con el botón; sin firma autógrafa el escrito no se
+  tiene por presentado (LGRA, art. 109)». El plazo de 30 días hábiles de la Sala corre después.
 - Panel del nodo Federal con `oic-equipamiento.persona1`: en el detalle de Marta, prioridad alta
   (85 puntos), alerta de posible conflicto de interés con el procedimiento del art. 58,
   «2 o más personas independientes denuncian lo mismo», las señales AUD-01 y AUD-03 y las reglas que
@@ -208,7 +214,8 @@ Lo que se ve, comprobado con la red en Docker:
   la de Marta aparece en «Acto resolutivo con conflicto de interés sin excusa» y en «Calificación
   de no grave con dos o más señales del auditor»; las demás, en «Falta grave sin iniciar el
   procedimiento a los 30 días». Al final van los avisos de «Turnado vencido» de las denuncias que
-  pasaron 2 días hábiles sin turnar o sin aceptar, sin copia que abrir. «Abrir» pide la segunda
+  pasaron 2 días hábiles sin turnar o sin aceptar (meta de servicio del S5, no plazo legal), sin
+  copia que abrir. «Abrir» pide la segunda
   llave (`.red-demo/nodos/federal/llaves-demo/supervisor-demo-key.json`; con un solo nodo,
   `apps/server/data/supervisor-demo-key.json`), recibe el sobre
   (`POST /api/v1/authority/escalations/{folio}/envelope`), lo abre en el navegador y lo compara
@@ -342,8 +349,9 @@ panel de cada nodo; en un nodo (8781, 8782, 8783), toda ruta que no sea `/autori
 ventanilla única está en http://127.0.0.1:8790». «¿Quién atiende tu denuncia en tu estado?»
 (`/quien-atiende` en la ventanilla) muestra la tabla de funciones de cada nodo y las 30 entidades
 que todavía no tienen nodo. En el panel, el detalle de cada denuncia dice quién sigue según la
-tabla: por ejemplo, para Marta, la resolución de falta no grave es del OIC y la de grave, del
-tribunal federal ficticio.
+tabla: por ejemplo, para Marta, la resolución de falta no grave es del OIC y la de grave, de la
+Sala Especializada del tribunal federal ficticio. El CPC no sigue en el trámite: vigila el sistema
+con datos agregados y no ve casos (LGSNA arts. 21 y 23).
 
 Pendiente en esta versión: los cierres históricos con sanción declarada, la vista a la fiscalía y
 la resolución de la Sala (el nodo muestra su plazo, pero no la registra).
@@ -381,9 +389,11 @@ puertas.
 1. En el panel, entrar como `buzon.federal`, abrir la denuncia (hechos, pruebas limpias e
    identidad «sellada») y turnarla al OIC del Instituto Federal Ficticio de Equipamiento con su
    motivo, que es obligatorio y la persona lee en su seguimiento (por ejemplo, «Los hechos
-   ocurrieron en el IFFE: le toca a su órgano interno de control»). En la bandeja, la columna
-   «Plazo de turnado» muestra el semáforo del S5 («A tiempo», «Por vencer», «Vencida»). Quien
-   turna no ve el formulario para abrir la identidad.
+   ocurrieron en el IFFE: le toca a su órgano interno de control»). En la bandeja, la columna de la
+   meta de turnado muestra el semáforo del S5 («A tiempo», «Por vencer», «Vencida»). Decir que es
+   una meta de servicio del S5, no un plazo legal: la ley no fija plazo para turnar; el plazo legal
+   que corre es el de 30 días naturales para iniciar si puede ser falta grave (LGRA, art. 64
+   fr. II). Quien turna no ve el formulario para abrir la identidad.
 2. Entrar como `oic-equipamiento.persona1` (recibe e investiga en el OIC), aceptarla y avanzar a
    la etapa «Investigación». El panel muestra los plazos que corren. Después del informe de
    presunta responsabilidad, las etapas las avanza otra persona, `oic-equipamiento.substanciacion`

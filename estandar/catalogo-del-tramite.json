@@ -242,7 +242,7 @@
     {
       "key": "inbox_operator",
       "name": "Operadora del buzón general",
-      "explanation": "Área que recibe todas las denuncias del sistema y decide a qué institución enviarlas. En la versión de pruebas del S5 es la Secretaría Ejecutiva del Sistema Nacional Anticorrupción."
+      "explanation": "Área que recibe las denuncias que la tabla de funciones no asigna y decide a qué institución enviarlas. En la versión de pruebas del S5 es la Secretaría Ejecutiva del Sistema Nacional Anticorrupción. En una red con un nodo por estado, es la autoridad receptora que designe cada estado, no quien opera el nodo: que una Secretaría Ejecutiva estatal turne depende de la ley de cada estado."
     },
     {
       "key": "receiving_institution",

@@ -149,14 +149,16 @@ contra el registro público (ver «Comprobante firmado»).
   [proteccion-de-quien-denuncia.md](proteccion-de-quien-denuncia.md).
 - **Apertura para el recurso de inconformidad.** Contra la calificación de no grave la persona
   puede inconformarse (LGRA, arts. 102 a 110), y la ley pide su nombre, domicilio y firma
-  (art. 109). Al presentar el recurso desde su seguimiento (`POST tracking/appeal`, autenticada con
+  (art. 109). Al preparar el recurso desde su seguimiento (`POST tracking/appeal`, autenticada con
   la llave derivada de su recibo), acepta abrir su identidad solo para el recurso: el nodo registra
   `appeal.filed` (con el digesto de sus motivos y del acuerdo de calificación) e `identity.opened`
   con su `receiptTag`, y la apertura aparece en su seguimiento con `actorRole: reporter`. La
   entrega del sobre exige dos aprobaciones de cuentas distintas de la autoridad, al menos una de
   supervisión, dentro de la ventana del recurso (hasta el plazo de la Sala, art. 107) en lugar de
   los 7 días, y cada entrega registra el evento público `identity.released` con el `receiptTag`
-  (G07). El servidor sigue sin descifrar. La firma autógrafa queda fuera del sistema.
+  (G07). El servidor sigue sin descifrar. La firma autógrafa queda fuera del sistema: sin ella el
+  escrito «no se tendrá por presentado» (art. 109, fr. IV), así que el evento es un aviso y el
+  recurso cuenta cuando la persona entrega el escrito firmado a la autoridad investigadora.
 
 ## Sobre de escalamiento (segunda llave)
 

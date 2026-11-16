@@ -324,9 +324,10 @@ anterior al arranque del sistema o lleva una hora sin renovarse.
   `qualifications`, entra a la bitácora con su digesto y llega al auditor como acuerdo de
   calificación (AUD-01 y AUD-03). La de no grave deja en el seguimiento cómo inconformarse
   (art. 102); el primer mensaje de la autoridad por el buzón desde ese día cuenta como su
-  notificación y abre los 5 días hábiles del art. 103. `POST trackingAppeal` registra la
-  inconformidad (`appeals`) con la apertura de identidad para el recurso y corre el plazo de la
-  Sala (art. 107). `409` sin calificación de no grave, si ya se presentó, si venció o si la denuncia
+  notificación y abre los 5 días hábiles del art. 103. `POST trackingAppeal` registra el
+  aviso de inconformidad (`appeals`) con la apertura de identidad para el recurso; el escrito cuenta
+  cuando se entrega con firma autógrafa a la autoridad investigadora (art. 109, fr. IV), y solo
+  entonces corre el plazo de la Sala (art. 107). `409` sin calificación de no grave, si ya se presentó, si venció o si la denuncia
   es anónima. Las etapas posteriores a la admisión del informe llegan al auditor como
   `report_admitted`; solo en ellas corre la caducidad de la instancia (art. 74).
 

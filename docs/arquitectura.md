@@ -121,7 +121,9 @@ minutos sin actividad o a las 8 horas y se cierra en el servidor.
 
 **Semáforo de turnado** (`TURN_SEMAPHORE`, como en la bandeja del S5): una denuncia sin turnar o
 turnada sin aceptar queda «por vencer» al cumplir 1 día hábil esperando y «vencida» a los 2; la
-supervisión recibe el aviso de las vencidas.
+supervisión recibe el aviso de las vencidas. Es una **meta de servicio del S5, no un plazo legal**:
+la LGRA y las Bases de la PDN no fijan plazo para turnar. El plazo legal que corre aparte es el de
+30 días naturales para iniciar cuando la conducta puede ser falta grave (LGRA, art. 64 fr. II).
 
 ```mermaid
 sequenceDiagram
@@ -294,11 +296,19 @@ acordado con la SESNA:
 - **Cada estado monta su propio nodo** (lo opera su SESEA o su secretaría de buen gobierno o
   contraloría). **No hay nodo común**: ningún estado vive en el nodo de otro. Los nodos no tienen
   ventanilla pública: solo el panel de autoridades y las rutas de API que necesita el enrutador.
+- **Operar el nodo no es recibir ni turnar denuncias.** Quien opera el nodo lo mantiene en marcha y
+  da de alta a las autoridades; no lee denuncias ni ve los hechos. El buzón general lo atiende la
+  autoridad receptora que designe el estado (en Querétaro, la Secretaría de la Contraloría). Que la
+  SESEA turne depende de la ley de cada estado: en Querétaro no está previsto (su ley la hace órgano
+  de apoyo técnico que administra plataformas, LSEAQ arts. 24 y 34 fr. X); en Michoacán sí, por ley
+  y por lineamientos de su Comité Coordinador. Ver
+  [proceso-legal-de-la-denuncia.md](proceso-legal-de-la-denuncia.md#62-sesea-de-querétaro).
 - **El nodo federal** aloja solo autoridades federales y lo opera el lado federal que investiga (la
   Secretaría Anticorrupción y Buen Gobierno), no la SESNA.
 - **Cada nodo declara su tabla de funciones**: qué institución cumple cada función en su entidad
   (buzón general, operación del nodo, investigación y calificación, substanciación, resolución,
-  supervisión, vía penal y observador). Con esa tabla el navegador propone la autoridad (turnado automático) y el enrutador entrega el sobre a ciegas.
+  supervisión y vía penal) y, aparte, quién observa el sistema (el CPC, que vigila con datos
+  agregados y no ve casos; LGSNA arts. 21 y 23). Con esa tabla el navegador propone la autoridad (turnado automático) y el enrutador entrega el sobre a ciegas.
 
 Agrega tres piezas sin cambiar la API v1 del nodo:
 
@@ -335,8 +345,12 @@ flowchart LR
 - **Tabla de funciones.** Cada nodo declara, en una `FunctionTable` (formato 1), qué institución
   cumple cada función para los entes de su entidad (la del nodo federal, para los entes federales).
   Cada regla dice a qué órdenes de gobierno aplica y, si hace falta, a qué entes específicos y a qué
-  gravedad: «entes estatales → Contraloría; municipales sin OIC → Contraloría; ente X → su OIC;
-  resolución de falta grave → tribunal». La regla que nombra al ente gana sobre la de todo su orden.
+  gravedad: «entes estatales → Secretaría de la Contraloría; ente X → su OIC; municipio Y → el OIC
+  de ese municipio; resolución de falta grave → Sala Especializada del Tribunal de Justicia
+  Administrativa». La regla que nombra al ente gana sobre la de todo su orden. Todo municipio tiene
+  su propio OIC (CPEUM art. 109 fr. III), así que ninguna regla manda a los municipales a la
+  Contraloría estatal: si el municipio no está en el directorio, la denuncia va al buzón general
+  para turnarla al OIC de ese municipio.
   - **Dónde se publica y por qué.** Dentro del directorio (`functionTables`), **firmada por el nodo**
     con su llave de firma del directorio (`sigilo/red/function-table/v1:` + digesto). Así hay dos
     firmas: la del estado, que declara su tabla, y la del directorio, que firma la operación y
@@ -375,8 +389,8 @@ flowchart LR
     nacional. En `/autoridad` dice que cada autoridad entra por el nodo de su estado.
   - `panel`: la web de cada nodo, solo con `/autoridad`; las demás rutas dicen «La ventanilla
     única está en …» (`VITE_SIGILO_VENTANILLA_URL`). En el detalle de una denuncia, el panel
-    muestra quién sigue según la tabla (substanciación, resolución, supervisión, vía penal y
-    observador).
+    muestra quién sigue según la tabla (substanciación, resolución, supervisión y vía penal); el
+    observador del sistema (CPC) no sigue en el trámite ni ve el caso.
   - `completo` (por omisión): un solo nodo con todas las pantallas, sin red, para pruebas y E2E.
 - **Enrutador ciego.** El navegador cifra con HPKE hacia la llave del nodo una petición de la API
   v1 (`RoutedRequest`) rellenada a un tramo fijo (4 KiB, 64 KiB, 1 MiB o 16 MiB) e incluye una
