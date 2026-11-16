@@ -207,22 +207,30 @@ su cargo mientras dura el procedimiento.` → «Aplicar».
 
 ### 5.10 Dar vista al Ministerio Público (vía penal en paralelo)
 
-- «Acción»: **«Dar vista al Ministerio Público»**. «Aquí se registra la vista en el trámite. La vía
-  penal corre aparte y al mismo tiempo: la vista no detiene el procedimiento administrativo. Remitir
-  la denuncia y sus pruebas a la fiscalía es un paso aparte, por oficio: SIGILO todavía no la
-  entrega en la bandeja de la fiscalía.»
+- «Acción»: **«Dar vista al Ministerio Público»**. «La vía penal corre aparte y al mismo tiempo: la
+  vista no detiene el procedimiento administrativo, que sigue contigo.»
 - «Quién da la vista»: «Órgano interno de control o Secretaría» (LGRA, art. 10, fr. III), «Entidad
   de fiscalización (ASF o del estado)» (art. 98) o «Cualquier persona servidora pública» (CNPP, art.
   222).
-- «Fiscalía que recibe la vista» (nombre). «Aplicar» → «Vía penal, en paralelo: Denuncia penal
-  presentada».
-- **La persona ve:** las dos vías en su seguimiento.
-- **Tú solo das la vista.** Las etapas penales («Vía penal: …») ya no aparecen en tu lista «Etapa»:
+- «Fiscalía que recibe la vista»: la lista trae las fiscalías de tu nodo («… (en este nodo)»; en la
+  demostración de Querétaro, la Fiscalía Anticorrupción del estado) y, al final, **«Otra fiscalía,
+  fuera de este nodo (por oficio)»**, que pide «Nombre de la fiscalía».
+- Con una fiscalía del nodo, el panel lo explica: «La fiscalía recibe en su bandeja una copia de
+  lectura con los hechos y las pruebas: tu navegador vuelve a cifrar las llaves de las pruebas
+  hacia la llave pública de la fiscalía (tu llave nunca sale). Solo ella registra las etapas de la
+  vía penal.» Y aparte: «La identidad sellada no se comparte con la fiscalía, ni los mensajes con
+  la persona denunciante…».
+- «Aplicar» → «Vía penal, en paralelo: Denuncia penal presentada». La denuncia **sigue en tu
+  bandeja**: no se reasigna y tú sigues con la vía administrativa.
+- **La persona ve:** las dos vías en su seguimiento, con la nota «La fiscalía la recibe en su
+  bandeja con los hechos y las pruebas; la identidad sellada de la persona denunciante no se
+  comparte con ella.»
+- **Tú solo das la vista.** Las etapas penales («Vía penal: …») no aparecen en tu lista «Etapa»:
   solo la fiscalía las avanza (si se intentan por la API, el nodo responde `403`).
-
-> **Limitación conocida del prototipo.** **La vista no llega a la bandeja de la fiscalía.** Solo
-> queda registrado el acto. Remite la denuncia y sus pruebas a la fiscalía por oficio, por los
-> medios oficiales.
+- **Si la fiscalía necesita la identidad**, te la pide con requerimiento fundado (CNPP, art. 109):
+  la abres tú con las dos aprobaciones de siempre (sección de apertura de la identidad).
+- Con «Otra fiscalía, fuera de este nodo», la vista solo queda registrada: remite la denuncia y sus
+  pruebas por oficio.
 
 ### 5.11 Recursos federales (ASF, SABG y FGR)
 
@@ -335,7 +343,8 @@ envíos sin valor. La persona lo ve y queda en la bitácora pública.
 
 ## 7. Limitaciones conocidas del prototipo
 
-- La vista al MP no llega a la bandeja de la fiscalía: se remite por oficio, fuera del sistema.
+- La vista al MP llega a la bandeja solo de una fiscalía del mismo nodo; a una fiscalía de otro
+  nodo o fuera de la red se remite por oficio.
 - Los avisos a autoridades federales se registran, no se envían.
 - Turnar a otro nodo solo con denuncias anónimas.
 - Dos aprobaciones: regla del nodo, no criptográfica.

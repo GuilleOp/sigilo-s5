@@ -148,10 +148,31 @@ impugnación de 10 días del CNPP 258), `judicial_review` (CNPP 258), `intermedi
 `alternative_exit` (CNPP 183 a 200 **[verificar artículos exactos]**), `trial` y `sentence` (CNPP 211).
 Solo la fiscalía avanza la vía penal: la autoridad con papel `prosecution` en el directorio de red
 (o, sin directorio, en el archivo de cuentas). La investigadora y la substanciadora solo dan la
-vista al Ministerio Público (`refer_to_prosecutor`), que se registra en el trámite; remitir la
-denuncia y sus pruebas a la fiscalía es un paso aparte, por oficio (trabajo futuro: entregarla en la
-bandeja de la fiscalía del nodo). La fiscalía no lleva la vía administrativa: no inicia la
-investigación de la LGRA, no le corre el plazo del art. 64 fr. II ni se da vista a sí misma.
+vista al Ministerio Público (`refer_to_prosecutor`). La fiscalía no lleva la vía administrativa: no
+inicia la investigación de la LGRA, no le corre el plazo del art. 64 fr. II ni se da vista a sí
+misma.
+
+**La vista llega a la bandeja de la fiscalía del nodo.** El panel ofrece las fiscalías del
+directorio del nodo (`GET /authority/authorities` marca `isProsecution`) y la opción «Otra
+fiscalía, fuera de este nodo (por oficio)».
+
+- Con una fiscalía del nodo, la acción lleva `prosecutorAuthorityId` (si no es una fiscalía del
+  nodo, o es la autoridad que tiene la denuncia, el nodo responde 400). Antes de registrarla, el
+  navegador de quien da la vista re-cifra las llaves de los archivos de prueba hacia la llave
+  pública de la fiscalía, igual que al turnar dentro del nodo (ver `docs/criptografia.md`).
+- **La denuncia no se reasigna** (CPEUM art. 109; LGRA art. 14): la Contraloría sigue con el
+  procedimiento administrativo. La fiscalía la ve en su bandeja como **copia de lectura**: los
+  hechos, el trámite y las pruebas cuyas llaves se le re-cifraron. Solo registra las etapas de la
+  vía penal (cualquier otra acción responde 403); esas etapas se ven en el seguimiento de la
+  persona denunciante como hasta ahora.
+- **Lo que no recibe:** la identidad sellada (no se re-cifra hacia ella) y los mensajes con la
+  persona denunciante. Si la investigación penal necesita la identidad, la fiscalía la pide con
+  requerimiento fundado (CNPP, art. 109) a la autoridad que tiene la denuncia, que la abre con las
+  dos aprobaciones de siempre.
+- Sin `prosecutorAuthorityId` (la FGR en otro nodo o una fiscalía fuera de la red), la vista se
+  registra en el trámite y la denuncia y sus pruebas se remiten por oficio.
+- La copia de lectura sigue el trámite: si la Contraloría cierra la denuncia, la fiscalía la sigue
+  viendo, pero ya no registra etapas (el trámite cerrado no admite actos).
 
 ### Acciones nuevas del trámite
 
@@ -289,7 +310,7 @@ competencia. La marca por ente (reglas `fundingSources` en la tabla de funciones
 | R19. Remisión a otro estado                                | ✓      | Turnado entre nodos                                                                       |
 | R20. Remisión a la Federación                              | ✓      | Turnado al nodo Federal                                                                   |
 | R21. Fondos federales en ente local                        | ◐      | Marca, aviso y guía para turnar; → reglas `fundingSources` en la tabla de funciones       |
-| R22. Vista al Ministerio Público y vía penal en paralelo   | ◐      | `refer_to_prosecutor` registra la vista; → entregarla en la bandeja de la fiscalía        |
+| R22. Vista al Ministerio Público y vía penal en paralelo   | ✓      | `refer_to_prosecutor` con `prosecutorAuthorityId`: copia de lectura en la fiscalía        |
 | R23. Denuncia penal directa                                | ✓      | La fiscalía inicia la vía penal                                                           |
 | R24. Determinaciones del MP e impugnación                  | ◐      | Etapas `prosecutor_determination` y `judicial_review`; → el tipo de determinación         |
 | R25. Salidas alternas                                      | ◐      | Etapa `alternative_exit`; → verificar artículos del CNPP                                  |

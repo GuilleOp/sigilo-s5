@@ -270,6 +270,15 @@ el campo.
   (que va en el comprobante firmado) y su compromiso tampoco. El nodo solo comprueba que cada
   sobre vaya hacia la llave publicada de esa autoridad (directorio firmado, o `keys.json` con un
   solo nodo).
+- Vista al Ministerio Público a la fiscalía del nodo: el mismo mecanismo. Antes de registrar la
+  vista (`refer_to_prosecutor` con `prosecutorAuthorityId`), el navegador de quien investiga (o
+  substancia) re-cifra la llave de cada archivo hacia la llave pública de la fiscalía y la sube a
+  `POST authority/complaints/{folio}/evidence/keys`. La denuncia no cambia de autoridad: la
+  fiscalía solo descarga los contenedores de esa denuncia (`GET authority/evidence/{id}` le
+  responde mientras tenga la vista) y los abre con su llave. **Nunca recibe la llave privada de la
+  Contraloría.** La identidad sellada y los mensajes con la persona denunciante **no** se
+  re-cifran hacia ella: si la vía penal necesita la identidad, se abre con la apertura de 2 de N
+  de la autoridad que tiene la denuncia.
 - A otro nodo: el navegador de recepción y turnado abre cada prueba, elige el folio del destino,
   la vuelve a cifrar hacia la autoridad destino del directorio con ese folio y la misma sal, la
   sube por el enrutador y la cita en la denuncia re-cifrada; la segunda llave de la supervisora

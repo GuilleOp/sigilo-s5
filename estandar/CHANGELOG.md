@@ -9,6 +9,14 @@ rompe algo está marcado como **Incompatible**.
 
 ## [Sin publicar]
 
+### Agregado
+
+- `refer_to_prosecutor` acepta `prosecutorAuthorityId` (opcional): la fiscalía del mismo nodo que
+  recibe la vista al Ministerio Público en su bandeja como copia de lectura. La denuncia no se
+  reasigna; la fiscalía solo avanza la vía penal. Sin el campo, la vista sigue por oficio.
+- `AuthorityProfile.isProsecution` (opcional): la autoridad es una fiscalía y puede recibir la
+  vista.
+
 ## [0.4.0] - 2026-11-16
 
 Ciclo de vida legal completo de la denuncia según la LGRA y, en la vía penal, el CNPP. Todo es

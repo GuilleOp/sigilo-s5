@@ -7,6 +7,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Agregado
 
+- **La vista al Ministerio Público llega a la bandeja de la fiscalía del nodo** (lote 3 de la
+  auditoría del 16 de noviembre): el panel elige la fiscalía del directorio; el navegador de quien
+  da la vista re-cifra las llaves de las pruebas hacia la llave pública de la fiscalía; la
+  fiscalía ve una copia de lectura (hechos, trámite y pruebas, sin la identidad sellada ni el
+  buzón) y solo avanza la vía penal. La denuncia sigue con la Contraloría.
 - **Contexto PDN de la dependencia** (`docs/contexto-pdn.md`): con `SIGILO_PDN_PUBLIC=1` el nodo
   consulta en vivo el directorio de entes de la PDN y el S6 (sin credenciales) para la ficha del
   panel. Solo usa datos institucionales, con caché de 24 h y sin enviar nada de la denuncia.
