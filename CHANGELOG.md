@@ -5,6 +5,47 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Ciclo de vida legal completo** (Estándar S5 0.4.0, `docs/ciclo-de-vida-legal.md`): admisión,
+  prevención y abstención del informe; emplazamiento y audiencia inicial; dos ramas (no grave con la
+  substanciadora y resolutora, grave o de particulares en el Tribunal); firmeza, ejecución y
+  registro de la sanción en el S3 como acto; motivos legales de cierre con su fundamento y la
+  remisión por incompetencia con destino dentro o fuera de la red; desistimiento que no cierra.
+- **El Tribunal como actor:** función de cuenta `court`, que solo ve y actúa en sus etapas y en los
+  recursos que resuelve (sin el buzón de la persona ni sus aperturas). Sin cuentas del Tribunal, la
+  substanciación registra sus actuaciones con número de expediente. Cuenta sintética
+  `tribunal.federal` en la demostración.
+- **Recursos** con su plazo, su resultado y su efecto: inconformidad (con firma autógrafa),
+  reclamación, revocación, apelación (también de la persona denunciante como tercera) y revisión.
+- **Medidas cautelares**: las pide la investigadora y las resuelve la substanciadora o el Tribunal;
+  la persona solo ve que se dictaron medidas.
+- **Vía penal en paralelo** con «Dar vista al Ministerio Público» (LGRA art. 10 fr. III y art. 98;
+  CNPP art. 222).
+- **Recursos federales en entes locales**: marca de la denuncia, panel con la ASF, la SABG y la FGR,
+  aviso con fundamento (Ley de Coordinación Fiscal art. 49) y guía para turnar al nodo Federal o al
+  del estado.
+- **Separación de funciones por denuncia** (LGRA art. 115): la misma cuenta no investiga y
+  substancia la misma denuncia, aunque cambie de función.
+- Migración 18: la etapa penal pasa a su capa y las etapas posteriores al envío del expediente, a
+  las del Tribunal.
+
+### Cambiado
+
+- El seguimiento ofrece «Preparar mi aviso de inconformidad» y explica que el recurso solo cuenta con
+  el escrito firmado ante la autoridad investigadora; ya no dice «presentaste tu inconformidad» ni
+  muestra la fecha de la Sala hasta que la autoridad registra el escrito.
+- El semáforo de turnado se llama «Meta de turnado del S5» en el panel y dice que no es un plazo
+  legal.
+- La regla de 30 días del art. 64 fr. II de la LGRA aclara que se tiene por cumplida con el acuerdo
+  de inicio, una lectura prudente no confirmada por el Tribunal.
+
+### Corregido
+
+- Junto al plazo de 5 días hábiles para inconformarse, el seguimiento decía «faltan 29 días
+  hábiles»: contaba con el reloj del dispositivo. Ahora muestra los días que cuenta el nodo, los
+  mismos de «Plazos que corren».
+
 ## [1.1.0] - 2026-11-12
 
 Una sola ventanilla nacional en la SESNA, un nodo por estado (sin nodo común), tabla de funciones

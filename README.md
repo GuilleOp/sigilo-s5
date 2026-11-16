@@ -9,7 +9,7 @@ Protege a quien denuncia de ser identificada por lo que envía y por quien opera
 visible cuando una autoridad deja morir una denuncia.
 
 Proyecto del **Equipo Sigilo** para el Datatón Anticorrupción 2026 (reto S5). Versión **1.1.0** del
-software y **0.3.0** del Estándar S5. Estado: prototipo funcional de referencia, con pruebas
+software y **0.4.0** del Estándar S5. Estado: prototipo funcional de referencia, con pruebas
 unitarias y de extremo a extremo. **No es el sistema oficial** ni está listo para recibir denuncias
 reales sin una evaluación de seguridad independiente (ver [SECURITY.md](SECURITY.md)). Las
 personas, empresas y casos son [sintéticos](docs/datos-sinteticos.md); los catálogos de entes
@@ -98,7 +98,7 @@ que comparten (HMAC del buzón y OAuth) se derivan en los dos lados y nunca viaj
 ## El Estándar S5
 
 Propuesta de especificación del S5 con el formato de las de la PDN ([estandar/](estandar/README.md),
-versión 0.3.0, con su propio [registro de cambios](estandar/CHANGELOG.md)):
+versión 0.4.0, con su propio [registro de cambios](estandar/CHANGELOG.md)):
 
 - **OpenAPI:** un documento por grupo en OpenAPI 3.0.3, el que lee el Swagger UI de la PDN
   ([`estandar/oas/`](estandar/oas/)), con el perfil de conexión con la PDN aparte
