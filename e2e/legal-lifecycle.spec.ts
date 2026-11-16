@@ -12,9 +12,15 @@ import {
   syntheticFacts,
 } from './support/api.ts';
 import { loginAsAuthority, openComplaint } from './support/authority.ts';
-import { E2E_ACCOUNTS } from './support/environment.ts';
+import { E2E_ACCOUNTS, E2E_AUTHORITY } from './support/environment.ts';
 import { expect, test } from './support/fixtures.ts';
 import { openTracking } from './support/tracking.ts';
+
+/** Autoridades de la demostración federal que no reciben lo turnado, y la fiscalía, que sí. */
+const COURT = 'authority.tfja-sala-ra';
+const SUPERVISOR = 'authority.oversight-federal';
+const INBOX = 'authority.buzon-federal';
+const PROSECUTION = 'authority.prosecutor-anticorruption';
 
 const BASIS = 'LGRA, art. 101: fundamento sintético de la actuación de prueba.';
 const AGREEMENT =
@@ -79,6 +85,9 @@ test('falta grave: del informe a la audiencia inicial y el Tribunal recibe el ex
   await expect(
     panel.getByTestId('procedure-action').locator('option[value="advance_stage"]'),
   ).toHaveCount(0);
+  // La substanciación ve el estado de la identidad, pero no solicita ni aprueba aperturas.
+  await expect(page.getByTestId('request-identity')).toHaveCount(0);
+  await expect(page.getByTestId('identity-custodian-only')).toBeVisible();
 
   // La Sala entra con su cuenta, ve el expediente y lo recibe.
   await loginAsAuthority(page, E2E_ACCOUNTS.court);
@@ -88,8 +97,11 @@ test('falta grave: del informe a la audiencia inicial y el Tribunal recibe el ex
   await panel.getByTestId('procedure-stage').selectOption('court_received');
   await panel.getByTestId('apply-procedure').click();
   await expect(panel.getByTestId('procedure-state')).toContainText('Recibido en el Tribunal');
-  // El Tribunal no ve el buzón de la persona ni pide aperturas de su identidad.
+  // El Tribunal no ve el buzón de la persona ni pide aperturas de su identidad; tampoco descarta
+  // pruebas ni se excusa por la autoridad que investigó.
   await expect(page.getByTestId('authority-mailbox')).toHaveCount(0);
+  await expect(page.getByTestId('discard-evidence')).toHaveCount(0);
+  await expect(page.getByTestId('conflict-submit')).toHaveCount(0);
   await expectNoAccessibilityViolations(page, 'panel del Tribunal');
 
   // La persona ve la etapa en lenguaje sencillo y lo que sigue en el Tribunal.
@@ -192,6 +204,9 @@ test('vista al Ministerio Público: la vía penal corre en paralelo a la adminis
   const panel = page.getByTestId('procedure-panel');
   await panel.getByTestId('procedure-action').selectOption('refer_to_prosecutor');
   await expect(panel.getByTestId('referral-basis')).toContainText('LGRA, art. 10, fracc. III');
+  // Dice lo que hace: registra la vista; remitir la denuncia a la fiscalía es un paso aparte.
+  await expect(panel.getByTestId('referral-hint')).toContainText('Aquí se registra la vista');
+  await expect(panel.getByTestId('referral-hint')).toContainText('es un paso aparte');
   await panel
     .getByTestId('referral-prosecutor')
     .fill('Fiscalía Ficticia Especializada en Hechos de Corrupción');
@@ -200,6 +215,9 @@ test('vista al Ministerio Público: la vía penal corre en paralelo a la adminis
     'Denuncia penal presentada',
   );
   await expect(panel.getByTestId('procedure-state')).toContainText('Investigación');
+  // La investigadora no avanza la vía penal: eso lo registra la fiscalía.
+  await panel.getByTestId('procedure-action').selectOption('advance_stage');
+  await expect(panel.getByTestId('procedure-stage')).not.toContainText('Vía penal');
   await expectNoAccessibilityViolations(page, 'panel con la vía penal en paralelo');
 
   // La vía administrativa sigue: la autoridad califica mientras la penal corre.
@@ -220,4 +238,56 @@ test('vista al Ministerio Público: la vía penal corre en paralelo a la adminis
   );
   await expect(page.getByTestId('procedure-steps')).toContainText('Vista al Ministerio Público');
   await expectNoAccessibilityViolations(page, 'seguimiento con la vía penal en paralelo');
+});
+
+test('solo la fiscalía avanza la vía penal; el buzón turna solo a quien puede aceptar', async ({
+  page,
+  request,
+}) => {
+  const prepared = await prepareSealedComplaint(
+    request,
+    'Persona Ficticia Fiscalía',
+    syntheticFacts(),
+  );
+  const { folio } = await seedPreparedComplaint(request, prepared);
+
+  // El buzón no ofrece al Tribunal, a la supervisora ni a sí mismo como destino; la fiscalía sí.
+  await loginAsAuthority(page, E2E_ACCOUNTS.inboxIntake);
+  await openComplaint(page, folio);
+  let detail = page.getByTestId('complaint-detail');
+  const target = detail.getByTestId('procedure-authority');
+  for (const authorityId of [COURT, SUPERVISOR, INBOX]) {
+    await expect(target.locator(`option[value="${authorityId}"]`)).toHaveCount(0);
+  }
+  await expect(target.locator(`option[value="${E2E_AUTHORITY}"]`)).toHaveCount(1);
+  // El buzón solo recibe y turna: no pide aperturas de la identidad sellada.
+  await expect(detail.getByTestId('request-identity')).toHaveCount(0);
+  await target.selectOption(PROSECUTION);
+  await detail
+    .getByTestId('procedure-note')
+    .fill('Los hechos pueden ser delito: se turna a la fiscalía (nota sintética).');
+  await detail.getByTestId('apply-procedure').click();
+  await expect(detail.getByTestId('procedure-message')).toContainText('Listo');
+
+  // La fiscalía acepta y solo ve la vía penal: ni la investigación administrativa, ni la vista a
+  // sí misma, ni el plazo del art. 64 fr. II de la LGRA.
+  await loginAsAuthority(page, E2E_ACCOUNTS.prosecution);
+  await openComplaint(page, folio);
+  detail = page.getByTestId('complaint-detail');
+  await expect(detail.getByTestId('procedure-action')).toHaveValue('accept');
+  await detail.getByTestId('apply-procedure').click();
+  await expect(detail.getByTestId('procedure-state')).toHaveText('Aceptada');
+  const panel = page.getByTestId('procedure-panel');
+  await expect(
+    panel.getByTestId('procedure-action').locator('option[value="refer_to_prosecutor"]'),
+  ).toHaveCount(0);
+  await panel.getByTestId('procedure-action').selectOption('advance_stage');
+  const stage = panel.getByTestId('procedure-stage');
+  await expect(stage.locator('option[value="investigation"]')).toHaveCount(0);
+  await expect(stage).toContainText('Vía penal: Iniciar la investigación penal');
+  await expect(panel.getByText('Iniciar ante una posible falta grave')).toHaveCount(0);
+  await stage.selectOption('criminal_investigation');
+  await panel.getByTestId('apply-procedure').click();
+  await expect(panel.getByTestId('procedure-criminal-stage')).toContainText('Investigación penal');
+  await expectNoAccessibilityViolations(page, 'panel de la fiscalía');
 });

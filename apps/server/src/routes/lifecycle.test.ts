@@ -746,8 +746,18 @@ describe('vía penal en paralelo', () => {
       criminalStage: 'criminal_complaint_filed',
     });
     expect((await act(server, 'oicInvestigator', folio, referral)).status).toBe(409);
-    await advance(server, 'oicInvestigator', folio, 'criminal_investigation');
-    // La vía administrativa sigue: califica mientras la penal investiga.
+    // Mitigación: solo la fiscalía avanza la vía penal; la investigadora y la substanciadora no.
+    for (const name of ['oicInvestigator', 'oicSubstantiation'] as const) {
+      expect(
+        (
+          await act(server, name, folio, {
+            action: 'advance_stage',
+            stage: 'criminal_investigation',
+          })
+        ).status,
+      ).toBe(403);
+    }
+    // La vía administrativa sigue: califica mientras la penal está en manos de la fiscalía.
     const qualified = await ok(server, 'oicInvestigator', folio, {
       action: 'advance_stage',
       stage: 'qualification',
@@ -755,29 +765,77 @@ describe('vía penal en paralelo', () => {
     });
     expect(qualified).toMatchObject({
       legalStage: 'qualification',
-      criminalStage: 'criminal_investigation',
+      criminalStage: 'criminal_complaint_filed',
     });
-    await advance(server, 'oicInvestigator', folio, 'prosecutor_determination');
     const seen = await tracking(server, folio, reporter);
     expect(seen.procedure).toMatchObject({
       legalStage: 'qualification',
-      criminalStage: 'prosecutor_determination',
+      criminalStage: 'criminal_complaint_filed',
     });
+    expect(titles(seen.procedure)).toContain('Se dio vista al Ministerio Público (denuncia penal)');
+    const step = seen.procedure?.steps.find((item) => item.action === 'criminal_referral_filed');
+    expect(step?.record?.legalBasis).toBe('LGRA, art. 10, fracc. III');
+    // El texto dice lo que pasa: se registra la vista; la remisión a la fiscalía es aparte.
+    const view = (await detail(server, 'oicInvestigator', folio)).body?.procedure;
+    const note = view?.steps.find((item) => item.action === 'criminal_referral_filed')?.note;
+    expect(note).toContain('Se registró la vista al Ministerio Público');
+    expect(note).toContain('es un paso aparte');
+  });
+
+  it('solo la fiscalía avanza la vía penal; no lleva la administrativa ni se da vista', async () => {
+    const { server, folio, reporter } = await setup();
+    await ok(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.prosecutor,
+      note: 'Se turna a la fiscalía por hechos que pueden ser delito (nota sintética).',
+    });
+    await ok(server, 'prosecutor', folio, { action: 'accept' });
+    // El nodo publica el plazo del art. 64 fr. II para la denuncia; el panel de la fiscalía lo oculta.
+    const accepted = (await detail(server, 'prosecutor', folio)).body?.procedure;
+    expect(accepted?.deadlines.map((item) => item.key)).toContain('serious_offense_start');
+    // La sesión de la fiscalía lo dice; la del OIC no.
+    const session = await getAsAuthority(server.app, ROUTES.authSession, testToken('prosecutor'));
+    expect(((await session.json()) as { account: { isProsecution?: boolean } }).account).toEqual(
+      expect.objectContaining({ isProsecution: true }),
+    );
+    const oicSession = await getAsAuthority(
+      server.app,
+      ROUTES.authSession,
+      testToken('oicInvestigator'),
+    );
+    expect(
+      ((await oicSession.json()) as { account: Record<string, unknown> }).account,
+    ).not.toHaveProperty('isProsecution');
+    // Ni la investigación administrativa (LGRA) ni la vista a sí misma.
+    expect(
+      (await act(server, 'prosecutor', folio, { action: 'advance_stage', stage: 'investigation' }))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await act(server, 'prosecutor', folio, {
+          action: 'refer_to_prosecutor',
+          basis: 'internal_control',
+          prosecutor: 'Fiscalía de prueba (sintética)',
+        })
+      ).status,
+    ).toBe(403);
+    await advance(server, 'prosecutor', folio, 'criminal_investigation');
+    await advance(server, 'prosecutor', folio, 'prosecutor_determination');
+    const seen = await tracking(server, folio, reporter);
+    expect(seen.procedure).toMatchObject({ criminalStage: 'prosecutor_determination' });
     expect(seen.procedure?.deadlines.map((item) => item.key)).toContain(
       'prosecutor_determination_challenge',
     );
     expect(titles(seen.procedure)).toEqual(
       expect.arrayContaining([
-        'Se dio vista al Ministerio Público (denuncia penal)',
         'Vía penal: Investigación penal',
         'Vía penal: Determinación del Ministerio Público',
       ]),
     );
-    const step = seen.procedure?.steps.find((item) => item.action === 'criminal_referral_filed');
-    expect(step?.record?.legalBasis).toBe('LGRA, art. 10, fracc. III');
     // Saltos que la vía penal no admite.
     expect(
-      (await act(server, 'oicInvestigator', folio, { action: 'advance_stage', stage: 'sentence' }))
+      (await act(server, 'prosecutor', folio, { action: 'advance_stage', stage: 'sentence' }))
         .status,
     ).toBe(409);
   });

@@ -23,6 +23,7 @@ import type { AppContext } from '../context.ts';
 import { ApiFailure } from '../http/errors.ts';
 import { logSecurityEvent, minuteOf } from '../security/authority-auth.ts';
 import { accountView } from '../security/authority-registry.ts';
+import { isProsecutionAuthority } from './prosecution.ts';
 import type { AuthorityAccount } from '../security/authority-registry.ts';
 import {
   decryptTotpSecret,
@@ -63,12 +64,12 @@ function sleep(ctx: AppContext, ms: number): Promise<void> {
     : ctx.deps.sleep(ms);
 }
 
-function sessionFields(account: AuthorityAccount, token: string) {
+function sessionFields(ctx: AppContext, account: AuthorityAccount, token: string) {
   return {
     token,
     idleTimeoutSeconds: SESSION_IDLE_TIMEOUT_SECONDS,
     absoluteTimeoutSeconds: SESSION_ABSOLUTE_TIMEOUT_SECONDS,
-    account: accountView(account),
+    account: accountView(account, isProsecutionAuthority(ctx, account.authorityId)),
   };
 }
 
@@ -88,7 +89,7 @@ function openSession(
 ): LoginSessionStep {
   const token = ctx.sessions.issue(account.accountId, undefined, assurance);
   logSecurityEvent(ctx, 'login_succeeded', account.accountId);
-  return { step: 'session', ...sessionFields(account, token) };
+  return { step: 'session', ...sessionFields(ctx, account, token) };
 }
 
 /**
@@ -132,7 +133,7 @@ export async function login(ctx: AppContext, request: LoginRequest): Promise<Log
     // Sesión limitada: solo sirve para inscribir el segundo factor (`requireAuthoritySession`).
     const token = ctx.sessions.issue(account.accountId, undefined, 'password');
     logSecurityEvent(ctx, 'mfa_enrollment_required', account.accountId);
-    return { step: 'enroll', ...sessionFields(account, token) };
+    return { step: 'enroll', ...sessionFields(ctx, account, token) };
   }
   return openSession(ctx, account, 'password');
 }
@@ -282,7 +283,7 @@ export function sessionInfo(ctx: AppContext, account: AuthorityAccount): Authori
   const authority = ctx.authorities.authority(account.authorityId);
   if (authority === null) throw new ApiFailure('unauthorized');
   return {
-    account: accountView(account),
+    account: accountView(account, isProsecutionAuthority(ctx, account.authorityId)),
     authority,
     idleTimeoutSeconds: SESSION_IDLE_TIMEOUT_SECONDS,
     absoluteTimeoutSeconds: SESSION_ABSOLUTE_TIMEOUT_SECONDS,

@@ -242,11 +242,14 @@ describe('apertura de identidad 2 de 3', () => {
     await moveTo(server, folio, 'routed');
     const accepted = await procedureAs(server, 'oicIntake', folio, { action: 'accept' });
     expect(accepted.status).toBe(200);
-    const advanced = await procedureAs(server, 'oicInvestigator', folio, {
-      action: 'advance_stage',
-      stage: 'criminal_investigation',
+    // La vista al Ministerio Público antes de iniciar la investigación administrativa deja la
+    // denuncia solo en la vía penal.
+    const referred = await procedureAs(server, 'oicInvestigator', folio, {
+      action: 'refer_to_prosecutor',
+      basis: 'internal_control',
+      prosecutor: 'Fiscalía de prueba en hechos de corrupción (sintética)',
     });
-    expect(advanced.status).toBe(200);
+    expect(referred.status).toBe(200);
     // Un fundamento libre ya no basta: la apertura en la vía penal la decide una resolución.
     const free = await post(
       server,

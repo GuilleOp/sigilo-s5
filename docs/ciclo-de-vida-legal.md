@@ -120,8 +120,12 @@ Vía penal (`criminalStage`): `criminal_complaint_filed` (vista al Ministerio P�
 CNPP 222), `criminal_investigation` (CNPP 211), `prosecutor_determination` (CNPP 253 a 256; abre la
 impugnación de 10 días del CNPP 258), `judicial_review` (CNPP 258), `intermediate_stage`,
 `alternative_exit` (CNPP 183 a 200 **[verificar artículos exactos]**), `trial` y `sentence` (CNPP 211).
-La registra quien investiga: la fiscalía o el órgano interno de control como coadyuvante (LGRA,
-art. 42).
+Solo la fiscalía avanza la vía penal: la autoridad con papel `prosecution` en el directorio de red
+(o, sin directorio, en el archivo de cuentas). La investigadora y la substanciadora solo dan la
+vista al Ministerio Público (`refer_to_prosecutor`), que se registra en el trámite; remitir la
+denuncia y sus pruebas a la fiscalía es un paso aparte, por oficio (trabajo futuro: entregarla en la
+bandeja de la fiscalía del nodo). La fiscalía no lleva la vía administrativa: no inicia la
+investigación de la LGRA, no le corre el plazo del art. 64 fr. II ni se da vista a sí misma.
 
 ### Acciones nuevas del trámite
 
@@ -133,7 +137,7 @@ art. 42).
 | `order_reclassification`                                                     | `reclassification_ordered`                          | Tribunal                                               | LGRA 209 fr. II                                   |
 | `request_precautionary` / `decide_precautionary`                             | `precautionary_requested` / `precautionary_decided` | Investigación pide; substanciación o Tribunal resuelve | LGRA 123 a 129                                    |
 | `file_remedy` (con `signed: true`) / `resolve_remedy`                        | `remedy_filed` / `remedy_resolved`                  | Según el recurso (abajo)                               | LGRA 102 a 110, 210 a 221                         |
-| `refer_to_prosecutor`                                                        | `criminal_referral_filed`                           | Investigación (o substanciación)                       | LGRA 10 fr. III; LGRA 98; CNPP 222                |
+| `refer_to_prosecutor`                                                        | `criminal_referral_filed`                           | Investigación (o substanciación); nunca la fiscalía    | LGRA 10 fr. III; LGRA 98; CNPP 222                |
 | `flag_federal_funds` / `send_federal_notice`                                 | `federal_funds_flagged` / `federal_notice_sent`     | Recepción o investigación                              | LCF 49; LFRCF 47 y 66 Bis; CPF 212                |
 | `register_sanction`                                                          | `sanction_registered`                               | Substanciación                                         | LGRA 27 (solo el acto; sin integración con el S3) |
 | `record_withdrawal`                                                          | `withdrawal_received` (no cierra)                   | Recepción, investigación o substanciación              | LGRA 91 y 94                                      |
@@ -259,7 +263,7 @@ competencia. La marca por ente (reglas `fundingSources` en la tabla de funciones
 | R19. Remisión a otro estado                                | ✓      | Turnado entre nodos                                                                       |
 | R20. Remisión a la Federación                              | ✓      | Turnado al nodo Federal                                                                   |
 | R21. Fondos federales en ente local                        | ◐      | Marca, aviso y guía para turnar; → reglas `fundingSources` en la tabla de funciones       |
-| R22. Vista al Ministerio Público y vía penal en paralelo   | ✓      | `criminalStage` aparte y `refer_to_prosecutor`                                            |
+| R22. Vista al Ministerio Público y vía penal en paralelo   | ◐      | `refer_to_prosecutor` registra la vista; → entregarla en la bandeja de la fiscalía        |
 | R23. Denuncia penal directa                                | ✓      | La fiscalía inicia la vía penal                                                           |
 | R24. Determinaciones del MP e impugnación                  | ◐      | Etapas `prosecutor_determination` y `judicial_review`; → el tipo de determinación         |
 | R25. Salidas alternas                                      | ◐      | Etapa `alternative_exit`; → verificar artículos del CNPP                                  |

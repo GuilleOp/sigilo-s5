@@ -41,6 +41,7 @@ import {
   submitComplaint,
   TEST_AUTHORITIES,
   TEST_TOKEN,
+  testToken,
   uploadEvidence,
   moveTo,
 } from '../test-support/harness.ts';
@@ -390,6 +391,10 @@ describe('descarte de pruebas por la autoridad', () => {
       ).status,
     ).toBe(404);
 
+    // Solo recepción o investigación descartan: el Tribunal, la substanciación y la supervisión no.
+    for (const name of ['court', 'oicSubstantiation', 'inboxSupervision'] as const) {
+      expect((await discard(testToken(name))).status).toBe(403);
+    }
     const response = await discard(TEST_TOKEN);
     expect(response.status).toBe(200);
     expect(DiscardEvidenceResponseSchema.parse(await response.json())).toEqual({ discarded: 2 });

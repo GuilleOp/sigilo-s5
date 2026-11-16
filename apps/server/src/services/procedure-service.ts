@@ -70,6 +70,7 @@ import {
   verifyClosureSanction,
 } from './pdn-context.ts';
 import type { AuthorityAccount } from '../security/authority-registry.ts';
+import { isProsecutionAuthority } from './prosecution.ts';
 
 /** Autoridad que tiene la denuncia; las anteriores al nodo de varias autoridades, el buzón. */
 export function assignedAuthorityOf(ctx: AppContext, complaint: ComplaintRecord): string {
@@ -242,11 +243,14 @@ function plan(
   const requireIntake = () => {
     if (!hasFunction(account, 'intake')) throw new ApiFailure('forbidden');
   };
+  // Destino de un turno o reasignación: una autoridad del nodo que pueda aceptarla (con cuenta
+  // `intake`); nunca el buzón general, el Tribunal ni una autoridad sin recepción.
   const requireTarget = (authorityId: string) => {
-    if (ctx.authorities.authority(authorityId) === null || authorityId === inbox) {
+    if (ctx.authorities.authority(authorityId)?.canReceive !== true || authorityId === inbox) {
       throw new ApiFailure('bad_request');
     }
   };
+  const isProsecution = isProsecutionAuthority(ctx, account.authorityId);
   const requireTransition = (to: ManagementState) => {
     if (!isManagementTransition(current, to)) throw new ApiFailure('conflict');
   };
@@ -466,6 +470,8 @@ function plan(
       // Vista al Ministerio Público: la vía penal corre aparte y en paralelo (CPEUM art. 109; LGRA
       // art. 14). La da quien investiga (LGRA art. 10 fr. III; art. 98 para las entidades de
       // fiscalización; CNPP art. 222 para toda persona servidora pública).
+      // La fiscalía es el Ministerio Público: no se da vista a sí misma.
+      if (isProsecution) throw new ApiFailure('forbidden');
       requireAccepted();
       if (complaint.criminalStage !== null) throw new ApiFailure('conflict');
       const actor = actAsAny(['investigation', 'substantiation']);
@@ -478,7 +484,7 @@ function plan(
         status: keepStatus(),
         note:
           request.note ??
-          `Se dio vista al Ministerio Público (${request.prosecutor}) por hechos que pueden ser delito. La vía penal corre aparte y no detiene el procedimiento administrativo.`,
+          `Se registró la vista al Ministerio Público (${request.prosecutor}) por hechos que pueden ser delito. La vía penal corre aparte y no detiene el procedimiento administrativo. Remitir la denuncia y sus pruebas a la fiscalía es un paso aparte, por oficio.`,
         details: detailsOf(actor, {
           criminalStage: 'criminal_complaint_filed',
           referralBasis: request.basis,
@@ -563,8 +569,10 @@ function plan(
     if (findCriminalTransition(complaint.criminalStage, parsed.data) === undefined) {
       throw new ApiFailure('conflict');
     }
-    // La vía penal la registra quien investiga: la fiscalía o el OIC coadyuvante (LGRA, art. 42).
+    // La vía penal la registra la fiscalía (Ministerio Público, CNPP art. 127); la investigadora y la
+    // substanciadora solo dan vista (`refer_to_prosecutor`).
     const actor = actAs('investigation');
+    if (!isProsecution) throw new ApiFailure('forbidden');
     return {
       ...base,
       action: 'stage_advanced',
@@ -578,6 +586,8 @@ function plan(
 
   function planAdministrativeAdvance(stage: AdministrativeStage): PlannedStep {
     if (request.action !== 'advance_stage') throw new ApiFailure('bad_request');
+    // La fiscalía no lleva la vía administrativa (LGRA, arts. 3 fr. II y 91): solo la penal.
+    if (isProsecution) throw new ApiFailure('forbidden');
     requireAccepted();
     const from =
       complaint.legalStage !== null && !isCriminalStage(complaint.legalStage)

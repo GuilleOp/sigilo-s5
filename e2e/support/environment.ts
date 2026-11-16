@@ -43,6 +43,8 @@ export const E2E_ACCOUNTS = {
   court: 'tribunal.federal',
   supervisor: 'supervision-oic',
   operation: 'operacion.federal',
+  /** Fiscalía anticorrupción (con segundo factor): la única que avanza la vía penal. */
+  prosecution: 'fiscalia',
 } as const;
 
 /**

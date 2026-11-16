@@ -46,6 +46,7 @@ import {
   administrativeStage,
   canRequestPrecautionary,
   closingFunction,
+  isProsecutionAccount,
   legalClosureOptions,
   precautionaryDecisionMode,
   remedyFilingOptions,
@@ -168,9 +169,11 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
     if (precautionaryDecisionMode(account, detail) !== null) actions.add('decide_precautionary');
     if (remedyFilingOptions(account, detail).length > 0) actions.add('file_remedy');
     if (remedyResolutionOptions(account, detail).length > 0) actions.add('resolve_remedy');
+    // La investigadora o la substanciadora dan vista; la fiscalía es el Ministerio Público.
     if (
       procedure?.criminalStage === undefined &&
-      hasAnyFunction(account, ['investigation', 'substantiation'])
+      hasAnyFunction(account, ['investigation', 'substantiation']) &&
+      !isProsecutionAccount(account)
     ) {
       actions.add('refer_to_prosecutor');
     }
@@ -278,7 +281,12 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     };
   }, [session.token]);
 
-  const targets = authorities.filter((item) => !item.isInbox && item.authorityId !== current);
+  // Solo autoridades que pueden aceptar lo turnado (con recepción): nunca el Tribunal ni el buzón.
+  const targets = authorities.filter((item) => item.canReceive && item.authorityId !== current);
+  // La fiscalía no lleva la vía administrativa: no le corre el plazo del art. 64 fr. II de la LGRA.
+  const deadlines = isProsecutionAccount(account)
+    ? (procedure?.deadlines ?? []).filter((item) => item.key !== 'serious_offense_start')
+    : (procedure?.deadlines ?? []);
   const selectedStage = stages.find((item) => item.key === draft.stage);
   const legalOutcomes = legalClosureOptions(detail);
   const legalOutcome =
@@ -592,7 +600,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
               Vía penal, en paralelo: {procedure.criminalStageName}
             </p>
           )}
-          <DeadlineList deadlines={procedure.deadlines} testId="procedure-deadlines" />
+          <DeadlineList deadlines={deadlines} testId="procedure-deadlines" />
           {procedure.rules.length > 0 && (
             <ul className="rule-list" data-testid="procedure-rules">
               {procedure.rules.map((rule) => (
@@ -966,9 +974,11 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           )}
           {action === 'refer_to_prosecutor' && (
             <>
-              <p className="field__hint">
-                La vía penal corre aparte y al mismo tiempo: la vista no detiene el procedimiento
-                administrativo.
+              <p className="field__hint" data-testid="referral-hint">
+                Aquí se registra la vista en el trámite. La vía penal corre aparte y al mismo
+                tiempo: la vista no detiene el procedimiento administrativo. Remitir la denuncia y
+                sus pruebas a la fiscalía es un paso aparte, por oficio: SIGILO todavía no la
+                entrega en la bandeja de la fiscalía.
               </p>
               <SelectField
                 id="referral-basis"

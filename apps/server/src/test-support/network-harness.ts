@@ -116,6 +116,13 @@ export const NETWORK_ACCOUNTS = {
     authorityId: 'authority.oic-iffe',
     functions: ['supervision'],
   },
+  // Recepción del OIC de la DFPS: el destino de una reasignación dentro del nodo federal.
+  dfpsIntake: {
+    accountId: 'acct-00000000000000f6',
+    username: 'recepcion.oic.dfps',
+    authorityId: 'authority.oic-dfps',
+    functions: ['intake'],
+  },
   oversight: {
     accountId: 'acct-00000000000000f4',
     username: 'supervision.federal',

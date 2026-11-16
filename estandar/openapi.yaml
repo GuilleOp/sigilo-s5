@@ -1675,6 +1675,7 @@ paths:
                       name: Órgano Interno de Control Ficticio
                       supervisorId: authority.oversight-federal
                       isInbox: false
+                      canReceive: true
                     idleTimeoutSeconds: 900
                     absoluteTimeoutSeconds: 28800
         '401':
@@ -1746,9 +1747,11 @@ paths:
                       name: Órgano Interno de Control Ficticio
                       supervisorId: authority.oversight-federal
                       isInbox: false
+                      canReceive: true
                     - authorityId: authority.oversight-federal
                       name: Unidad Ficticia de Supervisión
                       isInbox: false
+                      canReceive: false
         '401':
           description: '`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).'
           headers:
@@ -10461,6 +10464,10 @@ components:
             - - investigation
             - - intake
               - investigation
+        isProsecution:
+          description: 'Presente si la autoridad de la cuenta es una fiscalía (papel prosecution del directorio o del archivo de cuentas): solo ella avanza la vía penal y no lleva la vía administrativa.'
+          type: boolean
+          const: true
       required:
         - accountId
         - authorityId
@@ -10490,10 +10497,14 @@ components:
         isInbox:
           type: boolean
           description: Si es el buzón general del nodo, que recibe y turna.
+        canReceive:
+          type: boolean
+          description: 'Si es destino válido para turnar o reasignar: no es el buzón general y alguna de sus cuentas tiene la función intake, la única que acepta una denuncia turnada. El Tribunal, una supervisora sin recepción o una autoridad sin cuentas no lo son.'
       required:
         - authorityId
         - name
         - isInbox
+        - canReceive
       additionalProperties: false
       description: Autoridad alojada en el nodo.
     PdnInstitutionContext:
