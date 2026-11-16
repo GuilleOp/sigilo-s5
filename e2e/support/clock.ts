@@ -1,7 +1,12 @@
 // Reloj del servidor de prueba: lee y adelanta el desplazamiento de `SIGILO_TEST_CLOCK_FILE`.
 // Solo se adelanta, nunca se atrasa, para que el orden de los eventos siga siendo coherente.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { toDayDate } from '@sigilo/core';
+import {
+  addBusinessDays,
+  DEFAULT_BUSINESS_CALENDAR,
+  toDayDate,
+  toMexicoCentralDay,
+} from '@sigilo/core';
 import { openServerDatabase } from './database.ts';
 import { clockFilePath } from './environment.ts';
 
@@ -76,4 +81,17 @@ export function advanceServerClockToNextMonth(): void {
   const now = serverNow();
   const nextMonth = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
   advanceServerClockTo(new Date(nextMonth + MARGIN_MS));
+}
+
+/**
+ * Adelanta el reloj del servidor `amount` días hábiles (calendario oficial), al mediodía del centro
+ * de México: así se dan los pasos que esperan un plazo legal, como la audiencia inicial (10 días
+ * hábiles después del emplazamiento, LGRA art. 208 fr. III). Espera a que la bitácora cierre los
+ * días que quedaron atrás.
+ */
+export async function advanceServerClockByBusinessDays(amount: number): Promise<void> {
+  const today = toMexicoCentralDay(serverNow());
+  const target = addBusinessDays(today, amount, DEFAULT_BUSINESS_CALENDAR);
+  advanceServerClockTo(new Date(`${target}T18:00:00Z`));
+  await waitForClosedDays();
 }

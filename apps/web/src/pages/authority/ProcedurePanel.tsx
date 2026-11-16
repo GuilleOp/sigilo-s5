@@ -44,17 +44,22 @@ import { formatDayDate } from '../../lib/format.ts';
 import {
   actingMode,
   administrativeStage,
+  canCloseAtStage,
   canRequestPrecautionary,
   closingFunction,
   hasPendingRemedy,
   isProsecutionAccount,
   legalClosureOptions,
+  nextDay,
   precautionaryDecisionMode,
+  precautionaryOutcomeOptions,
+  precautionaryWaitFor,
   remedyFilingOptions,
   remedyResolutionOptions,
   requiresLegalOutcome,
   stageOptions,
   stageWaits,
+  visibleDeadlines,
 } from '../../lib/procedure-actions.ts';
 import type { ActingMode } from '../../lib/procedure-actions.ts';
 import { api } from '../../services/api.ts';
@@ -165,9 +170,11 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
   if (state === 'accepted') {
     if (stageOptions(account, detail).length > 0) actions.add('advance_stage');
     // Con un recurso pendiente no se cierra: primero se registra su resolución (el panel lo dice).
+    // Dictada la sentencia, el Tribunal no cierra: la declara firme (LGRA, art. 206).
     if (
       actingMode(account, closingFunction(detail), procedure) !== null &&
-      !hasPendingRemedy(procedure)
+      !hasPendingRemedy(procedure) &&
+      canCloseAtStage(detail)
     ) {
       actions.add('close');
     }
@@ -202,13 +209,6 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
     actions.add('record_withdrawal');
   }
   return [...actions];
-}
-
-/** Día siguiente a `day` (AAAA-MM-DD). */
-function nextDay(day: string): string {
-  const date = new Date(`${day}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
 }
 
 /** Datos del formulario de cada acción. */
@@ -300,10 +300,15 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
 
   // Solo autoridades que pueden aceptar lo turnado (con recepción): nunca el Tribunal ni el buzón.
   const targets = authorities.filter((item) => item.canReceive && item.authorityId !== current);
-  // La fiscalía no lleva la vía administrativa: no le corre el plazo del art. 64 fr. II de la LGRA.
-  const deadlines = isProsecutionAccount(account)
-    ? (procedure?.deadlines ?? []).filter((item) => item.key !== 'serious_offense_start')
-    : (procedure?.deadlines ?? []);
+  // La fiscalía no lleva la vía administrativa: no ve sus plazos (art. 64 fr. II, prescripción…).
+  const deadlines = visibleDeadlines(account, procedure);
+  // Medida cautelar: durante la vista solo cabe la provisional (LGRA, arts. 126 y 127).
+  const precautionaryOutcomes = precautionaryOutcomeOptions(detail);
+  const precautionaryOutcome =
+    precautionaryOutcomes.find((item) => item.key === draft.precautionaryOutcome)?.key ??
+    precautionaryOutcomes[0]?.key ??
+    draft.precautionaryOutcome;
+  const precautionaryHearingOn = precautionaryWaitFor(account, detail);
   const selectedStage = stages.find((item) => item.key === draft.stage);
   const legalOutcomes = legalClosureOptions(detail);
   const isLegalOutcomeRequired = requiresLegalOutcome(detail);
@@ -507,7 +512,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
       case 'decide_precautionary':
         return {
           action,
-          outcome: draft.precautionaryOutcome,
+          outcome: precautionaryOutcome,
           legalBasis: isCourtRecord ? draft.courtBasis.trim() : legalBasis,
           ...courtRecord(),
         };
@@ -633,15 +638,28 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
             </p>
           )}
           <DeadlineList deadlines={deadlines} testId="procedure-deadlines" />
-          {(waits.length > 0 || canCloseLater) && (
+          {(waits.length > 0 || canCloseLater || precautionaryHearingOn !== null) && (
             <ul className="field__hint" data-testid="procedure-waits">
               {waits.map((wait) => (
                 <li key={wait.key}>
-                  «{wait.label}»: {wait.text} hasta el {formatDayDate(wait.dueOn)}. Podrás hacerlo a
-                  partir del {formatDayDate(nextDay(wait.dueOn))} si nadie presenta el recurso, o al
-                  registrar la resolución del recurso presentado (LGRA, art. 206).
+                  «{wait.label}»: {wait.text}
+                  {wait.dueOn === undefined ? '' : ` hasta el ${formatDayDate(wait.dueOn)}`}. Podrás
+                  hacerlo a partir del {formatDayDate(wait.availableOn)}
+                  {wait.isRemedyWait
+                    ? ' si nadie presenta el recurso, o al registrar la resolución del recurso presentado (LGRA, art. 206).'
+                    : wait.legalBasis.length > 0
+                      ? ` (${wait.legalBasis.join('; ')}).`
+                      : '.'}
                 </li>
               ))}
+              {precautionaryHearingOn !== null && (
+                <li>
+                  «Resolver la medida cautelar»: la vista a quienes afecta corre hasta el{' '}
+                  {formatDayDate(precautionaryHearingOn)}. Mientras tanto solo puedes concederla
+                  provisionalmente; podrás concederla o negarla a partir del{' '}
+                  {formatDayDate(nextDay(precautionaryHearingOn))} (LGRA, arts. 126 y 127).
+                </li>
+              )}
               {canCloseLater && (
                 <li>
                   «Cerrar con fundamento»: hay un recurso pendiente. Primero registra su resolución.
@@ -945,13 +963,13 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
             <SelectField
               id="precautionary-outcome"
               label="Resolución de la medida (LGRA, arts. 125 a 127)"
-              value={draft.precautionaryOutcome}
+              value={precautionaryOutcome}
               onChange={(event) =>
                 set('precautionaryOutcome', event.target.value as PrecautionaryOutcome)
               }
               data-testid="precautionary-outcome"
             >
-              {PRECAUTIONARY_RULE.outcomes.map((item) => (
+              {precautionaryOutcomes.map((item) => (
                 <option key={item.key} value={item.key}>
                   {item.name}
                 </option>

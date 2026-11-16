@@ -236,6 +236,15 @@ export function lifecycleStateOf(
   };
 }
 
+/**
+ * Indica si la medida cautelar sigue pendiente: sin resolver o concedida solo provisionalmente,
+ * en espera de concederla o negarla vencida la vista (LGRA, arts. 126 y 127).
+ */
+export function isPrecautionaryPending(
+  precautionary: NonNullable<LifecycleState['precautionary']>,
+): boolean {
+  return precautionary.decidedOn === null || precautionary.outcome === 'provisional';
+}
 /** Recursos presentados que siguen sin resolverse (pendientes o admitidos). */
 export function pendingRemedies(state: LifecycleState): RemedyState[] {
   return state.remedies.filter((remedy) => remedy.status !== 'resolved');

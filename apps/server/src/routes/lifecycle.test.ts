@@ -93,7 +93,21 @@ async function ok(
   return ProcedureStateSchema.parse(result.body);
 }
 
+/**
+ * Días hábiles que el recorrido espera antes de cada paso con plazo, contados desde que se entró a
+ * la etapa: la audiencia inicial, 10 desde el emplazamiento (LGRA, art. 208 fr. III), y el cierre de
+ * la instrucción, vencidos los 5 de alegatos (arts. 208 fr. IX y 209 fr. III).
+ */
+const STAGE_WAITS: Readonly<Record<string, number>> = {
+  initial_hearing: 10,
+  instruction_closed: 6,
+  court_instruction_closed: 6,
+};
+
+/** Da el paso; si espera un plazo, antes adelanta el reloj lo justo (las esperas se prueban aparte). */
 async function advance(server: TestServer, name: TestAccountName, folio: string, stage: string) {
+  const wait = STAGE_WAITS[stage];
+  if (wait !== undefined) server.setNow(businessDaysAfter(today(server), wait));
   return ok(server, name, folio, { action: 'advance_stage', stage } as ProcedureActionRequest);
 }
 
@@ -735,6 +749,16 @@ describe('medidas cautelares', () => {
         })
       ).status,
     ).toBe(404);
+    // Concederla espera la vista de 5 días hábiles a quienes afecta (LGRA, arts. 126 y 127).
+    const requestedOn = today(server);
+    const early = await act(server, 'oicSubstantiation', folio, {
+      action: 'decide_precautionary',
+      outcome: 'granted',
+      legalBasis: BASIS,
+    });
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain('solo se puede conceder provisionalmente');
+    server.setNow(businessDaysAfter(requestedOn, 6));
     await ok(server, 'oicSubstantiation', folio, {
       action: 'decide_precautionary',
       outcome: 'granted',
@@ -770,6 +794,45 @@ describe('medidas cautelares', () => {
       outcome: 'provisional',
       legalBasis: BASIS,
     });
+  });
+
+  it('durante la vista solo cabe la provisional; vencida, se concede o se niega en definitiva', async () => {
+    const { server, folio } = await toReportFiled('serious');
+    await ok(server, 'oicInvestigator', folio, {
+      action: 'request_precautionary',
+      measure: 'Exhibición de documentos originales (medida sintética).',
+      legalBasis: 'LGRA, art. 124: medida sintética de prueba.',
+    });
+    const requestedOn = today(server);
+    const decide = (outcome: 'granted' | 'provisional' | 'denied') =>
+      act(server, 'oicSubstantiation', folio, {
+        action: 'decide_precautionary',
+        outcome,
+        legalBasis: BASIS,
+      });
+    expect((await decide('denied')).status).toBe(409);
+    expect((await decide('provisional')).status).toBe(200);
+    // La provisional se dicta una vez y la medida sigue pendiente: no se pide otra.
+    expect((await decide('provisional')).status).toBe(409);
+    expect(
+      (
+        await act(server, 'oicInvestigator', folio, {
+          action: 'request_precautionary',
+          measure: 'Otra medida sintética mientras corre la vista.',
+          legalBasis: 'LGRA, art. 124: medida sintética de prueba.',
+        })
+      ).status,
+    ).toBe(409);
+    let view = (await detail(server, 'oicSubstantiation', folio)).body?.procedure;
+    expect(view?.deadlines.map((item) => item.key)).toContain('precautionary_hearing');
+    // El último día de la vista todavía no se resuelve en definitiva.
+    server.setNow(businessDaysAfter(requestedOn, 5));
+    expect((await decide('granted')).status).toBe(409);
+    server.setNow(businessDaysAfter(requestedOn, 6));
+    expect((await decide('denied')).status).toBe(200);
+    view = (await detail(server, 'oicSubstantiation', folio)).body?.procedure;
+    expect(view?.precautionary?.outcome).toBe('denied');
+    expect(view?.deadlines.map((item) => item.key)).not.toContain('precautionary_hearing');
   });
 });
 
@@ -1141,6 +1204,115 @@ describe('firmeza y cierres conforme a los plazos (LGRA, arts. 27, 74, 101 y 206
     expect((await ok(server, 'oicSubstantiation', folio, expired)).status).toBe(
       'prescribed_or_expired',
     );
+  });
+});
+
+describe('audiencia inicial y cierre de la instrucción conforme a sus plazos (LGRA, arts. 208 y 209)', () => {
+  const step = (stage: string): ProcedureActionRequest =>
+    ({ action: 'advance_stage', stage }) as ProcedureActionRequest;
+
+  it('la audiencia inicial no se registra antes de 10 días hábiles desde el emplazamiento', async () => {
+    const { server, folio } = await toReportFiled('non_serious');
+    await advance(server, 'oicSubstantiation', folio, 'report_admitted');
+    await advance(server, 'oicSubstantiation', folio, 'summoned');
+    const summonedOn = today(server);
+    const early = await act(server, 'oicSubstantiation', folio, step('initial_hearing'));
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain('entre 10 y 15 días hábiles');
+    expect(errorMessage(early.body)).toContain('procede a partir del');
+    // El panel recibe el primer día en que procede.
+    const window = (
+      await detail(server, 'oicSubstantiation', folio)
+    ).body?.procedure?.deadlines.find((item) => item.key === 'initial_hearing_window');
+    expect(window).toMatchObject({
+      earliestOn: addBusinessDays(summonedOn, 10, DEFAULT_BUSINESS_CALENDAR),
+      isEarliestReached: false,
+    });
+    server.setNow(businessDaysAfter(summonedOn, 9));
+    expect((await act(server, 'oicSubstantiation', folio, step('initial_hearing'))).status).toBe(
+      409,
+    );
+    server.setNow(businessDaysAfter(summonedOn, 10));
+    expect((await ok(server, 'oicSubstantiation', folio, step('initial_hearing'))).legalStage).toBe(
+      'initial_hearing',
+    );
+  });
+
+  it('la instrucción se cierra vencidos los 5 días hábiles de alegatos, también en el Tribunal', async () => {
+    const nonSerious = await toInitialHearing('non_serious');
+    await advance(nonSerious.server, 'oicSubstantiation', nonSerious.folio, 'evidence_hearing');
+    await advance(nonSerious.server, 'oicSubstantiation', nonSerious.folio, 'closing_arguments');
+    const openedOn = today(nonSerious.server);
+    const early = await act(
+      nonSerious.server,
+      'oicSubstantiation',
+      nonSerious.folio,
+      step('instruction_closed'),
+    );
+    expect(early.status).toBe(409);
+    expect(errorMessage(early.body)).toContain('Las partes todavía pueden presentar sus alegatos');
+    expect(errorMessage(early.body)).toContain(
+      'LGRA, art. 208, fracc. IX; LGRA, art. 209, fracc. III',
+    );
+    nonSerious.server.setNow(businessDaysAfter(openedOn, 5));
+    expect(
+      (
+        await act(
+          nonSerious.server,
+          'oicSubstantiation',
+          nonSerious.folio,
+          step('instruction_closed'),
+        )
+      ).status,
+    ).toBe(409);
+    nonSerious.server.setNow(businessDaysAfter(openedOn, 6));
+    await ok(nonSerious.server, 'oicSubstantiation', nonSerious.folio, step('instruction_closed'));
+
+    const { server, folio } = await toInitialHearing('serious');
+    await advance(server, 'oicSubstantiation', folio, 'case_file_sent');
+    for (const stage of ['court_received', 'court_evidence_hearing', 'court_closing_arguments']) {
+      await advance(server, 'court', folio, stage);
+    }
+    const courtOpenedOn = today(server);
+    expect((await act(server, 'court', folio, step('court_instruction_closed'))).status).toBe(409);
+    server.setNow(businessDaysAfter(courtOpenedOn, 6));
+    await ok(server, 'court', folio, step('court_instruction_closed'));
+  });
+
+  it('dictada la sentencia, el Tribunal no cierra la denuncia: la declara firme', async () => {
+    const { server, folio } = await toInitialHearing('serious');
+    await advance(server, 'oicSubstantiation', folio, 'case_file_sent');
+    for (const stage of [
+      'court_received',
+      'court_evidence_hearing',
+      'court_closing_arguments',
+      'court_instruction_closed',
+      'court_resolution',
+    ]) {
+      await advance(server, 'court', folio, stage);
+    }
+    for (const legalOutcome of ['dismissed', 'prescribed'] as const) {
+      const closed = await act(server, 'court', folio, {
+        action: 'close',
+        reason: 'other',
+        legalOutcome,
+        legalBasis: BASIS,
+        agreement: SYNTHETIC_AGREEMENT,
+      });
+      expect(closed.status).toBe(409);
+      expect(errorMessage(closed.body)).toContain('no se cierra en el Tribunal');
+    }
+    // Firme la sentencia de sobreseimiento, la autoridad que ejecuta cierra con ese motivo.
+    server.setNow(businessDaysAfter(today(server), 16));
+    await advance(server, 'court', folio, 'final');
+    const closed = await ok(server, 'oicSubstantiation', folio, {
+      action: 'close',
+      reason: 'other',
+      legalOutcome: 'dismissed',
+      legalBasis: BASIS,
+      agreement: SYNTHETIC_AGREEMENT,
+    });
+    expect(closed.status).toBe('final_no_sanction');
   });
 });
 

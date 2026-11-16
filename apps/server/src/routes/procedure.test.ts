@@ -26,6 +26,7 @@ import {
   testToken,
 } from '../test-support/harness.ts';
 import type { TestAccountName, TestServer } from '../test-support/harness.ts';
+import { addBusinessDays, DEFAULT_BUSINESS_CALENDAR, toMexicoCentralDay } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 
 const CLOSE: ProcedureActionRequest = {
@@ -523,6 +524,15 @@ describe('separación de funciones y competencia', () => {
       'instruction_closed',
       'resolution',
     ] as const) {
+      // La audiencia espera 10 días hábiles desde el emplazamiento y el cierre de la instrucción,
+      // los 5 de alegatos (LGRA, art. 208 fr. III y IX): se adelanta el reloj lo justo.
+      const wait = { initial_hearing: 10, instruction_closed: 6 }[stage as string];
+      if (wait !== undefined) {
+        const today = toMexicoCentralDay(server.ctx.deps.now());
+        server.setNow(
+          new Date(`${addBusinessDays(today, wait, DEFAULT_BUSINESS_CALENDAR)}T18:00:00Z`),
+        );
+      }
       expect(
         (await act(server, 'oicSubstantiation', folio, { action: 'advance_stage', stage })).status,
       ).toBe(200);

@@ -7576,6 +7576,16 @@
             "type": "array",
             "items": { "type": "string" },
             "description": "Fundamentos con el nombre de la ley."
+          },
+          "earliestOn": {
+            "description": "Solo en plazos con mínimo: primer día en que procede el acto (la audiencia inicial, no antes de 10 días hábiles después del emplazamiento; LGRA, art. 208 fr. III).",
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "example": "2026-11-05"
+          },
+          "isEarliestReached": {
+            "description": "Solo en plazos con mínimo: si hoy ya procede el acto, según el reloj del nodo.",
+            "type": "boolean"
           }
         },
         "required": [

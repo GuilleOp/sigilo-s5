@@ -23,7 +23,12 @@ import type {
   RemedyView,
   RuleTriggerView,
 } from '@sigilo/contracts';
-import { activeDeadlines, evaluateDeadline, toMexicoCentralDay } from '@sigilo/core';
+import {
+  activeDeadlines,
+  computeDueDate,
+  evaluateDeadline,
+  toMexicoCentralDay,
+} from '@sigilo/core';
 import type { ProcedureSnapshot } from '@sigilo/core';
 import type { AppContext } from '../context.ts';
 import { nodeCalendar } from './calendar.ts';
@@ -39,7 +44,12 @@ import {
 import { conflictFacts, sanctionCheckView } from './pdn-context.ts';
 import { assignedAuthorityOf, hasCourtAccounts, lifecycleOf } from './procedure-service.ts';
 import { abstentionView, inconformableAct, inconformityView } from './qualification-service.ts';
-import { criminalStageOfStep, currentInconformity, pendingRemedies } from './lifecycle-state.ts';
+import {
+  criminalStageOfStep,
+  currentInconformity,
+  isPrecautionaryPending,
+  pendingRemedies,
+} from './lifecycle-state.ts';
 import type { LifecycleState } from './lifecycle-state.ts';
 
 /** Quién lee la vista: la persona denunciante (seguimiento) o la autoridad (panel). */
@@ -122,8 +132,9 @@ export function procedureSnapshot(ctx: AppContext, complaint: ComplaintRecord): 
     filedRemedies: state.remedies
       .filter((remedy) => remedy.stage === complaint.legalStage)
       .map((remedy) => remedy.kind),
+    // La vista corre mientras la medida está sin resolver o concedida solo provisionalmente.
     precautionaryRequestedOn:
-      state.precautionary !== null && state.precautionary.decidedOn === null
+      state.precautionary !== null && isPrecautionaryPending(state.precautionary)
         ? state.precautionary.requestedOn
         : null,
     reclassificationOrderedOn: state.reclassificationOrderedOn,
@@ -342,6 +353,15 @@ function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: strin
       const evaluation = evaluateDeadline(deadline.key, deadline.startsOn, today, {
         calendar: nodeCalendar(ctx),
       });
+      // Plazo con mínimo (audiencia inicial): primer día en que procede el acto.
+      const earliestOn =
+        rule.minAmount === undefined
+          ? null
+          : computeDueDate(
+              deadline.startsOn,
+              { unit: rule.unit, amount: rule.minAmount },
+              nodeCalendar(ctx),
+            );
       return [
         {
           key: deadline.key,
@@ -353,6 +373,7 @@ function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: strin
           remaining: evaluation.remaining,
           remainingUnit: evaluation.remainingUnit,
           legalBasis: rule.legalBasis.map(describeLegalReference),
+          ...(earliestOn === null ? {} : { earliestOn, isEarliestReached: today >= earliestOn }),
         },
       ];
     } catch {
