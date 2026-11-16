@@ -44,13 +44,12 @@ nodo Federal: `oic-equipamiento.substanciacion`.
 
 ## 4. Tu bandeja: «Expedientes en substanciación»
 
-Muestra los expedientes de tu autoridad. Abre el folio y trabaja en la tarjeta **«Trámite»**:
-«Acción»: «Avanzar a la siguiente etapa legal» → «Etapa» → «Aplicar». Las etapas que requieren
-fundamento piden «Fundamento legal» (20+ caracteres, la persona lo ve) y, a veces, «Acuerdo en
-versión pública» (50+, sin datos personales).
-
-> **Limitación conocida del prototipo.** La bandeja lista **todas** las denuncias del nodo, también
-> las que siguen turnadas sin aceptar. Trabaja solo las que ya tienen «Informe … presentado».
+Muestra los expedientes de tu autoridad que ya te tocan: los aceptados (o cerrados) desde que la
+investigadora presenta el IPRA, incluidos los que están en el Tribunal. Las denuncias turnadas sin
+aceptar y las que siguen en investigación o calificación no aparecen. Abre el folio y trabaja en la
+tarjeta **«Trámite»**: «Acción»: «Avanzar a la siguiente etapa legal» → «Etapa» → «Aplicar». Las
+etapas que requieren fundamento piden «Fundamento legal» (20+ caracteres, la persona lo ve) y, a
+veces, «Acuerdo en versión pública» (50+, sin datos personales).
 
 ## 5. Etapas que te tocan, en orden
 
@@ -133,15 +132,12 @@ autoridad substanciadora: no es falta grave»).
 - **Contra qué:** la resolución que sanciona una falta no grave. **Lo presenta:** la persona
   sancionada, en 15 dh. **Lo registras y lo resuelves tú** en 30 dh (LGRA, arts. 210 a 212).
 - Registrar: «Acción»: **«Registrar un recurso presentado con firma»** → «Recurso»: «Revocación» →
-  «Quién lo presentó»: «La persona señalada» → casilla del escrito con firma autógrafa → «Aplicar».
-  Mientras esté pendiente, la resolución no queda firme.
+  «Quién lo presentó: La persona señalada» (la revocación solo la presenta ella, así que se muestra
+  como texto) → casilla del escrito con firma autógrafa → «Aplicar». Mientras esté pendiente, la
+  resolución no queda firme.
 - Resolver: «Acción»: **«Registrar la resolución de un recurso»** → «Recurso» → «Resultado»:
   «Procedente (admitido)», «Improcedente», «Confirmada», «Revocada» o «Modificada» → «Fundamento
   legal» → «Aplicar».
-
-> **Limitación conocida del prototipo.** Registrar la revocación falló una vez con «El sistema no
-> aceptó los datos» y funcionó al elegir a mano «Quién lo presentó», aunque tenga una sola opción.
-> Elige siempre ese campo aunque parezca ya elegido.
 
 ### 5.6 Reclamación
 
@@ -270,15 +266,14 @@ identidad sellada; con una fiscalía fuera del nodo, se remite por oficio.
 | No aparece «Cerrar la instrucción»                         | Corren los 5 dh de alegatos (lee «Podrás hacerlo a partir del …»)                    |
 | Solo puedo elegir «Concedida provisionalmente»             | Corre la vista de 5 dh de la medida cautelar                                         |
 | «Resolución firme con sanción» está desactivada            | Primero «Registrar la inscripción de la sanción (S3)»                                |
-| «El sistema no aceptó los datos» al registrar un recurso   | Elige a mano «Quién lo presentó» y marca la casilla de firma                         |
+| «El sistema no aceptó los datos» al registrar un recurso   | Marca la casilla del escrito con firma y revisa el fundamento                        |
 | «Tu función no tiene acciones del trámite en este estado.» | La etapa es del Tribunal o de la investigadora                                       |
-| Veo denuncias que no tienen IPRA                           | Limitación de la bandeja; ignóralas                                                  |
+| No veo una denuncia en la bandeja                          | La investigadora todavía no presenta el IPRA                                         |
 
 ## 7. Limitaciones conocidas del prototipo
 
 - Los plazos de los recursos se cuentan desde que se entra a la etapa, no desde la notificación,
   que todavía no se registra.
-- La bandeja muestra denuncias sin IPRA.
 - Sin integración real con el S3; la comparecencia de terceros se hace fuera del sistema.
 
 ## 8. Glosario breve

@@ -3,7 +3,9 @@
 import type { Context, Hono } from 'hono';
 import {
   API_PREFIX,
+  ADMINISTRATIVE_STAGES,
   COURT_ACCESS_STAGES,
+  functionInChargeAt,
   hasFunction,
   ApproveIdentityRequestSchema,
   AuthorityMessageRequestSchema,
@@ -124,6 +126,27 @@ function findReachable(ctx: AppContext, c: Context, account: AuthorityAccount): 
 }
 
 /** Denuncias del Tribunal del nodo: las de sus etapas y las que tienen un recurso que él resuelve. */
+/**
+ * Etapas de la bandeja de la substanciación (mínimo privilegio, hallazgo 13): desde que se
+ * presenta el IPRA (`report_filed`) en adelante, incluidas las del Tribunal (registra sus actos si
+ * el estado no le dio cuentas, y la firmeza después de la sentencia). Fuera quedan la investigación
+ * y la calificación.
+ */
+const SUBSTANTIATION_INBOX_STAGES: ReadonlySet<string> = new Set(
+  ADMINISTRATIVE_STAGES.map((stage) => stage.key).filter(
+    (stage) => functionInChargeAt(stage) !== 'investigation',
+  ),
+);
+
+/** Cuenta que solo substancia: no recibe ni investiga. */
+function isSubstantiationOnly(account: AuthorityAccount): boolean {
+  return (
+    hasFunction(account, 'substantiation') &&
+    !hasFunction(account, 'intake') &&
+    !hasFunction(account, 'investigation')
+  );
+}
+
 function listForCourt(ctx: AppContext, account: AuthorityAccount, offset: number, limit: number) {
   const withRemedies = ctx.procedure.listFoliosWithAction('remedy_filed').filter((folio) => {
     const complaint = ctx.complaints.find(folio);
@@ -208,18 +231,27 @@ export function registerAuthorityRoutes(app: Hono, ctx: AppContext): void {
     const account = currentAccount(c);
     const { offset, limit } = parsePage(c);
     // El Tribunal ve solo las denuncias de sus etapas y de los recursos que resuelve.
+    // La substanciación (sin recepción ni investigación) ve solo lo que ya le toca: desde el IPRA.
     const listed = hasFunction(account, 'court')
       ? listForCourt(ctx, account, offset, limit)
-      : ctx.complaints.listForAuthority(
-          account.authorityId,
-          ctx.authorities.inboxAuthorityId,
-          offset,
-          limit,
-          // La fiscalía también ve las denuncias de las que recibió vista (copias de lectura).
-          isProsecutionAuthority(ctx, account.authorityId)
-            ? listReferredFolios(ctx, account.authorityId)
-            : [],
-        );
+      : isSubstantiationOnly(account)
+        ? ctx.complaints.listForAuthorityAtStages(
+            account.authorityId,
+            ctx.authorities.inboxAuthorityId,
+            [...SUBSTANTIATION_INBOX_STAGES],
+            offset,
+            limit,
+          )
+        : ctx.complaints.listForAuthority(
+            account.authorityId,
+            ctx.authorities.inboxAuthorityId,
+            offset,
+            limit,
+            // La fiscalía también ve las denuncias de las que recibió vista (copias de lectura).
+            isProsecutionAuthority(ctx, account.authorityId)
+              ? listReferredFolios(ctx, account.authorityId)
+              : [],
+          );
     // Cada resumen lleva el semáforo de turnado si espera turno o aceptación.
     return c.json(listed.map((item) => listedWithSemaphore(ctx, item)));
   });

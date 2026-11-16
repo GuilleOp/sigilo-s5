@@ -108,7 +108,11 @@ export function combineFragments(
 
 /** Descarga los fragmentos de la entidad y federal, y devuelve sus entes cuando están listos. */
 export function useStateEntities(stateCode: string): StateEntities {
-  const states = useSyncExternalStore(fragmentStore.subscribe, fragmentStore.get);
+  const states = useSyncExternalStore(
+    fragmentStore.subscribe,
+    fragmentStore.get,
+    fragmentStore.get,
+  );
   useEffect(() => {
     if (!isStateCode(stateCode)) return;
     // Los errores quedan en el estado del fragmento («failed»); aquí no hay nada más que hacer.
@@ -124,7 +128,7 @@ export function useStateEntities(stateCode: string): StateEntities {
  */
 export function useEntity(entityId: string): PublicEntityOption | undefined {
   // Se suscribe para volver a buscar en el registro cuando termina una descarga.
-  useSyncExternalStore(fragmentStore.subscribe, fragmentStore.get);
+  useSyncExternalStore(fragmentStore.subscribe, fragmentStore.get, fragmentStore.get);
   const code = entityStateCode(entityId);
   const known = findEntity(entityId);
   useEffect(() => {
@@ -133,4 +137,36 @@ export function useEntity(entityId: string): PublicEntityOption | undefined {
     }
   }, [known, code]);
   return known;
+}
+
+/** Ente para mostrar y si todavía se espera su fragmento (no se descargó ni falló). */
+export interface EntityLookup {
+  entity: PublicEntityOption | undefined;
+  isLoading: boolean;
+}
+
+/**
+ * Indica si el ente sigue en camino: no se conoce y su fragmento no está listo ni falló (en espera o
+ * descargándose). Un ente desconocido en un fragmento ya listo no está «cargando».
+ */
+export function isEntityPending(
+  states: Readonly<Record<string, FragmentState>>,
+  entityId: string,
+): boolean {
+  if (findEntity(entityId) !== undefined) return false;
+  const code = entityStateCode(entityId);
+  if (code === undefined || !isFragmentCode(code)) return false;
+  const status = states[code]?.status;
+  return status !== 'ready' && status !== 'failed';
+}
+
+/** Como `useEntity`, y además dice si el fragmento del ente todavía no llega. */
+export function useEntityLookup(entityId: string): EntityLookup {
+  const states = useSyncExternalStore(
+    fragmentStore.subscribe,
+    fragmentStore.get,
+    fragmentStore.get,
+  );
+  const entity = useEntity(entityId);
+  return { entity, isLoading: entity === undefined && isEntityPending(states, entityId) };
 }

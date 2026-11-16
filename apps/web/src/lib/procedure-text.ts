@@ -4,7 +4,14 @@
 // denuncia pasó a otro nodo.
 import type { ProcedureView } from '@sigilo/contracts';
 import { remainingDays, deadlineStatus, toMexicoCentralDay } from '@sigilo/core';
-import { findDeadlineRule, findLegalStage } from '@sigilo/contracts';
+import {
+  COURT_ACCESS_STAGES,
+  findComplaintStatus,
+  findDeadlineRule,
+  findLegalClosureReason,
+  findLegalStage,
+  functionInChargeAt,
+} from '@sigilo/contracts';
 import type { DeadlineStatus } from '@sigilo/contracts';
 
 /** Texto clave del día en que se turna (docs/demo-escenario.md, sección 7). */
@@ -94,6 +101,19 @@ export function appealWindow(
 
 /** Encabezado del trámite en lenguaje sencillo. */
 export function procedureHeadline(procedure: ProcedureView): ProcedureHeadline {
+  // Cerrada: el título dice cómo concluyó (por ejemplo, «Concluida con sanción firme»), igual que
+  // la lista del panel, y no la última etapa («Sanción ejecutada»).
+  const closure = procedure.closure;
+  if (procedure.managementState === 'closed' && closure !== undefined && !isArchive(procedure)) {
+    const outcome =
+      closure.legalOutcome === undefined ? undefined : findLegalClosureReason(closure.legalOutcome);
+    const status = outcome === undefined ? undefined : findComplaintStatus(outcome.status);
+    return {
+      title: status?.name ?? closure.legalOutcomeName ?? closure.reasonName,
+      text: closure.legalOutcomeExplanation ?? closure.reasonExplanation,
+      isStateExplanation: true,
+    };
+  }
   const qualification = procedure.qualification;
   const isSigned = procedure.inconformity?.signedOn !== undefined;
   if (procedure.legalStage === 'abstention' && !isSigned) {
@@ -136,6 +156,23 @@ export function procedureHeadline(procedure: ProcedureView): ProcedureHeadline {
   };
 }
 
+/**
+ * Indica si los sellos ya muestran el estado vigente, para no repetirlo con la píldora «ahora»:
+ * con el trámite cerrado (el título ya dice cómo concluyó); sin etapa legal, si el último paso
+ * tiene el estado vigente (por ejemplo, «Aceptada»); con etapa, si el último cambio de etapa
+ * administrativa ya es la etapa vigente (por ejemplo, «Sentencia del Tribunal» con su fecha).
+ */
+export function isCurrentShown(procedure: ProcedureView): boolean {
+  if (procedure.managementState === 'closed') return true;
+  if (procedure.legalStage === undefined) {
+    return procedure.steps.at(-1)?.managementState === procedure.managementState;
+  }
+  const lastStage = procedure.steps.findLast(
+    (step) => step.action === 'stage_advanced' && step.record?.criminalStage === undefined,
+  );
+  return lastStage?.legalStage === procedure.legalStage;
+}
+
 /** Pasos que dicen qué autoridad tiene la denuncia, y cómo leer su nombre en el título. */
 const HOLDER_TITLE =
   /^(?:Turnada a|Aceptada por|Reasignada a) (.+?)(?:, en otro nodo de la red)?$/u;
@@ -151,6 +188,20 @@ export function currentHolder(procedure: ProcedureView): string | null {
   return null;
 }
 
+/**
+ * Quién actúa ahora: en las etapas del Tribunal, el Tribunal (notifica su sentencia, LGRA,
+ * art. 209 fr. V); en las de la substanciación, la autoridad substanciadora; si no, quien tiene
+ * la denuncia.
+ */
+function whoActsNow(procedure: ProcedureView): string | null {
+  const stage = procedure.legalStage;
+  if (stage !== undefined && procedure.criminalStage === undefined) {
+    if (COURT_ACCESS_STAGES.has(stage)) return 'el Tribunal de Justicia Administrativa';
+    if (functionInChargeAt(stage) === 'substantiation') return 'la autoridad substanciadora';
+  }
+  return currentHolder(procedure);
+}
+
 /** Lo que sigue: quién actúa y el plazo en curso más próximo. */
 export interface NextStep {
   who: string | null;
@@ -164,7 +215,7 @@ export function nextStep(procedure: ProcedureView): NextStep | null {
     .filter((deadline) => deadline.remaining >= 0)
     .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
   const deadline = running[0] ?? procedure.deadlines[0] ?? null;
-  const who = currentHolder(procedure);
+  const who = whoActsNow(procedure);
   if (deadline === null && who === null) return null;
   return { who, deadline };
 }

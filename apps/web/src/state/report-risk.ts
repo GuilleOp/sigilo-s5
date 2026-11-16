@@ -26,8 +26,12 @@ export function invisibleCount(draft: ReportDraft): number {
   );
 }
 
-/** Construye las señales para `assessRisk`. */
+/**
+ * Construye las señales para `assessRisk`. La hora solo cuenta (la red del trabajo) si la persona
+ * no dijo que no trabaja en esa oficina: a quien no trabaja ahí no se le advierte de «su» red.
+ */
 export function buildRiskSignals(draft: ReportDraft, now: Date = new Date()): RiskSignals {
+  const worksElsewhere = draft.workplace.worksThere === 'no';
   return {
     mode: draft.mode ?? 'anonymous',
     evidence: draft.evidence.map((item) => ({
@@ -38,7 +42,7 @@ export function buildRiskSignals(draft: ReportDraft, now: Date = new Date()): Ri
     textFindings: reviewText(draft.facts.description),
     invisibleCharacters: invisibleCount(draft),
     locationPrecision: draft.facts.municipalityCode === '' ? 'state' : 'municipality',
-    localTime: now,
+    ...(worksElsewhere ? {} : { localTime: now }),
   };
 }
 

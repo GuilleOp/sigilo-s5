@@ -13,12 +13,14 @@ import type {
   ProcedureView,
   RemedyView,
 } from '@sigilo/contracts';
+import { findRemedyKind } from '@sigilo/contracts';
 import {
   canCloseAtStage,
   hasPendingRemedy,
   precautionaryDecisionMode,
   precautionaryOutcomeOptions,
   precautionaryWaitFor,
+  remedyFiler,
   requiresLegalOutcome,
   stageOptions,
   stageWaits,
@@ -243,5 +245,15 @@ describe('cierre después de la sentencia y plazos de la fiscalía', () => {
       'prosecutor_determination_challenge',
     ]);
     expect(visibleDeadlines({}, procedure)).toHaveLength(3);
+  });
+});
+
+describe('quién presentó el recurso', () => {
+  it('la revocación solo la presenta la persona señalada: no se envía «persona denunciante»', () => {
+    const revocation = findRemedyKind('revocation');
+    if (revocation === undefined) throw new Error('Falta la revocación en el catálogo.');
+    expect(revocation.filedBy).toEqual(['accused']);
+    expect(remedyFiler(revocation, 'reporter')).toBe('accused');
+    expect(remedyFiler({ filedBy: ['accused', 'reporter'] }, 'reporter')).toBe('reporter');
   });
 });

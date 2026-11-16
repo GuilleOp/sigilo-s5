@@ -200,6 +200,10 @@ describe('red del escenario de la demostración', () => {
     // Llega turnada al OIC con la alerta de conflicto (S1 sintético: intereses en común).
     let view = await detail(federal, 'iffeIntake', folio);
     expect(view.procedure?.managementState).toBe('routed');
+    // La recepción no dice «buzón general»: la ventanilla única la envió directo.
+    const received = view.procedure?.steps.find((step) => step.action === 'received');
+    expect(received?.explanation).toContain('la envió directo a la autoridad competente');
+    expect(received?.explanation).not.toContain('buzón general');
     expect(view.conflictReview?.requiresResponse).toBe(true);
     expect(view.conflictReview?.alerts.length).toBeGreaterThan(0);
     expect(view.contextSheet?.level).toBeDefined();
@@ -337,6 +341,8 @@ describe('red del escenario de la demostración', () => {
     const { openingId } = AppealResponseSchema.parse(await appeal.json());
     seen = await tracking(federal, folio, marta);
     expect(seen.identityAccess.at(-1)).toMatchObject({ actorRole: 'reporter', openingId });
+    // El aviso solo autoriza abrirla para el recurso: todavía nadie la abrió (hallazgo 9).
+    expect((await detail(federal, 'iffeInvestigator', folio)).identityOpenedCount).toBe(0);
     // Es un aviso: el plazo para el escrito firmado sigue corriendo y la Sala todavía no (B04).
     expect(seen.procedure?.qualification?.appeal?.filingDueOn).toBeDefined();
     expect(seen.procedure?.qualification?.appeal?.resolutionDueOn).toBeUndefined();
@@ -371,6 +377,7 @@ describe('red del escenario de la demostración', () => {
     // La entrega queda en el seguimiento y en la bitácora (identity.released).
     seen = await tracking(federal, folio, marta);
     expect(seen.identityReleases?.map((item) => item.openingId)).toEqual([openingId]);
+    expect((await detail(federal, 'iffeInvestigator', folio)).identityOpenedCount).toBe(1);
     // La autoridad investigadora registra el escrito con firma autógrafa: corre el plazo de la Sala.
     const signed = await asAccount(federal, 'iffeInvestigator', ROUTES.authorityProcedure(folio), {
       action: 'file_remedy',

@@ -67,6 +67,14 @@ export function organizationLines(name: string, max = LINE_CHARS): string[] {
   return [lines[0] ?? '', `${second.slice(0, max - 1).trimEnd()}…`];
 }
 
+/**
+ * Líneas con un espacio al final de cada una menos la última: al copiar el texto del grafo, las
+ * palabras de dos líneas no quedan pegadas («Inmobiliaria FicticiaEjemplo»).
+ */
+export function spacedLines(lines: readonly string[]): string[] {
+  return lines.map((line, index) => (index < lines.length - 1 ? `${line} ` : line));
+}
+
 /** Píldora de una organización ya acomodada. */
 interface OrganizationNode {
   name: string;
@@ -152,10 +160,11 @@ export function ConflictGraph({
             height={node.height}
             rx={18}
           />
+          <title>{node.name}</title>
           <text className="conflict-graph__org-label" textAnchor="middle">
-            {node.lines.map((line, index) => (
+            {spacedLines(node.lines).map((line, index) => (
               <tspan
-                key={line}
+                key={index}
                 x={WIDTH / 2}
                 y={node.top + PILL_PADDING + LINE_HEIGHT * (index + 1) - 4}
               >

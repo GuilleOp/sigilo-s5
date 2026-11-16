@@ -143,6 +143,17 @@ export interface ComplaintsRepository {
     limit: number,
     referredFolios?: readonly string[],
   ): ListedComplaint[];
+  /**
+   * Como `listForAuthority`, pero solo las aceptadas o cerradas cuya etapa legal está en `stages`
+   * (la bandeja de la substanciación: no ve lo turnado sin aceptar ni lo que se investiga).
+   */
+  listForAuthorityAtStages(
+    authorityId: string,
+    inboxAuthorityId: string,
+    stages: readonly string[],
+    offset: number,
+    limit: number,
+  ): ListedComplaint[];
   updateStatus(folio: string, status: ComplaintStatus): void;
   /** Guarda el estado del trámite después de una acción. */
   updateProcedure(folio: string, fields: ProcedureFields): void;
@@ -284,6 +295,20 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
        OR folio IN (SELECT value FROM json_each(?))
      ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
   );
+  const listForAuthorityAtStagesStatement = db.prepare(
+    `SELECT ${SUMMARY_COLUMNS},
+       COALESCE(
+         (SELECT legal_on FROM procedure_steps AS step
+          WHERE step.folio = complaints.folio
+            AND step.action IN ('received', 'routed', 'reassigned', 'returned_to_inbox')
+          ORDER BY step.position DESC LIMIT 1),
+         received_legal_on, received_on) AS state_since_on
+     FROM complaints
+     WHERE COALESCE(assigned_authority, ?) = ?
+       AND management_state IN ('accepted', 'closed')
+       AND legal_stage IN (SELECT value FROM json_each(?))
+     ORDER BY received_on DESC, folio LIMIT ? OFFSET ?`,
+  );
   const updateStatusStatement = db.prepare('UPDATE complaints SET status = ? WHERE folio = ?');
   const updateProcedureStatement = db.prepare(
     `UPDATE complaints SET status = ?, assigned_authority = ?, management_state = ?,
@@ -382,6 +407,13 @@ export function createComplaintsRepository(db: DatabaseSync): ComplaintsReposito
         summary: toListedSummary(row, inboxAuthorityId),
         stateSinceOn: readText(row, 'state_since_on'),
       })),
+    listForAuthorityAtStages: (authorityId, inboxAuthorityId, stages, offset, limit) =>
+      listForAuthorityAtStagesStatement
+        .all(inboxAuthorityId, authorityId, JSON.stringify(stages), limit, offset)
+        .map((row) => ({
+          summary: toListedSummary(row, inboxAuthorityId),
+          stateSinceOn: readText(row, 'state_since_on'),
+        })),
     listForCourt: (stages, folios, inboxAuthorityId, offset, limit) =>
       listForCourtStatement
         .all(JSON.stringify(stages), JSON.stringify(folios), limit, offset)

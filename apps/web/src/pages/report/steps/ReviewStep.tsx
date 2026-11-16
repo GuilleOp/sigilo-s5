@@ -86,7 +86,10 @@ export function ReviewStep({ draft, destination, goToStep }: ReviewStepProps) {
   const anonymity = useAnonymityCheck(draft);
   const signals = useMemo(() => buildRiskSignals(draft), [draft]);
   const assessment = useMemo(() => riskWithAnonymity(draft, anonymity), [draft, anonymity]);
-  const actions = buildRiskActions(signals);
+  // Los consejos (la red del trabajo) no son datos que delaten: van aparte de lo que se corrige.
+  const allActions = buildRiskActions(signals);
+  const actions = allActions.filter((action) => action.kind !== 'advice');
+  const advice = allActions.filter((action) => action.kind === 'advice');
   return (
     <>
       <p>Todavía no se ha enviado nada.</p>
@@ -99,23 +102,24 @@ export function ReviewStep({ draft, destination, goToStep }: ReviewStepProps) {
             <ul>
               {actions.map((action) => (
                 <li key={action.kind}>
-                  {action.kind === 'advice' ? (
-                    action.text
-                  ) : (
-                    <button
-                      type="button"
-                      className="button button--secondary"
-                      onClick={() => runAction(action, draft, goToStep, anonymity)}
-                      data-testid={`risk-action-${action.kind}`}
-                    >
-                      {action.text}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => runAction(action, draft, goToStep, anonymity)}
+                    data-testid={`risk-action-${action.kind}`}
+                  >
+                    {action.text}
+                  </button>
                 </li>
               ))}
             </ul>
           </>
         )}
+        {advice.map((action) => (
+          <p key={action.kind} data-testid="risk-advice">
+            <strong>Consejo:</strong> {action.text}
+          </p>
+        ))}
       </RiskMeter>
       <RoutingPanel destination={destination} />
       <AnonymityNotice

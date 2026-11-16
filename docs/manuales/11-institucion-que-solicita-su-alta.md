@@ -51,17 +51,14 @@ confirmarla.»
 2. **«¿Qué hace?»:** «Investiga faltas administrativas (OIC o contraloría)», «Substanciación y
    resolución», «Titular o supervisión» o «Fiscalía de hechos de corrupción».
 3. **«¿Qué conoce?»:** «Faltas administrativas (Ley General de Responsabilidades Administrativas)» o
-   «Delitos por hechos de corrupción (Código Penal Federal)».
+   «Delitos por hechos de corrupción (…)», con el Código Penal Federal si tu institución es federal
+   o el código penal de tu entidad si es estatal o municipal.
 4. **«Quién solicita»:** «Tu nombre», «Tu cargo» y «Oficio de nombramiento (número y fecha)» («Por
    ejemplo: Oficio SC/001/2026 del 2 de enero de 2026.»).
 5. **«Personas que tendrán cuenta»:** «Persona 1: nombre» y «Persona 1: qué hará» (por ejemplo,
    «Recibe e investiga»); «Agregar otra persona» para quien substancia y resuelve, y para la
    titular o supervisión. «Cada persona tendrá su propia cuenta.» Pide al menos **dos personas que
    investiguen** si quieres poder abrir identidades (se necesitan dos aprobaciones distintas).
-
-> **Limitación conocida del prototipo.** Un OIC **estatal** ve la opción «Delitos por hechos de
-> corrupción (Código Penal Federal)», cuando en su caso aplicaría el código penal de su estado. Elige
-> faltas administrativas; si eres fiscalía estatal, anota en el oficio el código penal local.
 
 ### 5.2 Crear las llaves de tu institución
 
@@ -116,8 +113,8 @@ no la agreguen.» Si alguien te llama y te pide la **llave privada**, cuelga: nu
 
 - Agregar tu institución al directorio y crear las cuentas son pasos de línea de comandos (SESNA y
   operación del nodo), no del panel.
-- El identificador propuesto de tu autoridad puede salir cortado; pide que lo revisen.
-- El formulario ofrece el Código Penal Federal también a instituciones estatales.
+- El identificador propuesto de tu autoridad se recorta entre palabras si el nombre es largo; pide
+  que lo revisen.
 
 ## 8. Glosario breve
 

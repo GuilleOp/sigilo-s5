@@ -78,9 +78,9 @@ una posible falta grave (LGRA, art. 64, fr. II), y lo cuenta la autoridad invest
    del catálogo real de la PDN) para decidir a quién le toca.
 3. Si el sistema propuso turnar a un OIC concreto («turnar al OIC de …»), esa es la pista principal.
 
-> **Limitación conocida del prototipo.** Mientras la denuncia está «Turnada» o en el buzón,
-> «Quién sigue en el trámite» puede decir «La tabla no la asigna para este ente» en todas las filas;
-> se llena cuando una autoridad la acepta.
+Con un ente del catálogo real de la PDN, «Quién sigue en el trámite» dice primero «Consultando el
+catálogo de entes…» mientras tu navegador descarga los entes de esa entidad; después muestra las
+filas.
 
 ### 5.2 Turnar a una autoridad del nodo
 
@@ -173,7 +173,6 @@ pública (obligatoria)». No cierra la denuncia: «La investigación también es
 
 ## 7. Limitaciones conocidas del prototipo
 
-- «Quién sigue en el trámite» no asigna funciones mientras la denuncia no está aceptada.
 - Una denuncia sellada que pasa por el buzón ya no se puede abrir para la investigadora.
 - El turnado entre nodos solo funciona con denuncias anónimas.
 - Las denuncias con pruebas no entran a la cola de reenvío de la SESNA si tu nodo está caído.

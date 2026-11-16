@@ -19,9 +19,11 @@ import {
 } from '@sigilo/core';
 import type { ReceiptKeys } from '@sigilo/core';
 import type { RateLimitConfig } from '../app.ts';
+import { ComplaintDetailSchema, UNCLASSIFIED_OFFENSE_CODE } from '@sigilo/contracts';
 import {
   authorityRecipient,
   buildComplaintRequest,
+  getAsAuthority,
   createReporter,
   createTestServer,
   credentialsFor,
@@ -105,6 +107,30 @@ describe('POST tracking', () => {
     if (nextDay.receivedEvent === undefined) throw new Error('Falta el evento publicado.');
     expect(nextDay.receivedEvent.payloadDigest).toBe(view.receipt.payloadDigest);
     expect(verifyReceiptEvent(nextDay.receivedEvent, view.receipt)).toBe(true);
+  });
+
+  it('sin conducta del catálogo no muestra a la persona los plazos de falta grave (hallazgo 14b)', async () => {
+    const server = createTestServer();
+    const reporter = createReporter();
+    const request = await buildComplaintRequest(server, {
+      mode: 'anonymous',
+      reporter,
+      offenseCode: UNCLASSIFIED_OFFENSE_CODE,
+    });
+    const { folio } = await submitComplaint(server, request);
+    const view = TrackingViewSchema.parse(
+      await (await postJson(server.app, ROUTES.tracking, credentialsFor(folio, reporter))).json(),
+    );
+    const keys = view.procedure?.deadlines.map((deadline) => deadline.key) ?? [];
+    expect(keys).not.toContain('serious_offense_start');
+    expect(keys).not.toContain('prescription_serious');
+    // La autoridad conserva la lectura prudente, dicha como posibilidad.
+    const detail = ComplaintDetailSchema.parse(
+      await (await getAsAuthority(server.app, ROUTES.authorityComplaint(folio))).json(),
+    );
+    const names = detail.procedure?.deadlines.map((deadline) => deadline.name) ?? [];
+    expect(names).toContain('Iniciar la investigación (podría ser falta grave)');
+    expect(names).not.toContain('Iniciar ante una posible falta grave');
   });
 
   it('responde exactamente igual a folio inexistente y a verificador incorrecto', async () => {

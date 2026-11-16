@@ -23,7 +23,7 @@ import { ProcedurePanel } from './ProcedurePanel.tsx';
 import { AuditSignalsPanel } from './AuditSignalsPanel.tsx';
 import { ConflictPanel } from './ConflictPanel.tsx';
 import { LocalLawReferences } from './LocalLawReferences.tsx';
-import { ContextSheetPanel } from './ContextSheetPanel.tsx';
+import { ContextSheetPanel, offenseSourceLabel } from './ContextSheetPanel.tsx';
 import { PdnInstitutionPanel } from './PdnInstitutionPanel.tsx';
 import { CorroborationPanel } from './CorroborationPanel.tsx';
 import { TransferPanel } from './TransferPanel.tsx';
@@ -193,7 +193,9 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         <dt>Descripción</dt>
         <dd className="review-text">{facts.description}</dd>
       </dl>
-      {detail.contextSheet !== undefined && <ContextSheetPanel sheet={detail.contextSheet} />}
+      {detail.contextSheet !== undefined && (
+        <ContextSheetPanel sheet={detail.contextSheet} offenseSource={offenseSourceLabel(detail)} />
+      )}
       <PdnInstitutionPanel session={session} entityId={facts.entityId} />
       {detail.conflictReview !== undefined && !isCopy && (
         <ConflictPanel

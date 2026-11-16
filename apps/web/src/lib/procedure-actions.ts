@@ -32,6 +32,7 @@ import type {
   LegalStage,
   ProcedureFunction,
   ProcedureView,
+  RemedyFiledBy,
   RemedyKind,
   RemedyKindOption,
   StageTransition,
@@ -498,4 +499,17 @@ export function precautionaryWaitFor(
 /** Nombre de una etapa (administrativa o penal). */
 export function stageName(stage: LegalStage | undefined): string | undefined {
   return stage === undefined ? undefined : findLegalStage(stage)?.name;
+}
+
+/**
+ * Quién presentó el recurso, dentro de los que el recurso admite: si la elección del borrador no
+ * cabe (por ejemplo, «persona denunciante» en una revocación, que solo presenta la persona
+ * señalada), la primera que sí. Con un selector de una sola opción, el navegador mostraba esa
+ * opción pero se enviaba la otra y el nodo respondía 400 (hallazgo 10).
+ */
+export function remedyFiler(
+  kind: Pick<RemedyKindOption, 'filedBy'>,
+  chosen: RemedyFiledBy,
+): RemedyFiledBy {
+  return kind.filedBy.includes(chosen) ? chosen : (kind.filedBy[0] ?? chosen);
 }

@@ -7,6 +7,7 @@ import { functionTableFor } from '@sigilo/red';
 import { createNetworkFixture } from '../../../../../packages/red/src/test-fixtures.ts';
 import { nodeForJurisdiction } from '../../network/ventanilla-api.ts';
 import { NextFunctionsPanel } from '../authority/NextFunctionsPanel.tsx';
+import { loadEntityFragment } from '../../catalogs/entity-catalog.ts';
 import { QUERETARO_NAMES } from '@sigilo/red';
 import {
   CoverageTable,
@@ -152,6 +153,35 @@ describe('quién sigue en el trámite', () => {
     expect(html).not.toContain('Contraloría Ficticia de Oaxaca (resolutora)');
     // Sin CPC en Oaxaca: la tabla no asigna observador.
     expect(html).toContain('La tabla no la asigna para este ente.');
+  });
+
+  it('con un ente real, espera su fragmento antes de decir quién sigue (hallazgo 7)', async () => {
+    const panel = (
+      <NextFunctionsPanel
+        detail={detail({ stateCode: '22', entityId: 'PDN-22-7101' })}
+        directory={directory}
+      />
+    );
+    // Antes de que llegue el fragmento no se sabe el orden de gobierno: no se dice «no la asigna».
+    const before = renderToStaticMarkup(panel);
+    expect(before).toContain('Consultando el catálogo de entes…');
+    expect(before).not.toContain('La tabla no la asigna para este ente.');
+    await loadEntityFragment('22', () =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            version: 1,
+            entidad: { clave: '22', nombre: 'Querétaro' },
+            fuente: { nombre: 'Prueba', url: 'https://ejemplo.invalid', descargado: '2026-11-16' },
+            formato: ['id', 'nombre', 'ordenGobierno', 'municipio', 'nombrePdn?'],
+            entes: [['PDN-22-7101', 'Secretaría Ficticia de Prueba', 'E', null]],
+          }),
+      }),
+    );
+    const after = renderToStaticMarkup(panel);
+    expect(after).not.toContain('Consultando el catálogo de entes…');
+    expect(after).toContain(QUERETARO_NAMES.sala);
   });
 
   it('una entidad sin tabla lo dice', () => {

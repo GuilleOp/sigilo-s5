@@ -1,7 +1,9 @@
 // Pruebas del acomodo de nombres en el grafo del conflicto: dos líneas sin truncar y, si no cabe,
 // solo se abrevia la razón social.
 import { describe, expect, it } from 'vitest';
-import { organizationLines, wrapWords } from './ConflictGraph.tsx';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ConflictGraph, organizationLines, spacedLines, wrapWords } from './ConflictGraph.tsx';
 
 describe('grafo del conflicto', () => {
   it('parte por palabras sin cortar ninguna', () => {
@@ -34,5 +36,13 @@ describe('grafo del conflicto', () => {
       'Fundación Ficticia para el Desarrollo Comunitario Sustentable del Sureste Mexicano, A.C.',
     );
     expect(lines.length).toBe(2);
+  });
+
+  it('las líneas no pegan las palabras al copiarlas y la píldora lleva el nombre completo', () => {
+    const name = 'Inmobiliaria Ficticia Ejemplo, S.A. de C.V.';
+    expect(spacedLines(organizationLines(name)).join('')).toBe(name);
+    const html = renderToStaticMarkup(createElement(ConflictGraph, { organizations: [name] }));
+    expect(html).toContain(`<title>${name}</title>`);
+    expect(html.replace(/<[^>]+>/gu, '')).toContain(`${name}${name}`);
   });
 });

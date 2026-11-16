@@ -3,7 +3,8 @@
 // Orienta a la autoridad; nunca decide.
 import { Fragment } from 'react';
 import { TableScroll } from '../../components/TableScroll.tsx';
-import type { ContextSheetView } from '@sigilo/contracts';
+import { findState } from '@sigilo/contracts';
+import type { ComplaintDetail, ContextSheetView } from '@sigilo/contracts';
 import { SystemBadge, systemOfSource } from '../../components/a/SystemBadge.tsx';
 
 /** Fuente de los factores que no vienen de un registro externo, por clave del factor. */
@@ -12,10 +13,36 @@ const INTERNAL_SOURCES: Readonly<Record<string, string>> = {
   'independent-corroboration': 'Corroboración ciega (índice de coincidencias)',
 };
 
+/**
+ * Fuente del factor «falta grave»: el catálogo de conductas con el código penal que cita el caso.
+ * Si los artículos equivalentes del S5 son de un código penal estatal, lo nombra (por ejemplo,
+ * «LGRA y Código Penal de Querétaro»); si no, el federal.
+ */
+export function offenseSourceLabel(
+  detail: Pick<ComplaintDetail, 's5References' | 'facts'>,
+): string {
+  const citesStatePenalCode = (detail.s5References ?? []).some(
+    (reference) => /C[OÓ]DIGO PENAL/iu.test(reference.law) && !/FEDERAL/iu.test(reference.law),
+  );
+  const state = findState(detail.facts.stateCode);
+  return citesStatePenalCode && state !== undefined
+    ? `Catálogo de conductas (LGRA y Código Penal de ${state.name})`
+    : (INTERNAL_SOURCES['offense-grave'] ?? '');
+}
+
 /** Fuente con su distintivo si es un sistema de la PDN o la lista 69-B. */
-function SourceCell({ source, factorId }: { source: string | null; factorId?: string }) {
+function SourceCell({
+  source,
+  factorId,
+  offenseSource,
+}: {
+  source: string | null;
+  factorId?: string;
+  offenseSource?: string;
+}) {
   const system = systemOfSource(source);
   const fallback =
+    (factorId === 'offense-grave' ? offenseSource : undefined) ??
     (factorId === undefined ? undefined : INTERNAL_SOURCES[factorId]) ??
     'La denuncia u otra fuente externa';
   return (
@@ -28,10 +55,12 @@ function SourceCell({ source, factorId }: { source: string | null; factorId?: st
 
 interface ContextSheetPanelProps {
   sheet: ContextSheetView;
+  /** Fuente del factor «falta grave» según el código que cita el caso (`offenseSourceLabel`). */
+  offenseSource?: string;
 }
 
 /** Ficha de contexto de la denuncia. */
-export function ContextSheetPanel({ sheet }: ContextSheetPanelProps) {
+export function ContextSheetPanel({ sheet, offenseSource }: ContextSheetPanelProps) {
   return (
     <section
       className="card context-sheet"
@@ -70,7 +99,11 @@ export function ContextSheetPanel({ sheet }: ContextSheetPanelProps) {
               </p>
               <p>{factor.reason}</p>
               <p className="source">
-                <SourceCell source={factor.source} factorId={factor.id} />
+                <SourceCell
+                  source={factor.source}
+                  factorId={factor.id}
+                  {...(offenseSource === undefined ? {} : { offenseSource })}
+                />
               </p>
             </li>
           ))}
@@ -100,7 +133,11 @@ export function ContextSheetPanel({ sheet }: ContextSheetPanelProps) {
                   </td>
                   <td>{factor.reason}</td>
                   <td>
-                    <SourceCell source={factor.source} factorId={factor.id} />
+                    <SourceCell
+                      source={factor.source}
+                      factorId={factor.id}
+                      {...(offenseSource === undefined ? {} : { offenseSource })}
+                    />
                   </td>
                 </tr>
               ))}

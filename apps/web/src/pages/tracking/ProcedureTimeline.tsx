@@ -16,6 +16,7 @@ import { describeRemaining } from '../../lib/deadline-text.ts';
 import {
   ABSTENTION_HEADLINE,
   appealWindow,
+  isCurrentShown,
   isEscalated,
   NON_SERIOUS_HEADLINE,
   nextStep,
@@ -141,11 +142,7 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
   const headline = procedure === undefined ? null : procedureHeadline(procedure);
   const newFolio = procedure === undefined ? null : transferredFolio(procedure);
   const next = procedure === undefined ? null : nextStep(procedure);
-  // Sin etapa legal, el estado vigente es el del último paso (por ejemplo, «Aceptada»).
-  const isLastStepCurrent =
-    procedure !== undefined &&
-    procedure.legalStage === undefined &&
-    procedure.steps.at(-1)?.managementState === procedure.managementState;
+  const isLastStepCurrent = procedure !== undefined && isCurrentShown(procedure);
   return (
     <section
       className="card procedure"
@@ -207,7 +204,10 @@ export function ProcedureTimeline({ view, onFollowFolio, onFileAppeal }: Procedu
             )}
             {procedure.legalStageName !== undefined && (
               <p className="source" data-testid="tracking-legal-stage">
-                Etapa legal actual: {procedure.legalStageName}.
+                {procedure.managementState === 'closed'
+                  ? 'Última etapa legal'
+                  : 'Etapa legal actual'}
+                : {procedure.legalStageName}.
               </p>
             )}
             {procedure.criminalStageName !== undefined && (

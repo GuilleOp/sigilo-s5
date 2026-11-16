@@ -148,8 +148,8 @@ Adquisiciones pidió a varios proveedores una cooperación de 5 por ciento del m
 liberar sus órdenes de compra.» Evita frases como «Soy la única auxiliar del área» o números de
 expediente.
 
-> **Limitación conocida del prototipo.** En la lista de oficinas, si la primera opción ya está
-> resaltada, una flecha abajo con el teclado elige la segunda. Revisa lo que quedó elegido.
+Con el teclado: escribe para filtrar, baja con la flecha a la primera opción y elige con Enter.
+Escribir no marca ninguna opción; la flecha abajo empieza por la primera.
 
 #### Paso 3 «Pruebas»: Agrega pruebas (opcional)
 
@@ -173,6 +173,10 @@ o quítalas.»
   pantalla sugiere guardar notas y enviar más tarde.
 - **Ciudadana** (si marcaste que no trabajas ahí): «Cómo protegerte», con consejos como «Quita
   números de trámite, placas o tu dirección.» y «Si puedes, envíala unos días después de tu visita.»
+  A ti no te sale el consejo sobre la red de tu trabajo.
+- Con riesgo medio o alto, el semáforo dice **«Lo que más pesa:»** y la razón principal; el resto
+  está en «Ver por qué». El consejo sobre la red del trabajo, si aplica, sale aparte como
+  «Consejo:»; no es un dato que te delate.
 - **«Tu denuncia llega a»**: la autoridad propuesta, con «Es la que puede investigar la oficina y la
   conducta que elegiste.» y «¿Por qué ahí?». «Cambiar a quién va» abre «Elige a quién enviarla»,
   con «Propuesta», «También competente» y «Elegir otra autoridad del directorio».
@@ -186,8 +190,6 @@ o quítalas.»
 > - Si eliges **identidad sellada** y la denuncia va al **buzón general**, tu nombre se sella con la
 >   llave del buzón, y después la autoridad investigadora no podrá abrirlo. Si necesitas que se
 >   pueda abrir (por ejemplo, para protección o inconformidad), no la mandes al buzón.
-> - El aviso «Hay datos que podrían delatarte» puede salir solo por el consejo sobre redes de
->   trabajo, aunque hayas dicho que no trabajas en esa oficina.
 
 #### Paso 5 «Envío»: Envía tu denuncia
 
@@ -223,17 +225,16 @@ pruebas, la SESNA la guarda en cola hasta 7 días y te da un acuse; con pruebas,
 | Vista al Ministerio Público | Las dos vías: la administrativa y «Vista al Ministerio Público»                                   |
 | Final                       | «Concluida con sanción firme» u otro cierre con su fundamento                                     |
 
-> **Limitación conocida del prototipo** (textos del seguimiento):
->
-> - La etapa «RECIBIDA» dice «llegó al buzón general» aunque haya ido directo a la autoridad.
-> - «IPRA presentado» puede aparecer dos veces (con fecha y con «ahora»).
-> - En «Sentencia», «Lo que sigue» dice que notifica la Contraloría; en la vía grave notifica el
->   Tribunal (LGRA, art. 209, fr. V).
-> - Después del cierre, «Estado:» puede seguir en «Sanción ejecutada» aunque la denuncia ya esté
->   «Concluida con sanción firme».
-> - La sentencia ya no se declara firme antes de que terminen los 15 días hábiles para apelar,
->   pero el sistema los cuenta **desde que se dicta**, no desde que te la notifican. Si quieres
->   apelar, presenta tu escrito cuanto antes y avisa por el buzón.
+Si la ventanilla única envió tu denuncia directo a la autoridad, «Recibida» lo dice («la ventanilla
+única la envió directo a la autoridad competente»); solo si pasó por el buzón general dice que llegó
+ahí. En las etapas del Tribunal, «Lo que sigue» nombra al Tribunal, que notifica su sentencia (LGRA,
+art. 209, fr. V). Al cerrar, «Estado:» dice cómo concluyó (por ejemplo, «Concluida con sanción
+firme»), igual que el panel de la autoridad. Si tu denuncia es «Ninguna se parece», no verás los
+plazos de falta grave hasta que la autoridad la califique.
+
+> **Limitación conocida del prototipo.** La sentencia ya no se declara firme antes de que terminen
+> los 15 días hábiles para apelar, pero el sistema los cuenta **desde que se dicta**, no desde que
+> te la notifican. Si quieres apelar, presenta tu escrito cuanto antes y avisa por el buzón.
 
 ### 5.3 Mensajes con la autoridad
 
@@ -340,7 +341,6 @@ sistema detecta una apertura que no te mostró, te avisa y te pide guardar tu fo
   criptográfico.
 - Una denuncia sellada que pasa por el buzón general ya no se puede abrir para la investigadora.
 - Las denuncias con identidad sellada no se pueden turnar a otro nodo.
-- Varios textos del seguimiento están por corregir (ver 5.2).
 - El plazo para apelar se cuenta desde la sentencia, no desde que te la notifican.
 - La accesibilidad está revisada con herramientas y teclado; falta probarla con lectores de pantalla
   y con personas.

@@ -158,7 +158,23 @@ function authorityName(ctx: AppContext, authorityId: string): string {
   return ctx.authorities.authority(authorityId)?.name ?? 'otra autoridad';
 }
 
-function stepView(ctx: AppContext, step: StoredStep, audience: ProcedureAudience): ProcedureStep {
+/** La ventanilla única la turnó sola al recibirla: el paso siguiente es un turnado del sistema. */
+function wentStraightToAuthority(step: StoredStep, next: StoredStep | undefined): boolean {
+  return (
+    step.action === 'received' &&
+    next !== undefined &&
+    next.action === 'routed' &&
+    next.actorId === null &&
+    next.legalOn === step.legalOn
+  );
+}
+
+function stepView(
+  ctx: AppContext,
+  step: StoredStep,
+  audience: ProcedureAudience,
+  next?: StoredStep,
+): ProcedureStep {
   const state = findManagementState(step.managementState);
   const criminal = criminalStageOfStep(step);
   const stageKey = criminal ?? step.legalStage;
@@ -212,6 +228,12 @@ function stepView(ctx: AppContext, step: StoredStep, audience: ProcedureAudience
     titles[step.action] = `Registro de actuación del Tribunal: ${titles[step.action]}`;
   }
   const explanations: Partial<Record<StoredStep['action'], string>> = {
+    ...(wentStraightToAuthority(step, next)
+      ? {
+          received:
+            'Tu denuncia llegó al nodo y la ventanilla única la envió directo a la autoridad competente según el directorio de la red.',
+        }
+      : {}),
     stage_advanced: stage?.explanation ?? '',
     closed: reason?.explanation ?? '',
     conflict_excused:
@@ -343,12 +365,31 @@ function remedyViews(
   });
 }
 
-function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: string): DeadlineView[] {
+/**
+ * Plazos de falta grave que se suponen sin conducta del catálogo («Ninguna se parece»): la regla
+ * prudente los mantiene para la autoridad (LGRA, art. 64 fr. II), con un nombre que dice que es una
+ * posibilidad; a la persona no se le presentan como si su denuncia ya fuera de falta grave.
+ */
+const ASSUMED_SERIOUS_NAMES: Partial<Record<DeadlineView['key'], string>> = {
+  serious_offense_start: 'Iniciar la investigación (podría ser falta grave)',
+  prescription_serious: 'Prescripción si resulta falta grave',
+};
+
+function deadlineViews(
+  ctx: AppContext,
+  complaint: ComplaintRecord,
+  today: string,
+  audience: ProcedureAudience,
+): DeadlineView[] {
   const snapshot = procedureSnapshot(ctx, complaint);
   const isAccepted = complaint.managementState === 'accepted';
+  const isUnclassified =
+    offenseSeverity(complaint.facts.offenseCode) === undefined && snapshot.qualifiedOn === null;
   return activeDeadlines(snapshot, { isAccepted }).flatMap((deadline) => {
     const rule = findDeadlineRule(deadline.key);
     if (rule === undefined) return [];
+    const assumedName = isUnclassified ? ASSUMED_SERIOUS_NAMES[deadline.key] : undefined;
+    if (assumedName !== undefined && audience === 'reporter') return [];
     try {
       const evaluation = evaluateDeadline(deadline.key, deadline.startsOn, today, {
         calendar: nodeCalendar(ctx),
@@ -365,7 +406,7 @@ function deadlineViews(ctx: AppContext, complaint: ComplaintRecord, today: strin
       return [
         {
           key: deadline.key,
-          name: rule.name,
+          name: assumedName ?? rule.name,
           explanation: rule.explanation,
           startsOn: deadline.startsOn,
           dueOn: evaluation.dueOn,
@@ -508,8 +549,8 @@ export function buildProcedureView(
     steps: ctx.procedure
       .listSteps(complaint.folio)
       .filter((step) => isVisibleTo(step, audience))
-      .map((step) => stepView(ctx, step, audience)),
-    deadlines: deadlineViews(ctx, complaint, today),
+      .map((step, index, visible) => stepView(ctx, step, audience, visible[index + 1])),
+    deadlines: deadlineViews(ctx, complaint, today, audience),
     rules: ctx.procedure.listRuleTriggers(complaint.folio).map(ruleTriggerView),
   };
 }

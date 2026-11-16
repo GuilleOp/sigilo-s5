@@ -47,6 +47,12 @@ export function RiskMeter({ assessment, children }: RiskMeterProps) {
         {LEVEL_TEXT[assessment.level]}
       </h3>
       <p>{LEVEL_HINT[assessment.level]}</p>
+      {assessment.level !== 'low' && assessment.reasons[0] !== undefined && (
+        // La razón que más pesa, a la vista: el resto sigue en «Ver por qué».
+        <p data-testid="risk-main-reason">
+          <strong>Lo que más pesa:</strong> {assessment.reasons[0].text}
+        </p>
+      )}
       {children}
       {assessment.reasons.length > 0 && (
         <details className="more">

@@ -194,6 +194,36 @@ describe('catálogo de transiciones', () => {
   });
 });
 
+describe('bandeja de la substanciación (hallazgo 13)', () => {
+  async function inbox(server: TestServer, name: TestAccountName): Promise<string[]> {
+    const response = await getAsAuthority(server.app, ROUTES.authorityComplaints, testToken(name));
+    expect(response.status).toBe(200);
+    return ((await response.json()) as { folio: string }[]).map((item) => item.folio);
+  }
+
+  it('no lista lo turnado sin aceptar ni lo que se investiga; sí desde el IPRA', async () => {
+    const { server, folio } = await setup();
+    await ok(server, 'inboxIntake', folio, {
+      action: 'route',
+      authorityId: TEST_AUTHORITIES.oic,
+      note: 'Se turna al órgano interno de control del ente (nota sintética).',
+    });
+    expect(await inbox(server, 'oicSubstantiation')).not.toContain(folio);
+    // La recepción del OIC sí la ve turnada.
+    expect(await inbox(server, 'oicIntake')).toContain(folio);
+    await ok(server, 'oicIntake', folio, { action: 'accept' });
+    await advance(server, 'oicInvestigator', folio, 'investigation');
+    expect(await inbox(server, 'oicSubstantiation')).not.toContain(folio);
+    await ok(server, 'oicInvestigator', folio, {
+      action: 'advance_stage',
+      stage: 'qualification',
+      qualification: qualification('serious'),
+    });
+    await advance(server, 'oicInvestigator', folio, 'report_filed');
+    expect(await inbox(server, 'oicSubstantiation')).toContain(folio);
+  });
+});
+
 describe('falta grave: del IPRA al Tribunal', () => {
   it('la substanciación admite, emplaza y celebra la audiencia; el Tribunal recibe y resuelve', async () => {
     const { server, folio, reporter } = await toInitialHearing('serious');

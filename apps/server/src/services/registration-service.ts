@@ -74,16 +74,27 @@ export function registrationView(ctx: AppContext, record: RegistrationRecord): R
   };
 }
 
-/** Identificador corto y estable a partir del nombre: minúsculas, sin acentos, con guiones. */
-function slugOf(name: string): string {
-  const slug = name
+/** Largo máximo del identificador propuesto (sin el prefijo `authority.`). */
+const SLUG_MAX = 48;
+
+/**
+ * Identificador corto y estable a partir del nombre: minúsculas, sin acentos, con guiones. Si es
+ * largo, se corta entre palabras («…-de-la», no «…-de-la-secreta»); una sola palabra muy larga se
+ * corta en el tope.
+ */
+export function slugOf(name: string): string {
+  const full = name
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/gu, '-')
-    .replace(/^-+|-+$/gu, '')
-    .slice(0, 48)
-    .replace(/-+$/u, '');
+    .replace(/^-+|-+$/gu, '');
+  let slug = full;
+  if (full.length > SLUG_MAX) {
+    const head = full.slice(0, SLUG_MAX + 1);
+    const boundary = head.lastIndexOf('-');
+    slug = (boundary > 0 ? head.slice(0, boundary) : full.slice(0, SLUG_MAX)).replace(/-+$/u, '');
+  }
   return slug === '' ? 'autoridad' : slug;
 }
 

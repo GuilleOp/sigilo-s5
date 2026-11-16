@@ -120,6 +120,8 @@ describe('flujo completo', () => {
       'routed',
       'returned_to_inbox',
     ]);
+    // La turnó el buzón (no la ventanilla única al recibirla): la recepción sí dice buzón general.
+    expect(view.procedure?.steps[0]?.explanation).toContain('buzón general');
     expect(view.identityAccess).toHaveLength(1);
     expect(view.messages.map((message) => [message.from, message.sequence])).toEqual([
       ['reporter', 0],

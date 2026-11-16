@@ -101,8 +101,10 @@ Casi todo se hace en la tarjeta **«Trámite»**: eliges «Acción», llenas los
   falta grave (LGRA 64)» de 30 dn corre desde la recepción. Si no actúas, la supervisión recibe el
   escalamiento «Falta grave sin iniciar el procedimiento a los 30 días».
 
-> **Limitación conocida del prototipo.** Una denuncia «sin clasificar» ya muestra «Iniciar ante una
-> posible falta grave (30 días)», aunque nadie la haya calificado.
+Con una denuncia «sin clasificar» («Ninguna se parece»), el plazo se llama «Iniciar la
+investigación (podría ser falta grave)» y la prescripción «Prescripción si resulta falta grave»:
+SIGILO mantiene la lectura prudente del art. 64, fr. II, sin decir que ya es grave. La persona
+denunciante no ve esos dos plazos hasta que califiques.
 
 ### 5.3 Revisar el contexto
 
@@ -203,9 +205,6 @@ su cargo mientras dura el procedimiento.` → «Aplicar».
 - **Después de excusarte:** «Tu función no tiene acciones del trámite en este estado.» Solo puedes
   reasignar, devolver o turnar.
 
-> **Limitación conocida del prototipo.** En la tarjeta, las etiquetas del grafo pueden perder
-> espacios («Inmobiliaria FicticiaEjemplo»).
-
 ### 5.10 Dar vista al Ministerio Público (vía penal en paralelo)
 
 - «Acción»: **«Dar vista al Ministerio Público»**. «La vía penal corre aparte y al mismo tiempo: la
@@ -248,8 +247,11 @@ aportaciones del Ramo 33.` → **«Dar vista»**.
   (FGR). «Es una guía: el sistema no decide la competencia.» Si la competencia es federal, turna al
   nodo Federal (5.12); la investigación local puede seguir.
 
-> **Limitación conocida del prototipo.** «Se dio aviso» no dice a qué autoridades. El aviso queda
-> registrado, pero no se envía: avisa por los medios oficiales.
+Después verás «Se dio aviso el … a: …» con las autoridades que marcaste (por ejemplo, «Auditoría
+Superior de la Federación (ASF) y Secretaría Anticorrupción y Buen Gobierno (SABG)»).
+
+> **Limitación conocida del prototipo.** El aviso queda registrado, pero no se envía: avisa por los
+> medios oficiales.
 
 ### 5.12 Turnar a otro nodo (solo denuncias anónimas)
 
@@ -297,13 +299,16 @@ autoridad», «Nota pública para la persona» y «Turnar a otro nodo». Dentro 
   penal» (CNPP, art. 109, fr. XXVI; arts. 218 a 220; o art. 131, fr. IX), «Número de la resolución
   o del requerimiento» y «Motivo».
 - **Fundamento:** LGRA, arts. 64 y 91. **La persona ve:** la apertura y su fundamento.
+- «Aperturas registradas: N» cuenta las aperturas aprobadas y las entregas del sobre para el
+  recurso. El aviso de inconformidad solo autoriza abrirla para el recurso: la tarjeta lo dice y no
+  cuenta hasta la entrega. En `/verificar`, la bitácora pública sí registra ese aviso como evento
+  `identity.opened`, así que los dos números pueden no coincidir.
 
 > **Limitación conocida del prototipo.**
 >
 > - La regla de dos personas la aplica el nodo; no es un umbral criptográfico.
 > - Si la denuncia sellada pasó por el buzón, verás «La identidad de esta denuncia se selló con otra
 >   llave…»: no se puede abrir.
-> - La tarjeta puede decir «Aperturas registradas: 1» cuando solo hay un aviso de inconformidad.
 
 ### 5.15 Registrar la inconformidad firmada y aprobar la entrega del nombre
 
