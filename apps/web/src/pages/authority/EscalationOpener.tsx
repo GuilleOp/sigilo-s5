@@ -3,7 +3,7 @@
 // sobre de escalamiento, lo abre en este navegador con su llave y lo compara con el registro
 // público. Nunca trae la identidad.
 import { useCallback, useEffect, useState } from 'react';
-import { findEntity, findMunicipality, findOffense, findState } from '@sigilo/contracts';
+import { findMunicipality, findOffense, findState } from '@sigilo/contracts';
 import type { EvidenceDescriptor } from '@sigilo/contracts';
 import { decodeFileKey } from '@sigilo/core';
 import type { EscalationGroupEntry } from '../../lib/escalation-groups.ts';
@@ -18,6 +18,7 @@ import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
 import { EvidenceGallery } from './EvidenceGallery.tsx';
+import { EntityName } from '../../catalogs/EntityName.tsx';
 
 interface EscalationOpenerProps {
   session: AuthoritySession;
@@ -225,7 +226,9 @@ function OpenedContent({
           {municipality ? `, ${municipality}` : ' (sin municipio)'}
         </dd>
         <dt>Oficina o institución de gobierno</dt>
-        <dd>{findEntity(facts.entityId)?.name ?? facts.entityId}</dd>
+        <dd>
+          <EntityName entityId={facts.entityId} />
+        </dd>
         <dt>Conducta</dt>
         <dd>{findOffense(facts.offenseCode)?.label ?? facts.offenseCode}</dd>
         <dt>Periodo</dt>

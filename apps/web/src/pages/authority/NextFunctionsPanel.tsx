@@ -2,7 +2,6 @@
 // entidad de los hechos (o el nodo federal, para un ente federal): substanciación, resolución,
 // tribunal, supervisión y vía penal. La vigilancia del sistema (CPC) va aparte: no ve el caso. Sale
 // del directorio verificado; nada se pide al servidor.
-import { findEntity } from '@sigilo/contracts';
 import type { AuthorityDirectory, ComplaintDetail, NodeFunction } from '@sigilo/contracts';
 import {
   assignmentsFor,
@@ -12,6 +11,7 @@ import {
   stateDisplayName,
 } from '@sigilo/red';
 import { functionRulesOf } from '@sigilo/contracts';
+import { useEntityLookup } from '../../catalogs/entity-catalog.ts';
 import { formatDayDate } from '../../lib/format.ts';
 
 /** Funciones siguientes que se muestran en el detalle. */
@@ -36,7 +36,10 @@ interface NextFunctionsPanelProps {
 /** Panel «Quién sigue»: la institución de cada función siguiente según la tabla. */
 export function NextFunctionsPanel({ detail, directory }: NextFunctionsPanelProps) {
   const { facts } = detail;
-  const level = findEntity(facts.entityId)?.level ?? null;
+  // El ente real llega con su fragmento: con `findEntity` (no reactivo) la primera carga no tenía
+  // orden de gobierno y todas las filas decían «La tabla no la asigna».
+  const { entity, isLoading } = useEntityLookup(facts.entityId);
+  const level = entity?.level ?? null;
   const table = functionTableFor(directory, level === 'federal' ? null : facts.stateCode);
   const where = level === 'federal' ? 'federal' : `de ${stateDisplayName(facts.stateCode)}`;
   const severity = detail.procedure?.qualification?.severity;
@@ -47,7 +50,9 @@ export function NextFunctionsPanel({ detail, directory }: NextFunctionsPanelProp
       data-testid="next-functions-panel"
     >
       <h3 id="next-functions-title">Quién sigue en el trámite</h3>
-      {table === undefined ? (
+      {isLoading ? (
+        <p data-testid="next-functions-loading">Consultando el catálogo de entes…</p>
+      ) : table === undefined ? (
         <p data-testid="next-functions-missing">
           El directorio firmado no tiene la tabla de funciones del nodo {where}: esa entidad todavía
           no declara quién cumple cada función.
