@@ -10,6 +10,8 @@ import {
   LegalClosureReasonSchema,
   LegalStageSchema,
   ManagementStateSchema,
+  NotificationRecipientSchema,
+  NotifiedActSchema,
   PrecautionaryOutcomeSchema,
   ProcedureActionSchema,
   ReferralDestinationSchema,
@@ -62,6 +64,10 @@ export const StepDetailsSchema = z.object({
   funding: FederalFundingSchema.optional(),
   recipients: z.array(z.enum(['asf', 'sabg', 'fgr'])).optional(),
   registryReference: z.string().optional(),
+  /** Notificación del acto (`notification_recorded`): cuál, qué día y a quién. */
+  notifiedAct: NotifiedActSchema.optional(),
+  notifiedOn: z.string().optional(),
+  notificationRecipients: z.array(NotificationRecipientSchema).optional(),
   /** Siguiente secuencia del buzón de la autoridad al momento del acto (notificación, H6). */
   authoritySequence: z.number().int().nonnegative().optional(),
 });

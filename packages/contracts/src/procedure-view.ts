@@ -17,6 +17,8 @@ import {
   LegalClosureReasonSchema,
   LegalStageSchema,
   ManagementStateSchema,
+  NotificationRecipientSchema,
+  NotifiedActSchema,
   PrecautionaryOutcomeSchema,
   ProcedureActionSchema,
   RemedyFiledBySchema,
@@ -268,6 +270,21 @@ const RecordWithdrawalActionSchema = z.strictObject({
   action: z.literal('record_withdrawal'),
   note: PublicNoteSchema,
 });
+const RecordNotificationActionSchema = z.strictObject({
+  action: z.literal('record_notification'),
+  notifiedOn: LegalDaySchema.optional().meta({
+    description:
+      'Día en que se notificó (hora del centro de México). Sin este campo, el día de hoy según el reloj del nodo. No puede ser anterior al acto ni posterior a hoy.',
+  }),
+  recipients: z
+    .array(NotificationRecipientSchema)
+    .min(1)
+    .max(4)
+    .refine((items) => new Set(items).size === items.length, 'Destinatario repetido')
+    .meta({ description: 'A quién se notificó el acto.' }),
+  note: PublicNoteSchema.optional(),
+  courtRecord: CourtRecordSchema.optional(),
+});
 const RespondConflictActionSchema = z.strictObject({
   action: z.literal('respond_conflict'),
   response: z.enum(['excuse', 'justification']).meta({
@@ -302,10 +319,11 @@ export const ProcedureActionRequestSchema = z
     SendFederalNoticeActionSchema,
     RegisterSanctionActionSchema,
     RecordWithdrawalActionSchema,
+    RecordNotificationActionSchema,
   ])
   .meta({
     description:
-      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification, request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
+      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification, request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction, record_withdrawal o record_notification (la notificación de la calificación, la abstención, la resolución o la sentencia, desde la que corren los plazos de los recursos). Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
   });
 export type ProcedureActionRequest = z.infer<typeof ProcedureActionRequestSchema>;
 
@@ -355,6 +373,14 @@ export const ProcedureStepRecordSchema = z
       .string()
       .optional()
       .meta({ description: 'Referencia de la inscripción de la sanción en el S3.' }),
+    notifiedAct: NotifiedActSchema.optional(),
+    notifiedOn: LegalDaySchema.optional().meta({
+      description: 'Día de la notificación: desde él corren los plazos para impugnar el acto.',
+    }),
+    notificationRecipients: z
+      .array(NotificationRecipientSchema)
+      .optional()
+      .meta({ description: 'A quién se notificó el acto.' }),
   })
   .meta({ description: 'Datos del acto registrados con el paso.' });
 export type ProcedureStepRecord = z.infer<typeof ProcedureStepRecordSchema>;
@@ -604,6 +630,19 @@ export const ProcedureViewSchema = z
       })
       .optional()
       .meta({ description: 'Inscripción de la sanción en el S3, registrada como acto.' }),
+    notification: z
+      .object({
+        act: NotifiedActSchema,
+        notifiedOn: LegalDaySchema,
+        recipients: z
+          .array(NotificationRecipientSchema)
+          .meta({ description: 'A quién se notificó el acto.' }),
+      })
+      .optional()
+      .meta({
+        description:
+          'Notificación de la resolución o de la sentencia vigente (la última registrada): desde ella corren los plazos de los recursos y, vencidos, procede la firmeza.',
+      }),
     steps: z
       .array(ProcedureStepSchema)
       .meta({ description: 'Pasos del más antiguo al más reciente.' }),

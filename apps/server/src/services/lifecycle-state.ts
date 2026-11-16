@@ -14,6 +14,8 @@ import type {
   CriminalStage,
   FederalFunding,
   LegalStage,
+  NotificationRecipient,
+  NotifiedAct,
   PrecautionaryOutcome,
   RemedyFiledBy,
   RemedyKind,
@@ -36,6 +38,15 @@ export interface RemedyState {
   outcome: RemedyOutcome | null;
   resolvedOn: string | null;
   /** Posición del paso en que se presentó. */
+  position: number;
+}
+
+/** Notificación registrada de un acto (`notification_recorded`). */
+export interface NotificationState {
+  act: NotifiedAct;
+  notifiedOn: string;
+  recipients: NotificationRecipient[];
+  /** Posición del paso en que se registró. */
   position: number;
 }
 
@@ -72,6 +83,14 @@ export interface LifecycleState {
    * la denuncia en su bandeja como copia de lectura y lleva la vía penal.
    */
   criminalReferral: { legalOn: string; authorityId: string | null } | null;
+  /** Notificaciones registradas, en orden. */
+  notifications: NotificationState[];
+  /**
+   * Última notificación de la resolución o de la sentencia registrada en la etapa vigente: desde
+   * ella corren los plazos de los recursos y la firmeza (LGRA, arts. 208 fr. XI, 209 fr. V, 210,
+   * 215 y 220). `null` si no se ha notificado.
+   */
+  stageNotification: NotificationState | null;
   /** Funciones que ejerció cada cuenta en esta denuncia. */
   functionsByActor: ReadonlyMap<string, ReadonlySet<ActingFunction>>;
 }
@@ -113,6 +132,8 @@ export function lifecycleStateOf(
   currentCriminalStage: CriminalStage | null,
 ): LifecycleState {
   let stageEnteredOn: string | null = null;
+  let stageEnteredPosition = -1;
+  const notifications: NotificationState[] = [];
   let previousStage: string | null = null;
   let criminalStageEnteredOn: string | null = null;
   let previousCriminal: CriminalStage | null = null;
@@ -132,6 +153,7 @@ export function lifecycleStateOf(
       step.legalStage !== null && ADMINISTRATIVE_KEYS.has(step.legalStage) ? step.legalStage : null;
     if (stage !== previousStage) {
       stageEnteredOn = stage === null ? null : step.legalOn;
+      stageEnteredPosition = position;
       previousStage = stage;
       // La reclasificación pendiente es de la etapa del Tribunal en que se ordenó.
       reclassificationOrderedOn = null;
@@ -220,6 +242,16 @@ export function lifecycleStateOf(
           registryReference: details.registryReference ?? '',
         };
         break;
+      case 'notification_recorded':
+        if (details.notifiedAct !== undefined) {
+          notifications.push({
+            act: details.notifiedAct,
+            notifiedOn: details.notifiedOn ?? step.legalOn,
+            recipients: details.notificationRecipients ?? [],
+            position,
+          });
+        }
+        break;
       case 'criminal_referral_filed':
         criminalReferral = {
           legalOn: step.legalOn,
@@ -232,6 +264,20 @@ export function lifecycleStateOf(
   });
   // Si la etapa actual no coincide con la de los pasos (datos migrados), no se sabe desde cuándo.
   const isCurrent = previousStage === currentStage;
+  // La última notificación (la más tardía) de la resolución o la sentencia de la etapa vigente.
+  const stageNotification =
+    notifications
+      .filter(
+        (item) =>
+          isCurrent &&
+          item.position > stageEnteredPosition &&
+          (item.act === 'resolution' || item.act === 'court_resolution') &&
+          item.act === currentStage,
+      )
+      .reduce<NotificationState | null>(
+        (latest, item) => (latest === null || item.notifiedOn >= latest.notifiedOn ? item : latest),
+        null,
+      ) ?? null;
   return {
     stageEnteredOn: isCurrent ? stageEnteredOn : null,
     criminalStageEnteredOn:
@@ -245,6 +291,8 @@ export function lifecycleStateOf(
     federal,
     sanctionRegistered,
     criminalReferral,
+    notifications,
+    stageNotification,
     functionsByActor,
   };
 }
@@ -283,4 +331,21 @@ export function currentInconformity(state: LifecycleState): RemedyState | null {
     (remedy) => remedy.kind === 'inconformity' && remedy.position > actPosition,
   );
   return list.at(-1) ?? null;
+}
+
+/**
+ * Primer día en que se registró la notificación del acto `act` después del paso `actPosition` (la
+ * calificación o la abstención), o `null`. Para la inconformidad cuenta la primera notificación.
+ */
+export function recordedNotificationOn(
+  state: LifecycleState,
+  act: NotifiedAct,
+  actPosition: number | null,
+): string | null {
+  if (actPosition === null) return null;
+  const days = state.notifications
+    .filter((item) => item.act === act && item.position > actPosition)
+    .map((item) => item.notifiedOn)
+    .sort();
+  return days[0] ?? null;
 }

@@ -19,6 +19,27 @@ rompe algo está marcado como **Incompatible**.
   reasigna; la fiscalía solo avanza la vía penal. Sin el campo, la vista sigue por oficio.
 - `AuthorityProfile.isProsecution` (opcional): la autoridad es una fiscalía y puede recibir la
   vista.
+- Acción `record_notification` («Registrar la notificación»), con `recipients` (obligatorio:
+  `accused`, `reporter`, `investigating_authority` u `other_party`), `notifiedOn` (opcional; sin
+  él, el día de hoy según el reloj del nodo), `note` y `courtRecord` opcionales. La registra quien
+  notifica: la investigadora, la calificación de no grave; la substanciadora, la abstención y la
+  resolución de la falta no grave; el Tribunal (o su registro por la substanciación), la sentencia.
+  Deja el paso `notification_recorded` con `record.notifiedAct`, `record.notifiedOn` y
+  `record.notificationRecipients`. Nuevos enums `NotifiedAct` y `NotificationRecipient`.
+- `ProcedureView.notification` (opcional): la notificación de la resolución o de la sentencia
+  vigente.
+
+### Cambiado
+
+- **Incompatible.** Los plazos de la revocación (`revocation_filing`), la apelación
+  (`court_appeal_filing`) y la revisión (`review_filing`) corren desde la notificación registrada
+  de la resolución o de la sentencia, no desde que se dictó (LGRA, arts. 208 fr. XI, 209 fr. V,
+  210, 215 y 220). Sin notificación, `deadlines` solo trae `resolution_notice` y la firmeza
+  (`final`) responde `409` con «Registra primero la notificación…». Registrada la notificación,
+  `resolution_notice` deja de aparecer.
+- La inconformidad (`appeal_filing`) corre desde el primero de dos avisos: el mensaje de la
+  autoridad por el buzón (como antes) o la notificación registrada de la calificación de no grave o
+  de la abstención.
 
 ## [0.4.0] - 2026-11-16
 

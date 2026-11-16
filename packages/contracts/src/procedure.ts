@@ -244,10 +244,11 @@ export const ProcedureActionSchema = z
     'federal_notice_sent',
     'sanction_registered',
     'withdrawal_received',
+    'notification_recorded',
   ])
   .meta({
     description:
-      'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, reclasificación, medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento.',
+      'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, reclasificación, medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción, desistimiento y notificación de la calificación, la abstención, la resolución o la sentencia (notification_recorded), desde la que corren los plazos de los recursos.',
   });
 export type ProcedureAction = z.infer<typeof ProcedureActionSchema>;
 
@@ -290,6 +291,29 @@ export const RemedyFiledBySchema = z
       'Quién presentó el recurso: reporter (la persona denunciante, también como tercera), accused (la persona señalada), investigating_authority (la autoridad investigadora) u other_party.',
   });
 export type RemedyFiledBy = z.infer<typeof RemedyFiledBySchema>;
+
+/**
+ * Acto que se notifica y desde cuya notificación corren los plazos para impugnarlo: la calificación
+ * de no grave y la abstención (inconformidad, LGRA arts. 102 y 103), la resolución de la falta no
+ * grave (revocación, arts. 208 fr. XI y 210) y la sentencia del Tribunal (apelación y revisión,
+ * arts. 209 fr. V, 215 y 220).
+ */
+export const NotifiedActSchema = z
+  .enum(['qualification', 'abstention', 'resolution', 'court_resolution'])
+  .meta({
+    description:
+      'Acto notificado: qualification (calificación de no grave), abstention (abstención), resolution (resolución de la falta no grave) o court_resolution (sentencia del Tribunal).',
+  });
+export type NotifiedAct = z.infer<typeof NotifiedActSchema>;
+
+/** A quién se notificó el acto. */
+export const NotificationRecipientSchema = z
+  .enum(['accused', 'reporter', 'investigating_authority', 'other_party'])
+  .meta({
+    description:
+      'A quién se notificó: accused (la persona señalada), reporter (la persona denunciante, si se identificó), investigating_authority (la autoridad investigadora) u other_party (otra parte o tercero).',
+  });
+export type NotificationRecipient = z.infer<typeof NotificationRecipientSchema>;
 
 /** Resultado del incidente de medidas cautelares (LGRA, arts. 123 a 129). */
 export const PrecautionaryOutcomeSchema = z.enum(['granted', 'provisional', 'denied']).meta({

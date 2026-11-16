@@ -12,6 +12,8 @@ import type {
   DeadlineKey,
   FederalFunding,
   LegalClosureReason,
+  NotificationRecipient,
+  NotifiedAct,
   PrecautionaryOutcome,
   ProcedureAction,
   QualificationSeverity,
@@ -336,6 +338,95 @@ export const STAGE_WAIT_TEXTS: Readonly<Partial<Record<DeadlineKey, string>>> = 
   initial_hearing_window:
     'La audiencia inicial se celebra entre 10 y 15 días hábiles después del emplazamiento',
 };
+
+/** Acto que se notifica con «Registrar la notificación» y desde cuya notificación corren plazos. */
+export interface NotifiableAct {
+  act: NotifiedAct;
+  /** Etapas en que se registra su notificación. */
+  stages: readonly AdministrativeStage[];
+  /** Quién notifica: la investigadora, la substanciadora o el Tribunal (o su registro). */
+  fn: ProcedureFunction;
+  /** Nombre del acto para los avisos («la resolución», «la sentencia»…). */
+  name: string;
+  /** Plazos que corren desde la notificación. */
+  startsFrom: readonly DeadlineKey[];
+  /** A quién se notifica de inicio en el panel. */
+  defaultRecipients: readonly NotificationRecipient[];
+  legalBasis: readonly LegalReference[];
+}
+
+/**
+ * Actos cuya notificación registra la autoridad que notifica: los plazos para impugnarlos corren
+ * desde la notificación, no desde que se dictaron. La calificación de no grave y la abstención se
+ * notifican también con el primer mensaje de la autoridad por el buzón (LGRA, art. 102); cuenta el
+ * primero de los dos. La firmeza de la resolución y de la sentencia no procede sin notificación.
+ */
+export const NOTIFIABLE_ACTS: readonly NotifiableAct[] = [
+  {
+    act: 'qualification',
+    stages: ['qualification', 'report_filed', 'report_prevented'],
+    fn: 'investigation',
+    name: 'la calificación de falta no grave',
+    startsFrom: ['appeal_filing'],
+    defaultRecipients: ['reporter'],
+    legalBasis: [LGRA('102'), LGRA('103')],
+  },
+  {
+    act: 'abstention',
+    stages: ['abstention'],
+    fn: 'substantiation',
+    name: 'la abstención',
+    startsFrom: ['appeal_filing'],
+    defaultRecipients: ['reporter'],
+    legalBasis: [LGRA('101'), LGRA('102'), LGRA('103')],
+  },
+  {
+    act: 'resolution',
+    stages: ['resolution'],
+    fn: 'substantiation',
+    name: 'la resolución',
+    startsFrom: ['revocation_filing'],
+    defaultRecipients: ['accused', 'reporter'],
+    legalBasis: [LGRA('208', 'XI'), LGRA('210')],
+  },
+  {
+    act: 'court_resolution',
+    stages: ['court_resolution'],
+    fn: 'court',
+    name: 'la sentencia',
+    startsFrom: ['court_appeal_filing', 'review_filing'],
+    defaultRecipients: ['accused', 'reporter', 'investigating_authority'],
+    legalBasis: [LGRA('209', 'V'), LGRA('215'), LGRA('220')],
+  },
+];
+
+/** A quién se puede notificar, con su nombre para el panel. */
+export const NOTIFICATION_RECIPIENTS: readonly { key: NotificationRecipient; name: string }[] = [
+  { key: 'accused', name: 'La persona señalada' },
+  { key: 'reporter', name: 'La persona denunciante (si se identificó)' },
+  { key: 'investigating_authority', name: 'La autoridad investigadora' },
+  { key: 'other_party', name: 'Otra parte o tercero' },
+];
+
+/**
+ * Acto cuya notificación se registra en la etapa `stage`, o `undefined`. En las etapas de la
+ * calificación solo cuando es de no grave: eso lo decide quien llama.
+ */
+export function notifiableActAt(stage: AdministrativeStage | null): NotifiableAct | undefined {
+  if (stage === null) return undefined;
+  return NOTIFIABLE_ACTS.find((item) => item.stages.includes(stage));
+}
+
+/** Plazos de la etapa que corren desde la notificación del acto (no desde que se dictó). */
+export const NOTIFICATION_DEADLINES: ReadonlySet<DeadlineKey> = new Set(
+  NOTIFIABLE_ACTS.filter(
+    (item) => item.act === 'resolution' || item.act === 'court_resolution',
+  ).flatMap((item) => item.startsFrom),
+);
+
+/** Aviso cuando la firmeza espera la notificación: sin ella no corren los plazos de los recursos. */
+export const NOTIFICATION_FIRST_TEXT =
+  'Registra primero la notificación: los plazos de los recursos corren desde que se notifica';
 
 /** Recurso que se presenta dentro del plazo `key` (revocación, apelación…), o `undefined`. */
 export function remedyKindForFilingDeadline(key: DeadlineKey): RemedyKind | undefined {

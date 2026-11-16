@@ -1,5 +1,6 @@
 // Plazos legales que hay que esperar antes de un paso o un cierre: la firmeza espera a que venzan
-// los plazos de los recursos (LGRA, art. 206), el informe se tiene por no presentado solo después
+// los plazos de los recursos (LGRA, art. 206), contados desde la notificación de la resolución o de
+// la sentencia (arts. 208 fr. XI, 209 fr. V, 210, 215 y 220; sin notificación no hay firmeza), el informe se tiene por no presentado solo después
 // de los 3 días para corregirlo (art. 195), la abstención se cierra después de la ventana de la
 // inconformidad (arts. 102 y 103), y la caducidad y la prescripción solo cuando ya corrieron sus
 // plazos (art. 74). Se cuentan con el mismo cálculo de días hábiles, el mismo calendario y el mismo
@@ -11,6 +12,9 @@
 import {
   findDeadlineRule,
   formatLegalReference,
+  notifiableActAt,
+  NOTIFICATION_DEADLINES,
+  NOTIFICATION_FIRST_TEXT,
   offenseSeverity,
   remedyKindForFilingDeadline,
   STAGE_WAIT_TEXTS,
@@ -78,6 +82,18 @@ export function openStageWait(
 ): OpenWait | null {
   if (keys.length === 0) return null;
   const enteredOn = state.stageEnteredOn;
+  // Los plazos de los recursos contra la resolución o la sentencia corren desde su notificación.
+  const notifiedOn = state.stageNotification?.notifiedOn ?? null;
+  const fromNotification = keys.filter((key) => NOTIFICATION_DEADLINES.has(key));
+  if (fromNotification.length > 0 && notifiedOn === null) {
+    const act = notifiableActAt(stage);
+    const references = act?.legalBasis.map(formatLegalReference).join('; ') ?? 'LGRA';
+    return {
+      key: fromNotification[0] as DeadlineKey,
+      dueOn: null,
+      message: `${NOTIFICATION_FIRST_TEXT} ${act?.name ?? 'el acto'} (${references}). Este paso procede cuando venzan esos plazos después de la notificación.`,
+    };
+  }
   const remedyKinds = new Set<RemedyKind>();
   for (const key of keys) {
     const kind = remedyKindForFilingDeadline(key);
@@ -92,8 +108,9 @@ export function openStageWait(
   }
   const open: { key: DeadlineKey; dueOn: string | null }[] = [];
   for (const key of keys) {
+    const start = NOTIFICATION_DEADLINES.has(key) ? notifiedOn : enteredOn;
     const wait =
-      enteredOn === null ? { isOpen: true, dueOn: null } : dueOnIfOpen(ctx, key, enteredOn, today);
+      start === null ? { isOpen: true, dueOn: null } : dueOnIfOpen(ctx, key, start, today);
     if (wait.isOpen) open.push({ key, dueOn: wait.dueOn });
   }
   // El que más tarda: sin fecha conocida, o el de vencimiento más tardío.
@@ -189,7 +206,7 @@ export function closureWait(
     // Con la inconformidad presentada decide su resultado: pendiente ya bloquea el cierre.
     if (!hasIdentity || act === null || currentInconformity(state) !== null) return null;
     if (act.notifiedOn === null) {
-      return 'Primero notifica la abstención a la persona denunciante por el buzón: desde ese aviso tiene 5 días hábiles para inconformarse (LGRA, arts. 102 y 103).';
+      return 'Primero notifica la abstención a la persona denunciante (por el buzón o con «Registrar la notificación»): desde ese aviso tiene 5 días hábiles para inconformarse (LGRA, arts. 102 y 103).';
     }
     const { isOpen, dueOn } = dueOnIfOpen(ctx, 'appeal_filing', act.notifiedOn, today);
     if (!isOpen) return null;

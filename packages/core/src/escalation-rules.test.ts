@@ -296,17 +296,22 @@ describe('plazos que corren', () => {
       'inactivity_expiry',
       'evidence_admission',
     ]);
-    // La sentencia abre la apelación y la revisión; una apelación presentada cierra su plazo.
+    // Dictada la sentencia corre su notificación; notificada, la apelación y la revisión corren
+    // desde la notificación, y una apelación presentada cierra su plazo.
     const sentence = {
       ...base,
       legalStage: 'court_resolution' as const,
       stageEnteredOn: '2027-03-01',
     };
-    expect(keys(sentence)).toEqual(['resolution_notice', 'court_appeal_filing', 'review_filing']);
-    expect(keys({ ...sentence, filedRemedies: ['appeal'] })).toEqual([
-      'resolution_notice',
-      'review_filing',
-    ]);
+    expect(keys(sentence)).toEqual(['resolution_notice']);
+    const notified = { ...sentence, stageNotifiedOn: '2027-03-04' };
+    expect(keys(notified)).toEqual(['court_appeal_filing', 'review_filing']);
+    expect(
+      activeDeadlines(notified, { isAccepted: true }).find(
+        (item) => item.key === 'court_appeal_filing',
+      )?.startsOn,
+    ).toBe('2027-03-04');
+    expect(keys({ ...notified, filedRemedies: ['appeal'] })).toEqual(['review_filing']);
     // Los recursos pendientes, la medida cautelar y la reclasificación tienen su plazo.
     expect(
       keys({
