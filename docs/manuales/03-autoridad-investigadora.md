@@ -85,7 +85,9 @@ Casi todo se hace en la tarjeta **«Trámite»**: eliges «Acción», llenas los
   reabrir) la denuncia.»
 - Otras opciones: **«Reasignar a otra autoridad»** (nota pública obligatoria; hay un máximo de
   reasignaciones, como en el S5: después verás «Ya no se puede reasignar») o **«Devolver al buzón
-  general»** (nota obligatoria).
+  general»** (nota obligatoria). La lista «Autoridad» solo muestra autoridades del nodo con cuenta
+  de recepción: nunca el Tribunal, la supervisión ni el buzón (para eso está «Devolver al buzón
+  general»).
 - **Fundamento:** LGRA, arts. 14 y 94.
 - **La persona ve:** la nota pública y que fue aceptada.
 - Si hay alerta de conflicto de interés: «Excúsate o justifica antes de aceptar; si resuelves sin
@@ -166,8 +168,9 @@ Casi todo se hace en la tarjeta **«Trámite»**: eliges «Acción», llenas los
   «Informe de Presunta Responsabilidad Administrativa presentado».
 - **Fundamento:** LGRA, arts. 100 y 194. Abre a la substanciadora el plazo de admisión (3 días).
 - **Si la substanciadora te previene** («Informe con observaciones (prevención)», art. 195): tienes
-  3 días. «Etapa»: **«Presentar el informe corregido»**. Si no lo corriges, ella puede «Tener el
-  informe por no presentado (no se corrigió)» y la denuncia vuelve a investigación.
+  3 días. «Etapa»: **«Presentar el informe corregido»**. Si no lo corriges, cuando venzan esos 3 días
+  ella puede «Tener el informe por no presentado (no se corrigió)» y la denuncia vuelve a
+  investigación (antes, el sistema no se lo permite).
 - **Desde aquí ya no avanzas etapas.** Verás «Tu función no tiene acciones del trámite en este
   estado.» u opciones reducidas. Sí puedes: pedir medidas cautelares, dar vista al MP, registrar la
   inconformidad firmada, registrar una apelación o revisión, escribir a la persona y aprobar
@@ -204,22 +207,22 @@ su cargo mientras dura el procedimiento.` → «Aplicar».
 
 ### 5.10 Dar vista al Ministerio Público (vía penal en paralelo)
 
-- «Acción»: **«Dar vista al Ministerio Público»**. «La vía penal corre aparte y al mismo tiempo: la
-  vista no detiene el procedimiento administrativo.»
+- «Acción»: **«Dar vista al Ministerio Público»**. «Aquí se registra la vista en el trámite. La vía
+  penal corre aparte y al mismo tiempo: la vista no detiene el procedimiento administrativo. Remitir
+  la denuncia y sus pruebas a la fiscalía es un paso aparte, por oficio: SIGILO todavía no la
+  entrega en la bandeja de la fiscalía.»
 - «Quién da la vista»: «Órgano interno de control o Secretaría» (LGRA, art. 10, fr. III), «Entidad
   de fiscalización (ASF o del estado)» (art. 98) o «Cualquier persona servidora pública» (CNPP, art.
   222).
 - «Fiscalía que recibe la vista» (nombre). «Aplicar» → «Vía penal, en paralelo: Denuncia penal
   presentada».
 - **La persona ve:** las dos vías en su seguimiento.
+- **Tú solo das la vista.** Las etapas penales («Vía penal: …») ya no aparecen en tu lista «Etapa»:
+  solo la fiscalía las avanza (si se intentan por la API, el nodo responde `403`).
 
-> **Limitación conocida del prototipo.**
->
-> - **La vista no llega a la bandeja de la fiscalía.** Solo queda registrado el acto. Presenta la
->   denuncia penal ante la fiscalía por los medios oficiales.
-> - Tu cuenta puede registrar etapas penales («Vía penal: El Ministerio Público inició la
->   investigación», etc.). **No lo hagas**: las registra la fiscalía; solo como coadyuvante (LGRA,
->   art. 42) y con constancia de lo que hizo el MP.
+> **Limitación conocida del prototipo.** **La vista no llega a la bandeja de la fiscalía.** Solo
+> queda registrado el acto. Remite la denuncia y sus pruebas a la fiscalía por oficio, por los
+> medios oficiales.
 
 ### 5.11 Recursos federales (ASF, SABG y FGR)
 
@@ -256,8 +259,13 @@ autoridad», «Nota pública para la persona» y «Turnar a otro nodo». Dentro 
   sin aviso en 10 días hábiles»).
 - **Reapertura** si surgen nuevos indicios mientras no prescriba (LGRA, arts. 100 y 74): «Acción»:
   **«Aceptar (o reabrir) la denuncia»** con nota pública.
-- Otros motivos legales que puedes usar: «Prescripción» (cualquier etapa) e «Incompetencia y
-  remisión» (con destino).
+- Otros motivos legales que puedes usar: «Prescripción» (cualquier etapa, solo si ya corrió el
+  plazo) e «Incompetencia y remisión» (con destino). Si la prescripción todavía no corre, el nodo lo
+  rechaza con «La facultad de sancionar todavía no prescribe: con hechos de …, lo más pronto sería
+  después del … (LGRA, art. 74).» (cuenta 3 años, o 7 si es grave, desde el primer día del mes de
+  los hechos).
+- Desde que presentas el IPRA, el cierre ya no es un archivo: lleva su motivo legal obligatorio
+  (ver manual 04, sección 5.10).
 - **La persona ve:** «Archivada» con el fundamento y, si se reabre, la reapertura.
 
 ### 5.14 Abrir la identidad sellada (dos personas)
@@ -296,7 +304,7 @@ autoridad», «Nota pública para la persona» y «Turnar a otro nodo». Dentro 
    «Recurso»: «Inconformidad» → «Quién lo presentó»: «La persona denunciante (como tercera)» → marca
    **«Recibí el escrito con firma autógrafa (sin firma no se tiene por presentado).»** → «Aplicar».
    Verás «Inconformidad presentada con firma el …»; corre el plazo de la Sala (30 dh).
-3. Mientras está pendiente no se admite el informe ni se cierra por abstención.
+3. Mientras está pendiente no se admite el informe ni se cierra la denuncia por ningún motivo.
 4. **Entrega del nombre para el recurso:** en la tarjeta de identidad, «Recurso de inconformidad.»
    → «Fundamento de tu aprobación» (20+) → **«Aprobar la entrega para el recurso»**. Hacen falta dos
    personas distintas, **al menos una de supervisión** (manual 05).
@@ -327,7 +335,7 @@ envíos sin valor. La persona lo ve y queda en la bitácora pública.
 
 ## 7. Limitaciones conocidas del prototipo
 
-- La vista al MP no llega a la fiscalía; la investigadora puede registrar etapas penales.
+- La vista al MP no llega a la bandeja de la fiscalía: se remite por oficio, fuera del sistema.
 - Los avisos a autoridades federales se registran, no se envían.
 - Turnar a otro nodo solo con denuncias anónimas.
 - Dos aprobaciones: regla del nodo, no criptográfica.

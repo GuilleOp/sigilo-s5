@@ -29,17 +29,17 @@ en la Delegación Federal Ficticia de Programas Sociales» y la «Unidad Fictici
 
 ## 2. Qué ve y qué no ve cada cuenta del nodo
 
-| Cuenta (demostración)                     | Función                               | Ve                                                       | No ve                             |
-| ----------------------------------------- | ------------------------------------- | -------------------------------------------------------- | --------------------------------- |
-| `buzon.federal`                           | Recepción                             | Lo que la tabla federal no asigna                        | Identidades                       |
-| `oic-equipamiento.persona1` / `.persona2` | Recepción e investigación             | Denuncias de su OIC                                      | Las de otros OIC                  |
-| `oic-equipamiento.substanciacion`         | Substanciación                        | Expedientes de su OIC desde el IPRA                      | Identidades, buzón                |
-| `oic-equipamiento.titular`                | Supervisión                           | Denuncias de su institución                              | —                                 |
-| `oic-programas`                           | Recepción e investigación             | Denuncias de su OIC                                      | —                                 |
-| `supervision-oic`                         | Supervisión con segunda llave         | Escalamientos de los OIC supervisados, con copia cerrada | La identidad                      |
-| `tribunal.federal`                        | Tribunal                              | Expedientes en sus etapas                                | Buzón e identidad                 |
-| `fiscalia`                                | Recepción e investigación (vía penal) | Su bandeja                                               | Las vistas de los OIC (no llegan) |
-| `operacion.federal`                       | Operación                             | Altas y competencia federal                              | Denuncias                         |
+| Cuenta (demostración)                     | Función                                                         | Ve                                                       | No ve                                                    |
+| ----------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `buzon.federal`                           | Recepción                                                       | Lo que la tabla federal no asigna                        | Identidades                                              |
+| `oic-equipamiento.persona1` / `.persona2` | Recepción e investigación                                       | Denuncias de su OIC                                      | Las de otros OIC                                         |
+| `oic-equipamiento.substanciacion`         | Substanciación                                                  | Expedientes de su OIC desde el IPRA                      | Identidades, buzón                                       |
+| `oic-equipamiento.titular`                | Supervisión                                                     | Denuncias de su institución                              | —                                                        |
+| `oic-programas`                           | Recepción e investigación                                       | Denuncias de su OIC                                      | —                                                        |
+| `supervision-oic`                         | Supervisión con segunda llave                                   | Escalamientos de los OIC supervisados, con copia cerrada | La identidad                                             |
+| `tribunal.federal`                        | Tribunal                                                        | Expedientes en sus etapas                                | Buzón e identidad                                        |
+| `fiscalia`                                | Recepción e investigación, papel `prosecution` (solo vía penal) | Su bandeja; solo ella avanza la vía penal                | Las vistas de los OIC (no llegan); la vía administrativa |
+| `operacion.federal`                       | Operación                                                       | Altas y competencia federal                              | Denuncias                                                |
 
 ## 3. Cómo entras
 
@@ -115,7 +115,8 @@ estado con «Turnar a otro nodo».
 - La ASF no es «observadora»: es autoridad que investiga graves (LGRA, art. 9, fr. III). La ASF
   **sí** admite denuncias sin nombre (LFRCF, art. 60).
 - La vista a la FGR se registra con «Dar vista al Ministerio Público»; **no llega a la bandeja** de
-  `fiscalia` (limitación conocida). Presenta la denuncia penal por los medios oficiales.
+  `fiscalia` (limitación conocida). Remite la denuncia y sus pruebas por oficio, por los medios
+  oficiales. Los OIC solo dan la vista: las etapas penales las avanza `fiscalia`.
 
 ### 5.6 Operación del nodo Federal
 

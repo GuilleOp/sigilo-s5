@@ -23,12 +23,12 @@ Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (fic
 
 ## 2. Qué ves y qué NO ves
 
-| Ves                                                                     | No ves                                                                               |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Los hechos de las denuncias que llegan al buzón                         | El nombre de la persona denunciante: nunca ves el formulario para abrir la identidad |
-| Las pruebas de esas denuncias (se abren con la llave del buzón)         | Las denuncias que van directo a un OIC o a la Contraloría                            |
-| El semáforo de turnado                                                  | El trámite posterior de la denuncia una vez aceptada por otra autoridad              |
-| «Quién sigue en el trámite» y la ficha «Contexto PDN de la dependencia» |                                                                                      |
+| Ves                                                                     | No ves                                                                                 |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Los hechos de las denuncias que llegan al buzón                         | El nombre de la persona denunciante: nunca ves «Solicitar la apertura» de la identidad |
+| Las pruebas de esas denuncias (se abren con la llave del buzón)         | Las denuncias que van directo a un OIC o a la Contraloría                              |
+| El semáforo de turnado                                                  | El trámite posterior de la denuncia una vez aceptada por otra autoridad                |
+| «Quién sigue en el trámite» y la ficha «Contexto PDN de la dependencia» |                                                                                        |
 
 **Tu llave del buzón es muy sensible:** con ella se leen los hechos de todo lo que llega al buzón.
 Nunca debe quedarse en el servidor del nodo.
@@ -98,9 +98,15 @@ designado: la investiga la Secretaría de la Contraloría.`
 - **Error común:** motivo corto. Verás «Escribe por qué la envías a esta autoridad (al menos 10
   caracteres).»
 
-> **Limitación conocida del prototipo.** La lista «Autoridad» incluye la **Sala del Tribunal de
-> Justicia Administrativa**. No la elijas: el Tribunal no recibe denuncias; solo recibe el
-> expediente que envía la substanciadora en una falta grave (LGRA, art. 209).
+**Quién aparece en la lista «Autoridad».** Solo las autoridades del nodo que pueden aceptar lo que
+turnas: las que tienen una cuenta de recepción (`intake`). El **Tribunal**, la **supervisión** y el
+propio buzón no aparecen: el Tribunal no recibe denuncias, solo el expediente que envía la
+substanciadora en una falta grave (LGRA, art. 209). Si alguien intenta turnar a una de ellas por la
+API, el nodo responde `400`.
+
+En la tarjeta de la identidad sellada solo ves su estado y el aviso «Tu función no solicita ni
+aprueba aperturas: lo hacen la investigación y la supervisión de la autoridad que tiene la
+denuncia.»
 
 > **Cuidado con las denuncias selladas.** Si una denuncia con identidad sellada llegó al buzón, el
 > nombre quedó sellado con la llave del buzón. Al turnarla, la investigadora **no podrá abrir** la
@@ -167,7 +173,6 @@ pública (obligatoria)». No cierra la denuncia: «La investigación también es
 
 ## 7. Limitaciones conocidas del prototipo
 
-- La lista de turnado incluye al Tribunal.
 - «Quién sigue en el trámite» no asigna funciones mientras la denuncia no está aceptada.
 - Una denuncia sellada que pasa por el buzón ya no se puede abrir para la investigadora.
 - El turnado entre nodos solo funciona con denuncias anónimas.

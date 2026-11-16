@@ -20,7 +20,9 @@ Especializada del TFJA, ficticia; alzada: Tercera Sección).
   reclasificar** la falta o **devolver** el expediente si no es grave (art. 209, fr. II).
 - **Tu función de cuenta es `court`.** Nunca se combina con otra. Solo actúas en tus etapas: desde
   el expediente enviado hasta tu sentencia y su firmeza.
-- **No recibes denuncias.** Recibes el expediente que te envía la substanciadora.
+- **No recibes denuncias.** Recibes el expediente que te envía la substanciadora. Por eso no
+  apareces en la lista «Autoridad» del turnado ni de la reasignación (no tienes cuenta de
+  recepción).
 
 ## 2. Qué ves y qué NO ves
 
@@ -29,6 +31,7 @@ Especializada del TFJA, ficticia; alzada: Tercera Sección).
 | El expediente y el trámite de las denuncias en tus etapas | El buzón cifrado con la persona denunciante                 |
 | Los hechos y las pruebas                                  | Las solicitudes de apertura de identidad: no puedes abrirla |
 | Los recursos que te tocan                                 | Las tarjetas «Recursos federales» y «Turnar a otro nodo»    |
+|                                                           | «Descartar pruebas» y la excusa por conflicto de interés    |
 
 Es a propósito: juzgas el expediente, no a la persona que denunció.
 
@@ -75,6 +78,9 @@ Trabajas en la tarjeta **«Trámite»**: «Acción» → «Aplicar».
 3. **«Cerrar la instrucción en el Tribunal»** → «Cierre de la instrucción en el Tribunal» (resolver
    en 30 + 30 dh; fr. IV).
 
+> **Limitación conocida del prototipo.** El sistema todavía deja cerrar la instrucción con los 5 dh
+> de alegatos abiertos. Espera tú a que venzan.
+
 ### 5.3 Dictar la sentencia
 
 - **«Dictar la sentencia»** → «Sentencia del Tribunal». «Nota pública», por ejemplo `La Sala dictó
@@ -95,12 +101,28 @@ sentencia: se acreditó la falta grave y se impuso sanción.`
 
 ### 5.5 Declarar la sentencia firme
 
-- Sin recurso pendiente: **«Declarar la sentencia firme»** → «Resolución firme» (LGRA, art. 206).
-  Después la substanciadora registra la ejecución, la inscripción en el S3 y el cierre.
+- **«Declarar la sentencia firme»** → «Resolución firme» (LGRA, art. 206). Después la
+  substanciadora registra la inscripción en el S3, la ejecución y el cierre.
+- **El paso espera los plazos de los recursos:** 15 dh de apelación y 10 dh de revisión, contados
+  desde que la denuncia entró a «Sentencia del Tribunal»; manda el que vence más tarde. Mientras
+  corren, la opción no aparece en «Etapa» y, bajo la lista de plazos, el panel dice:
 
-> **Limitación conocida del prototipo.** El botón se acepta **el mismo día** de la sentencia, aunque
-> sigan abiertos los 15 dh de la apelación y los 10 de la revisión. El sistema solo lo bloquea si
-> hay un recurso registrado. **Espera a que venzan los plazos** antes de declararla firme.
+  > «Declarar la sentencia firme»: La sentencia todavía puede apelarse hasta el …. Podrás hacerlo a
+  > partir del … si nadie presenta el recurso, o al registrar la resolución del recurso presentado
+  > (LGRA, art. 206).
+
+- **Con un recurso registrado:** mientras esté pendiente, la firmeza sigue bloqueada. Cuando
+  registras su resolución (5.4), puedes declarar la firmeza sin esperar al fin del plazo.
+- Si alguien intenta el paso antes por la API, el nodo responde `409`: «La sentencia todavía puede
+  apelarse hasta el …. Este paso procede a partir del día siguiente, o antes si el recurso
+  presentado ya se resolvió (LGRA, art. 206).»
+- **En la demostración**, para no esperar 15 días reales, quien opera la red adelanta el reloj
+  simulado con `npm run demo:reloj -- +16dh` (ver `docs/demo.md`). **Solo para la demostración**;
+  en producción el reloj es el real. La sesión puede vencer con el salto: vuelve a entrar.
+
+> **Limitación conocida del prototipo.** La apelación y la revisión corren desde la
+> **notificación** de la sentencia (art. 209, fr. V), que el sistema todavía no registra; se cuentan
+> desde que se dicta, la cota más temprana. Si notificaste después, espera tú los días que falten.
 
 ### 5.6 Resolver la inconformidad
 
@@ -118,6 +140,9 @@ sentencia: se acreditó la falta grave y se impuso sanción.`
 «Acción»: **«Resolver la medida cautelar»** → «Concedida», «Concedida provisionalmente» o «Negada»
 → fundamento → «Aplicar» (LGRA, arts. 125 a 127). La persona no ve la medida.
 
+> **Limitación conocida del prototipo.** El sistema deja conceder o negar la medida antes de que
+> venza la vista de 5 días (art. 126). Antes de ese plazo usa solo «Concedida provisionalmente».
+
 ### 5.8 Reclamación
 
 Contra tus autos (admisión o desechamiento de pruebas, sobreseimientos antes del cierre): la
@@ -131,19 +156,19 @@ lee como registrado por otra autoridad.
 
 ## 6. Qué hacer si algo falla
 
-| Síntoma                                                    | Qué hacer                                    |
-| ---------------------------------------------------------- | -------------------------------------------- |
-| No veo el buzón ni la tarjeta de identidad                 | Es a propósito                               |
-| «Tu función no tiene acciones del trámite en este estado.» | El expediente no está en tus etapas          |
-| No aparece «Declarar la sentencia firme»                   | Hay un recurso pendiente: resuélvelo primero |
-| No aparece «Ordenar reclasificar la falta»                 | Ya pasaste de «Recibido en el Tribunal»      |
-| «El código no es válido o ya se usó…»                      | Espera el código siguiente                   |
+| Síntoma                                                    | Qué hacer                                                                                                               |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| No veo el buzón ni la tarjeta de identidad                 | Es a propósito                                                                                                          |
+| «Tu función no tiene acciones del trámite en este estado.» | El expediente no está en tus etapas                                                                                     |
+| No aparece «Declarar la sentencia firme»                   | Corren la apelación o la revisión (lee «Podrás hacerlo a partir del …»), o hay un recurso pendiente: resuélvelo primero |
+| No aparece «Ordenar reclasificar la falta»                 | Ya pasaste de «Recibido en el Tribunal»                                                                                 |
+| «El código no es válido o ya se usó…»                      | Espera el código siguiente                                                                                              |
 
 ## 7. Limitaciones conocidas del prototipo
 
-- **«Descartar pruebas»:** el panel te muestra este botón, que **borra para siempre** los archivos
-  de prueba. El Tribunal no debería disponer de las pruebas. **No lo uses.**
-- La firmeza no espera el plazo de apelación (art. 206).
+- La apelación y la revisión se cuentan desde la sentencia, no desde su notificación.
+- La instrucción se puede cerrar con los alegatos abiertos.
+- La medida cautelar se puede conceder o negar antes de la vista de 5 días.
 - La reclasificación solo está disponible al recibir el expediente.
 - El seguimiento de la persona dice que la Contraloría notifica la sentencia; en la vía grave
   notificas tú (art. 209, fr. V).
@@ -171,8 +196,8 @@ flowchart TD
   H --> I["Dictar la sentencia"]
   I --> J{"¿Apelación o revisión registrada?"}
   J -- "Sí" --> K["Registrar la resolución de un recurso"]
-  K --> L
-  J -- "No y vencieron 15 dh" --> L["Declarar la sentencia firme"]
+  K -- "recurso resuelto" --> L
+  J -- "No: esperar 15 dh de apelación<br/>y 10 dh de revisión" --> L["Declarar la sentencia firme"]
   L --> M["La substanciadora ejecuta y cierra"]
   N["Inconformidad presentada con firma"] --> O["Resolver en 30 dh:<br/>Confirmada, Revocada o Improcedente"]
 ```

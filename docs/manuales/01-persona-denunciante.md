@@ -231,7 +231,8 @@ pruebas, la SESNA la guarda en cola hasta 7 días y te da un acuse; con pruebas,
 >   Tribunal (LGRA, art. 209, fr. V).
 > - Después del cierre, «Estado:» puede seguir en «Sanción ejecutada» aunque la denuncia ya esté
 >   «Concluida con sanción firme».
-> - La sentencia puede declararse firme antes de que terminen tus 15 días para apelar. Si quieres
+> - La sentencia ya no se declara firme antes de que terminen los 15 días hábiles para apelar,
+>   pero el sistema los cuenta **desde que se dicta**, no desde que te la notifican. Si quieres
 >   apelar, presenta tu escrito cuanto antes y avisa por el buzón.
 
 ### 5.3 Mensajes con la autoridad
@@ -291,6 +292,10 @@ Pasos:
    «Inconformidad presentada con firma el …» y el plazo de la Sala (30 dh).
 6. El Tribunal resuelve: «Resultado de la inconformidad: …».
 
+Mientras corren tus 5 días hábiles, o mientras tu inconformidad esté pendiente, la autoridad **no
+puede cerrar** la denuncia por abstención: el sistema se lo impide hasta que venza el plazo o se
+resuelva el recurso.
+
 En tu tarjeta de identidad verás: «Abriste tu identidad para el recurso de inconformidad. Queda
 registrado quién la abrió, cuándo y para qué.»
 
@@ -336,7 +341,7 @@ sistema detecta una apertura que no te mostró, te avisa y te pide guardar tu fo
 - Una denuncia sellada que pasa por el buzón general ya no se puede abrir para la investigadora.
 - Las denuncias con identidad sellada no se pueden turnar a otro nodo.
 - Varios textos del seguimiento están por corregir (ver 5.2).
-- La firmeza puede declararse antes de que venza tu plazo para apelar.
+- El plazo para apelar se cuenta desde la sentencia, no desde que te la notifican.
 - La accesibilidad está revisada con herramientas y teclado; falta probarla con lectores de pantalla
   y con personas.
 

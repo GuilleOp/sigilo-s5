@@ -22,7 +22,8 @@ Internos de Control», Federal, con **segunda llave**).
     (dos aprobaciones, al menos una de supervisión).
 - **Con segunda llave** (si tu autoridad supervisada la tiene configurada), recibes además una
   **copia cerrada** de los hechos y las pruebas de la denuncia escalada, **nunca** la identidad.
-- No investigas, no substancias, no turnas.
+- No investigas, no substancias, no turnas. Tampoco **recibes** denuncias turnadas: una supervisora
+  sin cuenta de recepción no aparece en la lista «Autoridad» del turnado ni de la reasignación.
 
 ## 2. Qué ves y qué NO ves
 
@@ -137,7 +138,8 @@ excusa no se hizo antes de resolver, la denuncia te llegó escalada.
 
 ## 7. Limitaciones conocidas del prototipo
 
-- Querétaro no tiene segunda llave; la cuenta del titular no lista escalamientos en vivo.
+- Querétaro no tiene segunda llave; la cuenta del titular no lista escalamientos en vivo (pendiente
+  de corregir).
 - La regla de dos personas la aplica el nodo, no la criptografía.
 - El escalamiento informa; las órdenes a la autoridad se dan fuera del sistema.
 

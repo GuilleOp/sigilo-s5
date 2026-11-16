@@ -180,6 +180,14 @@ tabla exportar`, editar `config/competencia-por-dependencia.csv`, `./sigilo tabl
 - Funciones de la tabla: buzón (`intake`), operación, investigación, substanciación, Tribunal
   (`court`, con su alzada), vía penal (`prosecution`), supervisión y observador.
   `config/tabla-de-funciones.csv` → `./sigilo tabla revisar` → `./sigilo tabla firmar`.
+- **Quién recibe turnos:** solo las autoridades con al menos una cuenta de recepción (`intake`) son
+  destino de «Turnar a una autoridad» y «Reasignar a otra autoridad» (el perfil publica
+  `canReceive`). El Tribunal, una supervisora sin recepción y el buzón no lo son; si se intenta por
+  la API, el nodo responde `400`. Crea la cuenta de recepción de cada autoridad que deba recibir.
+- **Quién es la fiscalía:** la autoridad con papel `prosecution` en el directorio de red o, si el
+  nodo no tiene directorio, con `"role": "prosecution"` en el archivo de cuentas. Solo ella avanza
+  la vía penal y no lleva la administrativa; si falta el papel, nadie del nodo podrá registrar
+  etapas penales.
 - Días inhábiles locales: `config/dias-inhabiles.csv` (`fecha,nombre,fundamento`) → `./sigilo
 calendario revisar`. Se suman a los oficiales en plazos, escalamientos, auditor y semáforo, y el
   nodo los publica en `/datos/dias-inhabiles.json`.
@@ -213,6 +221,8 @@ derivan sin enviarlo.
 - Las llaves de autoridades y del buzón nunca entran al servidor. `./sigilo diagnostico` marca como
   problema una llave del buzón en `datos/`.
 - Nunca uses en producción `SIGILO_DEMO`, `SIGILO_E2E`, reloj simulado ni `SIGILO_NODE_INTAKE`.
+  `npm run demo:reloj -- +16dh` adelanta el reloj simulado de la red de demostración para mostrar
+  la firmeza sin esperar los plazos reales; es **solo para la demostración** (`docs/demo.md`).
 
 ## 6. Qué hacer si algo falla
 

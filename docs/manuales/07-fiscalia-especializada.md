@@ -46,13 +46,18 @@ Corrupción», nodo Federal).
 ## 4. Tu bandeja: «Denuncias asignadas»
 
 Tu cuenta tiene, en la demostración, las funciones `intake` + `investigation`: por eso la bandeja se
-llama igual que la de un OIC. Te llegan:
+llama igual que la de un OIC. Lo que te distingue es el **papel `prosecution`** de tu autoridad (en
+el directorio de red o, sin directorio, en el archivo de cuentas del nodo; la sesión lo indica con
+`account.isProsecution`). Con ese papel **solo llevas la vía penal**: no ves «Iniciar la
+investigación» (administrativa), «Dar vista al Ministerio Público» ni el plazo «Iniciar ante una
+posible falta grave (LGRA 64)», porque tú eres el Ministerio Público. Te llegan:
 
 - denuncias que la persona envió **directo** a la fiscalía desde la ventanilla (en «Revisión»,
   eligiendo la fiscalía como «También competente» u «Otra del directorio» para una conducta que
   «Puede ser delito»);
 - denuncias de delitos que la tabla de funciones manda a la función «vía penal» (`prosecution`);
-- denuncias que te turna el buzón o te reasigna otra autoridad.
+- denuncias que te turna el buzón o te reasigna otra autoridad (puedes recibirlas porque tienes
+  cuenta de recepción).
 
 ## 5. Etapas que te tocan, en orden
 
@@ -64,19 +69,24 @@ Si no te corresponde: «Reasignar a otra autoridad» o «Devolver al buzón gene
 ### 5.2 Registrar la vía penal
 
 Todas las etapas penales se registran con «Acción»: «Avanzar a la siguiente etapa legal» → «Etapa»
-(las opciones empiezan con «Vía penal:») → «Aplicar».
+(las opciones empiezan con «Vía penal:») → «Aplicar». **Solo tu fiscalía las avanza:** la
+investigadora y la substanciadora solo dan la vista y, si intentan una etapa penal por la API, el
+nodo responde `403`.
 
-| Desde                                          | Etapa que eliges                                                                          | Fundamento                                            |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Sin etapa (denuncia directa)                   | «Vía penal: Iniciar la investigación penal»                                               | CNPP 211                                              |
-| Vista registrada («Denuncia penal presentada») | «Vía penal: El Ministerio Público inició la investigación»                                | CNPP 211, 222                                         |
-| Investigación                                  | «Vía penal: Determinación del Ministerio Público»                                         | CNPP 253 a 256 (abre 10 días para impugnar, art. 258) |
-| Investigación                                  | «Vía penal: Etapa intermedia»                                                             | CNPP 211                                              |
-| Investigación o etapa intermedia               | «Vía penal: Solución alterna»                                                             | CNPP 183 a 200 (por verificar)                        |
-| Determinación                                  | «Vía penal: Se impugnó la determinación ante el juez» / «Se reabrió la investigación»     | CNPP 258                                              |
-| Impugnación                                    | «Vía penal: El juez ordenó seguir la investigación» / «El juez confirmó la determinación» | CNPP 258                                              |
-| Etapa intermedia                               | «Vía penal: Juicio»                                                                       | CNPP 211                                              |
-| Juicio                                         | «Vía penal: Sentencia»                                                                    | CNPP 211                                              |
+| Desde                                           | Etapa que eliges                                                                          | Fundamento                                            |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Sin etapa (denuncia directa)                    | «Vía penal: Iniciar la investigación penal»                                               | CNPP 211                                              |
+| Vista registrada («Denuncia penal presentada»)¹ | «Vía penal: El Ministerio Público inició la investigación»                                | CNPP 211, 222                                         |
+| Investigación                                   | «Vía penal: Determinación del Ministerio Público»                                         | CNPP 253 a 256 (abre 10 días para impugnar, art. 258) |
+| Investigación                                   | «Vía penal: Etapa intermedia»                                                             | CNPP 211                                              |
+| Investigación o etapa intermedia                | «Vía penal: Solución alterna»                                                             | CNPP 183 a 200 (por verificar)                        |
+| Determinación                                   | «Vía penal: Se impugnó la determinación ante el juez» / «Se reabrió la investigación»     | CNPP 258                                              |
+| Impugnación                                     | «Vía penal: El juez ordenó seguir la investigación» / «El juez confirmó la determinación» | CNPP 258                                              |
+| Etapa intermedia                                | «Vía penal: Juicio»                                                                       | CNPP 211                                              |
+| Juicio                                          | «Vía penal: Sentencia»                                                                    | CNPP 211                                              |
+
+¹ Solo si la denuncia con la vista llega a tu bandeja (por ejemplo, reasignada). Hoy la vista no te
+llega sola: ver la sección 7.
 
 **La persona ve** la vía penal en su seguimiento, en paralelo a la administrativa.
 
@@ -116,19 +126,16 @@ Todas las etapas penales se registran con «Acción»: «Avanzar a la siguiente 
 
 | Síntoma                                            | Qué hacer                                                                                                           |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Mi bandeja está vacía aunque un OIC dio vista      | Limitación conocida: la vista no llega. Pide la denuncia por los medios oficiales                                   |
+| Mi bandeja está vacía aunque un OIC dio vista      | Limitación conocida: la vista no llega. El OIC la remite por oficio; pídela por los medios oficiales                |
 | No veo «Vía penal: Iniciar la investigación penal» | La denuncia ya tiene etapa administrativa; usa «El Ministerio Público inició la investigación» después de una vista |
+| No veo «Iniciar la investigación» ni «Dar vista»   | Es a propósito: tu fiscalía solo lleva la vía penal                                                                 |
 | No sale «Abrir identidad aprobada»                 | Falta una segunda cuenta de tu fiscalía                                                                             |
 | «El código no es válido o ya se usó…»              | Espera el código siguiente                                                                                          |
 
 ## 7. Limitaciones conocidas del prototipo
 
-- **La vista al MP no llega a tu bandeja.** Solo se registra en la denuncia del OIC.
-- **Ves funciones administrativas que no te tocan:** el plazo «Iniciar ante una posible falta grave
-  (LGRA 64)», «Iniciar la investigación» (administrativa) y «Dar vista al Ministerio Público», aunque
-  tú eres el MP. No las uses; registra solo la vía penal.
-- Otras cuentas de investigación (por ejemplo, la Contraloría) también pueden registrar etapas
-  penales.
+- **La vista al MP no llega a tu bandeja.** Solo se registra en la denuncia del OIC, que te la
+  remite por oficio, fuera del sistema.
 - Los tipos de determinación del MP y los recursos penales todavía no están tipados.
 - El sistema no registra qué medidas de protección decidiste.
 
@@ -146,7 +153,7 @@ Todas las etapas penales se registran con «Acción»: «Avanzar a la siguiente 
 flowchart TD
   A["Denuncia directa o turnada"] --> B["Aceptar (o reabrir) la denuncia"]
   B --> C["Vía penal: Iniciar la investigación penal"]
-  V["Vista de un OIC (fuera del sistema)"] -.-> C2["Vía penal: El MP inició la investigación"]
+  V["Vista de un OIC: se remite por oficio<br/>(no llega a la bandeja)"] -.-> C2["Vía penal: El MP inició la investigación"]
   C --> D{"Investigación"}
   C2 --> D
   D --> E["Determinación del MP"]

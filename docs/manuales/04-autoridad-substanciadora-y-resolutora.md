@@ -14,7 +14,9 @@ nodo Federal: `oic-equipamiento.substanciacion`.
 - **Nunca eres quien investigó** (LGRA, art. 115). Tu cuenta tiene una sola función,
   `substantiation`, que no se combina con otra; además, el nodo impide que una cuenta que investigó
   una denuncia la substancie.
-- **No turnas ni abres identidades.**
+- **No turnas ni abres identidades.** En la tarjeta de la identidad sellada solo ves su estado y
+  «Tu función no solicita ni aprueba aperturas: lo hacen la investigación y la supervisión de la
+  autoridad que tiene la denuncia.»
 - **En las faltas graves y de particulares** llevas el procedimiento hasta la audiencia inicial y
   envías el expediente al **Tribunal** (art. 209, fr. I). Después registras la ejecución y la
   inscripción en el S3 (arts. 222, 225 y 27).
@@ -60,18 +62,27 @@ presentado»), tienes **3 días** para admitir (plazo `report_admission`). Tres 
 1. **Prevenir** si el informe tiene defectos: «Etapa»: **«Prevenir: pedir que se corrija el
    informe»** → «Fundamento legal» (ejemplo: `LGRA, art. 195: falta precisar la fecha de los
 hechos.`) → «Aplicar». Etapa «Informe con observaciones (prevención)». La investigadora tiene 3
-   días para «Presentar el informe corregido». Si no lo corrige: **«Tener el informe por no
-   presentado (no se corrigió)»** (vuelve a investigación). Fundamento: LGRA, arts. 194 y 195.
+   días para «Presentar el informe corregido». Si no lo corrige, **cuando venzan esos 3 días**:
+   **«Tener el informe por no presentado (no se corrigió)»** (vuelve a investigación). Antes, la
+   opción no aparece en «Etapa» y el panel dice, bajo la lista de plazos: «Tener el informe por
+   no presentado (no se corrigió)»: La autoridad investigadora todavía puede corregir el informe
+   hasta el …. Podrás hacerlo a partir del …» (sigue el texto común de la espera). Fundamento:
+   LGRA, arts. 194 y 195.
 2. **Abstenerse**: «Etapa»: **«Abstenerse de iniciar el procedimiento»** → «Fundamento legal» y
    «Acuerdo en versión pública» → «Aplicar». Etapa «Abstención». Fundamento: LGRA, art. 101. Abre la
    inconformidad (5 dh). Pide a la investigadora que lo notifique por el buzón. Si la inconformidad
-   se confirma o no se presenta, cierra con «Cerrar con fundamento» → motivo legal **«Abstención»**.
+   se resuelve o no se presenta, cierra con «Cerrar con fundamento» → motivo legal **«Abstención»**.
+   Con identidad sellada, el nodo no deja cerrar antes de tiempo: sin el aviso por el buzón responde
+   «Primero notifica la abstención a la persona denunciante por el buzón: desde ese aviso tiene 5
+   días hábiles para inconformarse (LGRA, arts. 102 y 103).»; con el aviso, mientras corren los 5
+   dh, «La persona denunciante todavía puede inconformarse con la abstención hasta el … (LGRA, art.
+   103).»
 3. **Admitir**: «Etapa»: **«Admitir el informe e iniciar el procedimiento»** → «Procedimiento
    iniciado (informe admitido)». Fundamento: LGRA, arts. 112, 113 y 208, fr. I. Abre la
    **caducidad de 6 meses** (art. 74): si el procedimiento no se mueve, verás las alertas
    «Procedimiento sin actuar a los 5 meses» y «Procedimiento seis meses sin actuar».
 
-Mientras haya una **inconformidad pendiente** no puedes admitir el informe ni cerrar por abstención.
+Mientras haya una **inconformidad pendiente** no puedes admitir el informe ni cerrar la denuncia.
 
 ### 5.2 Emplazar
 
@@ -79,6 +90,9 @@ Mientras haya una **inconformidad pendiente** no puedes admitir el informe ni ce
 - La audiencia inicial debe celebrarse entre **10 y 15 días hábiles** después; se cita a las partes
   **72 horas** antes. La persona denunciante identificada es tercera y su seguimiento le dice que
   puede participar (LGRA, arts. 116, fr. IV, 193 y 208, fr. II a IV).
+
+> **Limitación conocida del prototipo.** El sistema todavía no exige esos 10 días hábiles: deja
+> «Registrar la audiencia inicial» el mismo día del emplazamiento. Cuenta tú el plazo.
 
 ### 5.3 Audiencia inicial
 
@@ -95,6 +109,8 @@ Mientras haya una **inconformidad pendiente** no puedes admitir el informe ni ce
    VIII).
 2. **«Abrir el periodo de alegatos»** → «Alegatos» (5 dh; fr. IX).
 3. **«Cerrar la instrucción»** → «Cierre de la instrucción» (resolver en 30 + 30 dh; fr. X).
+   **Limitación conocida del prototipo:** el sistema todavía deja cerrar la instrucción con los 5 dh
+   de alegatos abiertos; espera tú a que venzan.
 4. **«Resolver la falta no grave»** → «Resolución (falta no grave)». Notificar en 10 dh (fr. XI).
    Fundamento de la sanción: arts. 75 y 77.
 
@@ -140,15 +156,37 @@ formulario: «Recurso»: «Reclamación».
   «Negada» → «Fundamento legal» → «Aplicar».
 - En las etapas del Tribunal la resuelve el Tribunal. La persona denunciante no ve la medida.
 
+> **Limitación conocida del prototipo.** El sistema deja conceder o negar la medida antes de que
+> venza la vista de 5 días a la persona señalada (LGRA, arts. 126 y 127). Antes de ese plazo usa
+> solo «Concedida provisionalmente».
+
 ### 5.9 Firmeza
 
-- **No grave:** cuando no hay recurso pendiente, «Etapa»: **«Declarar la resolución firme»** →
-  «Resolución firme» (LGRA, art. 206).
-- **Grave:** la declara el Tribunal («Declarar la sentencia firme»).
+- **No grave:** «Etapa»: **«Declarar la resolución firme»** → «Resolución firme» (LGRA, art. 206).
+  El paso **espera los 15 días hábiles de la revocación**, contados desde que la denuncia entró a
+  «Resolución (falta no grave)». Mientras corren, la opción no aparece en «Etapa» y, bajo
+  la lista de plazos, el panel dice:
 
-> **Limitación conocida del prototipo.** El sistema solo bloquea la firmeza si hay un recurso
-> **registrado**; no espera a que venzan los 15 días hábiles de la revocación. **Espera tú el plazo**
-> antes de pulsar el botón.
+  > «Declarar la resolución firme»: La resolución todavía puede impugnarse con el recurso de
+  > revocación hasta el …. Podrás hacerlo a partir del … si nadie presenta el recurso, o al
+  > registrar la resolución del recurso presentado (LGRA, art. 206).
+
+- **Si se presentó la revocación:** mientras esté pendiente, la firmeza sigue bloqueada. En cuanto
+  registras su resolución («Registrar la resolución de un recurso»), puedes declarar la firmeza sin
+  esperar al fin de los 15 días.
+- Si alguien intenta el paso antes por la API, el nodo responde `409` con el mismo aviso: «La
+  resolución todavía puede impugnarse con el recurso de revocación hasta el …. Este paso procede a
+  partir del día siguiente, o antes si el recurso presentado ya se resolvió (LGRA, art. 206).»
+- **Grave:** la declara el Tribunal («Declarar la sentencia firme»), con su propia espera (manual
+  06, sección 5.5).
+- **En la demostración** no hace falta esperar 15 días reales: quien opera la red adelanta el reloj
+  simulado con `npm run demo:reloj -- +16dh` (ver `docs/demo.md`). **Solo sirve para la
+  demostración**; en producción el reloj es el real.
+
+> **Limitación conocida del prototipo.** Los plazos de los recursos corren desde la
+> **notificación** de la resolución, que el sistema todavía no registra; se cuentan desde que se
+> entra a la etapa, la cota más temprana. Si la notificación fue después, espera tú los días que
+> falten.
 
 ### 5.10 Ejecución, inscripción en el S3 y cierre
 
@@ -156,11 +194,19 @@ formulario: «Recurso»: «Reclamación».
    225; informe de ejecución en 10 días si es grave).
 2. «Acción»: **«Registrar la inscripción de la sanción (S3)»** → «Referencia de la inscripción en
    el S3» (ejemplo sintético `S3-QRO-2026-SINTETICO-001`). «Solo se registra el acto de
-   inscripción; no hay conexión con el S3.» (LGRA, art. 27).
+   inscripción; no hay conexión con el S3.» (LGRA, art. 27). Aparece desde que la resolución está
+   firme, antes o después de registrar la ejecución.
 3. «Acción»: **«Cerrar con fundamento»**:
    - «Motivo de cierre del S5»: «Atendido».
-   - «Motivo legal (opcional)»: «Resolución firme con sanción», «Resolución firme: responsable sin
-     sanción» (art. 77) o «Resolución firme: no responsable».
+   - **«Motivo legal»** (obligatorio desde que se presentó el IPRA: «Desde que se presentó el
+     informe, el cierre lleva su motivo legal, aparte del motivo del S5.»): «Resolución firme con
+     sanción», «Resolución firme: responsable sin sanción» (art. 77) o «Resolución firme: no
+     responsable». Si lo dejas en «Elige el motivo legal», verás «Elige el motivo legal: desde que
+     se presentó el informe, el cierre lo lleva.»
+   - **La sanción se inscribe antes de cerrar.** Mientras no registres el paso 2, la opción aparece
+     desactivada como «Resolución firme con sanción (primero registra la inscripción en el S3)», y
+     el nodo rechaza el cierre con «Primero registra la inscripción de la sanción en el registro de
+     sancionados (S3, LGRA art. 27).»
    - «Fundamento legal» (20+) y «Acuerdo en versión pública» (50+).
    - Opcional: marca «Declarar la sanción impuesta (se verificará contra el registro público)» y
      llena «Expediente de la resolución», «Persona sancionada», «Sanción (por ejemplo, «Amonestación
@@ -171,15 +217,21 @@ formulario: «Recurso»: «Reclamación».
 
 Otros cierres que te tocan después de la admisión: **«Caducidad de la instancia»**,
 **«Sobreseimiento»** (LGRA, arts. 196 y 197), «Prescripción» (art. 74) e «Incompetencia y
-remisión».
+remisión». La caducidad y la prescripción solo proceden con su plazo corrido; antes, el nodo lo
+rechaza con «La caducidad procede con más de 6 meses sin actuación: la última fue el … y el plazo
+vence el … (LGRA, art. 74).» o «La facultad de sancionar todavía no prescribe: con hechos de …, lo
+más pronto sería después del … (LGRA, art. 74).»
 
-> **Limitación conocida del prototipo.**
->
-> - Puedes «Cerrar con fundamento» con «Resolución firme con sanción» **sin** haber registrado la
->   inscripción en el S3. Hazlo siempre en el orden de arriba.
-> - «Cerrar con fundamento» sigue disponible aunque haya un recurso pendiente. No cierres hasta que
->   se resuelva.
-> - No hay integración real con el S3: solo se registra la referencia.
+**Con un recurso pendiente no se cierra.** Mientras haya un recurso presentado o admitido sin
+resolver, «Cerrar con fundamento» no aparece en «Acción» y el panel dice:
+
+> «Cerrar con fundamento»: hay un recurso pendiente. Primero registra su resolución.
+
+Por la API, el nodo responde `409`: «Hay
+un recurso pendiente: primero registra su resolución y después cierra la denuncia.»
+
+> **Limitación conocida del prototipo.** No hay integración real con el S3: solo se registra la
+> referencia.
 
 ### 5.11 Dar vista al Ministerio Público
 
@@ -188,19 +240,24 @@ con la misma limitación: la vista no llega a la bandeja de la fiscalía.
 
 ## 6. Qué hacer si algo falla
 
-| Síntoma                                                    | Qué hacer                                                             |
-| ---------------------------------------------------------- | --------------------------------------------------------------------- |
-| No veo «Enviar el expediente al Tribunal…»                 | La calificación fue no grave, o aún no registras la audiencia inicial |
-| No puedo admitir el informe                                | Hay una inconformidad pendiente                                       |
-| No aparece «Declarar la resolución firme»                  | Hay un recurso pendiente                                              |
-| «El sistema no aceptó los datos» al registrar un recurso   | Elige a mano «Quién lo presentó» y marca la casilla de firma          |
-| «Tu función no tiene acciones del trámite en este estado.» | La etapa es del Tribunal o de la investigadora                        |
-| Veo denuncias que no tienen IPRA                           | Limitación de la bandeja; ignóralas                                   |
+| Síntoma                                                    | Qué hacer                                                                            |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| No veo «Enviar el expediente al Tribunal…»                 | La calificación fue no grave, o aún no registras la audiencia inicial                |
+| No puedo admitir el informe                                | Hay una inconformidad pendiente                                                      |
+| No aparece «Declarar la resolución firme»                  | Corre la revocación (lee «Podrás hacerlo a partir del …») o hay un recurso pendiente |
+| No aparece «Cerrar con fundamento»                         | Hay un recurso pendiente: registra su resolución                                     |
+| «Resolución firme con sanción» está desactivada            | Primero «Registrar la inscripción de la sanción (S3)»                                |
+| «El sistema no aceptó los datos» al registrar un recurso   | Elige a mano «Quién lo presentó» y marca la casilla de firma                         |
+| «Tu función no tiene acciones del trámite en este estado.» | La etapa es del Tribunal o de la investigadora                                       |
+| Veo denuncias que no tienen IPRA                           | Limitación de la bandeja; ignóralas                                                  |
 
 ## 7. Limitaciones conocidas del prototipo
 
-- La firmeza no espera el plazo del recurso.
-- El cierre no exige la inscripción en el S3 ni espera recursos pendientes.
+- Los plazos de los recursos se cuentan desde que se entra a la etapa, no desde la notificación,
+  que todavía no se registra.
+- La audiencia inicial se puede registrar sin esperar los 10 días hábiles del emplazamiento.
+- La instrucción se puede cerrar con los alegatos abiertos.
+- La medida cautelar se puede conceder o negar antes de la vista de 5 días.
 - La bandeja muestra denuncias sin IPRA.
 - Sin integración real con el S3; la comparecencia de terceros se hace fuera del sistema.
 
@@ -230,11 +287,13 @@ flowchart TD
   H -- "No grave" --> I["Pruebas, alegatos,<br/>cierre de la instrucción"]
   I --> J["Resolver la falta no grave"]
   J -. "revocación 15 dh" .-> J2["Registrar y resolver el recurso"]
-  J --> K["Declarar la resolución firme"]
+  J -- "vencidos 15 dh<br/>o recurso resuelto" --> K["Declarar la resolución firme"]
   H -- "Grave" --> L["Enviar el expediente al Tribunal"]
   L --> M["Tribunal: sentencia firme"]
   K --> N["Registrar la ejecución de la sanción"]
   M --> N
   N --> O["Registrar la inscripción (S3)"]
-  O --> P["Cerrar con fundamento"]
+  K -. "antes o después de ejecutar" .-> O
+  M -.-> O
+  O --> P["Cerrar con fundamento<br/>(sin recurso pendiente)"]
 ```
