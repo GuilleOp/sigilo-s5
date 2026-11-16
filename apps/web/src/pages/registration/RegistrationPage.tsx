@@ -148,6 +148,20 @@ async function registrationTarget(request: RegistrationRequest): Promise<NodeReg
   return createNodeRegistrationApi(node.id);
 }
 
+/**
+ * Nombre de la casilla de delitos: el Código Penal Federal para una institución federal y, para una
+ * estatal o municipal, el código penal de su entidad (el estándar la guarda con la misma clave).
+ */
+export function penalLawLabel(form: Pick<Form, 'governmentLevel' | 'stateCode'>): string {
+  if (form.governmentLevel === 'federal') {
+    return 'Delitos por hechos de corrupción (Código Penal Federal)';
+  }
+  const state = STATES.find((item) => item.code === form.stateCode);
+  return state === undefined
+    ? 'Delitos por hechos de corrupción (código penal de tu entidad)'
+    : `Delitos por hechos de corrupción (código penal de ${state.name})`;
+}
+
 function toRequest(form: Form, keys: GeneratedAuthorityKeys): RegistrationRequest {
   return RegistrationRequestSchema.parse({
     institutionName: form.institutionName,
@@ -343,7 +357,7 @@ export function RegistrationPage() {
                     'LGRA',
                     'Faltas administrativas (Ley General de Responsabilidades Administrativas)',
                   ],
-                  ['CPF', 'Delitos por hechos de corrupción (Código Penal Federal)'],
+                  ['CPF', penalLawLabel(form)],
                 ] as const
               ).map(([law, label]) => (
                 <div key={law} className="choice">

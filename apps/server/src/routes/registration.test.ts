@@ -20,6 +20,7 @@ import {
   toBase64Url,
 } from '@sigilo/core';
 import { createTestServer, getAsAuthority, postJson, testToken } from '../test-support/harness.ts';
+import { slugOf } from '../services/registration-service.ts';
 import type { TestServer } from '../test-support/harness.ts';
 
 const OPERATION = testToken('nodeOperation');
@@ -191,5 +192,18 @@ describe('bandeja de operación', () => {
     expect(view.status).toBe('rejected');
     expect(view.decision?.reason).toBe('El nombramiento no coincide con el registro.');
     expect(view.directoryEntry).toBeNull();
+  });
+});
+
+describe('identificador propuesto del alta', () => {
+  it('corta un nombre largo entre palabras, no a media palabra', () => {
+    expect(
+      slugOf('Órgano Interno de Control Ficticio de la Secretaría de Desarrollo Sustentable'),
+    ).toBe('organo-interno-de-control-ficticio-de-la');
+    expect(slugOf('Secretaría de la Contraloría Ficticia de Oaxaca')).toBe(
+      'secretaria-de-la-contraloria-ficticia-de-oaxaca',
+    );
+    expect(slugOf('a'.repeat(60))).toBe('a'.repeat(48));
+    expect(slugOf('¿?')).toBe('autoridad');
   });
 });
