@@ -55,6 +55,36 @@ function inGroupOrder(
   return groups.flatMap(({ key }) => options.filter((option) => option.group === key));
 }
 
+/**
+ * Opción activa después de una flecha (patrón de WAI-ARIA sin selección automática): sin opción
+ * activa, abajo va a la primera y arriba a la última; con una activa, se mueve una sin salirse.
+ * Antes, al escribir quedaba marcada la primera y la flecha abajo saltaba a la segunda.
+ */
+export function nextActiveIndex(
+  current: number,
+  key: 'ArrowDown' | 'ArrowUp',
+  count: number,
+): number {
+  if (count === 0) return -1;
+  if (current < 0 || current >= count) return key === 'ArrowDown' ? 0 : count - 1;
+  const step = key === 'ArrowDown' ? 1 : -1;
+  return Math.min(count - 1, Math.max(0, current + step));
+}
+
+/**
+ * Opción activa al abrir la lista: la elegida, si está; si no, con flecha abajo la primera, con
+ * flecha arriba la última y con el ratón ninguna.
+ */
+export function openingActiveIndex(
+  selectedIndex: number,
+  key: 'ArrowDown' | 'ArrowUp' | null,
+  count: number,
+): number {
+  if (selectedIndex >= 0) return selectedIndex;
+  if (key === null || count === 0) return -1;
+  return key === 'ArrowDown' ? 0 : count - 1;
+}
+
 /** Campo de catálogo con búsqueda y lista en un solo control. */
 export function ComboboxField({
   id,
@@ -102,12 +132,13 @@ export function ComboboxField({
     document.getElementById(optionId(active))?.scrollIntoView?.({ block: 'nearest' });
   });
 
-  function open(): void {
+  function open(key: 'ArrowDown' | 'ArrowUp' | null = null): void {
     setOpen(true);
     setActive(
-      Math.max(
-        0,
+      openingActiveIndex(
         shown.findIndex((option) => option.value === value),
+        key,
+        shown.length,
       ),
     );
   }
@@ -127,13 +158,15 @@ export function ComboboxField({
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
-      if (!isOpen) return open();
-      const step = event.key === 'ArrowDown' ? 1 : -1;
-      setActive((current) => Math.min(shown.length - 1, Math.max(0, current + step)));
-    } else if (event.key === 'Enter' && activeOption !== undefined) {
-      // Enter elige la opción marcada y no envía el formulario.
+      if (!isOpen) return open(event.key);
+      const key = event.key;
+      setActive((current) => nextActiveIndex(current, key, shown.length));
+    } else if (event.key === 'Enter' && isOpen && (activeOption !== undefined || isTyping)) {
+      // Enter elige la opción marcada (o la única que quedó al escribir) y no envía el formulario.
       event.preventDefault();
-      choose(activeOption);
+      const only = shown.length === 1 ? shown[0] : undefined;
+      const option = activeOption ?? only;
+      if (option !== undefined) choose(option);
     } else if (event.key === 'Escape' && isOpen) {
       close();
     }
@@ -190,7 +223,8 @@ export function ComboboxField({
               setQuery(event.target.value);
               setTyping(true);
               setOpen(true);
-              setActive(0);
+              // Escribir no marca ninguna opción: la flecha abajo lleva a la primera.
+              setActive(-1);
             }}
             // Al salir sin elegir se conserva la opción que ya estaba.
             onBlur={close}
