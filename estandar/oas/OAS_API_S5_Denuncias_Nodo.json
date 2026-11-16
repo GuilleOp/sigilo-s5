@@ -8011,6 +8011,11 @@
           "canReceive": {
             "type": "boolean",
             "description": "Si es destino válido para turnar o reasignar: no es el buzón general y alguna de sus cuentas tiene la función intake, la única que acepta una denuncia turnada. El Tribunal, una supervisora sin recepción o una autoridad sin cuentas no lo son."
+          },
+          "isProsecution": {
+            "description": "Presente si la autoridad es una fiscalía (papel prosecution del directorio o del archivo de cuentas): puede recibir la vista al Ministerio Público en su bandeja.",
+            "type": "boolean",
+            "enum": [true]
           }
         },
         "required": ["authorityId", "name", "isInbox", "canReceive"],
@@ -9198,6 +9203,12 @@
                 "minLength": 3,
                 "maxLength": 300,
                 "description": "Fiscalía que recibe la vista."
+              },
+              "prosecutorAuthorityId": {
+                "description": "Fiscalía del mismo nodo (autoridad con papel prosecution) que recibe la vista en su bandeja como copia de lectura: ve los hechos y las pruebas cuyas llaves se le re-cifraron, y solo avanza la vía penal. La denuncia no se reasigna. Sin este campo, la vista va por oficio a una fiscalía fuera del nodo.",
+                "type": "string",
+                "pattern": "^authority\\.[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "example": "authority.oic-iffe"
               },
               "note": {
                 "type": "string",

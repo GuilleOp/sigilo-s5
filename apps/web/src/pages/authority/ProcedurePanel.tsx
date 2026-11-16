@@ -48,8 +48,10 @@ import {
   closingFunction,
   hasPendingRemedy,
   isProsecutionAccount,
+  isReferralCopy,
   legalClosureOptions,
   precautionaryDecisionMode,
+  referralTargets,
   remedyFilingOptions,
   remedyResolutionOptions,
   requiresLegalOutcome,
@@ -133,6 +135,11 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
   const account = session.account;
   const procedure = detail.procedure;
   const stage = administrativeStage(procedure);
+  // La fiscalía que recibió la vista solo avanza la vía penal en su copia de lectura: el trámite
+  // administrativo, el buzón y la identidad siguen con la autoridad que tiene la denuncia.
+  if (isReferralCopy(account, detail)) {
+    return stageOptions(account, detail).length > 0 ? ['advance_stage'] : [];
+  }
   // LGRA, art. 58 (H5): la autoridad que se excusó no acepta, no avanza ni cierra; solo reasigna,
   // devuelve o turna (el nodo responde 409 a lo demás).
   const review = detail.conflictReview;
@@ -232,6 +239,8 @@ interface Draft {
   isSigned: boolean;
   remedyOutcome: RemedyOutcome;
   referralBasis: CriminalReferralBasisKey;
+  /** Fiscalía del nodo que recibe la vista, `outside` (por oficio) o vacío (la primera del nodo). */
+  referralTarget: string;
   prosecutor: string;
   registryReference: string;
 }
@@ -258,6 +267,7 @@ function emptyDraft(detail: ComplaintDetail, session: AuthoritySession): Draft {
     isSigned: false,
     remedyOutcome: 'confirmed',
     referralBasis: 'internal_control',
+    referralTarget: '',
     prosecutor: '',
     registryReference: '',
   };
@@ -300,6 +310,13 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
 
   // Solo autoridades que pueden aceptar lo turnado (con recepción): nunca el Tribunal ni el buzón.
   const targets = authorities.filter((item) => item.canReceive && item.authorityId !== current);
+  // Fiscalías del nodo para la vista al Ministerio Público; si no hay, la vista va por oficio.
+  const prosecutions = referralTargets(authorities, current);
+  const referralTarget =
+    draft.referralTarget !== ''
+      ? draft.referralTarget
+      : (prosecutions[0]?.authorityId ?? 'outside');
+  const referralProsecution = prosecutions.find((item) => item.authorityId === referralTarget);
   // La fiscalía no lleva la vía administrativa: no le corre el plazo del art. 64 fr. II de la LGRA.
   const deadlines = isProsecutionAccount(account)
     ? (procedure?.deadlines ?? []).filter((item) => item.key !== 'serious_offense_start')
@@ -417,7 +434,11 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     if (action === 'file_remedy' && !draft.isSigned) {
       found['remedy-signed'] = 'Solo se registra el escrito con firma autógrafa (LGRA, art. 109).';
     }
-    if (action === 'refer_to_prosecutor' && draft.prosecutor.trim().length < 3) {
+    if (
+      action === 'refer_to_prosecutor' &&
+      referralProsecution === undefined &&
+      draft.prosecutor.trim().length < 3
+    ) {
       found['referral-prosecutor'] = 'Escribe a qué fiscalía se dio vista.';
     }
     if (action === 'register_sanction' && draft.registryReference.trim().length < 3) {
@@ -535,12 +556,15 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
               ...courtRecord(),
             };
       case 'refer_to_prosecutor':
-        return {
-          action,
-          basis: draft.referralBasis,
-          prosecutor: draft.prosecutor.trim(),
-          ...withNote,
-        };
+        return referralProsecution === undefined
+          ? { action, basis: draft.referralBasis, prosecutor: draft.prosecutor.trim(), ...withNote }
+          : {
+              action,
+              basis: draft.referralBasis,
+              prosecutor: referralProsecution.name,
+              prosecutorAuthorityId: referralProsecution.authorityId,
+              ...withNote,
+            };
       case 'register_sanction':
         return { action, registryReference: draft.registryReference.trim(), legalBasis };
       case 'record_withdrawal':
@@ -576,15 +600,28 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           api,
         });
       }
+      // Vista a la fiscalía del nodo: recibe una copia de lectura con los hechos y, re-cifradas
+      // aquí hacia su llave pública, las llaves de las pruebas. La llave propia nunca sale.
+      if (request.action === 'refer_to_prosecutor' && request.prosecutorAuthorityId !== undefined) {
+        await shareEvidenceKeys({
+          session,
+          detail,
+          targetAuthorityId: request.prosecutorAuthorityId,
+          network,
+          pinned: PINNED_KEYS,
+          api,
+        });
+      }
       const state = await api.applyProcedure(session.token, detail.summary.folio, request);
       if (!isMounted.current) return;
       // Si la denuncia pasó a otra autoridad, ya no se puede volver a leer: no se recarga.
       // El Tribunal deja de ver la denuncia cuando sale de sus etapas (por ejemplo, al quedar firme
       // o al resolver una inconformidad).
       const isCourt = hasFunction(account, 'court');
+      // La fiscalía sigue viendo su copia de lectura mientras la denuncia la tenga otra autoridad.
       const isGone = isCourt
         ? state.legalStage === undefined || !COURT_ACCESS_STAGES.has(state.legalStage)
-        : state.assignedAuthorityId !== account.authorityId;
+        : state.assignedAuthorityId !== account.authorityId && !isReferralCopy(account, detail);
       if (isGone) {
         setMessage(
           `Listo: ${ACTION_LABELS[request.action]}. La denuncia ya no está en tu bandeja.`,
@@ -1036,11 +1073,20 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           {action === 'refer_to_prosecutor' && (
             <>
               <p className="field__hint" data-testid="referral-hint">
-                Aquí se registra la vista en el trámite. La vía penal corre aparte y al mismo
-                tiempo: la vista no detiene el procedimiento administrativo. Remitir la denuncia y
-                sus pruebas a la fiscalía es un paso aparte, por oficio: SIGILO todavía no la
-                entrega en la bandeja de la fiscalía.
+                La vía penal corre aparte y al mismo tiempo: la vista no detiene el procedimiento
+                administrativo, que sigue contigo.
+                {referralProsecution === undefined
+                  ? ' Esa fiscalía no está en este nodo: la denuncia y sus pruebas se le remiten por oficio.'
+                  : ' La fiscalía recibe en su bandeja una copia de lectura con los hechos y las pruebas: tu navegador vuelve a cifrar las llaves de las pruebas hacia la llave pública de la fiscalía (tu llave nunca sale). Solo ella registra las etapas de la vía penal.'}
               </p>
+              {referralProsecution !== undefined && (
+                <p className="field__hint" data-testid="referral-identity-hint">
+                  La identidad sellada no se comparte con la fiscalía, ni los mensajes con la
+                  persona denunciante. Si la vía penal la necesita, la fiscalía la pide con
+                  requerimiento fundado (CNPP, art. 109) y se abre con las dos aprobaciones de
+                  siempre.
+                </p>
+              )}
               <SelectField
                 id="referral-basis"
                 label="Quién da la vista"
@@ -1056,15 +1102,31 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
                   </option>
                 ))}
               </SelectField>
-              <TextField
-                id="referral-prosecutor"
+              <SelectField
+                id="referral-target"
                 label="Fiscalía que recibe la vista"
-                error={errors['referral-prosecutor']}
-                value={draft.prosecutor}
-                maxLength={300}
-                onChange={(event) => set('prosecutor', event.target.value)}
-                data-testid="referral-prosecutor"
-              />
+                value={referralTarget}
+                onChange={(event) => set('referralTarget', event.target.value)}
+                data-testid="referral-target"
+              >
+                {prosecutions.map((item) => (
+                  <option key={item.authorityId} value={item.authorityId}>
+                    {item.name} (en este nodo)
+                  </option>
+                ))}
+                <option value="outside">Otra fiscalía, fuera de este nodo (por oficio)</option>
+              </SelectField>
+              {referralProsecution === undefined && (
+                <TextField
+                  id="referral-prosecutor"
+                  label="Nombre de la fiscalía"
+                  error={errors['referral-prosecutor']}
+                  value={draft.prosecutor}
+                  maxLength={300}
+                  onChange={(event) => set('prosecutor', event.target.value)}
+                  data-testid="referral-prosecutor"
+                />
+              )}
             </>
           )}
           {action === 'register_sanction' && (

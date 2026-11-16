@@ -27,11 +27,13 @@ Corrupción», nodo Federal).
 
 ## 2. Qué ves y qué NO ves
 
-| Ves                                                         | No ves                                                          |
-| ----------------------------------------------------------- | --------------------------------------------------------------- |
-| Las denuncias que llegan a tu bandeja (directas o turnadas) | Las vistas al MP que registran los OIC (no llegan a tu bandeja) |
-| Hechos, pruebas y buzón cifrado de esas denuncias           | La identidad sellada, salvo apertura con fundamento penal       |
-| Las etapas penales que registras                            | Denuncias de otras autoridades                                  |
+| Ves                                                                       | No ves                                                              |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Las denuncias que llegan a tu bandeja (directas o turnadas)               | Denuncias de otras autoridades que no te dieron vista               |
+| Hechos, pruebas y buzón cifrado de esas denuncias                         | La identidad sellada, salvo apertura con fundamento penal           |
+| Las vistas al MP que te da una autoridad de tu nodo (copia de lectura)    | En esas vistas: la identidad sellada y los mensajes con la persona  |
+| En esas vistas: los hechos, el trámite y las pruebas re-cifradas hacia ti | El trámite administrativo de esas vistas como algo que puedas mover |
+| Las etapas penales que registras                                          | Vistas que se dieron por oficio a una fiscalía fuera de tu nodo     |
 
 ## 3. Cómo entras
 
@@ -57,7 +59,10 @@ posible falta grave (LGRA 64)», porque tú eres el Ministerio Público. Te lleg
   «Puede ser delito»);
 - denuncias de delitos que la tabla de funciones manda a la función «vía penal» (`prosecution`);
 - denuncias que te turna el buzón o te reasigna otra autoridad (puedes recibirlas porque tienes
-  cuenta de recepción).
+  cuenta de recepción);
+- **vistas al Ministerio Público** que te da una autoridad de tu nodo (por ejemplo,
+  `contraloria.queretaro` a `fiscalia.queretaro`). En el listado llevan la marca «Vista al
+  Ministerio Público (copia de lectura)» y no hay que aceptarlas (sección 5.5).
 
 ## 5. Etapas que te tocan, en orden
 
@@ -85,8 +90,8 @@ nodo responde `403`.
 | Etapa intermedia                                | «Vía penal: Juicio»                                                                       | CNPP 211                                              |
 | Juicio                                          | «Vía penal: Sentencia»                                                                    | CNPP 211                                              |
 
-¹ Solo si la denuncia con la vista llega a tu bandeja (por ejemplo, reasignada). Hoy la vista no te
-llega sola: ver la sección 7.
+¹ Cuando una autoridad de tu nodo te da vista, la denuncia llega a tu bandeja como copia de lectura
+(sección 5.5) y esta es tu primera etapa.
 
 **La persona ve** la vía penal en su seguimiento, en paralelo a la administrativa.
 
@@ -122,11 +127,30 @@ llega sola: ver la sección 7.
 > así que la segunda aprobación no se puede completar en la fiscalía. Para mostrarla, usa la
 > Contraloría con una denuncia sellada que solo tenga etapa penal.
 
+### 5.5 Vista al Ministerio Público recibida (copia de lectura)
+
+- Abre la denuncia marcada «Vista al Ministerio Público (copia de lectura)». Arriba aparece el
+  aviso **«Vista al Ministerio Público recibida»**: «Otra autoridad tiene la denuncia y lleva el
+  procedimiento administrativo; te dio vista por hechos que pueden ser delito. Ves los hechos y las
+  pruebas cuyas llaves se re-cifraron hacia tu llave pública, y registras las etapas de la vía
+  penal.»
+- **Pruebas:** tu navegador las abre con la llave de tu fiscalía; la autoridad que te dio vista
+  re-cifró en su navegador la llave de cada archivo hacia tu llave pública. Nadie te entrega su
+  llave privada.
+- **Trámite:** la única acción es «Avanzar a la siguiente etapa legal» con las etapas «Vía penal: …»
+  (primero «Vía penal: El Ministerio Público inició la investigación»). La etapa administrativa que
+  ves es la de la Contraloría y no la mueves; la denuncia no se te reasigna.
+- **No hay** buzón con la persona denunciante ni «Abrir la identidad sellada». Si la investigación
+  penal necesita la identidad, pídela por oficio a la autoridad que te dio vista, con requerimiento
+  fundado (CNPP, art. 109): ella la abre con las dos aprobaciones de siempre.
+- **La persona ve** tus etapas penales en su seguimiento, en paralelo a la administrativa.
+
 ## 6. Qué hacer si algo falla
 
 | Síntoma                                            | Qué hacer                                                                                                           |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Mi bandeja está vacía aunque un OIC dio vista      | Limitación conocida: la vista no llega. El OIC la remite por oficio; pídela por los medios oficiales                |
+| Mi bandeja está vacía aunque un OIC dio vista      | El OIC eligió «Otra fiscalía, fuera de este nodo (por oficio)» o es de otro nodo: pídela por los medios oficiales   |
+| En una vista recibida no veo una prueba            | Quien dio la vista no pudo re-cifrar su llave hacia ti; pídele que vuelva a compartir las llaves                    |
 | No veo «Vía penal: Iniciar la investigación penal» | La denuncia ya tiene etapa administrativa; usa «El Ministerio Público inició la investigación» después de una vista |
 | No veo «Iniciar la investigación» ni «Dar vista»   | Es a propósito: tu fiscalía solo lleva la vía penal                                                                 |
 | No sale «Abrir identidad aprobada»                 | Falta una segunda cuenta de tu fiscalía                                                                             |
@@ -134,8 +158,10 @@ llega sola: ver la sección 7.
 
 ## 7. Limitaciones conocidas del prototipo
 
-- **La vista al MP no llega a tu bandeja.** Solo se registra en la denuncia del OIC, que te la
-  remite por oficio, fuera del sistema.
+- La vista al MP solo llega a tu bandeja si te la da una autoridad de **tu mismo nodo**; las de
+  otros nodos (por ejemplo, del nodo Federal a una fiscalía estatal) siguen por oficio.
+- En una vista recibida no puedes pedir la apertura de la identidad: la pide la autoridad que tiene
+  la denuncia.
 - Los tipos de determinación del MP y los recursos penales todavía no están tipados.
 - El sistema no registra qué medidas de protección decidiste.
 
@@ -153,7 +179,7 @@ llega sola: ver la sección 7.
 flowchart TD
   A["Denuncia directa o turnada"] --> B["Aceptar (o reabrir) la denuncia"]
   B --> C["Vía penal: Iniciar la investigación penal"]
-  V["Vista de un OIC: se remite por oficio<br/>(no llega a la bandeja)"] -.-> C2["Vía penal: El MP inició la investigación"]
+  V["Vista de un OIC de tu nodo:<br/>copia de lectura en tu bandeja"] --> C2["Vía penal: El MP inició la investigación"]
   C --> D{"Investigación"}
   C2 --> D
   D --> E["Determinación del MP"]

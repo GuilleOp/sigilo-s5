@@ -236,7 +236,9 @@ un recurso pendiente: primero registra su resolución y después cierra la denun
 ### 5.11 Dar vista al Ministerio Público
 
 También puedes dar vista al MP («Dar vista al Ministerio Público», ver manual 03, sección 5.10),
-con la misma limitación: la vista no llega a la bandeja de la fiscalía.
+igual que la investigadora: con una fiscalía de tu nodo, la recibe en su bandeja como copia de
+lectura con los hechos y las pruebas (tu navegador re-cifra sus llaves hacia ella), sin la
+identidad sellada; con una fiscalía fuera del nodo, se remite por oficio.
 
 ## 6. Qué hacer si algo falla
 

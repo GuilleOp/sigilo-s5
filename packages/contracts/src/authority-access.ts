@@ -239,6 +239,10 @@ export const AuthorityProfileSchema = z
       description:
         'Si es destino válido para turnar o reasignar: no es el buzón general y alguna de sus cuentas tiene la función intake, la única que acepta una denuncia turnada. El Tribunal, una supervisora sin recepción o una autoridad sin cuentas no lo son.',
     }),
+    isProsecution: z.literal(true).optional().meta({
+      description:
+        'Presente si la autoridad es una fiscalía (papel prosecution del directorio o del archivo de cuentas): puede recibir la vista al Ministerio Público en su bandeja.',
+    }),
   })
   .meta({ description: 'Autoridad alojada en el nodo.' });
 export type AuthorityProfile = z.infer<typeof AuthorityProfileSchema>;

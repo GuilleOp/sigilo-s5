@@ -10,6 +10,7 @@ import type { OpenedEvidence } from '../../crypto/evidence.ts';
 import { EntityName } from '../../catalogs/EntityName.tsx';
 import { focusAfterRender } from '../../lib/focus.ts';
 import { formatDayDate, formatMonthPeriod, STATUS_LABELS } from '../../lib/format.ts';
+import { isReferralCopy } from '../../lib/procedure-actions.ts';
 import { api } from '../../services/api.ts';
 import { ApiRequestError, describeError } from '../../services/api-client.ts';
 import type { AuthoritySession } from './authority-session.ts';
@@ -104,7 +105,10 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
     );
   if (detail === null) return <p>Cargando denuncia.</p>;
   const { summary, facts } = detail;
-  const isCourt = session.account.functions.includes('court');
+  // El Tribunal y la fiscalía que recibió la vista (copia de lectura) ven el expediente y el
+  // trámite; no turnan, no escriben a la persona ni piden aperturas de su identidad.
+  const isCopy = isReferralCopy(session.account, detail);
+  const isCourt = session.account.functions.includes('court') || isCopy;
   const municipality =
     facts.municipalityCode === undefined
       ? undefined
@@ -118,6 +122,24 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
       <h2 id="detail-title" tabIndex={-1}>
         Denuncia <span className="mono folio">{summary.folio}</span>
       </h2>
+      {isCopy && (
+        <Alert
+          tone="info"
+          title="Vista al Ministerio Público recibida"
+          testId="referral-copy-notice"
+        >
+          <p>
+            Otra autoridad tiene la denuncia y lleva el procedimiento administrativo; te dio vista
+            por hechos que pueden ser delito. Ves los hechos y las pruebas cuyas llaves se
+            re-cifraron hacia tu llave pública, y registras las etapas de la vía penal.
+          </p>
+          <p>
+            La identidad sellada no se comparte contigo, ni los mensajes con la persona denunciante.
+            Si la investigación penal la necesita, pídela a la autoridad que tiene la denuncia con
+            requerimiento fundado (CNPP, art. 109): se abre con las dos aprobaciones de siempre.
+          </p>
+        </Alert>
+      )}
       <dl className="definition-list card">
         <dt>Recibida</dt>
         <dd>{formatDayDate(summary.receivedOn)}</dd>
@@ -173,7 +195,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
       </dl>
       {detail.contextSheet !== undefined && <ContextSheetPanel sheet={detail.contextSheet} />}
       <PdnInstitutionPanel session={session} entityId={facts.entityId} />
-      {detail.conflictReview !== undefined && (
+      {detail.conflictReview !== undefined && !isCopy && (
         <ConflictPanel
           session={session}
           detail={detail}
@@ -213,6 +235,7 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
       {/* Solo recepción o investigación descartan pruebas (el nodo responde 403 a las demás). */}
       {detail.evidence.length > 0 &&
         detail.storedEvidenceCount !== undefined &&
+        !isCopy &&
         hasAnyFunction(session.account, ['intake', 'investigation']) && (
           <DiscardEvidencePanel
             token={session.token}

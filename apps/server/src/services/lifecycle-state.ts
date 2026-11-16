@@ -67,6 +67,11 @@ export interface LifecycleState {
   reclassificationOrderedOn: string | null;
   federal: { funding: FederalFunding; flaggedOn: string; noticeSentOn: string | null } | null;
   sanctionRegistered: { legalOn: string; registryReference: string } | null;
+  /**
+   * Vista al Ministerio Público: el día y, si se dio a una fiscalía del nodo, su autoridad, que ve
+   * la denuncia en su bandeja como copia de lectura y lleva la vía penal.
+   */
+  criminalReferral: { legalOn: string; authorityId: string | null } | null;
   /** Funciones que ejerció cada cuenta en esta denuncia. */
   functionsByActor: ReadonlyMap<string, ReadonlySet<ActingFunction>>;
 }
@@ -119,6 +124,7 @@ export function lifecycleStateOf(
   let reclassificationOrderedOn: string | null = null;
   let federal: LifecycleState['federal'] = null;
   let sanctionRegistered: LifecycleState['sanctionRegistered'] = null;
+  let criminalReferral: LifecycleState['criminalReferral'] = null;
   const functionsByActor = new Map<string, Set<ActingFunction>>();
 
   steps.forEach((step, position) => {
@@ -214,6 +220,12 @@ export function lifecycleStateOf(
           registryReference: details.registryReference ?? '',
         };
         break;
+      case 'criminal_referral_filed':
+        criminalReferral = {
+          legalOn: step.legalOn,
+          authorityId: details.prosecutorAuthorityId ?? null,
+        };
+        break;
       default:
         break;
     }
@@ -232,6 +244,7 @@ export function lifecycleStateOf(
     reclassificationOrderedOn: currentStage === 'court_received' ? reclassificationOrderedOn : null,
     federal,
     sanctionRegistered,
+    criminalReferral,
     functionsByActor,
   };
 }

@@ -14,6 +14,11 @@ rompe algo está marcado como **Incompatible**.
 - `EscalationSummary.canOpenCopy` (obligatorio): si la cuenta puede pedir la copia cerrada con la
   segunda llave. Es falso para la supervisión que recibe los avisos de las reglas públicas sin
   custodiar la segunda llave; `listEscalations` ya no responde `403` a esa supervisión.
+- `refer_to_prosecutor` acepta `prosecutorAuthorityId` (opcional): la fiscalía del mismo nodo que
+  recibe la vista al Ministerio Público en su bandeja como copia de lectura. La denuncia no se
+  reasigna; la fiscalía solo avanza la vía penal. Sin el campo, la vista sigue por oficio.
+- `AuthorityProfile.isProsecution` (opcional): la autoridad es una fiscalía y puede recibir la
+  vista.
 
 ## [0.4.0] - 2026-11-16
 

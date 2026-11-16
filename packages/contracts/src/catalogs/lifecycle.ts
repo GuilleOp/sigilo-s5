@@ -275,6 +275,8 @@ export interface CriminalTransition {
  * Máquina de estados de la vía penal. Empieza con la vista al Ministerio Público (acción
  * `refer_to_prosecutor`) o, si la denuncia llegó a la fiscalía, con la investigación penal. Solo
  * la fiscalía (papel `prosecution`) la avanza; la investigadora y la substanciadora solo dan vista.
+ * Con la vista a una fiscalía del nodo (`prosecutorAuthorityId`), ella la avanza en su copia de
+ * lectura, sin que la denuncia se reasigne.
  */
 export const CRIMINAL_TRANSITIONS: readonly CriminalTransition[] = [
   { from: null, to: 'criminal_investigation', label: 'Iniciar la investigación penal' },

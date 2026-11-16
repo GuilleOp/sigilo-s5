@@ -119,6 +119,38 @@ export function isCourtCompetent(
   return hasPendingCourtRemedy(lifecycleOf(ctx, complaint));
 }
 
+/**
+ * Fiscalía del nodo que recibió la vista al Ministerio Público de la denuncia, o `null` si no hubo
+ * vista o se dio por oficio a una fiscalía fuera del nodo.
+ */
+export function referralAuthorityOf(ctx: AppContext, complaint: ComplaintRecord): string | null {
+  if (complaint.criminalStage === null) return null;
+  return lifecycleOf(ctx, complaint).criminalReferral?.authorityId ?? null;
+}
+
+/**
+ * Indica si la cuenta es de la fiscalía que recibió la vista de la denuncia: la ve en su bandeja
+ * como copia de lectura (hechos y pruebas cuyas llaves se le re-cifraron) y solo avanza la vía
+ * penal. La denuncia sigue en la autoridad que la tiene; la fiscalía no ve el buzón con la persona
+ * denunciante ni pide aperturas de su identidad.
+ */
+export function isProsecutionCompetent(
+  ctx: AppContext,
+  account: AuthorityAccount,
+  complaint: ComplaintRecord,
+): boolean {
+  if (!isProsecutionAuthority(ctx, account.authorityId)) return false;
+  return referralAuthorityOf(ctx, complaint) === account.authorityId;
+}
+
+/** Folios con vista al Ministerio Público hacia la fiscalía `authorityId` (su bandeja de vistas). */
+export function listReferredFolios(ctx: AppContext, authorityId: string): string[] {
+  return ctx.procedure.listFoliosWithAction('criminal_referral_filed').filter((folio) => {
+    const complaint = ctx.complaints.find(folio);
+    return complaint !== null && referralAuthorityOf(ctx, complaint) === authorityId;
+  });
+}
+
 /** Indica si el nodo tiene cuentas del Tribunal; si no, la substanciación registra sus actos. */
 export function hasCourtAccounts(ctx: AppContext): boolean {
   return ctx.authorities.hasAccountWith('court');
@@ -258,6 +290,16 @@ function plan(
     }
   };
   const isProsecution = isProsecutionAuthority(ctx, account.authorityId);
+  // Copia de lectura de la fiscalía que recibió la vista: solo avanza la vía penal; la denuncia,
+  // su trámite administrativo, su buzón y su identidad siguen con la autoridad que la tiene.
+  const isReferralCopy =
+    !isCompetent(ctx, account, complaint) && isProsecutionCompetent(ctx, account, complaint);
+  if (
+    isReferralCopy &&
+    !(request.action === 'advance_stage' && CriminalStageSchema.safeParse(request.stage).success)
+  ) {
+    throw new ApiFailure('forbidden');
+  }
   const requireTransition = (to: ManagementState) => {
     if (!isManagementTransition(current, to)) throw new ApiFailure('conflict');
   };
@@ -482,7 +524,26 @@ function plan(
       requireAccepted();
       if (complaint.criminalStage !== null) throw new ApiFailure('conflict');
       const actor = actAsAny(['investigation', 'substantiation']);
+      // Fiscalía del nodo que la recibe en su bandeja: una autoridad de este nodo con papel de
+      // fiscalía, distinta de la que tiene la denuncia. La denuncia no se reasigna.
+      const target = request.prosecutorAuthorityId;
+      if (
+        target !== undefined &&
+        (ctx.authorities.authority(target) === null ||
+          !isProsecutionAuthority(ctx, target) ||
+          target === assigned)
+      ) {
+        throw new ApiFailure('bad_request');
+      }
       const basis = CRIMINAL_REFERRAL_BASES.find((item) => item.key === request.basis);
+      const delivery =
+        target === undefined
+          ? 'Esa fiscalía no está en este nodo: la denuncia y sus pruebas se le remiten por oficio.'
+          : `La fiscalía la recibe en su bandeja con los hechos y las pruebas${
+              complaint.sealedIdentity === null
+                ? '.'
+                : '; la identidad sellada de la persona denunciante no se comparte con ella.'
+            }`;
       return {
         ...base,
         action: 'criminal_referral_filed',
@@ -491,11 +552,12 @@ function plan(
         status: keepStatus(),
         note:
           request.note ??
-          `Se registró la vista al Ministerio Público (${request.prosecutor}) por hechos que pueden ser delito. La vía penal corre aparte y no detiene el procedimiento administrativo. Remitir la denuncia y sus pruebas a la fiscalía es un paso aparte, por oficio.`,
+          `Se dio vista al Ministerio Público (${request.prosecutor}) por hechos que pueden ser delito. ${delivery} La vía penal corre aparte y no detiene el procedimiento administrativo.`,
         details: detailsOf(actor, {
           criminalStage: 'criminal_complaint_filed',
           referralBasis: request.basis,
           prosecutor: request.prosecutor,
+          ...(target === undefined ? {} : { prosecutorAuthorityId: target }),
           legalBasis: basis?.legalBasis.map(formatLegalReference).join('; '),
         }),
       };
@@ -902,7 +964,9 @@ function applyInTransaction(
   // Tribunal solo la alcanza en sus etapas o con un recurso que él resuelve.
   const isReachable =
     complaint !== null &&
-    (isCompetent(ctx, account, complaint) || isCourtCompetent(ctx, account, complaint));
+    (isCompetent(ctx, account, complaint) ||
+      isCourtCompetent(ctx, account, complaint) ||
+      isProsecutionCompetent(ctx, account, complaint));
   if (!isReachable) throw new ApiFailure('not_found');
   const planned = plan(ctx, account, complaint, request);
   const now = ctx.deps.now();
