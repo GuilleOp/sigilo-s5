@@ -326,7 +326,7 @@ export const FunctionRuleSchema = z
       .meta({ description: 'Órdenes de gobierno de los entes a los que aplica la regla.' }),
     entityIds: z.array(z.string().min(1).max(64)).max(1000).meta({
       description:
-        'Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «municipales sin OIC»). Una regla específica gana sobre una general.',
+        'Entes del catálogo a los que aplica de forma específica; vacío significa todos los del orden (por ejemplo, «todos los entes estatales»). Una regla específica gana sobre una general.',
     }),
     severity: z.enum(['serious', 'non_serious']).optional().meta({
       description:

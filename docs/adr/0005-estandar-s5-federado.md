@@ -47,14 +47,14 @@ leer las denuncias.
 
 Catálogo de estados (las claves técnicas se definen en `packages/contracts`):
 
-| Etapa (LGRA)              | Estados que ve la ciudadanía                                                  | Plazo que se vigila                                                                                                      |
-| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Recepción                 | Recibida; en turno; turnada; devuelta                                         | Registro de denuncias recibidas por otros medios (Bases, art. 58)                                                        |
-| Investigación             | Aceptada; en investigación; requerimiento abierto                             | 30 días naturales para iniciar ante falta grave (LGRA, art. 64, fr. II); requerimientos de 5 a 15 días hábiles (art. 96) |
-| Calificación              | Calificada (no grave o grave)                                                 | La calificación interrumpe la prescripción (art. 74)                                                                     |
-| Archivo                   | Archivada por falta de elementos                                              | Notificación en 10 días hábiles a quien sea identificable; reapertura con nuevos indicios (art. 100)                     |
-| Responsabilidad           | Turnada a substanciación                                                      | Prescripción de 3 años (no graves) o 7 (graves) y caducidad por 6 meses de inactividad (art. 74)                         |
-| Cierre (motivos de SESNA) | Atendida; canalizada; improcedente; información insuficiente; acumulada; otro | Cada cierre exige fundamento (ADR 0007)                                                                                  |
+| Etapa (LGRA)              | Estados que ve la ciudadanía                                                                                                | Plazo que se vigila                                                                                                      |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Recepción                 | Recibida; en turno; turnada; devuelta                                                                                       | Registro de denuncias recibidas por otros medios (Bases, art. 58)                                                        |
+| Investigación             | Aceptada; en investigación; requerimiento abierto                                                                           | 30 días naturales para iniciar ante falta grave (LGRA, art. 64, fr. II); requerimientos de 5 a 15 días hábiles (art. 96) |
+| Calificación              | Calificada (no grave o grave)                                                                                               | La calificación interrumpe la prescripción (art. 74)                                                                     |
+| Archivo                   | Archivada por falta de elementos                                                                                            | Notificación en 10 días hábiles a quien sea identificable; reapertura con nuevos indicios (art. 100)                     |
+| Responsabilidad           | Turnada a substanciación; en falta grave, enviada a la Sala Especializada del Tribunal, que resuelve (LGRA, arts. 12 y 209) | Prescripción de 3 años (no graves) o 7 (graves) y caducidad por 6 meses de inactividad (art. 74)                         |
+| Cierre (motivos de SESNA) | Atendida; canalizada; improcedente; información insuficiente; acumulada; otro                                               | Cada cierre exige fundamento (ADR 0007)                                                                                  |
 
 Cada estado lleva una explicación en lenguaje claro de qué significa y qué sigue.
 

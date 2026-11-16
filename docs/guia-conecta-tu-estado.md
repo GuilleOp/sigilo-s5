@@ -4,6 +4,13 @@ Para el equipo técnico de una Secretaría Ejecutiva del Sistema Estatal Anticor
 la secretaría de buen gobierno o contraloría del estado, que va a operar el **nodo de su estado** en
 la red «un S5, muchas llaves» ([ADR 0005](adr/0005-estandar-s5-federado.md)).
 
+**Operar el nodo no es recibir ni turnar denuncias.** Quien opera el nodo lo mantiene en marcha y
+da de alta a las autoridades; no lee denuncias ni ve los hechos. El buzón general lo atiende la
+autoridad receptora que designe tu estado (por ejemplo, la unidad de quejas y denuncias de la
+contraloría). Que la SESEA reciba y turne denuncias depende de la ley de cada estado: en Querétaro
+no está previsto; en Michoacán sí, por ley y por lineamientos de su Comité Coordinador. Revisa la
+tuya antes de llenar la tabla ([proceso legal](proceso-legal-de-la-denuncia.md#62-sesea-de-querétaro)).
+
 Así está repartida la red:
 
 - **La SESNA** monta la **única ventanilla nacional** (la web donde denuncian ciudadanos y personas
@@ -89,38 +96,49 @@ llenó la institución. La competencia sirve para ofrecer alternativas a quien d
 investiga a cada ente lo decide tu tabla de funciones (sección 2).
 
 Tu **buzón general** (papel `inbox`) lo crea `./sigilo instalar`: recibe lo que tu tabla no asigna y
-una persona lo turna.
+una persona de la autoridad receptora que designe tu estado lo turna (no quien opera el nodo, salvo
+que tu ley se lo asigne).
 
-Tus **observadores** (CPC, entidad de fiscalización, organizaciones o academia) entran con su llave
-de firma. Pueden ser testigos de la bitácora nacional y del directorio: cada uno crea su llave con
-`./sigilo testigo crear-llave`.
+Tus **observadores** (CPC, organizaciones o academia) entran con su llave de firma. Vigilan el
+sistema con datos agregados y no ven casos (LGSNA arts. 21 y 23). Pueden ser testigos de la
+bitácora nacional y del directorio: cada uno crea su llave con `./sigilo testigo crear-llave`. Tu
+entidad de fiscalización superior no es observadora: es autoridad que investiga faltas graves
+(LGRA arts. 9 fr. III y 11). Si cofirma el directorio, lo hace como institución, no como vigilante
+de casos.
 
 ## 2. Tu tabla de funciones
 
 La tabla de funciones (`FunctionTable` en `estandar/diccionario-de-datos.md`) dice qué institución
 cumple cada función en tu estado. Con ella la ventanilla propone a quién va cada denuncia, el panel
-muestra quién sigue en el trámite y la página pública «¿Quién atiende tu denuncia en tu estado?» la
+muestra quién sigue en el trámite (sin el observador, que vigila el sistema y no el caso) y la
+página pública «¿Quién atiende tu denuncia en tu estado?» la
 enseña a cualquiera.
 
-| Función        | Clave            | En el CSV        | Quién puede ser                                                          |
-| -------------- | ---------------- | ---------------- | ------------------------------------------------------------------------ |
-| Buzón general  | `intake`         | `buzon`          | Tu buzón general (autoridad del directorio con papel `inbox`)            |
-| Operación      | `operation`      | `operacion`      | Quien opera el nodo y da de alta autoridades (SESEA o contraloría)       |
-| Investigación  | `investigation`  | `investigacion`  | Autoridad del directorio con papel `investigating`: recibe cifrado       |
-| Substanciación | `substantiation` | `substanciacion` | Una autoridad o una institución                                          |
-| Resolución     | `resolution`     | `resolucion`     | Una autoridad o una institución (la falta grave la resuelve el tribunal) |
-| Supervisión    | `supervision`    | `supervision`    | El superior que recibe escalamientos (autoridad `supervisory`) u otra    |
-| Vía penal      | `prosecution`    | `penal`          | La fiscalía anticorrupción (autoridad `prosecution` o institución)       |
-| Observador     | `observer`       | `observador`     | Tu CPC (observador del directorio) u otra institución                    |
+| Función        | Clave            | En el CSV        | Quién puede ser                                                                                                          |
+| -------------- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Buzón general  | `intake`         | `buzon`          | Tu buzón general (autoridad del directorio con papel `inbox`), atendido por la autoridad receptora que designe tu estado |
+| Operación      | `operation`      | `operacion`      | Quien opera el nodo y da de alta autoridades (SESEA o contraloría); no lee denuncias                                     |
+| Investigación  | `investigation`  | `investigacion`  | Autoridad del directorio con papel `investigating`: recibe cifrado                                                       |
+| Substanciación | `substantiation` | `substanciacion` | Una autoridad o una institución                                                                                          |
+| Resolución     | `resolution`     | `resolucion`     | Una autoridad o una institución (la falta grave la resuelve la Sala Especializada del tribunal)                          |
+| Supervisión    | `supervision`    | `supervision`    | El superior que recibe escalamientos (autoridad `supervisory`) u otra                                                    |
+| Vía penal      | `prosecution`    | `penal`          | La fiscalía anticorrupción (autoridad `prosecution` o institución)                                                       |
+| Observador     | `observer`       | `observador`     | Tu CPC (observador del directorio): vigila el sistema con datos agregados, no sigue en el trámite ni ve casos            |
 
 Cada función es una lista de reglas. Cada regla dice a qué órdenes de gobierno aplica (`estatal`,
 `municipal`), si aplica solo a ciertos entes del catálogo (`entityIds`) y, si hace falta, a qué
 gravedad (`severity`). La regla que nombra al ente gana sobre la de todo su orden. Ejemplo en
 lenguaje llano:
 
-- Investigación: entes estatales → Contraloría; municipales sin OIC propio → Contraloría (una regla
-  general para el orden municipal); la Secretaría de Salud → su OIC (una regla con su `entityId`).
-- Resolución: falta no grave → Contraloría; falta grave → Tribunal de Justicia Administrativa.
+- Investigación: entes estatales → Contraloría; la Secretaría de Salud → su OIC (una regla con su
+  `entityId`); cada municipio → el OIC de ese municipio (una regla por municipio con su
+  `entityId`). Todo municipio tiene su propio OIC (CPEUM art. 109 fr. III) y la contraloría del
+  Poder Ejecutivo no es competente para los servidores municipales: no pongas una regla general que
+  mande el orden municipal a la contraloría. Si un municipio todavía no está en tu directorio, sus
+  denuncias llegan al buzón general para turnarlas a su OIC.
+- Resolución: falta no grave → la Contraloría o el OIC que investigó (en un área distinta);
+  falta grave → Sala Especializada en Responsabilidades Administrativas del Tribunal de Justicia
+  Administrativa (LGRA arts. 12 y 209).
 
 Si una denuncia no encaja en ninguna regla de investigación, llega a tu buzón general y una persona
 la turna. Tu tabla solo cubre entes estatales y municipales de tu entidad (los federales los atiende
@@ -131,9 +149,11 @@ el nodo federal) y solo puede nombrar autoridades de tu propio nodo.
 
 ```text
 funcion,orden,ente,gravedad,quien,fundamento
-investigacion,estatal;municipal,,,authority.contraloria-oaxaca,"LGRA, art. 3, fr. II"
-resolucion,estatal;municipal,,no_grave,authority.contraloria-oaxaca,"LGRA, art. 10"
-resolucion,estatal;municipal,,grave,institucion:Tribunal de Justicia Administrativa de Oaxaca,"LGRA, art. 12"
+investigacion,estatal,,,authority.contraloria-oaxaca,"LGRA, art. 3, fr. II"
+investigacion,municipal,MUN-EJEMPLO,,authority.oic-municipio-ejemplo,"LGRA, art. 3, fr. II; CPEUM, art. 109, fr. III"
+resolucion,estatal,,no_grave,authority.contraloria-oaxaca,"LGRA, art. 10"
+resolucion,municipal,MUN-EJEMPLO,no_grave,authority.oic-municipio-ejemplo,"LGRA, art. 10"
+resolucion,estatal;municipal,,grave,institucion:Sala Especializada del Tribunal de Justicia Administrativa de Oaxaca,"LGRA, arts. 12 y 209"
 ```
 
 `./sigilo tabla revisar` la valida contra el directorio vigente y la muestra en lenguaje llano;
