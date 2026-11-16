@@ -359,6 +359,93 @@ describe('falta grave: del IPRA al Tribunal', () => {
     expect(titles(view)).toContain('El Tribunal devolvió el expediente: no es falta grave');
   });
 
+  it('la investigadora registra la falta reclasificada por orden del Tribunal (art. 209 fr. II)', async () => {
+    const { server, folio, reporter } = await toInitialHearing('serious');
+    await advance(server, 'oicSubstantiation', folio, 'case_file_sent');
+    await advance(server, 'court', folio, 'court_received');
+    const reclassify = {
+      action: 'record_reclassification',
+      offenseCode: 'LGRA-54',
+      legalBasis: 'LGRA, art. 209 fr. II: reclasificación sintética ordenada por el Tribunal.',
+      agreement:
+        'Acuerdo sintético: por orden del Tribunal, los hechos del informe se reclasifican como desvío de recursos públicos.',
+    } as const;
+    // Sin la orden del Tribunal no se reclasifica.
+    expect((await act(server, 'oicInvestigator', folio, reclassify)).status).toBe(409);
+    await ok(server, 'court', folio, { action: 'order_reclassification', legalBasis: BASIS });
+    // Una orden a la vez.
+    expect(
+      (await act(server, 'court', folio, { action: 'order_reclassification', legalBasis: BASIS }))
+        .status,
+    ).toBe(409);
+    // Mientras corren los 3 días hábiles, el Tribunal no admite las pruebas.
+    const waiting = await act(server, 'court', folio, {
+      action: 'advance_stage',
+      stage: 'court_evidence_hearing',
+    });
+    expect(waiting.status).toBe(409);
+    expect(errorMessage(waiting.body)).toContain('reclasificada');
+    let view = (await detail(server, 'oicInvestigator', folio)).body?.procedure;
+    expect(view?.reclassification?.orderedOn).toBeDefined();
+    expect(view?.reclassification?.dueOn).toBeDefined();
+    // Solo la investigadora: ni el Tribunal ni la substanciadora la registran.
+    expect((await act(server, 'court', folio, reclassify)).status).toBe(403);
+    expect((await act(server, 'oicSubstantiation', folio, reclassify)).status).toBe(403);
+    // Debe ser otra falta grave: ni no grave, ni la misma (tampoco por su clave equivalente).
+    expect(
+      (await act(server, 'oicInvestigator', folio, { ...reclassify, offenseCode: 'LGRA-50' }))
+        .status,
+    ).toBe(400);
+    expect(
+      (await act(server, 'oicInvestigator', folio, { ...reclassify, offenseCode: 'CPF-222' }))
+        .status,
+    ).toBe(409);
+    expect(
+      (await act(server, 'oicInvestigator', folio, { ...reclassify, legalBasis: 'corto' })).status,
+    ).toBe(400);
+    const state = await ok(server, 'oicInvestigator', folio, reclassify);
+    expect(state.legalStage).toBe('court_received');
+    expect(state.status).toBe('in_court');
+    view = (await detail(server, 'court', folio)).body?.procedure;
+    expect(view?.reclassification?.orderedOn).toBeUndefined();
+    expect(view?.reclassification?.offenseCode).toBe('LGRA-54');
+    expect(view?.deadlines.map((item) => item.key)).not.toContain('reclassification');
+    expect(view?.qualification?.agreement).toBe(reclassify.agreement);
+    expect(titles(view)).toContain('La autoridad investigadora reclasificó la falta');
+    const step = view?.steps.find((item) => item.action === 'offense_reclassified');
+    expect(step?.record?.offenseCode).toBe('LGRA-54');
+    expect(step?.record?.legalBasis).toBe(reclassify.legalBasis);
+    // La persona lo ve en su seguimiento, con la conducta y por orden de quién.
+    const seen = await tracking(server, folio, reporter);
+    const explained = seen.procedure?.steps.find((item) => item.action === 'offense_reclassified');
+    expect(explained?.explanation).toContain(
+      'La autoridad investigadora reclasificó la falta como «Usar dinero público para algo distinto de lo autorizado (desvío de recursos públicos)» por orden del Tribunal',
+    );
+    expect(seen.procedure?.reclassification?.agreement).toBe(reclassify.agreement);
+    // Ya no hay orden pendiente: no se reclasifica otra vez y el Tribunal sigue.
+    expect((await act(server, 'oicInvestigator', folio, reclassify)).status).toBe(409);
+    const admitted = await ok(server, 'court', folio, {
+      action: 'advance_stage',
+      stage: 'court_evidence_hearing',
+    });
+    expect(admitted.legalStage).toBe('court_evidence_hearing');
+  });
+
+  it('vencidos los 3 días hábiles sin reclasificar, el Tribunal sigue con el procedimiento', async () => {
+    const { server, folio } = await toInitialHearing('serious');
+    await advance(server, 'oicSubstantiation', folio, 'case_file_sent');
+    await advance(server, 'court', folio, 'court_received');
+    await ok(server, 'court', folio, { action: 'order_reclassification', legalBasis: BASIS });
+    server.setNow(businessDaysAfter(today(server), 4));
+    const view = (await detail(server, 'court', folio)).body?.procedure;
+    expect(view?.reclassification?.isOverdue).toBe(true);
+    const admitted = await ok(server, 'court', folio, {
+      action: 'advance_stage',
+      stage: 'court_evidence_hearing',
+    });
+    expect(admitted.legalStage).toBe('court_evidence_hearing');
+  });
+
   it('sin cuentas del Tribunal, la substanciación registra sus actuaciones con expediente', async () => {
     const registry = testAuthorityRegistryWith((accounts) =>
       accounts.filter(([name]) => name !== 'court'),

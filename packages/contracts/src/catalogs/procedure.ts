@@ -508,7 +508,7 @@ export const ADMINISTRATIVE_STAGES: readonly (LegalStageOption & { key: Administ
     track: 'administrative',
     name: 'Recibido en el Tribunal',
     explanation:
-      'El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena reclasificarla en 3 días hábiles. Después admite las pruebas en 15 días hábiles.',
+      'El Tribunal recibió el expediente y revisa que la falta sí sea grave. Si no lo es, lo devuelve a la autoridad substanciadora; si es otra falta grave, ordena a la autoridad investigadora que la reclasifique, y ella tiene 3 días hábiles para registrar la falta reclasificada. Después el Tribunal admite las pruebas en 15 días hábiles.',
     actors: ['administrative_court'],
     deadlines: ['evidence_admission', 'reclassification', 'inactivity_expiry'],
     startsOnEntry: ['evidence_admission'],
@@ -939,10 +939,11 @@ export const DEADLINE_RULES: readonly DeadlineRule[] = [
     key: 'reclassification',
     name: 'Reclasificar la falta',
     explanation:
-      'Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para hacerlo.',
+      'Si el Tribunal ordena reclasificar la conducta a otra falta grave, la autoridad investigadora tiene 3 días hábiles para registrar la falta reclasificada, con su fundamento y su acuerdo. Mientras corre el plazo, el Tribunal no admite las pruebas; vencido, sigue con el procedimiento.',
     unit: 'business_days',
     amount: 3,
-    startsFrom: 'Desde que el Tribunal lo ordena.',
+    startsFrom:
+      'Desde que el Tribunal lo ordena; termina cuando la investigadora registra la reclasificación.',
     consequence: 'El retraso se puede señalar ante el Tribunal y la autoridad supervisora.',
     warning: { unit: 'business_days', amount: 1 },
     legalBasis: [{ law: 'LGRA', article: '209', fraction: 'II' }],

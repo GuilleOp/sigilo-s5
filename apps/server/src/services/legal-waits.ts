@@ -168,6 +168,30 @@ export function precautionaryWait(ctx: AppContext, requestedOn: string, today: s
     : `La vista sobre la medida cautelar corre hasta el ${formatLegalDay(dueOn)}: mientras tanto solo se puede conceder provisionalmente; concederla o negarla procede a partir del día siguiente (LGRA, arts. 126 y 127).`;
 }
 
+/** Último día de los 3 días hábiles para reclasificar y si sigue corriendo (art. 209 fr. II). */
+export function reclassificationDue(ctx: AppContext, orderedOn: string, today: string) {
+  return dueOnIfOpen(ctx, 'reclassification', orderedOn, today);
+}
+
+/**
+ * Impedimento para admitir las pruebas en el Tribunal mientras la investigadora tiene la orden de
+ * reclasificar y su plazo de 3 días hábiles corre (LGRA, art. 209 fr. II). Vencido, el Tribunal
+ * sigue con el procedimiento aunque no se haya reclasificado.
+ */
+export function reclassificationWait(
+  ctx: AppContext,
+  state: LifecycleState,
+  today: string,
+): string | null {
+  const orderedOn = state.reclassificationOrderedOn;
+  if (orderedOn === null) return null;
+  const { isOpen, dueOn } = reclassificationDue(ctx, orderedOn, today);
+  if (!isOpen) return null;
+  return dueOn === null
+    ? 'La autoridad investigadora todavía tiene la orden de reclasificar la falta: el Tribunal admite las pruebas cuando la registre o venzan sus 3 días hábiles (LGRA, art. 209 fr. II).'
+    : `La autoridad investigadora tiene hasta el ${formatLegalDay(dueOn)} para registrar la falta reclasificada: el Tribunal admite las pruebas cuando la registre o, si no lo hace, a partir del día siguiente (LGRA, art. 209 fr. II).`;
+}
+
 /**
  * Impedimento de plazo para cerrar con el motivo legal `outcome`, o `null`:
  * - abstención: con identidad sellada, hasta que venzan los 5 días hábiles para inconformarse

@@ -52,7 +52,7 @@ async function qualifyAndFile(
   });
 }
 
-test('falta grave: del informe a la audiencia inicial y el Tribunal recibe el expediente', async ({
+test('falta grave: del informe al Tribunal, que ordena reclasificar, y la investigadora reclasifica', async ({
   page,
   request,
 }) => {
@@ -123,8 +123,65 @@ test('falta grave: del informe a la audiencia inicial y el Tribunal recibe el ex
   await expect(page.getByTestId('conflict-submit')).toHaveCount(0);
   await expectNoAccessibilityViolations(page, 'panel del Tribunal');
 
+  // Es otra falta grave: la Sala ordena reclasificar (LGRA, art. 209 fr. II) y, mientras corren los
+  // 3 días hábiles de la investigadora, no admite las pruebas.
+  await panel.getByTestId('procedure-action').selectOption('order_reclassification');
+  await panel
+    .getByTestId('procedure-legal-basis')
+    .fill('LGRA, art. 209 fr. II: los hechos corresponden a otra falta grave (sintético).');
+  await panel.getByTestId('apply-procedure').click();
+  await expect(panel.getByTestId('procedure-reclassification')).toContainText(
+    'La autoridad investigadora tiene hasta el',
+  );
+  await expect(panel.getByTestId('procedure-waits')).toContainText(
+    '«Admitir las pruebas en el Tribunal»: La autoridad investigadora tiene la orden de reclasificar',
+  );
+  await expect(
+    panel.getByTestId('procedure-action').locator('option[value="order_reclassification"]'),
+  ).toHaveCount(0);
+
+  // La investigadora registra la falta reclasificada desde su panel.
+  await loginAsAuthority(page, E2E_ACCOUNTS.iffeInvestigator);
+  await openComplaint(page, folio);
+  panel = page.getByTestId('procedure-panel');
+  await panel.getByTestId('procedure-action').selectOption('record_reclassification');
+  const offense = panel.getByTestId('reclassification-offense');
+  // Solo faltas graves o de particulares distintas de la vigente.
+  await expect(offense.locator('option[value="LGRA-52"]')).toHaveCount(0);
+  await expect(offense.locator('option[value="LGRA-50"]')).toHaveCount(0);
+  await offense.selectOption('LGRA-54');
+  await panel
+    .getByTestId('procedure-legal-basis')
+    .fill('LGRA, art. 209 fr. II: reclasificación ordenada por el Tribunal (sintético).');
+  await panel
+    .getByTestId('procedure-agreement')
+    .fill(
+      'Acuerdo sintético: por orden del Tribunal, los hechos del informe se reclasifican como desvío de recursos públicos.',
+    );
+  await panel.getByTestId('apply-procedure').click();
+  await expect(panel.getByTestId('procedure-reclassification')).toContainText(
+    'Falta reclasificada: Usar dinero público para algo distinto de lo autorizado',
+  );
+  await expect(page.getByTestId('detail-reclassified-offense')).toContainText(
+    'desvío de recursos públicos',
+  );
+  await expect(panel.getByTestId('procedure-state')).toContainText('Recibido en el Tribunal');
+  await expectNoAccessibilityViolations(page, 'panel de la investigadora tras reclasificar');
+
+  // El expediente vuelve al flujo del Tribunal: ya puede admitir las pruebas.
+  await loginAsAuthority(page, E2E_ACCOUNTS.court);
+  await openComplaint(page, folio);
+  panel = page.getByTestId('procedure-panel');
+  await panel.getByTestId('procedure-action').selectOption('advance_stage');
+  await expect(
+    panel.getByTestId('procedure-stage').locator('option[value="court_evidence_hearing"]'),
+  ).toHaveCount(1);
+
   // La persona ve la etapa en lenguaje sencillo y lo que sigue en el Tribunal.
   await openTracking(page, folio, words);
+  await expect(page.getByTestId('procedure-steps')).toContainText(
+    'La autoridad investigadora reclasificó la falta como «Usar dinero público para algo distinto de lo autorizado (desvío de recursos públicos)» por orden del Tribunal',
+  );
   await expect(page.getByTestId('tracking-legal-stage')).toContainText('Recibido en el Tribunal');
   await expect(page.getByTestId('procedure-steps')).toContainText('Audiencia inicial');
   await expect(page.getByTestId('procedure-steps')).toContainText('Pruebas en el Tribunal');

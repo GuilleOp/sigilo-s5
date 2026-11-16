@@ -11,6 +11,7 @@ import {
   findLegalClosureReason,
   findLegalStage,
   findManagementState,
+  findOffense,
   findRemedyKind,
   findRemedyOutcome,
   offenseSeverity,
@@ -20,6 +21,7 @@ import type {
   ProcedureStep,
   ProcedureStepRecord,
   ProcedureView,
+  ReclassificationView,
   RemedyView,
   RuleTriggerView,
 } from '@sigilo/contracts';
@@ -42,6 +44,7 @@ import {
   qualificationView,
 } from './qualification-service.ts';
 import { conflictFacts, sanctionCheckView } from './pdn-context.ts';
+import { reclassificationDue } from './legal-waits.ts';
 import { assignedAuthorityOf, hasCourtAccounts, lifecycleOf } from './procedure-service.ts';
 import { abstentionView, inconformableAct, inconformityView } from './qualification-service.ts';
 import {
@@ -203,6 +206,7 @@ function stepView(
     report_not_filed: 'El informe se tuvo por no presentado y volvió a la investigación',
     returned_by_court: 'El Tribunal devolvió el expediente: no es falta grave',
     reclassification_ordered: 'El Tribunal ordenó reclasificar la falta',
+    offense_reclassified: 'La autoridad investigadora reclasificó la falta',
     precautionary_requested: 'Se pidió una medida cautelar',
     precautionary_decided:
       details.precautionaryOutcome === 'denied'
@@ -249,7 +253,12 @@ function stepView(
     returned_by_court:
       'El Tribunal revisó el expediente y consideró que la falta no es grave: lo devolvió a la autoridad substanciadora, que sigue el procedimiento de falta no grave (LGRA, art. 209 fr. II).',
     reclassification_ordered:
-      'El Tribunal consideró que es otra falta grave y ordenó a la autoridad investigadora reclasificarla en 3 días hábiles (LGRA, art. 209 fr. II).',
+      'El Tribunal consideró que es otra falta grave y ordenó a la autoridad investigadora reclasificarla: ella tiene 3 días hábiles para registrar la falta reclasificada (LGRA, art. 209 fr. II).',
+    offense_reclassified: `La autoridad investigadora reclasificó la falta como «${
+      details.offenseCode === undefined
+        ? 'otra falta grave'
+        : (findOffense(details.offenseCode)?.label ?? details.offenseCode)
+    }» por orden del Tribunal (LGRA, art. 209 fr. II). El expediente sigue en el Tribunal, que continúa con la admisión de las pruebas.`,
     precautionary_requested:
       'La autoridad investigadora pidió una medida para proteger la investigación (LGRA, arts. 123 y 124). Se da vista a quienes afecta y se resuelve en 5 días hábiles.',
     precautionary_decided:
@@ -314,6 +323,11 @@ function recordOf(
     ...(details.registryReference === undefined
       ? {}
       : { registryReference: details.registryReference }),
+    ...(details.offenseCode === undefined ? {} : { offenseCode: details.offenseCode }),
+    // El acuerdo en versión pública solo viaja con la reclasificación; los demás tienen su vista.
+    ...(details.offenseCode === undefined || details.agreement === undefined
+      ? {}
+      : { agreement: details.agreement }),
   };
   return Object.keys(record).length === 0 ? {} : { record };
 }
@@ -434,6 +448,37 @@ function sanctionOf(ctx: AppContext, folio: string) {
   return check === null ? {} : { sanctionCheck: check };
 }
 
+/**
+ * Reclasificación por orden del Tribunal: la orden pendiente con el último día de la investigadora
+ * y, si ya la registró, la conducta reclasificada con su fundamento y su acuerdo.
+ */
+function reclassificationOf(
+  ctx: AppContext,
+  state: LifecycleState,
+  today: string,
+): { reclassification?: ReclassificationView } {
+  const orderedOn = state.reclassificationOrderedOn;
+  const done = state.reclassified;
+  if (orderedOn === null && done === null) return {};
+  const due = orderedOn === null ? null : reclassificationDue(ctx, orderedOn, today);
+  return {
+    reclassification: {
+      ...(orderedOn === null ? {} : { orderedOn }),
+      ...(due?.dueOn === null || due === null ? {} : { dueOn: due.dueOn }),
+      ...(due === null ? {} : { isOverdue: !due.isOpen }),
+      ...(done === null
+        ? {}
+        : {
+            reclassifiedOn: done.legalOn,
+            offenseCode: done.offenseCode,
+            offenseName: findOffense(done.offenseCode)?.label ?? done.offenseCode,
+            legalBasis: done.legalBasis,
+            agreement: done.agreement,
+          }),
+    },
+  };
+}
+
 /** Regla cumplida con su nombre y su explicación pública. */
 export function ruleTriggerView(trigger: StoredRuleTrigger): RuleTriggerView {
   const rule = findEscalationRule(trigger.ruleKey);
@@ -542,6 +587,7 @@ export function buildProcedureView(
               : { noticeSentOn: lifecycle.federal.noticeSentOn }),
           },
         }),
+    ...reclassificationOf(ctx, lifecycle, today),
     ...(audience === 'authority' ? { courtRecording: !hasCourtAccounts(ctx) } : {}),
     ...(lifecycle.sanctionRegistered === null
       ? {}

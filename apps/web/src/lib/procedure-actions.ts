@@ -5,6 +5,7 @@
 // validar todo; aquí solo se ofrece lo que tiene sentido.
 import {
   COURT_ACCESS_STAGES,
+  COURT_OFFENSES,
   CRIMINAL_STAGES,
   CRIMINAL_TRANSITIONS,
   findDeadlineRule,
@@ -30,6 +31,7 @@ import type {
   DeadlineView,
   LegalClosureReasonOption,
   LegalStage,
+  OffenseOption,
   ProcedureFunction,
   ProcedureView,
   RemedyFiledBy,
@@ -91,6 +93,60 @@ function isBlocked(procedure: ProcedureView | undefined, to: LegalStage): boolea
         to as AdministrativeStage,
       ) ??
         false),
+  );
+}
+
+/**
+ * Orden de reclasificar pendiente con su plazo de 3 días hábiles todavía corriendo: el Tribunal no
+ * admite las pruebas hasta que la investigadora registre la falta reclasificada o venza el plazo
+ * (LGRA, art. 209 fr. II). Devuelve el último día del plazo, o `null`. El nodo decide.
+ */
+export function reclassificationWaitDueOn(procedure: ProcedureView | undefined): string | null {
+  const pending = procedure?.reclassification;
+  if (pending?.orderedOn === undefined || pending.isOverdue === true) return null;
+  return pending.dueOn ?? pending.orderedOn;
+}
+
+/** Hay una orden del Tribunal de reclasificar que la investigadora todavía no cumple. */
+export function isReclassificationPending(procedure: ProcedureView | undefined): boolean {
+  return procedure?.reclassification?.orderedOn !== undefined;
+}
+
+/**
+ * Indica si la cuenta puede registrar la falta reclasificada: la investigadora (no la fiscalía) con
+ * la orden del Tribunal pendiente y el expediente recibido en el Tribunal (LGRA, art. 209 fr. II).
+ */
+export function canRecordReclassification(
+  account: Pick<AuthorityAccountView, 'functions' | 'isProsecution'>,
+  detail: ComplaintDetail,
+): boolean {
+  return (
+    hasFunction(account, 'investigation') &&
+    !isProsecutionAccount(account) &&
+    detail.summary.managementState === 'accepted' &&
+    administrativeStage(detail.procedure) === 'court_received' &&
+    isReclassificationPending(detail.procedure)
+  );
+}
+
+/**
+ * Conducta vigente: la última reclasificada por orden del Tribunal o, si no hubo, la que eligió
+ * quien denunció.
+ */
+export function currentOffenseCode(detail: Pick<ComplaintDetail, 'facts' | 'procedure'>): string {
+  return detail.procedure?.reclassification?.offenseCode ?? detail.facts.offenseCode;
+}
+
+/**
+ * Conductas a las que se puede reclasificar: faltas graves y de particulares del catálogo del
+ * estándar, salvo la vigente (el Tribunal ordena reclasificar a otra falta grave).
+ */
+export function reclassificationOffenses(
+  detail: Pick<ComplaintDetail, 'facts' | 'procedure'>,
+): OffenseOption[] {
+  const current = currentOffenseCode(detail);
+  return COURT_OFFENSES.filter(
+    (offense) => offense.code !== current && !offense.equivalentCodes.includes(current),
   );
 }
 
@@ -181,6 +237,20 @@ export function stageWaits(
     }
     if (isBlocked(procedure, transition.to)) continue;
     if (actingMode(account, transition.fn, procedure) === null) continue;
+    const reclassificationDue =
+      transition.to === 'court_evidence_hearing' ? reclassificationWaitDueOn(procedure) : null;
+    if (reclassificationDue !== null) {
+      waits.push({
+        key: transition.to,
+        label: transition.label,
+        text: 'La autoridad investigadora tiene la orden de reclasificar la falta (si la registra antes, podrás admitir las pruebas en cuanto lo haga); su plazo corre',
+        dueOn: reclassificationDue,
+        availableOn: nextDay(reclassificationDue),
+        isRemedyWait: false,
+        legalBasis: ['LGRA, art. 209, fracc. II'],
+      });
+      continue;
+    }
     const wait = openWaitFor(procedure, transition);
     if (wait !== null) {
       waits.push({
@@ -296,6 +366,13 @@ export function stageOptions(
       if (!transition.severities.includes(severity)) continue;
     }
     if (isBlocked(procedure, transition.to)) continue;
+    // Con la orden de reclasificar pendiente, el Tribunal espera a la investigadora (art. 209 fr. II).
+    if (
+      transition.to === 'court_evidence_hearing' &&
+      reclassificationWaitDueOn(procedure) !== null
+    ) {
+      continue;
+    }
     // Firmeza, informe no presentado y cierre de la instrucción esperan a que venza su plazo; la
     // audiencia inicial, a que se cumpla su mínimo (se explica en el panel).
     if (openWaitFor(procedure, transition) !== null) continue;

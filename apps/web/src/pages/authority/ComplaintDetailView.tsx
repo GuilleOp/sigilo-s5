@@ -182,6 +182,15 @@ export function ComplaintDetailView({ session, folio, onBack }: ComplaintDetailV
         </dd>
         <dt>Conducta</dt>
         <dd>{findOffense(facts.offenseCode)?.label ?? facts.offenseCode}</dd>
+        {detail.procedure?.reclassification?.offenseCode !== undefined && (
+          <>
+            <dt>Conducta reclasificada por orden del Tribunal</dt>
+            <dd data-testid="detail-reclassified-offense">
+              {detail.procedure.reclassification.offenseName ??
+                detail.procedure.reclassification.offenseCode}
+            </dd>
+          </>
+        )}
         <dt>En la ley que aplica</dt>
         <dd>
           <LocalLawReferences offenseCode={facts.offenseCode} references={detail.s5References} />

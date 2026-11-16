@@ -16,10 +16,13 @@ import type {
 import { findRemedyKind } from '@sigilo/contracts';
 import {
   canCloseAtStage,
+  canRecordReclassification,
+  currentOffenseCode,
   hasPendingRemedy,
   precautionaryDecisionMode,
   precautionaryOutcomeOptions,
   precautionaryWaitFor,
+  reclassificationOffenses,
   remedyFiler,
   requiresLegalOutcome,
   stageOptions,
@@ -255,5 +258,61 @@ describe('quién presentó el recurso', () => {
     expect(revocation.filedBy).toEqual(['accused']);
     expect(remedyFiler(revocation, 'reporter')).toBe('accused');
     expect(remedyFiler({ filedBy: ['accused', 'reporter'] }, 'reporter')).toBe('reporter');
+  });
+});
+
+describe('reclasificación por orden del Tribunal (LGRA, art. 209 fr. II)', () => {
+  const INVESTIGATION: Pick<AuthorityAccountView, 'functions' | 'isProsecution'> = {
+    functions: ['investigation'],
+  };
+  function withFacts(patch: Partial<ProcedureView>): ComplaintDetail {
+    return { ...detail(patch), facts: { offenseCode: 'LGRA-52' } } as unknown as ComplaintDetail;
+  }
+  const ordered = { orderedOn: '2026-12-01', dueOn: '2026-12-04', isOverdue: false };
+
+  it('la investigadora registra la falta reclasificada solo con la orden pendiente', () => {
+    const pending = withFacts({ legalStage: 'court_received', reclassification: ordered });
+    expect(canRecordReclassification(INVESTIGATION, pending)).toBe(true);
+    expect(canRecordReclassification(COURT, pending)).toBe(false);
+    expect(canRecordReclassification({ ...INVESTIGATION, isProsecution: true }, pending)).toBe(
+      false,
+    );
+    expect(
+      canRecordReclassification(INVESTIGATION, withFacts({ legalStage: 'court_received' })),
+    ).toBe(false);
+  });
+
+  it('ofrece faltas graves y de particulares distintas de la vigente', () => {
+    const pending = withFacts({ legalStage: 'court_received', reclassification: ordered });
+    const codes = reclassificationOffenses(pending).map((offense) => offense.code);
+    expect(codes).toContain('LGRA-54');
+    expect(codes).toContain('LGRA-66');
+    expect(codes).not.toContain('LGRA-52');
+    expect(codes).not.toContain('LGRA-50');
+    expect(codes.some((code) => code.startsWith('CPF-'))).toBe(false);
+    const done = withFacts({
+      legalStage: 'court_received',
+      reclassification: { reclassifiedOn: '2026-12-02', offenseCode: 'LGRA-54' },
+    });
+    expect(currentOffenseCode(done)).toBe('LGRA-54');
+    expect(reclassificationOffenses(done).map((offense) => offense.code)).toContain('LGRA-52');
+  });
+
+  it('el Tribunal no admite las pruebas mientras corre el plazo y explica hasta cuándo', () => {
+    const pending = withFacts({ legalStage: 'court_received', reclassification: ordered });
+    expect(keys(stageOptions(COURT, pending))).not.toContain('court_evidence_hearing');
+    expect(stageWaits(COURT, pending)).toEqual([
+      expect.objectContaining({
+        key: 'court_evidence_hearing',
+        dueOn: '2026-12-04',
+        availableOn: '2026-12-05',
+      }),
+    ]);
+    const overdue = withFacts({
+      legalStage: 'court_received',
+      reclassification: { ...ordered, isOverdue: true },
+    });
+    expect(keys(stageOptions(COURT, overdue))).toContain('court_evidence_hearing');
+    expect(stageWaits(COURT, overdue)).toEqual([]);
   });
 });

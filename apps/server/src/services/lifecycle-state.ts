@@ -65,6 +65,16 @@ export interface LifecycleState {
   } | null;
   /** Reclasificación ordenada en la etapa vigente del Tribunal, si sigue pendiente. */
   reclassificationOrderedOn: string | null;
+  /**
+   * Última reclasificación que registró la investigadora por orden del Tribunal (LGRA, art. 209
+   * fr. II): la conducta nueva, el día, el fundamento y el acuerdo.
+   */
+  reclassified: {
+    offenseCode: string;
+    legalOn: string;
+    legalBasis: string;
+    agreement: string;
+  } | null;
   federal: { funding: FederalFunding; flaggedOn: string; noticeSentOn: string | null } | null;
   sanctionRegistered: { legalOn: string; registryReference: string } | null;
   /**
@@ -122,6 +132,7 @@ export function lifecycleStateOf(
   let returnedByCourt = false;
   let precautionary: LifecycleState['precautionary'] = null;
   let reclassificationOrderedOn: string | null = null;
+  let reclassified: LifecycleState['reclassified'] = null;
   let federal: LifecycleState['federal'] = null;
   let sanctionRegistered: LifecycleState['sanctionRegistered'] = null;
   let criminalReferral: LifecycleState['criminalReferral'] = null;
@@ -206,6 +217,20 @@ export function lifecycleStateOf(
       case 'reclassification_ordered':
         reclassificationOrderedOn = step.legalOn;
         break;
+      case 'offense_reclassified':
+        // La orden queda cumplida y el expediente vuelve al Tribunal: sus 15 días hábiles para
+        // admitir las pruebas corren desde que se resolvió la reclasificación (art. 209 fr. II).
+        reclassificationOrderedOn = null;
+        stageEnteredOn = step.legalOn;
+        if (details.offenseCode !== undefined) {
+          reclassified = {
+            offenseCode: details.offenseCode,
+            legalOn: step.legalOn,
+            legalBasis: details.legalBasis ?? '',
+            agreement: details.agreement ?? '',
+          };
+        }
+        break;
       case 'federal_funds_flagged':
         if (details.funding !== undefined) {
           federal = { funding: details.funding, flaggedOn: step.legalOn, noticeSentOn: null };
@@ -242,6 +267,7 @@ export function lifecycleStateOf(
     returnedByCourt,
     precautionary,
     reclassificationOrderedOn: currentStage === 'court_received' ? reclassificationOrderedOn : null,
+    reclassified,
     federal,
     sanctionRegistered,
     criminalReferral,

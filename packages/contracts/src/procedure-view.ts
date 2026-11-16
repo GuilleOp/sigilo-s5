@@ -4,7 +4,8 @@
 import { z } from 'zod';
 import { AccountIdSchema } from './authority-access.ts';
 import { AuthorityIdSchema } from './network.ts';
-import { ComplaintStatusSchema } from './complaint.ts';
+import { ComplaintStatusSchema, OffenseCodeSchema } from './complaint.ts';
+import { isCourtOffense } from './catalogs/index.ts';
 import { SanctionCheckViewSchema, SanctionClaimSchema } from './context-view.ts';
 import { DayDateSchema, FolioSchema, Sha256HexSchema } from './primitives.ts';
 import {
@@ -194,6 +195,26 @@ const OrderReclassificationActionSchema = z.strictObject({
   note: PublicNoteSchema.optional(),
   courtRecord: CourtRecordSchema.optional(),
 });
+/**
+ * Reclasificación que registra la autoridad investigadora después de la orden del Tribunal (LGRA,
+ * art. 209 fr. II): la nueva conducta (grave o de particulares, del catálogo del estándar), su
+ * fundamento y el acuerdo en versión pública.
+ */
+const RecordReclassificationActionSchema = z.strictObject({
+  action: z.literal('record_reclassification'),
+  offenseCode: OffenseCodeSchema.refine(
+    isCourtOffense,
+    'La conducta debe ser grave o de particulares',
+  ).meta({
+    description:
+      'Conducta reclasificada: clave del catálogo OFFENSES de una falta grave (LGRA, arts. 51 a 64 Quáter) o de particulares (arts. 65 a 73), distinta de la vigente.',
+    examples: ['LGRA-54'],
+    'x-catalog': 'OFFENSES',
+  }),
+  legalBasis: LegalBasisTextSchema,
+  agreement: AgreementTextSchema,
+  note: PublicNoteSchema.optional(),
+});
 const RequestPrecautionaryActionSchema = z.strictObject({
   action: z.literal('request_precautionary'),
   measure: z.string().min(10).max(2000).meta({
@@ -293,6 +314,7 @@ export const ProcedureActionRequestSchema = z
     CloseActionSchema,
     RespondConflictActionSchema,
     OrderReclassificationActionSchema,
+    RecordReclassificationActionSchema,
     RequestPrecautionaryActionSchema,
     DecidePrecautionaryActionSchema,
     FileRemedyActionSchema,
@@ -305,7 +327,7 @@ export const ProcedureActionRequestSchema = z
   ])
   .meta({
     description:
-      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification, request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
+      'Acción del trámite: route (con su motivo obligatorio), accept, reassign, return, advance_stage (etapas de ADMINISTRATIVE_TRANSITIONS y CRIMINAL_TRANSITIONS), close (con motivo legal opcional y sanción opcional, que se verifica contra S3), respond_conflict, order_reclassification (el Tribunal ordena reclasificar) y record_reclassification (la investigadora registra la falta reclasificada), request_precautionary y decide_precautionary, file_remedy y resolve_remedy, refer_to_prosecutor (vista al Ministerio Público), flag_federal_funds y send_federal_notice, register_sanction o record_withdrawal. Cada una queda en la bitácora y, si lleva nota, en el seguimiento.',
   });
 export type ProcedureActionRequest = z.infer<typeof ProcedureActionRequestSchema>;
 
@@ -355,6 +377,12 @@ export const ProcedureStepRecordSchema = z
       .string()
       .optional()
       .meta({ description: 'Referencia de la inscripción de la sanción en el S3.' }),
+    offenseCode: OffenseCodeSchema.optional().meta({
+      description: 'Conducta a la que se reclasificó la falta por orden del Tribunal.',
+    }),
+    agreement: AgreementTextSchema.optional().meta({
+      description: 'Acuerdo de reclasificación en versión pública.',
+    }),
   })
   .meta({ description: 'Datos del acto registrados con el paso.' });
 export type ProcedureStepRecord = z.infer<typeof ProcedureStepRecordSchema>;
@@ -545,6 +573,44 @@ export const FederalFundsViewSchema = z
   .meta({ description: 'La denuncia involucra recursos federales: guía de la regla.' });
 export type FederalFundsView = z.infer<typeof FederalFundsViewSchema>;
 
+/**
+ * Reclasificación de la falta por orden del Tribunal (LGRA, art. 209 fr. II): la orden pendiente,
+ * con el último día de los 3 días hábiles de la investigadora, o la última falta reclasificada.
+ */
+export const ReclassificationViewSchema = z
+  .object({
+    orderedOn: LegalDaySchema.optional().meta({
+      description: 'Día de la orden del Tribunal que sigue pendiente.',
+    }),
+    dueOn: LegalDaySchema.optional().meta({
+      description:
+        'Último día para que la autoridad investigadora registre la reclasificación (3 días hábiles).',
+    }),
+    isOverdue: z.boolean().optional().meta({
+      description:
+        'La orden sigue pendiente y venció el plazo: el Tribunal puede seguir con el procedimiento.',
+    }),
+    reclassifiedOn: LegalDaySchema.optional().meta({
+      description: 'Día en que la investigadora registró la última reclasificación.',
+    }),
+    offenseCode: OffenseCodeSchema.optional().meta({
+      description: 'Conducta a la que se reclasificó la falta.',
+    }),
+    offenseName: z
+      .string()
+      .optional()
+      .meta({ description: 'Nombre de la conducta reclasificada, del catálogo.' }),
+    legalBasis: z.string().optional().meta({ description: 'Fundamento de la reclasificación.' }),
+    agreement: z
+      .string()
+      .optional()
+      .meta({ description: 'Acuerdo de reclasificación en versión pública.' }),
+  })
+  .meta({
+    description: 'Reclasificación de la falta por orden del Tribunal (LGRA, art. 209 fr. II).',
+  });
+export type ReclassificationView = z.infer<typeof ReclassificationViewSchema>;
+
 /** Regla pública que se cumplió: escalamiento o alerta. */
 export const RuleTriggerViewSchema = z
   .object({
@@ -591,6 +657,7 @@ export const ProcedureViewSchema = z
         description: 'Última medida cautelar pedida y su resultado, sin la medida concreta.',
       }),
     federalFunds: FederalFundsViewSchema.optional(),
+    reclassification: ReclassificationViewSchema.optional(),
     courtRecording: z.boolean().optional().meta({
       description:
         'Solo en el panel: el estado no dio cuentas al Tribunal y la substanciación registra sus actuaciones.',

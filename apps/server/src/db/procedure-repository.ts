@@ -62,6 +62,8 @@ export const StepDetailsSchema = z.object({
   funding: FederalFundingSchema.optional(),
   recipients: z.array(z.enum(['asf', 'sabg', 'fgr'])).optional(),
   registryReference: z.string().optional(),
+  /** Conducta a la que la investigadora reclasificó la falta por orden del Tribunal. */
+  offenseCode: z.string().optional(),
   /** Siguiente secuencia del buzón de la autoridad al momento del acto (notificación, H6). */
   authoritySequence: z.number().int().nonnegative().optional(),
 });

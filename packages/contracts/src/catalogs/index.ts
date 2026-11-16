@@ -172,6 +172,21 @@ export function offenseSeverity(code: string): OffenseSeverity | undefined {
   return article <= 64 ? 'serious' : 'private_party';
 }
 
+/**
+ * Indica si la conducta es de las que resuelve el Tribunal (LGRA, arts. 12 y 209): falta grave de
+ * persona servidora pública (arts. 51 a 64 Quáter) o falta de particulares (arts. 65 a 73). Son las
+ * conductas a las que la investigadora puede reclasificar por orden del Tribunal (art. 209 fr. II).
+ */
+export function isCourtOffense(code: string): boolean {
+  const severity = offenseSeverity(code);
+  return severity === 'serious' || severity === 'private_party';
+}
+
+/** Conductas del catálogo a las que se puede reclasificar por orden del Tribunal (art. 209 fr. II). */
+export const COURT_OFFENSES: readonly OffenseOption[] = OFFENSES.filter((offense) =>
+  isCourtOffense(offense.code),
+);
+
 /** Quién comete la conducta: una persona servidora pública o un particular. */
 export type OffenseActor = 'public-servant' | 'private-party';
 

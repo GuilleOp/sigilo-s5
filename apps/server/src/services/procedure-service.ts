@@ -39,8 +39,10 @@ import {
   isManagementTransition,
   MAX_REASSIGNMENTS,
   MIN_ROUTING_NOTE_LENGTH,
+  isCourtOffense,
   offenseSeverity,
   PRECAUTIONARY_RULE,
+  primaryOffenseCode,
 } from '@sigilo/contracts';
 import type { ProcedureFunction } from '@sigilo/contracts';
 import { randomBytes, sha256Hex, toDayDate, toHex, toMexicoCentralDay } from '@sigilo/core';
@@ -59,7 +61,13 @@ import {
   pendingRemedies,
 } from './lifecycle-state.ts';
 import type { ActingFunction, LifecycleState } from './lifecycle-state.ts';
-import { closureWait, earliestStageWait, openStageWait, precautionaryWait } from './legal-waits.ts';
+import {
+  closureWait,
+  earliestStageWait,
+  openStageWait,
+  precautionaryWait,
+  reclassificationWait,
+} from './legal-waits.ts';
 import {
   ABSTENTION_NOTICE,
   ARCHIVE_NOTICE,
@@ -96,6 +104,18 @@ export function lifecycleOf(ctx: AppContext, complaint: ComplaintRecord): Lifecy
     complaint.legalStage,
     complaint.criminalStage,
   );
+}
+
+/**
+ * Conducta vigente de la denuncia: la última a la que la investigadora la reclasificó por orden del
+ * Tribunal (LGRA, art. 209 fr. II) o, si no hubo reclasificación, la que eligió quien denunció. Los
+ * hechos que envió la persona no se modifican.
+ */
+export function currentOffenseCode(
+  complaint: ComplaintRecord,
+  state: Pick<LifecycleState, 'reclassified'>,
+): string {
+  return state.reclassified?.offenseCode ?? complaint.facts.offenseCode;
 }
 
 /** Recursos que resuelve el Tribunal: la cuenta del Tribunal ve la denuncia mientras estén pendientes. */
@@ -463,6 +483,13 @@ function plan(
       // tiene 3 días hábiles. La etapa no cambia.
       requireAccepted();
       if (complaint.legalStage !== 'court_received') throw new ApiFailure('conflict');
+      // Una orden a la vez: mientras la investigadora no la cumpla, no se ordena otra.
+      if (state.reclassificationOrderedOn !== null) {
+        throw new ApiFailure(
+          'conflict',
+          'Ya hay una orden de reclasificar pendiente: la autoridad investigadora tiene 3 días hábiles para registrar la falta reclasificada (LGRA, art. 209 fr. II).',
+        );
+      }
       const actor = actAs('court');
       return {
         ...base,
@@ -472,6 +499,44 @@ function plan(
         note: request.note ?? null,
         details: detailsOf(actor, {
           legalBasis: actor.recordedForCourt ? courtRecordOf()?.legalBasis : request.legalBasis,
+        }),
+      };
+    }
+    case 'record_reclassification': {
+      // LGRA, art. 209 fr. II: después de la orden del Tribunal, la investigadora registra la otra
+      // falta grave con su fundamento y su acuerdo. La etapa no cambia: el expediente sigue en el
+      // Tribunal, que continúa con la admisión de pruebas.
+      if (isProsecution) throw new ApiFailure('forbidden');
+      requireAccepted();
+      if (complaint.legalStage !== 'court_received' || state.reclassificationOrderedOn === null) {
+        throw new ApiFailure(
+          'conflict',
+          'Solo se reclasifica la falta cuando el Tribunal lo ordena y el expediente está recibido en el Tribunal (LGRA, art. 209 fr. II).',
+        );
+      }
+      const actor = actAs('investigation');
+      const offenseCode = primaryOffenseCode(request.offenseCode);
+      // Debe ser otra falta grave (o de particulares) del catálogo, distinta de la vigente.
+      if (offenseCode === undefined || !isCourtOffense(offenseCode)) {
+        throw new ApiFailure('bad_request');
+      }
+      if (offenseCode === primaryOffenseCode(currentOffenseCode(complaint, state))) {
+        throw new ApiFailure(
+          'conflict',
+          'La conducta reclasificada debe ser distinta de la vigente: el Tribunal ordenó reclasificar a otra falta grave.',
+        );
+      }
+      return {
+        ...base,
+        action: 'offense_reclassified',
+        managementState: current,
+        status: keepStatus(),
+        // La explicación del paso ya dice a qué conducta se reclasificó; la nota es opcional.
+        note: request.note ?? null,
+        details: detailsOf(actor, {
+          offenseCode,
+          legalBasis: request.legalBasis,
+          agreement: request.agreement,
         }),
       };
     }
@@ -707,6 +772,11 @@ function plan(
       const today = toMexicoCentralDay(ctx.deps.now());
       const wait = openStageWait(ctx, state, from, transition.afterDeadlines, today);
       if (wait !== null) throw new ApiFailure('conflict', wait.message);
+    }
+    // Con la orden de reclasificar pendiente, el Tribunal espera a la investigadora (art. 209 fr. II).
+    if (from === 'court_received' && stage === 'court_evidence_hearing') {
+      const wait = reclassificationWait(ctx, state, toMexicoCentralDay(ctx.deps.now()));
+      if (wait !== null) throw new ApiFailure('conflict', wait);
     }
     // Audiencia inicial: no antes de 10 días hábiles después del emplazamiento (art. 208 fr. III).
     if (transition.afterMinimumOf !== undefined) {
@@ -998,13 +1068,25 @@ function applyInTransaction(
   const legalOn = toMexicoCentralDay(now);
   const agreementDigest =
     request.action === 'close' ? sha256Hex(request.agreement.normalize('NFC')) : undefined;
+  // La reclasificación por orden del Tribunal es una nueva calificación de falta grave: queda con su
+  // fundamento y su acuerdo, y el auditor la revisa como las demás.
+  const qualificationInput =
+    request.action === 'advance_stage'
+      ? request.qualification
+      : request.action === 'record_reclassification'
+        ? {
+            severity: 'serious' as const,
+            legalBasis: request.legalBasis,
+            agreement: request.agreement,
+          }
+        : undefined;
   const qualification =
-    request.action === 'advance_stage' && request.qualification !== undefined
-      ? {
-          input: request.qualification,
-          digest: sha256Hex(request.qualification.agreement.normalize('NFC')),
-        }
-      : null;
+    qualificationInput === undefined
+      ? null
+      : {
+          input: qualificationInput,
+          digest: sha256Hex(qualificationInput.agreement.normalize('NFC')),
+        };
   const details = planned.details;
   const { at: on } = ctx.ledger.record({
     type: 'complaint.status_changed',
@@ -1029,6 +1111,7 @@ function applyInTransaction(
       ...(details.remedyKind === undefined ? {} : { remedyKind: details.remedyKind }),
       ...(details.remedyOutcome === undefined ? {} : { remedyOutcome: details.remedyOutcome }),
       ...(details.recordedForCourt === true ? { recordedForCourt: true } : {}),
+      ...(details.offenseCode === undefined ? {} : { offenseCode: details.offenseCode }),
       ...(details.agreement === undefined
         ? {}
         : { actAgreementDigest: sha256Hex(details.agreement.normalize('NFC')) }),

@@ -235,6 +235,7 @@ export const ProcedureActionSchema = z
     'report_not_filed',
     'returned_by_court',
     'reclassification_ordered',
+    'offense_reclassified',
     'precautionary_requested',
     'precautionary_decided',
     'remedy_filed',
@@ -247,7 +248,7 @@ export const ProcedureActionSchema = z
   ])
   .meta({
     description:
-      'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, reclasificación, medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento.',
+      'Acción del trámite: recepción, turno, aceptación, reasignación, devolución al buzón general, avance de etapa legal, cierre, excusa o justificación ante un posible conflicto de interés, turnado a otro nodo, aviso de inconformidad de la persona denunciante (appeal_filed), abstención, IPRA no presentado, devolución del Tribunal, orden de reclasificar (reclassification_ordered) y reclasificación de la investigadora (offense_reclassified), medidas cautelares, recursos, vista al Ministerio Público y avance de la vía penal, recursos federales, registro de la sanción y desistimiento.',
   });
 export type ProcedureAction = z.infer<typeof ProcedureActionSchema>;
 

@@ -45,16 +45,19 @@ import {
   actingMode,
   administrativeStage,
   canCloseAtStage,
+  canRecordReclassification,
   canRequestPrecautionary,
   closingFunction,
   hasPendingRemedy,
   isProsecutionAccount,
+  isReclassificationPending,
   isReferralCopy,
   legalClosureOptions,
   nextDay,
   precautionaryDecisionMode,
   precautionaryOutcomeOptions,
   precautionaryWaitFor,
+  reclassificationOffenses,
   referralTargets,
   remedyFiler,
   remedyFilingOptions,
@@ -91,6 +94,7 @@ const ACTION_LABELS: Readonly<Record<ActionKey, string>> = {
   close: 'Cerrar con fundamento',
   respond_conflict: 'Excusarse o justificar ante un posible conflicto de interés',
   order_reclassification: 'Ordenar reclasificar la falta (Tribunal)',
+  record_reclassification: 'Registrar la falta reclasificada (orden del Tribunal)',
   request_precautionary: 'Pedir una medida cautelar',
   decide_precautionary: 'Resolver la medida cautelar',
   file_remedy: 'Registrar un recurso presentado con firma',
@@ -186,9 +190,15 @@ function availableActions(session: AuthoritySession, detail: ComplaintDetail): A
     ) {
       actions.add('close');
     }
-    if (stage === 'court_received' && actingMode(account, 'court', procedure) !== null) {
+    if (
+      stage === 'court_received' &&
+      !isReclassificationPending(procedure) &&
+      actingMode(account, 'court', procedure) !== null
+    ) {
       actions.add('order_reclassification');
     }
+    // LGRA, art. 209 fr. II: con la orden del Tribunal, la investigadora registra la otra falta grave.
+    if (canRecordReclassification(account, detail)) actions.add('record_reclassification');
     if (canRequestPrecautionary(account, detail)) actions.add('request_precautionary');
     if (precautionaryDecisionMode(account, detail) !== null) actions.add('decide_precautionary');
     if (remedyFilingOptions(account, detail).length > 0) actions.add('file_remedy');
@@ -244,6 +254,8 @@ interface Draft {
   referralTarget: string;
   prosecutor: string;
   registryReference: string;
+  /** Conducta a la que se reclasifica por orden del Tribunal (vacío: sin elegir). */
+  offenseCode: string;
 }
 
 function emptyDraft(detail: ComplaintDetail, session: AuthoritySession): Draft {
@@ -271,6 +283,7 @@ function emptyDraft(detail: ComplaintDetail, session: AuthoritySession): Draft {
     referralTarget: '',
     prosecutor: '',
     registryReference: '',
+    offenseCode: '',
   };
 }
 
@@ -369,6 +382,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
     action === 'close' ||
     isQualification ||
     action === 'order_reclassification' ||
+    action === 'record_reclassification' ||
     action === 'request_precautionary' ||
     action === 'decide_precautionary' ||
     action === 'resolve_remedy' ||
@@ -377,6 +391,7 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
   const needsAgreement =
     action === 'close' ||
     isQualification ||
+    action === 'record_reclassification' ||
     (action === 'advance_stage' && selectedStage?.requiresAgreement === true);
 
   /**
@@ -437,6 +452,9 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
       for (const field of ['fileNumber', 'personName', 'sanction', 'institution'] as const) {
         if (sanction[field].trim() === '') found[`sanction-${field}`] = 'Escribe este dato.';
       }
+    }
+    if (action === 'record_reclassification' && draft.offenseCode === '') {
+      found['reclassification-offense'] = 'Elige la falta grave a la que se reclasifica.';
     }
     if (action === 'request_precautionary' && draft.measure.trim().length < 10) {
       found['precautionary-measure'] = 'Describe la medida (al menos 10 caracteres).';
@@ -533,6 +551,10 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
           ...withNote,
           ...courtRecord(),
         };
+      case 'record_reclassification':
+        return draft.offenseCode === ''
+          ? null
+          : { action, offenseCode: draft.offenseCode, legalBasis, agreement, ...withNote };
       case 'request_precautionary':
         return { action, measure: draft.measure.trim(), legalBasis };
       case 'decide_precautionary':
@@ -741,6 +763,30 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
               )}
             </div>
           )}
+          {procedure.reclassification !== undefined && (
+            <div className="qualification" data-testid="procedure-reclassification">
+              {procedure.reclassification.orderedOn !== undefined && (
+                <p>
+                  <strong>Orden de reclasificar del Tribunal</strong> (
+                  {formatDayDate(procedure.reclassification.orderedOn)}).{' '}
+                  {procedure.reclassification.isOverdue === true
+                    ? 'Venció el plazo de 3 días hábiles sin que la autoridad investigadora registrara la falta reclasificada: el Tribunal puede seguir con el procedimiento (LGRA, art. 209 fr. II).'
+                    : procedure.reclassification.dueOn !== undefined
+                      ? `La autoridad investigadora tiene hasta el ${formatDayDate(procedure.reclassification.dueOn)} para registrar la falta reclasificada (LGRA, art. 209 fr. II).`
+                      : 'La autoridad investigadora tiene 3 días hábiles para registrar la falta reclasificada (LGRA, art. 209 fr. II).'}
+                </p>
+              )}
+              {procedure.reclassification.reclassifiedOn !== undefined && (
+                <p>
+                  <strong>
+                    Falta reclasificada: {procedure.reclassification.offenseName ?? ''}
+                  </strong>{' '}
+                  ({formatDayDate(procedure.reclassification.reclassifiedOn)}). Fundamento: «
+                  {procedure.reclassification.legalBasis ?? ''}»
+                </p>
+              )}
+            </div>
+          )}
           <ProcedureLifecycle procedure={procedure} />
           {procedure.closure !== undefined && (
             <div className="closure" data-testid="procedure-closure">
@@ -806,8 +852,10 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
             label="Acción"
             hint={
               actions.includes('order_reclassification')
-                ? 'Si el expediente es de otra falta grave, elige «Ordenar reclasificar la falta (Tribunal)» aquí, en «Acción»: solo se puede al recibirlo, antes de admitir las pruebas (LGRA, art. 209 fr. II).'
-                : undefined
+                ? 'Si el expediente es de otra falta grave, elige «Ordenar reclasificar la falta (Tribunal)» aquí, en «Acción»: solo se puede al recibirlo, antes de admitir las pruebas. La autoridad investigadora registra la falta reclasificada en 3 días hábiles (LGRA, art. 209 fr. II).'
+                : actions.includes('record_reclassification')
+                  ? 'El Tribunal ordenó reclasificar la falta: elige «Registrar la falta reclasificada (orden del Tribunal)» aquí, en «Acción», dentro de los 3 días hábiles (LGRA, art. 209 fr. II).'
+                  : undefined
             }
             value={action}
             onChange={(event) => setAction(event.target.value as ActionKey)}
@@ -1177,6 +1225,24 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
               data-testid="sanction-registry"
             />
           )}
+          {action === 'record_reclassification' && (
+            <SelectField
+              id="reclassification-offense"
+              label="Falta grave a la que se reclasifica"
+              hint="Del catálogo de conductas del estándar: faltas graves y de particulares, distintas de la vigente (LGRA, art. 209 fr. II). La persona denunciante verá la conducta, el fundamento y el acuerdo."
+              error={errors['reclassification-offense']}
+              value={draft.offenseCode}
+              onChange={(event) => set('offenseCode', event.target.value)}
+              data-testid="reclassification-offense"
+            >
+              <option value="">Elige la conducta</option>
+              {reclassificationOffenses(detail).map((offense) => (
+                <option key={offense.code} value={offense.code}>
+                  {offense.label}
+                </option>
+              ))}
+            </SelectField>
+          )}
           {showBasis && (
             <TextAreaField
               id={`${prefix}-legal-basis`}
@@ -1197,7 +1263,9 @@ export function ProcedurePanel({ session, detail, onChanged }: ProcedurePanelPro
               label={
                 isQualification
                   ? 'Acuerdo de calificación en versión pública'
-                  : 'Acuerdo en versión pública'
+                  : action === 'record_reclassification'
+                    ? 'Acuerdo de reclasificación en versión pública'
+                    : 'Acuerdo en versión pública'
               }
               hint="Al menos 50 caracteres, sin datos personales. La persona y el auditor lo leerán."
               rows={4}
