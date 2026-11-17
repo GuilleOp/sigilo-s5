@@ -223,16 +223,19 @@ comprobante del destino.
 
 ## Inicio rápido
 
-### La red completa en un comando (Docker)
+### Para revisar: la red completa en tres comandos (Docker)
 
-Requisitos: Docker en marcha (Docker Desktop, o Docker Engine con Compose 2.17 o posterior) y
-Node.js 22.18 o posterior. Con un usuario normal, no root:
+Es la forma de probar SIGILO desde cero. Construye las imágenes en tu equipo, así que no depende de
+ningún registro de contenedores. Requisitos: Docker en marcha (Docker Desktop, o Docker Engine con
+Compose 2.17 o posterior) y Node.js 22.18 o posterior. Con un usuario normal, no root:
 
 ```sh
+git clone https://github.com/GuilleOp/sigilo-s5 && cd sigilo-s5
 npm ci
 npm run demo:todo     # genera llaves y cuentas sintéticas, construye, levanta, espera y siembra
-npm run demo:apagar   # baja la red y borra .red-demo/
 ```
+
+Para bajarla y borrar `.red-demo/`: `npm run demo:apagar`.
 
 Levanta la ventanilla de la SESNA con el enrutador ciego, los nodos de Querétaro, Federal y Oaxaca
 (solo con su panel), el evaluador, el índice y los testigos, y siembra el escenario de
@@ -305,10 +308,11 @@ arranca: ejecuta `npm run demo:reset -- --yes` con el servidor detenido.
 
 ### Instala el nodo de tu estado (producción)
 
-Para el equipo de TI del estado: un servidor Linux con Docker, un dominio y tres comandos. No se
-necesita Node ni el código fuente; el CLI `sigilo` corre dentro de la imagen publicada
-(`ghcr.io/guilleop/sigilo-nodo`). Las imágenes se publican al crear la etiqueta de versión; para
-probar SIGILO sin ellas basta `npm run demo:todo`.
+Para el equipo de TI de un estado que se une a una red con su SESNA: un servidor Linux con Docker,
+un dominio y tres comandos. No se necesita Node ni el código fuente; el CLI `sigilo` corre dentro de
+la imagen publicada (`ghcr.io/guilleop/sigilo-nodo`, una por versión etiquetada). No sirve para
+probar a solas: entre `instalar` e `iniciar` la SESNA debe aprobar el alta. Para revisar el
+proyecto, usa los tres comandos de arriba.
 
 ```sh
 ./sigilo instalar      # unas 10 preguntas; deja una solicitud de alta sin secretos y una huella
