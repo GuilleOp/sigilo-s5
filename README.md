@@ -32,8 +32,20 @@ diccionarios, catálogos y perfiles) y pruebas unitarias y de extremo a extremo.
 > de municipios (INEGI) son reales, y ninguna institución real aparece denunciada en la
 > demostración.
 
+## Entregables del Datatón
+
+| Producto (bases, sexta) | Dónde                                                                                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Presentación ejecutiva  | [Video en YouTube](https://www.youtube.com/watch?v=IaeL5tmaNVs) (9:51) y su versión escrita, con capturas: [docs/presentacion-ejecutiva.md](docs/presentacion-ejecutiva.md) |
+| Repositorio             | Este repositorio: código, estándar, datos agregados y pruebas                                                                                                               |
+| Documentación           | [Metodología y tecnologías](docs/metodologia.md) (cómo se desarrolló y cómo replicarlo) y el [índice de `docs/`](#índice-de-docs)                                           |
+| Cómo probarlo           | `git clone https://github.com/GuilleOp/sigilo-s5 && cd sigilo-s5`, `npm ci` y `npm run demo:todo` ([inicio rápido](#inicio-rápido))                                         |
+
+Autor: Guillermo Adrián Gutiérrez Olvera (equipo Sigilo). Licencia: [CC BY-NC 4.0](LICENSE).
+
 ## Contenido
 
+- [Entregables del Datatón](#entregables-del-datatón)
 - [Cómo funciona SIGILO en 10 líneas](#cómo-funciona-sigilo-en-10-líneas)
 - [Diagramas](#diagramas): [red](#arquitectura-de-la-red), [denuncia de punta a punta](#una-denuncia-de-punta-a-punta), [ciclo de vida legal](#ciclo-de-vida-legal) y [cifrado de pruebas](#cifrado-de-las-pruebas)
 - [Inicio rápido](#inicio-rápido)
@@ -406,7 +418,7 @@ npx playwright install chromium       # una sola vez
 npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
 ```
 
-Hay 1,764 pruebas unitarias en 199 archivos, 34 del proceso de datos en Python y 114 de extremo a
+Hay 1,766 pruebas unitarias en 199 archivos, 34 del proceso de datos en Python y 114 de extremo a
 extremo en 27 archivos. La [integración continua](.github/workflows/ci.yml) las corre en cada push
 con Node 22.18 y la versión más reciente. Las E2E requieren haber ejecutado
 `npm run keys:generate` y cubren, entre otras cosas, cero peticiones a terceros, denuncia anónima y
@@ -448,6 +460,8 @@ docs/                   Arquitectura, decisiones, modelo de amenazas y guías
 
 | Busco                      | Dónde                                                                                                                                                                                                   |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El resumen del proyecto    | [Presentación ejecutiva](docs/presentacion-ejecutiva.md): problemática, metodología, herramienta y evidencia, con el video                                                                              |
+| Cómo se hizo y se replica  | [Metodología y tecnologías](docs/metodologia.md): fases, tecnologías, datos, uso de IA, pruebas y pasos para replicarlo                                                                                 |
 | Auditarlo de punta a punta | [Guía para la auditoría](docs/auditoria-guia.md): mapa del repositorio, cómo correr todo, dónde vive cada función y límites conocidos                                                                   |
 | El cumplimiento del reto   | [Matriz de requisitos](docs/requisitos.md): cada requisito, su nivel y su evidencia                                                                                                                     |
 | El modelo y la red         | [Arquitectura](docs/arquitectura.md) y [ADR 0005](docs/adr/0005-estandar-s5-federado.md)                                                                                                                |
@@ -499,6 +513,8 @@ docs/                   Arquitectura, decisiones, modelo de amenazas y guías
 
 **Demostración y proyecto**
 
+- [Presentación ejecutiva](docs/presentacion-ejecutiva.md) (versión escrita del video) y
+  [metodología y tecnologías](docs/metodologia.md)
 - [Guion de la demostración](docs/demo.md) y [escenario sintético](docs/demo-escenario.md)
 - [Guion de la presentación ante el jurado](docs/guion-presentacion.md)
 - [Matriz de requisitos](docs/requisitos.md) y [plan de trabajo](docs/plan.md)
