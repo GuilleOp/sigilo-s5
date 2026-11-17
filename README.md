@@ -13,14 +13,15 @@
 <p align="center">
   <a href="https://github.com/GuilleOp/sigilo-s5/actions/workflows/ci.yml"><img src="https://github.com/GuilleOp/sigilo-s5/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-CC%20BY--NC%204.0-lightgrey.svg" alt="Licencia: CC BY-NC 4.0"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/versi%C3%B3n-1.1.0-0b6e63.svg" alt="Versión 1.1.0"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/versi%C3%B3n-1.2.0-0b6e63.svg" alt="Versión 1.2.0"></a>
   <a href="estandar/CHANGELOG.md"><img src="https://img.shields.io/badge/Est%C3%A1ndar%20S5-0.4.0-04463f.svg" alt="Estándar S5 0.4.0"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2022.18-339933.svg" alt="Node.js 22.18 o posterior">
 </p>
 
 SIGILO protege a quien denuncia faltas administrativas y hechos de corrupción de ser identificada
 por lo que envía y por quien opera el sistema, y hace visible cuando una autoridad deja morir una
-denuncia. Es el proyecto del **Equipo Sigilo** para el Datatón Anticorrupción 2026 de la SESNA
+denuncia. Es el proyecto del **Equipo Sigilo** (autor: Guillermo Adrián Gutiérrez Olvera) para el
+Datatón Anticorrupción 2026 de la SESNA
 (reto S5): un prototipo funcional de referencia con su red federada, su estándar (OpenAPI,
 diccionarios, catálogos y perfiles) y pruebas unitarias y de extremo a extremo.
 
@@ -66,7 +67,7 @@ diccionarios, catálogos y perfiles) y pruebas unitarias y de extremo a extremo.
    denuncia.
 9. Quien opera un nodo (la SESEA o la contraloría) lo mantiene y da de alta autoridades, pero **no
    lee ni turna denuncias**, salvo que la ley de su estado lo faculte y su tabla lo declare.
-10. Cada paso queda en una **bitácora firmada y cofirmada por testigos**; si la autoridad deja morir
+10. Cada paso queda en una **bitácora pública** que se publica por días cerrados y sin la hora: el nodo firma su cabeza, la SESNA firma la cabeza nacional y los testigos (simulados en la demostración) la cofirman; si la autoridad deja morir
     la denuncia, reglas públicas la escalan a su superior.
 
 El detalle legal, paso por paso, está en el
@@ -306,7 +307,8 @@ arranca: ejecuta `npm run demo:reset -- --yes` con el servidor detenido.
 
 Para el equipo de TI del estado: un servidor Linux con Docker, un dominio y tres comandos. No se
 necesita Node ni el código fuente; el CLI `sigilo` corre dentro de la imagen publicada
-(`ghcr.io/guilleop/sigilo-nodo`).
+(`ghcr.io/guilleop/sigilo-nodo`). Las imágenes se publican al crear la etiqueta de versión; para
+probar SIGILO sin ellas basta `npm run demo:todo`.
 
 ```sh
 ./sigilo instalar      # unas 10 preguntas; deja una solicitud de alta sin secretos y una huella
@@ -356,8 +358,8 @@ la integración continua comprueba que esté al día.
 - **Primitivas estándar:** HPKE (RFC 9180, X25519 y ChaCha20-Poly1305), Ed25519, SHA-256,
   HKDF-SHA256 y VOPRF (RFC 9497) para la corroboración ciega
   ([especificación del formato v1](docs/criptografia.md)).
-- **Nadie en medio lee.** El enrutador ve solo el nodo destino, la hora y un tramo de tamaño fijo,
-  y no registra la IP. Cada entrega lleva un token OAuth y la etiqueta HMAC v2 (marca de tiempo y
+- **Nadie en medio lee.** El enrutador ve solo el nodo destino y un tramo de tamaño fijo (y, en
+  memoria, la hora de llegada); no guarda la hora ni la IP. Cada entrega lleva un token OAuth y la etiqueta HMAC v2 (marca de tiempo y
   nonce de un solo uso).
 - **Llaves fuera del servidor.** La llave de cada autoridad vive en su equipo; la del buzón general
   queda fuera del volumen del nodo al instalar.
@@ -378,23 +380,24 @@ En lugar de pedir confianza, la web da formas de comprobar el anonimato: escribi
 
 ### Qué más propone
 
-| Idea                                 | En concreto                                                                                                                                                                                                  |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| La PDN como escudo                   | Los datos de la PDN protegen a quien denuncia (tamaño de su grupo de anonimato, calculado con S1) y respaldan su denuncia ante la autoridad (contexto, conflicto de interés y prioridad con S2, S3 y S6).    |
-| Rendición de cuentas de la autoridad | Plazos legales, reglas públicas de escalamiento a supervisión y un auditor que señala cierres con plantilla o calificaciones degradadas ([ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)). |
-| Un auditor que señala y no decide    | Las reglas AUD-01 a AUD-08 son cálculos deterministas y públicos; lo que se escala lo decide una regla, no un modelo ([ADR 0009](docs/adr/0009-ia-local.md)).                                                |
-| Corroboración ciega                  | Varias denuncias independientes sobre lo mismo se juntan sin revelar quiénes las presentaron ([ADR 0006](docs/adr/0006-corroboracion-ciega.md)).                                                             |
+| Idea                                 | En concreto                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| La PDN como escudo                   | Los datos de la PDN protegen a quien denuncia (tamaño de su grupo de anonimato, calculado con S1) y respaldan su denuncia ante la autoridad (contexto y prioridad con S3 y S6; el conflicto de interés con S1 y S2 funciona hoy solo con datos sintéticos, porque esas fuentes reales aún no están conectadas). |
+| Rendición de cuentas de la autoridad | Plazos legales, reglas públicas de escalamiento a supervisión y un auditor que señala cierres con plantilla o calificaciones degradadas ([ADR 0007](docs/adr/0007-rendicion-de-cuentas-de-la-autoridad.md)).                                                                                                    |
+| Un auditor que señala y no decide    | Las reglas AUD-01 a AUD-08 son cálculos deterministas y públicos; lo que se escala lo decide una regla, no un modelo ([ADR 0009](docs/adr/0009-ia-local.md)).                                                                                                                                                   |
+| Corroboración ciega                  | Varias denuncias independientes sobre lo mismo se juntan sin revelar quiénes las presentaron ([ADR 0006](docs/adr/0006-corroboracion-ciega.md)).                                                                                                                                                                |
 
 ## Pruebas
 
 ```sh
+npm run keys:generate                 # una sola vez: llaves sintéticas (las E2E las necesitan)
 npm run check                         # formato, lint, tipos, pruebas unitarias (Vitest) y del proceso de datos
 npx playwright install chromium       # una sola vez
 npm run test:e2e                      # construye la web y ejecuta las pruebas E2E (Playwright + axe)
 ```
 
-Hay 1,685 pruebas unitarias en 190 archivos, 34 del proceso de datos en Python y 110 de extremo a
-extremo en 26 archivos. La [integración continua](.github/workflows/ci.yml) las corre en cada push
+Hay 1,764 pruebas unitarias en 199 archivos, 34 del proceso de datos en Python y 114 de extremo a
+extremo en 27 archivos. La [integración continua](.github/workflows/ci.yml) las corre en cada push
 con Node 22.18 y la versión más reciente. Las E2E requieren haber ejecutado
 `npm run keys:generate` y cubren, entre otras cosas, cero peticiones a terceros, denuncia anónima y
 sellada, limpieza de metadatos, buzón, apertura de identidad, bitácora y anclas, salida rápida,
@@ -440,7 +443,7 @@ docs/                   Arquitectura, decisiones, modelo de amenazas y guías
 | El modelo y la red         | [Arquitectura](docs/arquitectura.md) y [ADR 0005](docs/adr/0005-estandar-s5-federado.md)                                                                          |
 | La seguridad               | [Modelo de amenazas](docs/modelo-de-amenazas.md), [criptografía](docs/criptografia.md) e [historial de seguridad](docs/historial-de-seguridad.md)                 |
 | El fundamento legal        | [Proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md), [fuentes legales](docs/fuentes-legales.md) y [marco legal](docs/requisitos.md#marco-legal) |
-| Cómo lo usa cada persona   | [Manuales por perfil](docs/manuales/00-indice.md): denunciante, buzón, investigación, substanciación, supervisión, Tribunal, fiscalía, SESEA, SESNA y testigos   |
+| Cómo lo usa cada persona   | [Manuales por perfil](docs/manuales/00-indice.md): denunciante, buzón, investigación, substanciación, supervisión, Tribunal, fiscalía, SESEA, SESNA y testigos    |
 | La demostración            | [Guion de la demostración](docs/demo.md) y [escenario sintético](docs/demo-escenario.md)                                                                          |
 
 ### Índice de `docs/`
@@ -494,7 +497,7 @@ docs/                   Arquitectura, decisiones, modelo de amenazas y guías
 
 ## Uso de inteligencia artificial
 
-El desarrollo usó Claude Code (Anthropic) como asistente, bajo la dirección y revisión del equipo.
+El desarrollo usó Claude Code (Anthropic) como asistente, bajo la dirección y revisión del autor. El boceto del logotipo se generó con Gemini (Google) y el autor lo redibujó como SVG propio.
 La aplicación no usa modelos de IA ni envía datos a servicios de IA de terceros; el paquete del
 auditor trae un adaptador para un modelo abierto local opcional, desactivado y todavía sin conectar
 al servidor. Detalle en la [declaración de uso de IA](docs/uso-de-ia.md).
@@ -516,13 +519,13 @@ Las contribuciones son bienvenidas: lee [CONTRIBUTING.md](CONTRIBUTING.md) y el
 ## Licencia
 
 [Creative Commons Atribución-NoComercial 4.0 Internacional](LICENSE) (CC BY-NC 4.0), conforme a las
-bases del Datatón Anticorrupción 2026. Uso libre con fines no comerciales y con atribución.
+bases del Datatón Anticorrupción 2026. Uso libre con fines no comerciales y con atribución; queda
+disponible para su uso por la SESNA y las demás autoridades del Sistema Nacional Anticorrupción.
 
 ## Autor y contacto
 
-Desarrollado por **[@GuilleOp](https://github.com/GuilleOp)** (Equipo Sigilo).
+Desarrollado por **Guillermo Adrián Gutiérrez Olvera** ([@GuilleOp](https://github.com/GuilleOp)), único integrante del Equipo Sigilo.
 
 - GitHub: [@GuilleOp](https://github.com/GuilleOp)
-- LinkedIn: (pendiente) <!-- TODO: URL de LinkedIn -->
 
-Abierto a oportunidades laborales; contacto vía LinkedIn. Más detalle en [CONTACTO.md](CONTACTO.md).
+Más detalle en [CONTACTO.md](CONTACTO.md).

@@ -1,15 +1,13 @@
 # Contacto
 
-SIGILO es obra de **[@GuilleOp](https://github.com/GuilleOp)** (Equipo Sigilo), desarrollada para
+SIGILO es obra de **Guillermo Adrián Gutiérrez Olvera** ([@GuilleOp](https://github.com/GuilleOp)), Equipo Sigilo, desarrollada para
 el Datatón Anticorrupción 2026 de la SESNA (reto S5).
 
 ## Oportunidades laborales
 
-Abierto a oportunidades laborales. El canal preferido para contrataciones y colaboraciones es
-LinkedIn.
+Abierto a oportunidades laborales y colaboraciones.
 
 - GitHub: [@GuilleOp](https://github.com/GuilleOp)
-- LinkedIn: (pendiente) <!-- TODO: URL de LinkedIn -->
 
 ## Qué muestra este repositorio
 

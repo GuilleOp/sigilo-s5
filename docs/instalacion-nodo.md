@@ -116,7 +116,7 @@ Sin preguntas (para automatizar), cada respuesta va por bandera o variable `SIGI
 ```sh
 ./sigilo instalar --no-interactivo --huella-red "7c1e 03aa …" --estado oaxaca \
   --institucion "Secretaría de la Contraloría de Oaxaca" --dominio denuncias.oaxaca.gob.mx \
-  --tls 1 --responsable "…" --cargo "…" --correo ti@oaxaca.gob.mx --telefono 9510000000
+  --tls 1 --responsable "…" --cargo "…" --correo ti@estado.example --telefono 9510000000
 ```
 
 Al final imprime:

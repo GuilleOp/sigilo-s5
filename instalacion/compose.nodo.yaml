@@ -36,7 +36,7 @@ services:
   nodo:
     <<: *hardening
     # Imagen genérica publicada (ghcr.io/guilleop/sigilo-nodo), por etiqueta o por digesto.
-    image: ${SIGILO_IMAGEN_NODO:-ghcr.io/guilleop/sigilo-nodo:${SIGILO_VERSION:-1.1.0}}
+    image: ${SIGILO_IMAGEN_NODO:-ghcr.io/guilleop/sigilo-nodo:${SIGILO_VERSION:-1.2.0}}
     mem_limit: 1g
     # Lo genera ./sigilo instalar (Compose ≥ 2.24 admite que aún no exista).
     env_file:
@@ -94,7 +94,7 @@ services:
     profiles:
       - herramientas
     restart: 'no'
-    image: ${SIGILO_IMAGEN_NODO:-ghcr.io/guilleop/sigilo-nodo:${SIGILO_VERSION:-1.1.0}}
+    image: ${SIGILO_IMAGEN_NODO:-ghcr.io/guilleop/sigilo-nodo:${SIGILO_VERSION:-1.2.0}}
     entrypoint: ['node', '/app/tools/sigilo/src/cli.ts']
     # Los archivos que se nombran en los comandos se buscan en la carpeta de la instalación.
     working_dir: /sigilo

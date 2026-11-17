@@ -8,7 +8,7 @@ set -eu
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$DIR"
 COMPOSE_FILE_NODO="$DIR/compose.nodo.yaml"
-VERSION_POR_OMISION=1.1.0
+VERSION_POR_OMISION=1.2.0
 
 fallar() {
   printf '✗ %s\n' "$1" >&2

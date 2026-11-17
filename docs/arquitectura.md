@@ -296,7 +296,8 @@ Ver [criptografia.md](criptografia.md).
 ## Red federada
 
 La red «un S5, muchas llaves» ([ADR 0005](adr/0005-estandar-s5-federado.md)) sigue el modelo
-acordado con la SESNA:
+que propone SIGILO (las Bases de la PDN piden una ventanilla única; un nodo por estado es propuesta
+de SIGILO):
 
 - **Una sola ventanilla nacional** para ciudadanos y personas servidoras públicas. La monta la SESNA
   junto con el enrutador ciego, en el mismo origen. La SESNA no tiene llaves y no lee denuncias.

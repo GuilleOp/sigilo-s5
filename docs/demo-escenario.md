@@ -28,7 +28,8 @@ solo a la **estructura** de esos sistemas, imitada con datos inventados.
 
 ## 2. Red
 
-Modelo acordado con la SESNA: **una sola ventanilla nacional** para ciudadanos y personas
+Modelo que propone SIGILO (las Bases de la PDN piden una ventanilla única; el nodo por estado es
+propuesta de SIGILO): **una sola ventanilla nacional** para ciudadanos y personas
 servidoras públicas, que monta la SESNA junto con el enrutador ciego. La SESNA no tiene llaves y no
 lee denuncias. **Cada estado monta su propio nodo** (lo opera su SESEA o su secretaría de buen
 gobierno o contraloría) y declara qué institución cumple cada función en su entidad. Operar el nodo

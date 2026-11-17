@@ -33,7 +33,7 @@ x-hardening: &hardening
 services:
   enrutador:
     <<: *hardening
-    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.1.0}}
+    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.2.0}}
     # El relevo admite hasta 256 MiB de sobres en vuelo, con unas tres copias en memoria cada uno.
     mem_limit: 1536m
     pids_limit: 256
@@ -84,7 +84,7 @@ services:
     <<: *hardening
     profiles:
       - corroboracion
-    image: ${SIGILO_IMAGEN_EVALUADOR:-ghcr.io/guilleop/sigilo-evaluador:${SIGILO_VERSION:-1.1.0}}
+    image: ${SIGILO_IMAGEN_EVALUADOR:-ghcr.io/guilleop/sigilo-evaluador:${SIGILO_VERSION:-1.2.0}}
     mem_limit: 256m
     cpus: 0.5
     volumes:
@@ -97,7 +97,7 @@ services:
     <<: *hardening
     profiles:
       - corroboracion
-    image: ${SIGILO_IMAGEN_INDICE:-ghcr.io/guilleop/sigilo-indice:${SIGILO_VERSION:-1.1.0}}
+    image: ${SIGILO_IMAGEN_INDICE:-ghcr.io/guilleop/sigilo-indice:${SIGILO_VERSION:-1.2.0}}
     mem_limit: 256m
     cpus: 0.5
     volumes:
@@ -110,7 +110,7 @@ services:
     profiles:
       - herramientas
     restart: 'no'
-    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.1.0}}
+    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.2.0}}
     entrypoint: ['node', '/app/tools/sigilo/src/cli.ts']
     # Los archivos que se nombran en los comandos se buscan en la carpeta de la instalación.
     working_dir: /sigilo

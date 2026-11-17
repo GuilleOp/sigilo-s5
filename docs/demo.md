@@ -90,8 +90,8 @@ Para el guion manual (sin Docker) necesitas además:
 ## Red federada con el escenario completo (Docker, un comando)
 
 La red de `docs/demo-escenario.md` corre en Docker, toda en local y con datos sintéticos. Es la forma
-recomendada para replicar la demostración en un equipo limpio. Sigue el modelo acordado con la
-SESNA: **una sola ventanilla nacional**, que sirve la SESNA junto con el enrutador ciego, y **un nodo
+recomendada para replicar la demostración en un equipo limpio. Sigue el modelo que propone SIGILO
+(las Bases de la PDN piden una ventanilla única; el nodo por estado es propuesta de SIGILO): **una sola ventanilla nacional**, que sirve la SESNA junto con el enrutador ciego, y **un nodo
 por estado**, sin nodo común. Los nodos solo tienen el panel de autoridades.
 
 | Servicio                                  | Quién lo opera en la realidad                                                          | Dirección                          |
