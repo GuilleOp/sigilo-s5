@@ -1,6 +1,6 @@
 # ¿Quién protege a quien denuncia?
 
-Le preguntamos al equipo del Datatón de la SESNA quién protege a la persona ciudadana que denuncia.
+Se preguntó al equipo del Datatón de la SESNA quién protege a la persona ciudadana que denuncia.
 La respuesta señaló el **artículo 109 del Código Nacional de Procedimientos Penales (CNPP)**,
 «Derechos de la víctima u ofendido», como orientación fundamental para proteger la identidad de
 quien denuncia en el S5. Este documento contesta la pregunta con el texto vigente de las leyes

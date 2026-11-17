@@ -27,3 +27,12 @@ __pycache__/
 
 # Temporales de agentes en la raíz
 .tmp-*
+
+# Defensa en profundidad: llaves, credenciales y bases locales nunca se versionan.
+*.sqlite
+*.sqlite-*
+*.db
+*.pem
+*.key
+keys.json
+credenciales.json

@@ -6,7 +6,11 @@ inteligencia artificial en este proyecto.
 ## Herramienta
 
 Claude Code, de Anthropic, usado como asistente. Durante el desarrollo se usaron varias instancias
-(agentes) en paralelo, cada una con una tarea y un conjunto de archivos acotados.
+(agentes) en paralelo, cada una con una tarea y un conjunto de archivos acotados, bajo la dirección
+y revisión del autor.
+
+Gemini, de Google, solo para bocetar el logotipo; el autor lo redibujó como SVG propio. Ninguna
+herramienta de IA recibió datos de denuncias ni datos personales.
 
 ## Uso
 

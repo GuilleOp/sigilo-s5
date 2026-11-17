@@ -72,7 +72,7 @@ export async function renderEvaluation(): Promise<string> {
     '<!-- Archivo generado por `npm run auditor:eval`; no se edita a mano. Una prueba exige que esté al día. -->',
     '',
     `Reglas versión **${AUDITOR_CONFIG.version}** (\`config/umbrales.json\`), adaptador del modelo versión **${ADAPTER_VERSION}**.`,
-    'Conjunto 100 % sintético, etiquetado por el equipo según lo que una persona revisora esperaría, no según lo que hace',
+    'Conjunto 100 % sintético, etiquetado por el autor según lo que una persona revisora esperaría, no según lo que hace',
     'la regla. Incluye el escenario de la demostración y casos difíciles hechos para que las reglas fallen.',
     '',
     '## Advertencias',

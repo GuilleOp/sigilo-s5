@@ -44,7 +44,7 @@ Internos de Control», Federal, con **segunda llave**).
 - «Llave de tu autoridad (archivo .json)»: la de tu autoridad (por ejemplo,
   `.red-demo/autoridades/authority.comptroller-queretaro.json` o
   `authority.oversight-federal.json`).
-- **Segundo factor obligatorio** en la demostración para `contraloria.titular` y `supervision-oic`:
+- **Segundo factor ya inscrito** en la demostración (obligatorio solo en producción) para `contraloria.titular` y `supervision-oic`:
   «Verificación en dos pasos» → «Código de 6 dígitos» → «Verificar y entrar». En la demostración el
   código se obtiene con `npm run demo:codigo -- <usuario>` (el reloj está adelantado, la app del
   teléfono no sirve).

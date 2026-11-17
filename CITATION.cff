@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: 'Si usas SIGILO, cítalo así.'
+title: 'SIGILO: Estándar S5 y capa de anonimato verificable para el Sistema de denuncias de la Plataforma Digital Nacional'
+type: software
+authors:
+  - given-names: 'Guillermo Adrián'
+    family-names: 'Gutiérrez Olvera'
+    alias: 'GuilleOp'
+version: '1.2.0'
+date-released: '2026-11-17'
+license: CC-BY-NC-4.0
+repository-code: 'https://github.com/GuilleOp/sigilo-s5'
+keywords:
+  - anticorrupción
+  - denuncias
+  - plataforma digital nacional
+  - S5
+  - privacidad
+abstract: >-
+  Prototipo con datos sintéticos para el Datatón Anticorrupción 2026 (reto S5): ventanilla única,
+  red federada con un nodo por estado, identidad sellada, Estándar S5 (OpenAPI, diccionarios,
+  catálogos y perfiles) y rendición de cuentas de la autoridad.

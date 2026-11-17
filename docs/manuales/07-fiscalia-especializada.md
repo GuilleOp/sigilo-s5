@@ -42,7 +42,7 @@ Corrupción», nodo Federal).
 - «Llave de tu autoridad (archivo .json)»: la de tu fiscalía (demostración:
   `.red-demo/autoridades/authority.prosecutor-queretaro.json` o
   `authority.prosecutor-anticorruption.json`).
-- **Segundo factor obligatorio** en la demostración (`npm run demo:codigo -- fiscalia.queretaro`).
+- **Segundo factor ya inscrito** en la demostración, obligatorio solo en producción (`npm run demo:codigo -- fiscalia.queretaro`).
 - Recuperación con códigos o reinicio por la operación del nodo, confirmado en persona.
 
 ## 4. Tu bandeja: «Denuncias asignadas»

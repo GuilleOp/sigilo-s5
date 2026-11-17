@@ -5,6 +5,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [1.2.0] - 2026-11-17
+
+Versión de entrega al Datatón Anticorrupción 2026 (reto S5). Además de lo de abajo: README
+profesional y archivos de comunidad, autor único declarado, documentación alineada con el video y la
+presentación finales, `hono` 4.13.19 y `@hono/node-server` 2.1.8 (avisos moderados de seguridad) y
+`.gitignore` ampliado para llaves y bases locales.
+
 ### Agregado
 
 - **Modo avión de verdad** (ADR 0012): al entrar a «Denunciar» la web descarga en memoria los

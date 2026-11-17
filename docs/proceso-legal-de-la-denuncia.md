@@ -729,7 +729,7 @@ flowchart TD
 ## 8. El caso de Ana, de principio a fin
 
 **Hechos (ficticios):** Ana trabaja en el Departamento de Licencias del **Instituto de Movilidad
-Estatal** (organismo ficticio del Poder Ejecutivo de Querétaro, con su propio OIC). En el
+Estatal** (organismo ficticio del Poder Ejecutivo de Querétaro). En la demostración el Instituto **no tiene OIC designado**: lo atiende la Secretaría de la Contraloría del Poder Ejecutivo del Estado de Querétaro (ficticia), que en la tabla de abajo ocupa el lugar del «OIC» (rama e). En el
 departamento son cuatro personas. Su jefe cobra «cooperaciones» a quienes tramitan licencias para
 entregarlas o para entregarlas más rápido.
 

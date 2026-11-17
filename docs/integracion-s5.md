@@ -114,7 +114,7 @@ entradas con la ley de responsabilidades y el código penal de cada una de las 3
 LGRA y el CPF como entidad federal (`entidad` 33), con su clasificación (falta grave, no grave o
 hecho de corrupción) y si la comete una persona servidora pública o un particular.
 
-SIGILO conserva su catálogo corto en lenguaje llano (37 conductas en 5 situaciones, cotejadas con la LGRA y el CPF vigentes, con la clave
+SIGILO conserva su catálogo corto en lenguaje llano (38 conductas en 5 situaciones, cotejadas con la LGRA y el CPF vigentes, con la clave
 de la LGRA o del CPF, más `SIN-CLASIFICAR`, «Ninguna se parece», que llega al buzón general para que lo clasifique) y lo enlaza con el del S5:
 
 - `scripts/s5-equivalencias.ts` empareja cada entrada del S5 con una clave de SIGILO por su
