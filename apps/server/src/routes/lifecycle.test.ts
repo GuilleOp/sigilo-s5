@@ -231,6 +231,10 @@ describe('bandeja de la substanciación (hallazgo 13)', () => {
     await ok(server, 'oicIntake', folio, { action: 'accept' });
     await advance(server, 'oicInvestigator', folio, 'investigation');
     expect(await inbox(server, 'oicSubstantiation')).not.toContain(folio);
+    // Conocer el folio no basta: el detalle tampoco se sirve mientras se investiga.
+    const detail = () =>
+      getAsAuthority(server.app, ROUTES.authorityComplaint(folio), testToken('oicSubstantiation'));
+    expect((await detail()).status).toBe(404);
     await ok(server, 'oicInvestigator', folio, {
       action: 'advance_stage',
       stage: 'qualification',
@@ -238,6 +242,7 @@ describe('bandeja de la substanciación (hallazgo 13)', () => {
     });
     await advance(server, 'oicInvestigator', folio, 'report_filed');
     expect(await inbox(server, 'oicSubstantiation')).toContain(folio);
+    expect((await detail()).status).toBe(200);
   });
 });
 

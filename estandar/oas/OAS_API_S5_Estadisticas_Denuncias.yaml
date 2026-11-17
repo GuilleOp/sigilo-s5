@@ -107,6 +107,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/resErrorToken'
+        '413':
+          description: '`invalid_request`: el cuerpo pasa de 4 KiB y no se lee (`error_description` es «Petición demasiado grande.»); `code` es `413`.'
+          headers:
+            Cache-Control:
+              description: 'Siempre `no-store`: ninguna respuesta se guarda en cachés.'
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resErrorToken'
         '429':
           description: Demasiados fallos de ese cliente; se responde sin comparar credenciales (`code` es `429`).
           headers:

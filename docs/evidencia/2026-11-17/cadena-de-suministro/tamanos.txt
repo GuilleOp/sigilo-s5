@@ -1,0 +1,5 @@
+ghcr.io/guilleop/sigilo-enrutador:1.2.0 536MB
+ghcr.io/guilleop/sigilo-nodo:1.2.0 530MB
+ghcr.io/guilleop/sigilo-evaluador:1.2.0 520MB
+ghcr.io/guilleop/sigilo-testigo:1.2.0 520MB
+ghcr.io/guilleop/sigilo-indice:1.2.0 520MB

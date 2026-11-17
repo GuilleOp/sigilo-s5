@@ -522,15 +522,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "enum": ["no-store"] }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {
@@ -690,15 +686,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "enum": ["no-store"] }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {
@@ -866,15 +858,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "enum": ["no-store"] }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {
@@ -1041,15 +1029,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "enum": ["no-store"] }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {

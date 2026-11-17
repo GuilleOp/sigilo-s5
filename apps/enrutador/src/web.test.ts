@@ -109,6 +109,22 @@ describe('ventanilla única en el enrutador', () => {
     expect(missing.headers.get('Content-Security-Policy')).toContain("default-src 'none'");
   });
 
+  it('no responde la web en rutas ocultas ni en los prefijos de la PDN', async () => {
+    const { app } = setup();
+    // Segmentos ocultos: 404, no la web (antes respondía index.html con 200).
+    for (const path of ['/.git/config', '/.env', '/assets/.secreto', '/.well-known/x']) {
+      const response = await app.request(path);
+      expect(response.status, path).toBe(404);
+      expect(await response.text(), path).not.toContain('Ventanilla');
+    }
+    // Los prefijos de la PDN no existen en la ventanilla: 404 en JSON, no HTML.
+    for (const path of ['/oauth/token', '/v1/keys', '/v1']) {
+      const response = await app.request(path);
+      expect(response.status, path).toBe(404);
+      expect(response.headers.get('Content-Type'), path).toContain('application/json');
+    }
+  });
+
   it('pasa la bitácora pública y la solicitud de alta al nodo, sin cabeceras de quien pide', async () => {
     const { app, calls } = setup();
     const head = await app.request(VENTANILLA_ROUTES.nodeLedgerHead('node.queretaro'), {

@@ -149,9 +149,21 @@ const NO_STORE_HEADERS: JsonObject = {
   },
 };
 
-function errorResponse(code: ApiErrorCode): JsonObject {
+/** Cómo se documentan los errores de una operación. */
+interface ErrorOptions {
+  /** Descripción propia de un código en la operación; si falta, la general del código. */
+  notes: Partial<Record<ApiErrorCode, string>>;
+  /** Si el `401` lleva `WWW-Authenticate: Bearer` (el índice autentica por firma y no la envía). */
+  bearerChallenge: boolean;
+}
+
+function errorDescription(code: ApiErrorCode, options: ErrorOptions): string {
+  return `\`${code}\`: ${options.notes[code] ?? API_ERROR_DESCRIPTIONS[code]}`;
+}
+
+function errorResponse(code: ApiErrorCode, options: ErrorOptions): JsonObject {
   const response: JsonObject = {
-    description: `\`${code}\`: ${API_ERROR_DESCRIPTIONS[code]}`,
+    description: errorDescription(code, options),
     headers: { ...NO_STORE_HEADERS },
     content: {
       'application/json': {
@@ -160,7 +172,7 @@ function errorResponse(code: ApiErrorCode): JsonObject {
       },
     },
   };
-  if (code === 'unauthorized') {
+  if (code === 'unauthorized' && options.bearerChallenge) {
     response.headers = {
       ...NO_STORE_HEADERS,
       'WWW-Authenticate': { description: 'Siempre `Bearer`.', schema: { type: 'string' } },
@@ -174,7 +186,7 @@ function errorResponse(code: ApiErrorCode): JsonObject {
  * ejemplo, `conflict` y `reassignment_limit` en 409), la respuesta los describe a ambos y lleva un
  * ejemplo por código.
  */
-function errorResponses(codes: readonly ApiErrorCode[]): JsonObject {
+function errorResponses(codes: readonly ApiErrorCode[], options: ErrorOptions): JsonObject {
   const byStatus = new Map<string, ApiErrorCode[]>();
   for (const code of codes) {
     const status = String(API_ERROR_HTTP_STATUS[code]);
@@ -184,11 +196,9 @@ function errorResponses(codes: readonly ApiErrorCode[]): JsonObject {
   for (const [status, sameStatus] of byStatus) {
     const [first, ...rest] = sameStatus;
     if (first === undefined) continue;
-    const response = errorResponse(first);
+    const response = errorResponse(first, options);
     if (rest.length > 0) {
-      response.description = sameStatus
-        .map((code) => `\`${code}\`: ${API_ERROR_DESCRIPTIONS[code]}`)
-        .join('\n\n');
+      response.description = sameStatus.map((code) => errorDescription(code, options)).join('\n\n');
       response.content = {
         'application/json': {
           schema: componentRef('ApiError'),
@@ -217,6 +227,28 @@ function securityOf(security: PublishedOperation['security']): readonly JsonObje
     case 'authorityBearer':
       return [{ authorityBearer: [] }];
   }
+}
+
+/**
+ * Errores con el formato común (`ApiError`) que la operación responde con otro estatus que el
+ * habitual de su código (el `503` del buzón de red con `rate_limited`).
+ */
+function extraErrorResponses(operation: PublishedOperation): JsonObject {
+  if (!('extraErrors' in operation) || operation.extraErrors === undefined) return {};
+  const responses: JsonObject = {};
+  for (const item of operation.extraErrors) {
+    responses[String(item.status)] = {
+      description: item.description,
+      headers: { ...NO_STORE_HEADERS },
+      content: {
+        'application/json': {
+          schema: componentRef('ApiError'),
+          example: { error: { code: item.code, message: API_ERROR_MESSAGES[item.code] } },
+        },
+      },
+    };
+  }
+  return responses;
 }
 
 /** Errores con el formato de la PDN (`PdnError` o `PdnTokenError`), por estatus. */
@@ -248,7 +280,12 @@ function buildOperation(operation: PublishedOperation): JsonObject {
   };
   // El grupo «PDN» documenta su propio `500` con `resError`; los demás, `internal` con `ApiError`.
   const internal: ApiErrorCode[] = 'pdnErrors' in operation ? [] : ['internal'];
-  Object.assign(responses, errorResponses([...operation.errors, ...internal]));
+  const options: ErrorOptions = {
+    notes: ('errorNotes' in operation ? operation.errorNotes : undefined) ?? {},
+    bearerChallenge: !('servedBy' in operation && operation.servedBy === 'index'),
+  };
+  Object.assign(responses, errorResponses([...operation.errors, ...internal], options));
+  Object.assign(responses, extraErrorResponses(operation));
   Object.assign(responses, pdnErrorResponses(operation));
   const result: JsonObject = {
     operationId: operation.operationId,

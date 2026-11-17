@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://github.com/GuilleOp/sigilo-s5/actions/workflows/ci.yml"><img src="https://github.com/GuilleOp/sigilo-s5/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-CC%20BY--NC%204.0-lightgrey.svg" alt="Licencia: CC BY-NC 4.0"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/versi%C3%B3n-1.2.0-0b6e63.svg" alt="Versión 1.2.0"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/versi%C3%B3n-1.2.1-0b6e63.svg" alt="Versión 1.2.1"></a>
   <a href="estandar/CHANGELOG.md"><img src="https://img.shields.io/badge/Est%C3%A1ndar%20S5-0.4.0-04463f.svg" alt="Estándar S5 0.4.0"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2022.18-339933.svg" alt="Node.js 22.18 o posterior">
 </p>
@@ -370,7 +370,13 @@ la integración continua comprueba que esté al día.
 - **Panel con segundo factor** TOTP (RFC 6238), obligatorio en producción para toda función, con
   códigos de un solo uso y 10 códigos de recuperación.
 - **Cadena de suministro:** acciones de CI fijadas por SHA, `npm audit` y verificación de firmas
-  del registro en cada push, SBOM CycloneDX y Dependabot.
+  del registro en cada push, SBOM CycloneDX y Dependabot; imágenes multiarquitectura firmadas con
+  cosign, con SBOM y procedencia SLSA.
+- **Pruebas de seguridad:** seis rondas de revisión interna y, para la entrega, una prueba de
+  penetración de caja negra, la revisión del código de las 90 rutas y de la cadena de suministro,
+  sin hallazgos críticos ni altos, con la evidencia publicada
+  ([pruebas de seguridad](docs/pruebas-de-seguridad.md),
+  [historial](docs/historial-de-seguridad.md)). Es una revisión interna, no un pentest de terceros.
 - **Lo que no resuelve.** Los hechos quedan en claro en el nodo de destino, el TOTP no resiste un
   phishing en tiempo real (WebAuthn es el siguiente paso) y persiste la correlación por tiempo
   entre la ventanilla y un nodo. Riesgos residuales en el
@@ -440,15 +446,15 @@ docs/                   Arquitectura, decisiones, modelo de amenazas y guías
 
 ### Para revisar el proyecto
 
-| Busco                      | Dónde                                                                                                                                                             |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Auditarlo de punta a punta | [Guía para la auditoría](docs/auditoria-guia.md): mapa del repositorio, cómo correr todo, dónde vive cada función y límites conocidos                             |
-| El cumplimiento del reto   | [Matriz de requisitos](docs/requisitos.md): cada requisito, su nivel y su evidencia                                                                               |
-| El modelo y la red         | [Arquitectura](docs/arquitectura.md) y [ADR 0005](docs/adr/0005-estandar-s5-federado.md)                                                                          |
-| La seguridad               | [Modelo de amenazas](docs/modelo-de-amenazas.md), [criptografía](docs/criptografia.md) e [historial de seguridad](docs/historial-de-seguridad.md)                 |
-| El fundamento legal        | [Proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md), [fuentes legales](docs/fuentes-legales.md) y [marco legal](docs/requisitos.md#marco-legal) |
-| Cómo lo usa cada persona   | [Manuales por perfil](docs/manuales/00-indice.md): denunciante, buzón, investigación, substanciación, supervisión, Tribunal, fiscalía, SESEA, SESNA y testigos    |
-| La demostración            | [Guion de la demostración](docs/demo.md) y [escenario sintético](docs/demo-escenario.md)                                                                          |
+| Busco                      | Dónde                                                                                                                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auditarlo de punta a punta | [Guía para la auditoría](docs/auditoria-guia.md): mapa del repositorio, cómo correr todo, dónde vive cada función y límites conocidos                                                                   |
+| El cumplimiento del reto   | [Matriz de requisitos](docs/requisitos.md): cada requisito, su nivel y su evidencia                                                                                                                     |
+| El modelo y la red         | [Arquitectura](docs/arquitectura.md) y [ADR 0005](docs/adr/0005-estandar-s5-federado.md)                                                                                                                |
+| La seguridad               | [Modelo de amenazas](docs/modelo-de-amenazas.md), [criptografía](docs/criptografia.md), [historial de seguridad](docs/historial-de-seguridad.md) y [pruebas de seguridad](docs/pruebas-de-seguridad.md) |
+| El fundamento legal        | [Proceso legal de una denuncia](docs/proceso-legal-de-la-denuncia.md), [fuentes legales](docs/fuentes-legales.md) y [marco legal](docs/requisitos.md#marco-legal)                                       |
+| Cómo lo usa cada persona   | [Manuales por perfil](docs/manuales/00-indice.md): denunciante, buzón, investigación, substanciación, supervisión, Tribunal, fiscalía, SESEA, SESNA y testigos                                          |
+| La demostración            | [Guion de la demostración](docs/demo.md) y [escenario sintético](docs/demo-escenario.md)                                                                                                                |
 
 ### Índice de `docs/`
 
@@ -466,6 +472,8 @@ docs/                   Arquitectura, decisiones, modelo de amenazas y guías
 - [Modelo de amenazas](docs/modelo-de-amenazas.md)
 - [Seguridad en producción](docs/seguridad-produccion.md)
 - [Historial de seguridad](docs/historial-de-seguridad.md)
+- [Pruebas de seguridad](docs/pruebas-de-seguridad.md): prueba de penetración, revisión del código y
+  de la cadena de suministro de la versión de entrega, con la evidencia
 - [Confianza verificable](docs/confianza-verificable.md)
 - [Cuando denuncia una persona ciudadana](docs/personas-ciudadanas.md)
 - [¿Quién protege a quien denuncia?](docs/proteccion-de-quien-denuncia.md)

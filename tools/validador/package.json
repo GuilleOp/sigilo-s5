@@ -1,6 +1,6 @@
 {
   "name": "@sigilo/validador",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Validador del Estándar S5: verificaciones pasivas de privacidad y de conformidad de un nodo.",
   "license": "CC-BY-NC-4.0",
   "private": true,
@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@playwright/test": "^1.63.0",
-    "@sigilo/contracts": "1.2.0",
-    "@sigilo/core": "1.2.0",
+    "@sigilo/contracts": "1.2.1",
+    "@sigilo/core": "1.2.1",
     "ajv": "^8.20.0",
     "yaml": "^2.9.1"
   }

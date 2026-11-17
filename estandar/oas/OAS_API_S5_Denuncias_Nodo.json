@@ -2013,7 +2013,7 @@
         "operationId": "listAuthorities",
         "tags": ["Autoridad"],
         "summary": "Autoridades del nodo",
-        "description": "Autoridades alojadas en el nodo, para turnar y reasignar.",
+        "description": "Autoridades alojadas en el nodo, para turnar y reasignar. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "responses": {
           "200": {
@@ -2073,6 +2073,23 @@
               }
             }
           },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -2098,7 +2115,7 @@
         "operationId": "getPdnInstitutionContext",
         "tags": ["Autoridad"],
         "summary": "Contexto PDN de la dependencia",
-        "description": "Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia.",
+        "description": "Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2198,6 +2215,23 @@
               }
             }
           },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -2223,7 +2257,7 @@
         "operationId": "listAuthorityComplaints",
         "tags": ["Autoridad"],
         "summary": "Listado de denuncias",
-        "description": "Resúmenes paginados de las denuncias que tiene la autoridad de la cuenta (competencia por folio), sin identidad ni texto libre.",
+        "description": "Resúmenes paginados de las denuncias que tiene la autoridad de la cuenta (competencia por folio), sin identidad ni texto libre. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2342,6 +2376,23 @@
               }
             }
           },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -2367,7 +2418,7 @@
         "operationId": "getAuthorityComplaint",
         "tags": ["Autoridad"],
         "summary": "Detalle de una denuncia",
-        "description": "Hechos, pruebas, buzón, trámite, solicitudes de apertura y datos para recalcular el contexto del sobre de identidad. La identidad sellada no viene aquí. Una denuncia de otra autoridad responde `404`, igual que una inexistente.",
+        "description": "Hechos, pruebas, buzón, trámite, solicitudes de apertura y datos para recalcular el contexto del sobre de identidad. La identidad sellada no viene aquí. Una denuncia de otra autoridad responde `404`, igual que una inexistente. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2562,6 +2613,23 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
                 "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
               }
             }
           },
@@ -3937,7 +4005,7 @@
         "operationId": "downloadEvidence",
         "tags": ["Autoridad"],
         "summary": "Descargar una prueba",
-        "description": "Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`.",
+        "description": "Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -3977,6 +4045,23 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
                 "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
               }
             }
           },
@@ -4324,7 +4409,7 @@
         "operationId": "getAuditSummary",
         "tags": ["Autoridad"],
         "summary": "Conteos del auditor",
-        "description": "Conteo de señales del auditor (AUD-01 a AUD-08) por autoridad y regla, sin folios ni texto: la entrada agregada del observatorio. Cualquier cuenta con sesión.",
+        "description": "Conteo de señales del auditor (AUD-01 a AUD-08) por autoridad y regla, sin folios ni texto: la entrada agregada del observatorio. Cualquier cuenta de la autoridad con sesión. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "responses": {
           "200": {
@@ -4367,6 +4452,23 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
                 "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "enum": ["no-store"] }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
               }
             }
           },
@@ -11276,7 +11378,8 @@
           "directoryEntry": {
             "description": "Si se aprobó: entrada propuesta para el directorio, lista para agregarla, firmarla y que los testigos la cofirmen.",
             "allOf": [{ "$ref": "#/components/schemas/DirectoryAuthority" }],
-            "nullable": true
+            "nullable": true,
+            "type": "object"
           }
         },
         "required": ["requestId", "receivedOn", "status", "request", "decision", "directoryEntry"],
@@ -11437,7 +11540,8 @@
                 "holder": {
                   "description": "Quién lo investiga (su OIC o quien lo atiende), o null si está pendiente.",
                   "allOf": [{ "$ref": "#/components/schemas/FunctionHolder" }],
-                  "nullable": true
+                  "nullable": true,
+                  "type": "object"
                 },
                 "holderName": {
                   "type": "string",
@@ -12270,7 +12374,8 @@
           "queued": {
             "description": "Acuse de la cola si el nodo no respondió y el sobre pidió `deferral`; null en cualquier otro caso.",
             "allOf": [{ "$ref": "#/components/schemas/RelayQueueReceipt" }],
-            "nullable": true
+            "nullable": true,
+            "type": "object"
           }
         },
         "required": ["v", "sealed", "queued"],

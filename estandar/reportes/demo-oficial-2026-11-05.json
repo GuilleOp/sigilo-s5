@@ -301,7 +301,7 @@
       "title": "Sin mapas ni geocodificación externos",
       "severity": "obligatoria",
       "status": "advertencia",
-      "summary": "El código integra mapas o geocodificación de terceros (se activan al interactuar, p. ej. al escribir un domicilio): Mapbox, OpenStreetMap (teselas o Nominatim).",
+      "summary": "El código integra mapas o geocodificación de terceros (se activan al interactuar, p. ej. al escribir un domicilio).",
       "isHeuristic": true,
       "evidence": [
         {

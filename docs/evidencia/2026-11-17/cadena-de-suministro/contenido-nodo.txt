@@ -1,0 +1,38 @@
+uid=1000(node) gid=1000(node) groups=1000(node)
+total 40
+drwxr-xr-x  1 root root 4096 Nov 17 04:16 .
+drwxr-xr-x  1 root root 4096 Nov 17 04:50 ..
+drwxr-xr-x  1 root root 4096 Nov 17 04:14 apps
+drwxr-xr-x  2 root root 4096 Nov 17 04:13 instalacion
+drwxr-xr-x 46 root root 4096 Nov 17 04:14 node_modules
+-rw-r--r--  1 root root 3178 Nov 17 04:13 package.json
+drwxr-xr-x 10 root root 4096 Nov 17 04:13 packages
+drwxr-xr-x  3 root root 4096 Nov 17 04:14 tools
+-rw-r--r--  1 root root  587 Nov 17 04:13 tsconfig.base.json
+drwxr-xr-x  5 root root 4096 Nov 17 04:16 web
+127M	/app/node_modules
+3.0M	/app/packages
+6.2M	/app/web
+125M	/usr/local
+3.8M	/app/node_modules/hono
+5.1M	/app/node_modules/playwright
+7.9M	/app/node_modules/react-dom
+8.2M	/app/node_modules/zod
+12M	/app/node_modules/swagger-ui-dist
+14M	/app/node_modules/playwright-core
+29M	/app/node_modules/@napi-rs
+35M	/app/node_modules/pdfjs-dist
+docker-entrypoint.sh
+node
+nodejs
+/usr/bin/apt-get
+/usr/lib/aarch64-linux-gnu/libapt-private.so.0.0.0
+/usr/lib/aarch64-linux-gnu/libapt-private.so.0.0
+/usr/bin/passwd
+/usr/bin/mount
+/usr/bin/newgrp
+/usr/bin/chfn
+/usr/bin/gpasswd
+/usr/bin/su
+/usr/bin/chsh
+/usr/bin/umount

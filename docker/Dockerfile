@@ -90,9 +90,12 @@ LABEL org.opencontainers.image.source="https://github.com/GuilleOp/sigilo-s5" \
       org.opencontainers.image.version="${SIGILO_VERSION}" \
       org.opencontainers.image.vendor="SIGILO" \
       org.opencontainers.image.description="SIGILO: capa de anonimato verificable para el S5 de la PDN (imagen genérica, sin llaves)."
+# Seguridad: sin gestores de paquetes de Node y sin binarios setuid/setgid del sistema (su, mount,
+# passwd…), que no hacen falta para correr; no-new-privileges y cap_drop ya los neutralizan.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
-      /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
+      /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-* \
+ && find / -xdev -perm /6000 -type f -exec chmod a-s {} +
 WORKDIR /app
 ENV NODE_ENV=production \
     NPM_CONFIG_UPDATE_NOTIFIER=false \

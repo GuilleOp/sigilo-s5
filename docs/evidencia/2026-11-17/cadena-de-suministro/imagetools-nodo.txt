@@ -1,0 +1,26 @@
+Name:      ghcr.io/guilleop/sigilo-nodo:1.2.0
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:1f4ee52c287f2f7de740cfa371d0dea6319f3f7d3c4daba532de822f658f53d4
+           
+Manifests: 
+  Name:        ghcr.io/guilleop/sigilo-nodo:1.2.0@sha256:eabf1e7a46ed23673c7cb638a5b8b2a77cbda4ba6d0dd4203576b729d35a13d0
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/amd64
+               
+  Name:        ghcr.io/guilleop/sigilo-nodo:1.2.0@sha256:e55866fd9303327a4edc27f61a973f67ca7897f789df597f7b9e8e033c7c28f0
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/arm64
+               
+  Name:        ghcr.io/guilleop/sigilo-nodo:1.2.0@sha256:7a564164d9bdba475b26d2914df059d5fddace3c6eea3db29b7bed54c1325822
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations: 
+    vnd.docker.reference.digest: sha256:eabf1e7a46ed23673c7cb638a5b8b2a77cbda4ba6d0dd4203576b729d35a13d0
+    vnd.docker.reference.type:   attestation-manifest
+               
+  Name:        ghcr.io/guilleop/sigilo-nodo:1.2.0@sha256:cbdf1928f0ad788f86e2e17840463abff96505409aa364faf9cd1664e69da9f2
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations: 
+    vnd.docker.reference.digest: sha256:e55866fd9303327a4edc27f61a973f67ca7897f789df597f7b9e8e033c7c28f0
+    vnd.docker.reference.type:   attestation-manifest
