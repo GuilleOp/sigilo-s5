@@ -1,15 +1,15 @@
 cff-version: 1.2.0
-message: "Si usas SIGILO, cítalo así."
-title: "SIGILO: Estándar S5 y capa de anonimato verificable para el Sistema de denuncias de la Plataforma Digital Nacional"
+message: 'Si usas SIGILO, cítalo así.'
+title: 'SIGILO: Estándar S5 y capa de anonimato verificable para el Sistema de denuncias de la Plataforma Digital Nacional'
 type: software
 authors:
-  - given-names: "Guillermo Adrián"
-    family-names: "Gutiérrez Olvera"
-    alias: "GuilleOp"
-version: "1.2.0"
-date-released: "2026-11-17"
+  - given-names: 'Guillermo Adrián'
+    family-names: 'Gutiérrez Olvera'
+    alias: 'GuilleOp'
+version: '1.2.0'
+date-released: '2026-11-17'
 license: CC-BY-NC-4.0
-repository-code: "https://github.com/GuilleOp/sigilo-s5"
+repository-code: 'https://github.com/GuilleOp/sigilo-s5'
 keywords:
   - anticorrupción
   - denuncias
