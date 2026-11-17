@@ -5,9 +5,10 @@ el Datatón Anticorrupción 2026 de la SESNA (reto S5).
 
 ## Oportunidades laborales
 
-Abierto a oportunidades laborales y colaboraciones.
+Abierto a oportunidades laborales y colaboraciones. El canal preferido es LinkedIn.
 
 - GitHub: [@GuilleOp](https://github.com/GuilleOp)
+- LinkedIn: [Guillermo Adrián Gutiérrez Olvera](https://www.linkedin.com/in/guillermo-adri%C3%A1n-guti%C3%A9rrez-olvera-b03bb8260/)
 
 ## Qué muestra este repositorio
 

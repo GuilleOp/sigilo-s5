@@ -527,5 +527,6 @@ disponible para su uso por la SESNA y las demás autoridades del Sistema Naciona
 Desarrollado por **Guillermo Adrián Gutiérrez Olvera** ([@GuilleOp](https://github.com/GuilleOp)), único integrante del Equipo Sigilo.
 
 - GitHub: [@GuilleOp](https://github.com/GuilleOp)
+- LinkedIn: [Guillermo Adrián Gutiérrez Olvera](https://www.linkedin.com/in/guillermo-adri%C3%A1n-guti%C3%A9rrez-olvera-b03bb8260/)
 
-Más detalle en [CONTACTO.md](CONTACTO.md).
+Abierto a oportunidades laborales; contacto vía LinkedIn. Más detalle en [CONTACTO.md](CONTACTO.md).
