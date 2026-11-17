@@ -2023,7 +2023,7 @@
         "operationId": "listAuthorities",
         "tags": ["Autoridad"],
         "summary": "Autoridades del nodo",
-        "description": "Autoridades alojadas en el nodo, para turnar y reasignar.",
+        "description": "Autoridades alojadas en el nodo, para turnar y reasignar. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "responses": {
           "200": {
@@ -2083,6 +2083,23 @@
               }
             }
           },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -2108,7 +2125,7 @@
         "operationId": "getPdnInstitutionContext",
         "tags": ["Autoridad"],
         "summary": "Contexto PDN de la dependencia",
-        "description": "Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia.",
+        "description": "Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2208,6 +2225,23 @@
               }
             }
           },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -2233,7 +2267,7 @@
         "operationId": "listAuthorityComplaints",
         "tags": ["Autoridad"],
         "summary": "Listado de denuncias",
-        "description": "Resúmenes paginados de las denuncias que tiene la autoridad de la cuenta (competencia por folio), sin identidad ni texto libre.",
+        "description": "Resúmenes paginados de las denuncias que tiene la autoridad de la cuenta (competencia por folio), sin identidad ni texto libre. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2352,6 +2386,23 @@
               }
             }
           },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -2377,7 +2428,7 @@
         "operationId": "getAuthorityComplaint",
         "tags": ["Autoridad"],
         "summary": "Detalle de una denuncia",
-        "description": "Hechos, pruebas, buzón, trámite, solicitudes de apertura y datos para recalcular el contexto del sobre de identidad. La identidad sellada no viene aquí. Una denuncia de otra autoridad responde `404`, igual que una inexistente.",
+        "description": "Hechos, pruebas, buzón, trámite, solicitudes de apertura y datos para recalcular el contexto del sobre de identidad. La identidad sellada no viene aquí. Una denuncia de otra autoridad responde `404`, igual que una inexistente. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -2572,6 +2623,23 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
                 "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
               }
             }
           },
@@ -3947,7 +4015,7 @@
         "operationId": "downloadEvidence",
         "tags": ["Autoridad"],
         "summary": "Descargar una prueba",
-        "description": "Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`.",
+        "description": "Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "parameters": [
           {
@@ -3985,6 +4053,23 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
                 "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
               }
             }
           },
@@ -4332,7 +4417,7 @@
         "operationId": "getAuditSummary",
         "tags": ["Autoridad"],
         "summary": "Conteos del auditor",
-        "description": "Conteo de señales del auditor (AUD-01 a AUD-08) por autoridad y regla, sin folios ni texto: la entrada agregada del observatorio. Cualquier cuenta con sesión.",
+        "description": "Conteo de señales del auditor (AUD-01 a AUD-08) por autoridad y regla, sin folios ni texto: la entrada agregada del observatorio. Cualquier cuenta de la autoridad con sesión. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.",
         "security": [{ "authorityBearer": [] }],
         "responses": {
           "200": {
@@ -4375,6 +4460,23 @@
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" },
                 "example": { "error": { "code": "unauthorized", "message": "No autorizado." } }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
+                }
               }
             }
           },
@@ -7117,6 +7219,21 @@
               }
             }
           },
+          "404": {
+            "description": "`not_found`: El enrutador no tiene configurada la cola de entrega (ni su prueba de trabajo); un nodo sin red configurada o sin enrutador responde lo mismo en su paso del mismo origen.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -7208,6 +7325,21 @@
               }
             }
           },
+          "404": {
+            "description": "`not_found`: El enrutador no tiene configurada la vigilancia de salud de los nodos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
             "headers": {
@@ -7258,6 +7390,21 @@
               "text/html": {
                 "schema": { "type": "string" },
                 "example": "<!doctype html><html lang=\"es-MX\">…<table>…</table>…</html>"
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: El enrutador no tiene configurada la vigilancia de salud de los nodos.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
               }
             }
           },
@@ -8819,7 +8966,7 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: Falta el token de acceso del nodo, venció o no es válido (con `WWW-Authenticate: Bearer realm=\"sigilo\", error=\"invalid_token\", scope=\"sesna:entregas\"`).",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -8838,7 +8985,7 @@
             }
           },
           "403": {
-            "description": "`forbidden`: La función de la cuenta no permite la acción (separación de funciones); se responde antes de buscar el folio.",
+            "description": "`forbidden`: El token es válido pero no tiene el permiso `sesna:entregas` (con `WWW-Authenticate: Bearer …, error=\"insufficient_scope\"`).",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -8851,6 +8998,21 @@
                 "example": {
                   "error": { "code": "forbidden", "message": "Tu función no permite esta acción." }
                 }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: El nodo no tiene la red configurada: no hay buzón de red y la ruta responde como una inexistente, sin pedir token.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
               }
             }
           },
@@ -8896,6 +9058,529 @@
           },
           "500": {
             "description": "`internal`: Error interno, sin detalles.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`rate_limited`: entrega diferida (`deferral`) que el nodo no puede atender ahora, porque ya admitió 300 en la última hora o porque la operación falló de su lado (estatus 5xx). El enrutador la deja en su cola y la reintenta; el código es `rate_limited`, con estatus `503` y no `429`.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Demasiados intentos. Intenta más tarde."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/nodes/{nodeId}/ledger/head": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getVentanillaNodeLedgerHead",
+        "tags": ["Red"],
+        "summary": "Cabeza de la bitácora de un nodo (paso de la ventanilla)",
+        "description": "Paso de la ventanilla única de referencia, que la SESNA sirve junto al enrutador: pide `GET /api/v1/ledger/head` al nodo del directorio (`getLedgerHead`) y devuelve su estatus y su cuerpo JSON sin sus cabeceras, para que el registro público de la web no hable con otro origen. Arma la petición desde cero (sin cookies, agente de usuario ni IP) y no guarda nada. La cabeza sigue firmada por el nodo: la web la verifica con su llave del directorio. Es una comodidad del despliegue; un nodo no la implementa.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del nodo en el directorio.",
+            "schema": { "type": "string", "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cabeza firmada del nodo, tal como la respondió.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SignedLedgerHead" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-ledger-head.response.json`.",
+                    "value": {
+                      "seq": 42,
+                      "hash": "55facaf606de06709ae5317fc22d0986f8c9d64723817cf39865a38c6561d4ed",
+                      "at": "2026-11-12",
+                      "serverKeyId": "c64189c912bb3ce1",
+                      "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: El `nodeId` no tiene la forma de un identificador o no está en el directorio vigente, o el nodo respondió `404`.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: El nodo no respondió o no respondió JSON; la ventanilla contesta sin detalles ni cabeceras del nodo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/nodes/{nodeId}/ledger/events": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "listVentanillaNodeLedgerEvents",
+        "tags": ["Red"],
+        "summary": "Eventos de la bitácora de un nodo (paso de la ventanilla)",
+        "description": "Paso de la ventanilla única de referencia hacia `GET /api/v1/ledger/events?from=&limit=` del nodo (`listLedgerEvents`), con el estatus y el cuerpo JSON que responda el nodo. Solo pasa `from` y `limit` (no `since`); si faltan, envía `from=0` y `limit=100`. Es una comodidad del despliegue; un nodo no la implementa.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del nodo en el directorio.",
+            "schema": { "type": "string", "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Secuencia inicial (hasta 9 dígitos); 0 por omisión.",
+            "schema": { "type": "integer", "minimum": 0, "maximum": 999999999 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Tamaño de página; 100 por omisión. El nodo acepta 500 como máximo.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de eventos y cabeza firmada del nodo, tal como la respondió.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LedgerPage" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/list-ledger-events.response.json`.",
+                    "value": {
+                      "events": [
+                        {
+                          "seq": 41,
+                          "type": "complaint.received",
+                          "folioDigest": "1cadc826d104014d2ed7b5bb2fef5c22b8d940aeaa2f14d9f65fec049aa9e292",
+                          "at": "2026-11-05",
+                          "actorRole": "system",
+                          "payloadDigest": "06070e6e2bc7be88a3beecfb1b7ec80e2ee8d8fae2ae612e28e1c6347dc3d797",
+                          "prevHash": "b7936c8777a5a5368179decf6377c150b30784676a633ff2229174d2852111b2",
+                          "hash": "cb37babe6ca52df9e33e426166e0ab21696e6fb2a7c51cdc2a49bbd103b69e8c"
+                        },
+                        {
+                          "seq": 42,
+                          "type": "identity.opened",
+                          "folioDigest": "1cadc826d104014d2ed7b5bb2fef5c22b8d940aeaa2f14d9f65fec049aa9e292",
+                          "at": "2026-11-12",
+                          "actorRole": "authority",
+                          "payloadDigest": "1c7384ae5d390020a47bd3cc14875e4575ff2d1d78cbb5dce6c038c92c9ef935",
+                          "receiptTag": "a2ac084c5fcf7fee50433c408248020dd7f0908de5beff4d22867d68bab0ed82",
+                          "prevHash": "cb37babe6ca52df9e33e426166e0ab21696e6fb2a7c51cdc2a49bbd103b69e8c",
+                          "hash": "55facaf606de06709ae5317fc22d0986f8c9d64723817cf39865a38c6561d4ed"
+                        }
+                      ],
+                      "head": {
+                        "seq": 42,
+                        "hash": "55facaf606de06709ae5317fc22d0986f8c9d64723817cf39865a38c6561d4ed",
+                        "at": "2026-11-12",
+                        "serverKeyId": "c64189c912bb3ce1",
+                        "signature": "7XdDyy1y5I9NAnkJ3hfkF7WFG8Z-o-EFmjpe-32pN3oxmSg9vQ-yk29HmYt-zMLCE7ZjhW8EgUD3kdP-FtonOg"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: `from` o `limit` no son enteros de 1 a 9 dígitos (lo rechaza la ventanilla), o el nodo rechazó la página (por ejemplo, `limit` mayor que 500).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: El `nodeId` no tiene la forma de un identificador o no está en el directorio vigente, o el nodo respondió `404`.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: El nodo no respondió o no respondió JSON; la ventanilla contesta sin detalles ni cabeceras del nodo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/nodes/{nodeId}/registration-requests/challenge": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "get": {
+        "operationId": "getVentanillaRegistrationChallenge",
+        "tags": ["Red"],
+        "summary": "Reto para solicitar el alta en un nodo (paso de la ventanilla)",
+        "description": "Paso de la ventanilla única de referencia hacia `GET /api/v1/pow/challenge?purpose=registration` del nodo (`getPowChallenge`): el reto de prueba de trabajo que exige la solicitud de alta en ese nodo. Devuelve el estatus y el cuerpo JSON que responda el nodo. Es una comodidad del despliegue; un nodo no la implementa.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del nodo en el directorio.",
+            "schema": { "type": "string", "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reto vigente del nodo para `registration`.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PowChallenge" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/get-pow-challenge.response.json`.",
+                    "value": {
+                      "token": "tpHur4SEBFgkV0Qx7zs7yaRNuCt0gk6E.uAXrUKi4UunPlnHDlkK-3uZkD6JBeKuENnTwWJiCIgs",
+                      "bits": 18
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: El `nodeId` no tiene la forma de un identificador o no está en el directorio vigente, o el nodo respondió `404`.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: El nodo no respondió o no respondió JSON; la ventanilla contesta sin detalles ni cabeceras del nodo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "internal", "message": "Error interno del servidor." }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/red/nodes/{nodeId}/registration-requests": {
+      "servers": [
+        {
+          "url": "http://127.0.0.1:8790",
+          "description": "Enrutador en local (`npm run dev:enrutador` o `docker compose up`)."
+        },
+        {
+          "url": "https://red.example.org",
+          "description": "Ejemplo de un enrutador publicado (dominio reservado para ejemplos)."
+        }
+      ],
+      "post": {
+        "operationId": "submitVentanillaRegistration",
+        "tags": ["Red"],
+        "summary": "Solicitar el alta de una institución en un nodo (paso de la ventanilla)",
+        "description": "Paso de la ventanilla única de referencia hacia `POST /api/v1/registration/requests` del nodo del estado de la institución (`submitRegistration`), que revisa la operación de ese nodo. La ventanilla valida el cuerpo con `RegistrationRequest`, lo vuelve a serializar y lo envía con solo `Content-Type: application/json` y, si vino, la cabecera de prueba de trabajo (`X-Sigilo-Pow`, con el reto de `getVentanillaRegistrationChallenge`). Devuelve el estatus y el cuerpo JSON del nodo (`201` con el folio y la huella del candado, o su error). Es una comodidad del despliegue; un nodo no la implementa.",
+        "security": [{ "proofOfWork": [] }],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del nodo en el directorio.",
+            "schema": { "type": "string", "pattern": "^node\\.[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Cuerpo de la petición.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegistrationRequest" },
+              "examples": {
+                "sintetico": {
+                  "summary": "Ejemplo sintético",
+                  "description": "También en `ejemplos/submit-registration.request.json`.",
+                  "value": {
+                    "institutionName": "Secretaría de la Contraloría Ficticia de Oaxaca",
+                    "stateCode": "20",
+                    "governmentLevel": "estatal",
+                    "role": "investigating",
+                    "laws": ["LGRA"],
+                    "supervisorId": null,
+                    "applicant": {
+                      "fullName": "Persona Solicitante Ficticia",
+                      "position": "Titular del área de quejas, denuncias e investigación",
+                      "appointment": "Oficio SCF/001/2026 del 2 de enero de 2026"
+                    },
+                    "people": [
+                      {
+                        "fullName": "Persona Ficticia Uno",
+                        "functions": ["intake", "investigation"]
+                      },
+                      { "fullName": "Persona Ficticia Dos", "functions": ["substantiation"] }
+                    ],
+                    "padlock": {
+                      "keyId": "f7bc219ff223a248",
+                      "boxPublicKey": "NiZznjyLNeraA7JAp19_XZP3tcTRLjBYKE30lDFWPDA",
+                      "signingPublicKey": "Q0aLh_n4f3OsAUbnPW7TArxa9GZSaFogin9tSn2xGcA"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Solicitud recibida por el nodo.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RegistrationReceipt" },
+                "examples": {
+                  "sintetico": {
+                    "summary": "Ejemplo sintético",
+                    "description": "También en `ejemplos/submit-registration.response.json`.",
+                    "value": {
+                      "requestId": "ALTA-3F2A9C01B7E4",
+                      "fingerprint": "3f2a 9c01 b7e4 55d0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`bad_request`: El cuerpo no es JSON o no cumple `RegistrationRequest` (lo rechaza la ventanilla antes de enviarlo), o el nodo lo rechazó.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": { "code": "bad_request", "message": "La solicitud no es válida." }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: El `nodeId` no tiene la forma de un identificador o no está en el directorio vigente, o el nodo respondió `404`.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": { "error": { "code": "not_found", "message": "No encontrado." } }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload_too_large`: El cuerpo pasa de 64 KiB; la ventanilla no lo lee ni lo envía.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "payload_too_large",
+                    "message": "El contenido excede el tamaño permitido."
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`proof_required`: El nodo no recibió una prueba de trabajo válida para `registration` (falta, venció o ya se usó).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" },
+                "example": {
+                  "error": {
+                    "code": "proof_required",
+                    "message": "Falta una prueba de trabajo válida y vigente."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal`: El nodo no respondió o no respondió JSON; la ventanilla contesta sin detalles ni cabeceras del nodo.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -9000,6 +9685,18 @@
           },
           "401": {
             "description": "`invalid_client`: identificador o secreto del cliente inválidos (con `WWW-Authenticate: Basic` si vino en la cabecera); `code` es `401`.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PdnTokenError" } }
+            }
+          },
+          "413": {
+            "description": "`invalid_request`: el cuerpo pasa de 4 KiB y no se lee (`error_description` es «Petición demasiado grande.»); `code` es `413`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
@@ -9827,15 +10524,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "const": "no-store" }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {
@@ -9995,15 +10688,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "const": "no-store" }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {
@@ -10171,15 +10860,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "const": "no-store" }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {
@@ -10346,15 +11031,11 @@
             }
           },
           "401": {
-            "description": "`unauthorized`: Falta la sesión de la autoridad, venció o no es válida, o el usuario y la contraseña no coinciden (sin decir cuál).",
+            "description": "`unauthorized`: El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.",
             "headers": {
               "Cache-Control": {
                 "description": "Siempre `no-store`: ninguna respuesta se guarda en cachés.",
                 "schema": { "type": "string", "const": "no-store" }
-              },
-              "WWW-Authenticate": {
-                "description": "Siempre `Bearer`.",
-                "schema": { "type": "string" }
               }
             },
             "content": {

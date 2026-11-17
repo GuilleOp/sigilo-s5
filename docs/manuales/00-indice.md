@@ -10,7 +10,7 @@ ciclo legal interviene, con qué fundamento y cómo usar cada pantalla.
 > «(ficticia)». Los catálogos de entes de la PDN y de municipios del INEGI son reales, pero ningún
 > caso acusa a una institución real.
 
-**Versión revisada:** software SIGILO 1.2.0, Estándar S5 0.4.0, rama `main` (`9667a9f`, con los
+**Versión revisada:** software SIGILO 1.2.1, Estándar S5 0.4.0, rama `main` (versión 1.2.1, con los
 lotes 1 a 6 de correcciones), 16 de noviembre
 de 2026. Los textos entre comillas («…») son los que aparecen en pantalla.
 

@@ -38,6 +38,7 @@ import {
   RoutedReplySchema,
   RoutedRequestSchema,
   SignedAuthorityDirectorySchema,
+  VENTANILLA_ROUTES,
   WitnessPolicySchema,
   WitnessSignatureSchema,
 } from '../network.ts';
@@ -70,6 +71,9 @@ import type {
 } from '../network.ts';
 import type { ApiErrorCode } from '../errors.ts';
 import { PDN_SCOPES } from '../pdn-oauth.ts';
+import { POW_HEADER } from '../pow.ts';
+import { ROUTES } from '../routes.ts';
+import type { StandardExampleName } from './examples.ts';
 import type { StandardComponentName, StandardParameter } from './operations.ts';
 import type { OAuthSecurity, PdnComponentName, PdnExampleName } from './pdn.ts';
 
@@ -546,7 +550,7 @@ export type NetworkBody =
       kind: 'json';
       component: NetworkComponentName | StandardComponentName | PdnComponentName;
       isArray?: boolean;
-      example: NetworkExampleName | PdnExampleName;
+      example: NetworkExampleName | PdnExampleName | StandardExampleName;
     }
   | { kind: 'text'; mediaType: string; description: string; example: string };
 
@@ -559,11 +563,22 @@ export interface NetworkOperation {
   servedBy: 'router' | 'node';
   summary: string;
   description: string;
-  security: 'none' | OAuthSecurity;
+  security: 'none' | 'proofOfWork' | OAuthSecurity;
   parameters: readonly StandardParameter[];
   requestBody?: NetworkBody;
-  success: { status: 200; description: string; body: NetworkBody };
+  success: { status: 200 | 201; description: string; body: NetworkBody };
   errors: readonly ApiErrorCode[];
+  /** Cuándo responde cada código en esta operación, si no es la descripción general del código. */
+  errorNotes?: Partial<Record<ApiErrorCode, string>>;
+  /** Errores con un estatus distinto del habitual de su código (por ejemplo, `503` del buzón). */
+  extraErrors?: readonly NetworkExtraError[];
+}
+
+/** Error con el formato común (`ApiError`) que una operación responde con otro estatus. */
+export interface NetworkExtraError {
+  status: 503;
+  code: ApiErrorCode;
+  description: string;
 }
 
 const NODE_ID_PARAMETER: StandardParameter = {
@@ -579,6 +594,17 @@ const JSON_ERRORS: readonly ApiErrorCode[] = [
   'payload_too_large',
   'unsupported_media_type',
 ];
+
+/**
+ * Errores de los pasos de la ventanilla (`VENTANILLA_ROUTES`) hacia un nodo. Responden con el
+ * estatus y el cuerpo JSON del nodo; estos son los que pone la propia ventanilla.
+ */
+const VENTANILLA_ERROR_NOTES: Partial<Record<ApiErrorCode, string>> = {
+  not_found:
+    'El `nodeId` no tiene la forma de un identificador o no está en el directorio vigente, o el nodo respondió `404`.',
+  internal:
+    'El nodo no respondió o no respondió JSON; la ventanilla contesta sin detalles ni cabeceras del nodo.',
+};
 
 export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
   {
@@ -638,7 +664,11 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
       description: 'Reto vigente.',
       body: { kind: 'json', component: 'PowChallenge', example: 'get-queue-challenge.response' },
     },
-    errors: [],
+    errors: ['not_found'],
+    errorNotes: {
+      not_found:
+        'El enrutador no tiene configurada la cola de entrega (ni su prueba de trabajo); un nodo sin red configurada o sin enrutador responde lo mismo en su paso del mismo origen.',
+    },
   },
   {
     operationId: 'getNetworkHealth',
@@ -656,7 +686,10 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
       description: 'Salud de la red.',
       body: { kind: 'json', component: 'NetworkHealth', example: 'get-network-health.response' },
     },
-    errors: [],
+    errors: ['not_found'],
+    errorNotes: {
+      not_found: 'El enrutador no tiene configurada la vigilancia de salud de los nodos.',
+    },
   },
   {
     operationId: 'viewNetworkHealth',
@@ -679,7 +712,10 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
         example: '<!doctype html><html lang="es-MX">…<table>…</table>…</html>',
       },
     },
-    errors: [],
+    errors: ['not_found'],
+    errorNotes: {
+      not_found: 'El enrutador no tiene configurada la vigilancia de salud de los nodos.',
+    },
   },
   {
     operationId: 'registerNode',
@@ -994,6 +1030,130 @@ export const NETWORK_OPERATIONS: readonly NetworkOperation[] = [
         example: 'receive-routed-envelope.response',
       },
     },
-    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden'],
+    errors: [...JSON_ERRORS, 'unauthorized', 'forbidden', 'not_found'],
+    errorNotes: {
+      unauthorized:
+        'Falta el token de acceso del nodo, venció o no es válido (con `WWW-Authenticate: Bearer realm="sigilo", error="invalid_token", scope="sesna:entregas"`).',
+      forbidden:
+        'El token es válido pero no tiene el permiso `sesna:entregas` (con `WWW-Authenticate: Bearer …, error="insufficient_scope"`).',
+      not_found:
+        'El nodo no tiene la red configurada: no hay buzón de red y la ruta responde como una inexistente, sin pedir token.',
+    },
+    extraErrors: [
+      {
+        status: 503,
+        code: 'rate_limited',
+        description:
+          '`rate_limited`: entrega diferida (`deferral`) que el nodo no puede atender ahora, porque ya admitió 300 en la última hora o porque la operación falló de su lado (estatus 5xx). El enrutador la deja en su cola y la reintenta; el código es `rate_limited`, con estatus `503` y no `429`.',
+      },
+    ],
+  },
+  {
+    operationId: 'getVentanillaNodeLedgerHead',
+    method: 'get',
+    path: VENTANILLA_ROUTES.nodeLedgerHead('{nodeId}'),
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Cabeza de la bitácora de un nodo (paso de la ventanilla)',
+    description: `Paso de la ventanilla única de referencia, que la SESNA sirve junto al enrutador: pide \`GET ${ROUTES.ledgerHead}\` al nodo del directorio (\`getLedgerHead\`) y devuelve su estatus y su cuerpo JSON sin sus cabeceras, para que el registro público de la web no hable con otro origen. Arma la petición desde cero (sin cookies, agente de usuario ni IP) y no guarda nada. La cabeza sigue firmada por el nodo: la web la verifica con su llave del directorio. Es una comodidad del despliegue; un nodo no la implementa.`,
+    security: 'none',
+    parameters: [NODE_ID_PARAMETER],
+    success: {
+      status: 200,
+      description: 'Cabeza firmada del nodo, tal como la respondió.',
+      body: { kind: 'json', component: 'SignedLedgerHead', example: 'get-ledger-head.response' },
+    },
+    errors: ['not_found'],
+    errorNotes: VENTANILLA_ERROR_NOTES,
+  },
+  {
+    operationId: 'listVentanillaNodeLedgerEvents',
+    method: 'get',
+    path: VENTANILLA_ROUTES.nodeLedgerEvents('{nodeId}'),
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Eventos de la bitácora de un nodo (paso de la ventanilla)',
+    description: `Paso de la ventanilla única de referencia hacia \`GET ${ROUTES.ledgerEvents}?from=&limit=\` del nodo (\`listLedgerEvents\`), con el estatus y el cuerpo JSON que responda el nodo. Solo pasa \`from\` y \`limit\` (no \`since\`); si faltan, envía \`from=0\` y \`limit=100\`. Es una comodidad del despliegue; un nodo no la implementa.`,
+    security: 'none',
+    parameters: [
+      NODE_ID_PARAMETER,
+      {
+        name: 'from',
+        in: 'query',
+        required: false,
+        description: 'Secuencia inicial (hasta 9 dígitos); 0 por omisión.',
+        schema: { type: 'integer', minimum: 0, maximum: 999999999 },
+      },
+      {
+        name: 'limit',
+        in: 'query',
+        required: false,
+        description: 'Tamaño de página; 100 por omisión. El nodo acepta 500 como máximo.',
+        schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+      },
+    ],
+    success: {
+      status: 200,
+      description: 'Página de eventos y cabeza firmada del nodo, tal como la respondió.',
+      body: { kind: 'json', component: 'LedgerPage', example: 'list-ledger-events.response' },
+    },
+    errors: ['bad_request', 'not_found'],
+    errorNotes: {
+      ...VENTANILLA_ERROR_NOTES,
+      bad_request:
+        '`from` o `limit` no son enteros de 1 a 9 dígitos (lo rechaza la ventanilla), o el nodo rechazó la página (por ejemplo, `limit` mayor que 500).',
+    },
+  },
+  {
+    operationId: 'getVentanillaRegistrationChallenge',
+    method: 'get',
+    path: VENTANILLA_ROUTES.nodeRegistrationChallenge('{nodeId}'),
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Reto para solicitar el alta en un nodo (paso de la ventanilla)',
+    description: `Paso de la ventanilla única de referencia hacia \`GET ${ROUTES.powChallenge}?purpose=registration\` del nodo (\`getPowChallenge\`): el reto de prueba de trabajo que exige la solicitud de alta en ese nodo. Devuelve el estatus y el cuerpo JSON que responda el nodo. Es una comodidad del despliegue; un nodo no la implementa.`,
+    security: 'none',
+    parameters: [NODE_ID_PARAMETER],
+    success: {
+      status: 200,
+      description: 'Reto vigente del nodo para `registration`.',
+      body: { kind: 'json', component: 'PowChallenge', example: 'get-pow-challenge.response' },
+    },
+    errors: ['not_found'],
+    errorNotes: VENTANILLA_ERROR_NOTES,
+  },
+  {
+    operationId: 'submitVentanillaRegistration',
+    method: 'post',
+    path: VENTANILLA_ROUTES.nodeRegistrationRequests('{nodeId}'),
+    tag: 'Red',
+    servedBy: 'router',
+    summary: 'Solicitar el alta de una institución en un nodo (paso de la ventanilla)',
+    description: `Paso de la ventanilla única de referencia hacia \`POST ${ROUTES.registrationRequests}\` del nodo del estado de la institución (\`submitRegistration\`), que revisa la operación de ese nodo. La ventanilla valida el cuerpo con \`RegistrationRequest\`, lo vuelve a serializar y lo envía con solo \`Content-Type: application/json\` y, si vino, la cabecera de prueba de trabajo (\`${POW_HEADER}\`, con el reto de \`getVentanillaRegistrationChallenge\`). Devuelve el estatus y el cuerpo JSON del nodo (\`201\` con el folio y la huella del candado, o su error). Es una comodidad del despliegue; un nodo no la implementa.`,
+    security: 'proofOfWork',
+    parameters: [NODE_ID_PARAMETER],
+    requestBody: {
+      kind: 'json',
+      component: 'RegistrationRequest',
+      example: 'submit-registration.request',
+    },
+    success: {
+      status: 201,
+      description: 'Solicitud recibida por el nodo.',
+      body: {
+        kind: 'json',
+        component: 'RegistrationReceipt',
+        example: 'submit-registration.response',
+      },
+    },
+    errors: ['bad_request', 'payload_too_large', 'proof_required', 'not_found'],
+    errorNotes: {
+      ...VENTANILLA_ERROR_NOTES,
+      bad_request:
+        'El cuerpo no es JSON o no cumple `RegistrationRequest` (lo rechaza la ventanilla antes de enviarlo), o el nodo lo rechazó.',
+      payload_too_large: 'El cuerpo pasa de 64 KiB; la ventanilla no lo lee ni lo envía.',
+      proof_required:
+        'El nodo no recibió una prueba de trabajo válida para `registration` (falta, venció o ya se usó).',
+    },
   },
 ];

@@ -293,6 +293,12 @@ export const PDN_OPERATIONS: readonly PdnOperation[] = [
         component: 'PdnTokenError',
       },
       {
+        status: 413,
+        description:
+          '`invalid_request`: el cuerpo pasa de 4 KiB y no se lee (`error_description` es «Petición demasiado grande.»); `code` es `413`.',
+        component: 'PdnTokenError',
+      },
+      {
         status: 429,
         description:
           'Demasiados fallos de ese cliente; se responde sin comparar credenciales (`code` es `429`).',

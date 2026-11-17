@@ -226,7 +226,18 @@ export interface CorroborationOperation {
   requestBody?: CorroborationBody;
   success: { status: 200; description: string; body: CorroborationBody };
   errors: readonly ApiErrorCode[];
+  /** Cuándo responde cada código en esta operación, si no es la descripción general del código. */
+  errorNotes?: Partial<Record<ApiErrorCode, string>>;
 }
+
+/**
+ * El índice no tiene sesiones ni `Authorization`: autentica cada petición por la firma del nodo con
+ * su llave del directorio, y su `401` no lleva `WWW-Authenticate`.
+ */
+const INDEX_ERROR_NOTES: Partial<Record<ApiErrorCode, string>> = {
+  unauthorized:
+    'El `nodeId` no está en el directorio vigente o la firma de la petición no verifica con su llave de firma del directorio. El índice autentica por firma, no por sesión ni token, así que la respuesta no lleva `WWW-Authenticate`.',
+};
 
 const JSON_ERRORS: readonly ApiErrorCode[] = [
   'bad_request',
@@ -362,6 +373,7 @@ export const CORROBORATION_OPERATIONS: readonly CorroborationOperation[] = [
       },
     },
     errors: [...JSON_ERRORS, 'unauthorized'],
+    errorNotes: INDEX_ERROR_NOTES,
   },
   {
     operationId: 'confirmCorroboration',
@@ -389,6 +401,7 @@ export const CORROBORATION_OPERATIONS: readonly CorroborationOperation[] = [
       },
     },
     errors: [...JSON_ERRORS, 'unauthorized', 'not_found'],
+    errorNotes: INDEX_ERROR_NOTES,
   },
   {
     operationId: 'withdrawCorroboration',
@@ -416,6 +429,7 @@ export const CORROBORATION_OPERATIONS: readonly CorroborationOperation[] = [
       },
     },
     errors: [...JSON_ERRORS, 'unauthorized'],
+    errorNotes: INDEX_ERROR_NOTES,
   },
   {
     operationId: 'listCorroborationNotices',
@@ -443,5 +457,6 @@ export const CORROBORATION_OPERATIONS: readonly CorroborationOperation[] = [
       },
     },
     errors: [...JSON_ERRORS, 'unauthorized'],
+    errorNotes: INDEX_ERROR_NOTES,
   },
 ];

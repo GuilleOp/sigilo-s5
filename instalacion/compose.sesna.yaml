@@ -29,11 +29,17 @@ x-hardening: &hardening
       soft: 4096
       hard: 4096
   restart: unless-stopped
+  # Registros acotados: el json-file de Docker no crece sin límite (la aplicación no registra IP).
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '3'
 
 services:
   enrutador:
     <<: *hardening
-    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.2.0}}
+    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.2.1}}
     # El relevo admite hasta 256 MiB de sobres en vuelo, con unas tres copias en memoria cada uno.
     mem_limit: 1536m
     pids_limit: 256
@@ -84,7 +90,7 @@ services:
     <<: *hardening
     profiles:
       - corroboracion
-    image: ${SIGILO_IMAGEN_EVALUADOR:-ghcr.io/guilleop/sigilo-evaluador:${SIGILO_VERSION:-1.2.0}}
+    image: ${SIGILO_IMAGEN_EVALUADOR:-ghcr.io/guilleop/sigilo-evaluador:${SIGILO_VERSION:-1.2.1}}
     mem_limit: 256m
     cpus: 0.5
     volumes:
@@ -97,7 +103,7 @@ services:
     <<: *hardening
     profiles:
       - corroboracion
-    image: ${SIGILO_IMAGEN_INDICE:-ghcr.io/guilleop/sigilo-indice:${SIGILO_VERSION:-1.2.0}}
+    image: ${SIGILO_IMAGEN_INDICE:-ghcr.io/guilleop/sigilo-indice:${SIGILO_VERSION:-1.2.1}}
     mem_limit: 256m
     cpus: 0.5
     volumes:
@@ -110,7 +116,7 @@ services:
     profiles:
       - herramientas
     restart: 'no'
-    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.2.0}}
+    image: ${SIGILO_IMAGEN_ENRUTADOR:-ghcr.io/guilleop/sigilo-enrutador:${SIGILO_VERSION:-1.2.1}}
     entrypoint: ['node', '/app/tools/sigilo/src/cli.ts']
     # Los archivos que se nombran en los comandos se buscan en la carpeta de la instalación.
     working_dir: /sigilo

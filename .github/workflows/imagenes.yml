@@ -3,7 +3,8 @@
 # ningún nodo; la web lee las de su nodo en tiempo de ejecución (/config/sigilo.json, ADR 0011).
 # Seguridad (H15): acciones fijadas por SHA del commit (el comentario dice su versión; Dependabot
 # las actualiza), SBOM y procedencia (SLSA) adjuntas por build-push-action y firma sin llave de
-# cosign (OIDC de GitHub, registrada en Rekor). Los compose de producción fijan la imagen por digesto.
+# cosign (OIDC de GitHub, registrada en Rekor). Los compose de producción usan la imagen por versión;
+# para fijarla por digesto y verificar la firma: docs/seguridad-produccion.md, «Verificar la imagen».
 name: imagenes
 
 on:

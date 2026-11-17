@@ -474,7 +474,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
     dataDir,
     accountsFile: resolve(env.SIGILO_ACCOUNTS_FILE || join(dataDir, ACCOUNTS_FILE_NAME)),
     oauthClientsFile: resolve(env.SIGILO_OAUTH_CLIENTS_FILE || join(dataDir, 'oauth-clients.json')),
-    allowedOrigin: env.SIGILO_ALLOWED_ORIGIN ?? '',
+    // Seguridad: un solo origen http(s) exacto; `*` u otra cosa detiene el arranque.
+    allowedOrigin: parseOrigin('SIGILO_ALLOWED_ORIGIN', env.SIGILO_ALLOWED_ORIGIN) ?? '',
     webDistDir: webDist === '' ? null : resolve(webDist),
     hstsMaxAgeSeconds: parseHsts(env),
     testClockFile,

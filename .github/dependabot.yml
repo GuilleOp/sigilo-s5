@@ -23,3 +23,8 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+  # La imagen de Caddy de los compose de producción (fijada por digesto).
+  - package-ecosystem: docker-compose
+    directory: /instalacion
+    schedule:
+      interval: weekly

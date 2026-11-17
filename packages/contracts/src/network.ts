@@ -59,8 +59,9 @@ export const NETWORK_ROUTES = {
 /**
  * Pasos de la ventanilla única de referencia (la web que sirve la SESNA junto al enrutador) hacia
  * las rutas públicas de un nodo: la bitácora pública, para el registro público, y la solicitud de
- * alta de una institución. No son parte del Estándar S5: son una comodidad del despliegue para que
- * la web no haga peticiones a otros orígenes. Ninguna lleva denuncias.
+ * alta de una institución. El Estándar S5 las documenta en el grupo «Red» como pasos de la
+ * ventanilla: son una comodidad del despliegue para que la web no haga peticiones a otros orígenes, y
+ * un nodo no las implementa. Ninguna lleva denuncias.
  */
 export const VENTANILLA_ROUTES = {
   /** `GET`: cabeza firmada de la bitácora pública del nodo. */

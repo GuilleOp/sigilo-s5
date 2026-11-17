@@ -193,6 +193,17 @@ describe('loadConfig', () => {
     });
   });
 
+  it('el origen de CORS es uno exacto: rechaza el comodín y lo que no sea http(s)', () => {
+    for (const value of ['*', 'localhost:5173', 'ftp://ejemplo.invalid']) {
+      expect(() => loadConfig({ SIGILO_ALLOWED_ORIGIN: value }), value).toThrow(
+        'SIGILO_ALLOWED_ORIGIN',
+      );
+    }
+    expect(
+      loadConfig({ SIGILO_ALLOWED_ORIGIN: 'https://web.ejemplo.invalid/ruta' }).allowedOrigin,
+    ).toBe('https://web.ejemplo.invalid');
+  });
+
   it('rechaza puertos y HSTS inválidos', () => {
     for (const port of ['0', '70000', 'abc']) {
       expect(() => loadConfig({ SIGILO_PORT: port })).toThrow('SIGILO_PORT');

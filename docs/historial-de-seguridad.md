@@ -7,6 +7,16 @@ presentación. El detalle de cada hallazgo y su estado vigente está en el
 [registro de cambios](../CHANGELOG.md). Los identificadores entre paréntesis (A09, C05…) remiten a
 las filas del modelo de amenazas.
 
+## Quién y cuándo
+
+Son **revisiones internas** del autor (Guillermo Adrián Gutiérrez Olvera), hechas con asistentes de
+IA bajo su dirección y revisión ([uso de IA](uso-de-ia.md)). **No es un pentest de terceros**: el
+proyecto no ha tenido una evaluación de seguridad independiente. Rondas 1 a 5: 7 de octubre de
+2026; sexta ronda (red y rendición de cuentas): del 5 al 11 de noviembre; revisión de la 1.1.0: 12
+de noviembre; revisión de la 1.2.0 con prueba de
+penetración de caja negra sobre la demostración local: 17 de noviembre
+([pruebas de seguridad](pruebas-de-seguridad.md), con la evidencia cruda).
+
 ## Cómo se trabajó
 
 Cada ronda empezó con una revisión adversarial del código (no de la documentación), con pruebas de
@@ -39,10 +49,9 @@ después de corregir.
 
 Revisión de la red federada, la corroboración ciega y las reglas de rendición de cuentas de la
 autoridad. Cada hallazgo tiene su fila en la sección G del
-[modelo de amenazas](modelo-de-amenazas.md) y una prueba de concepto; la coordinación actualiza el
-estado al integrar cada corrección.
+[modelo de amenazas](modelo-de-amenazas.md) y una prueba de concepto.
 
-| #   | Hallazgo                                                                                                      | Severidad  | Fila | Corrección propuesta                                                                                                                                     | Estado    |
+| #   | Hallazgo                                                                                                      | Severidad  | Fila | Corrección                                                                                                                                               | Estado    |
 | --- | ------------------------------------------------------------------------------------------------------------- | ---------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | H1  | El turnado entre nodos acepta un comprobante ajeno: se puede enterrar la denuncia o avisar otro folio         | Alta       | G01  | Comprobante del nodo destino ligado al folio y a la denuncia                                                                                             | M         |
 | H2  | Un cierre o una calificación que declina una falta grave no llega a la supervisora                            | Alta       | G02  | Regla pública de escalamiento con segunda llave de la supervisora                                                                                        | M         |
@@ -71,18 +80,31 @@ la sexta ronda (H1 a H11). El detalle está en el [registro de cambios](../CHANG
 «Seguridad» de la 1.1.0, y los riesgos que quedan en
 [seguridad-produccion.md](seguridad-produccion.md#4-riesgos-que-quedan).
 
-| Tema                                     | Corrección                                                                                                                            | Filas     |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| El operador del nodo veía la conexión    | Perfil `nodo`: sin denuncia directa; la persona denuncia solo en la ventanilla de la SESNA (H03)                                      | G26       |
-| Sobres repetibles entre enrutador y nodo | Etiqueta HMAC v2 con marca de tiempo y nonce de un solo uso, y `https://` hacia los nodos (H13)                                       | G27       |
-| Pruebas en claro en el disco del nodo    | Cifradas en el navegador hacia la autoridad, compromiso salado anclado y cadena de custodia al turnar                                 | G21 a G25 |
-| Llave del buzón en el servidor           | Fuera del volumen del nodo en la instalación y en `red:demo`; `sigilo diagnostico` la marca                                           | G32       |
-| Secretos compartidos por correo u oficio | Derivados con X25519 y HKDF en los dos lados; alta con huellas de 128 bits leídas por teléfono                                        | G30, G31  |
-| Contenedores y cadena de suministro      | Límites de recursos, solo lectura, sin capacidades, imagen por digesto, acciones fijadas por SHA, SBOM y firma de imágenes (H10, H15) | —         |
+| Tema                                     | Corrección                                                                                                                          | Filas     |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| El operador del nodo veía la conexión    | Perfil `nodo`: sin denuncia directa; la persona denuncia solo en la ventanilla de la SESNA (H03)                                    | G26       |
+| Sobres repetibles entre enrutador y nodo | Etiqueta HMAC v2 con marca de tiempo y nonce de un solo uso, y `https://` hacia los nodos (H13)                                     | G27       |
+| Pruebas en claro en el disco del nodo    | Cifradas en el navegador hacia la autoridad, compromiso salado anclado y cadena de custodia al turnar                               | G21 a G25 |
+| Llave del buzón en el servidor           | Fuera del volumen del nodo en la instalación y en `red:demo`; `sigilo diagnostico` la marca                                         | G32       |
+| Secretos compartidos por correo u oficio | Derivados con X25519 y HKDF en los dos lados; alta con huellas de 128 bits leídas por teléfono                                      | G30, G31  |
+| Contenedores y cadena de suministro      | Límites de recursos, solo lectura, sin capacidades, base por digesto, acciones fijadas por SHA, SBOM y firma de imágenes (H10, H15) | —         |
 
 Lo que sigue abierto (segundo factor resistente a phishing del panel, paso del relevo sin sesión, análisis de tráfico,
 detección de reuso del token de renovación) está en la sección 4 de la guía de producción y en
 G27 a G29 del modelo de amenazas.
+
+## Versiones 1.2.0 y 1.2.1 (entrega)
+
+Revisión del 17 de noviembre de 2026 en cuatro frentes: documentación, prueba de penetración de caja
+negra no destructiva contra la demostración local, revisión del código de las 90 rutas y cadena de
+suministro de las imágenes publicadas. Resultado: ningún hallazgo crítico ni alto. El detalle, las
+correcciones de la 1.2.1 y la evidencia están en [pruebas de seguridad](pruebas-de-seguridad.md).
+
+- 1.2.0: `hono` 4.13.19 y `@hono/node-server` 2.1.8 (avisos moderados GHSA).
+- 1.2.1: la cuenta que solo substancia ya no abre el detalle ni las pruebas de una denuncia en
+  investigación (media); la ventanilla responde 404 a rutas ocultas y a `/oauth/*` y `/v1/*`;
+  `SIGILO_ALLOWED_ORIGIN` exige un origen exacto; imagen sin binarios setuid; registros de Docker
+  acotados; OpenAPI alineado con las respuestas reales.
 
 ## Lo que queda (residuales inherentes)
 

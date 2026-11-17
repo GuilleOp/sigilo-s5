@@ -2,8 +2,9 @@
 
 Para quien audite SIGILO, la propuesta de Estándar S5 para el Sistema de denuncias públicas de la
 Plataforma Digital Nacional: el código, las funciones, la seguridad, el apego legal y la
-documentación. Corresponde a la rama `main` con el software 1.1.0 (más los cambios sin publicar del
-[registro de cambios](../CHANGELOG.md)) y el **Estándar S5 0.4.0**. Todo es sintético: personas,
+documentación. Corresponde a la rama `main` con el software 1.2.1 ([registro de cambios](../CHANGELOG.md))
+y el **Estándar S5 0.4.0**. La revisión de seguridad de esta versión, con su evidencia, está en
+[pruebas de seguridad](pruebas-de-seguridad.md). Todo es sintético: personas,
 empresas, casos, folios y llaves. Los catálogos de entes (directorio de la PDN) y de municipios
 (INEGI) son reales, y ningún caso acusa a una institución real.
 

@@ -5,6 +5,35 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [1.2.1] - 2026-11-17
+
+Revisión de seguridad de la versión de entrega: prueba de penetración de caja negra contra la
+demostración local, revisión del código de las 90 rutas y de la cadena de suministro. Sin hallazgos
+críticos ni altos. Detalle y evidencia en [docs/pruebas-de-seguridad.md](docs/pruebas-de-seguridad.md).
+
+### Seguridad
+
+- **Mínimo privilegio de la substanciación (media).** La cuenta que solo substancia ya no abre el
+  detalle ni descarga las pruebas de una denuncia que sigue en investigación o calificación, aunque
+  conozca el folio: responde como una inexistente, igual que su bandeja.
+- **Ventanilla:** las rutas con un segmento oculto (`/.git/config`, `/.env`) responden 404 en vez de
+  la web, y `/oauth/*` y `/v1/*` responden 404 en JSON.
+- **CORS:** `SIGILO_ALLOWED_ORIGIN` exige un solo origen http(s) exacto; `*` detiene el arranque.
+- **Imagen:** sin binarios setuid ni setgid del sistema.
+- **Compose de producción:** registros de Docker acotados (10 MB × 3).
+- **Dependabot:** también actualiza la imagen de Caddy de los compose de producción.
+
+### Cambiado
+
+- **Estándar S5:** el OpenAPI documenta las respuestas reales que faltaban (403 de la cuenta de
+  operación, 413 de `/oauth/token`, 503 y 404 de la red), las rutas de paso de la ventanilla y el
+  índice con autenticación por firma; el perfil 3.0 admite `null` en los `enum` y declara el tipo de
+  los `nullable`.
+- **Documentación:** `docs/pruebas-de-seguridad.md` con la evidencia en `docs/evidencia/2026-11-17/`;
+  el historial de seguridad dice quién y cuándo revisó; `SECURITY.md` con plazos, alcance y puerto
+  seguro; la guía de producción explica cómo verificar la firma de la imagen y sus riesgos
+  residuales; sin el nombre del proveedor de mapas en los reportes del S5 oficial.
+
 ## [1.2.0] - 2026-11-17
 
 Versión de entrega al Datatón Anticorrupción 2026 (reto S5). Además de lo de abajo: README

@@ -641,7 +641,8 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     path: ROUTES.authorityAuthorities,
     tag: 'Autoridad',
     summary: 'Autoridades del nodo',
-    description: 'Autoridades alojadas en el nodo, para turnar y reasignar.',
+    description:
+      'Autoridades alojadas en el nodo, para turnar y reasignar. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.',
     security: 'authorityBearer',
     parameters: [],
     success: {
@@ -654,7 +655,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
         example: 'list-authorities.response',
       },
     },
-    errors: ['unauthorized'],
+    errors: ['unauthorized', 'forbidden'],
   },
   {
     operationId: 'getPdnInstitutionContext',
@@ -663,7 +664,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Autoridad',
     summary: 'Contexto PDN de la dependencia',
     description:
-      'Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia.',
+      'Datos públicos e institucionales de la dependencia en la PDN (directorio de entes y S6), consultados por el nodo con el identificador público del ente y guardados en caché. Nunca traen datos de personas ni envían nada de la denuncia. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.',
     security: 'authorityBearer',
     parameters: [
       {
@@ -683,7 +684,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
         example: 'get-pdn-institution.response',
       },
     },
-    errors: ['unauthorized', 'bad_request'],
+    errors: ['unauthorized', 'forbidden', 'bad_request'],
   },
   {
     operationId: 'listAuthorityComplaints',
@@ -692,7 +693,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Autoridad',
     summary: 'Listado de denuncias',
     description:
-      'Resúmenes paginados de las denuncias que tiene la autoridad de la cuenta (competencia por folio), sin identidad ni texto libre.',
+      'Resúmenes paginados de las denuncias que tiene la autoridad de la cuenta (competencia por folio), sin identidad ni texto libre. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.',
     security: 'authorityBearer',
     parameters: PAGE_PARAMETERS,
     success: {
@@ -705,7 +706,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
         example: 'list-authority-complaints.response',
       },
     },
-    errors: ['bad_request', 'unauthorized'],
+    errors: ['bad_request', 'unauthorized', 'forbidden'],
   },
   {
     operationId: 'getAuthorityComplaint',
@@ -714,7 +715,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Autoridad',
     summary: 'Detalle de una denuncia',
     description:
-      'Hechos, pruebas, buzón, trámite, solicitudes de apertura y datos para recalcular el contexto del sobre de identidad. La identidad sellada no viene aquí. Una denuncia de otra autoridad responde `404`, igual que una inexistente.',
+      'Hechos, pruebas, buzón, trámite, solicitudes de apertura y datos para recalcular el contexto del sobre de identidad. La identidad sellada no viene aquí. Una denuncia de otra autoridad responde `404`, igual que una inexistente. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.',
     security: 'authorityBearer',
     parameters: [FOLIO_PARAMETER],
     success: {
@@ -726,7 +727,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
         example: 'get-authority-complaint.response',
       },
     },
-    errors: ['unauthorized', 'not_found'],
+    errors: ['unauthorized', 'forbidden', 'not_found'],
   },
   {
     operationId: 'applyProcedureAction',
@@ -914,7 +915,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Autoridad',
     summary: 'Descargar una prueba',
     description:
-      'Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`.',
+      'Devuelve el contenedor cifrado de la prueba como descarga opaca (`application/octet-stream`, `Content-Disposition: attachment`, `nosniff`); el navegador de la autoridad lo abre con su llave (o la supervisora, con la llave del archivo del sobre de escalamiento). Las pruebas pendientes, borradas, descartadas o cedidas a otro nodo responden `404`. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.',
     security: 'authorityBearer',
     parameters: [
       {
@@ -934,7 +935,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
         description: 'Bytes del contenedor cifrado.',
       },
     },
-    errors: ['unauthorized', 'not_found'],
+    errors: ['unauthorized', 'forbidden', 'not_found'],
   },
   {
     operationId: 'listClosures',
@@ -991,7 +992,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
     tag: 'Autoridad',
     summary: 'Conteos del auditor',
     description:
-      'Conteo de señales del auditor (AUD-01 a AUD-08) por autoridad y regla, sin folios ni texto: la entrada agregada del observatorio. Cualquier cuenta con sesión.',
+      'Conteo de señales del auditor (AUD-01 a AUD-08) por autoridad y regla, sin folios ni texto: la entrada agregada del observatorio. Cualquier cuenta de la autoridad con sesión. La cuenta de operación del nodo (solo resuelve altas) responde `403` en todas las rutas `/authority/*`.',
     security: 'authorityBearer',
     parameters: [],
     success: {
@@ -999,7 +1000,7 @@ export const STANDARD_OPERATIONS: readonly StandardOperation[] = [
       description: 'Conteos por autoridad y regla.',
       body: { kind: 'json', component: 'AuditSummary', example: 'get-audit-summary.response' },
     },
-    errors: ['unauthorized'],
+    errors: ['unauthorized', 'forbidden'],
   },
   {
     operationId: 'transferComplaint',

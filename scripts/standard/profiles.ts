@@ -276,6 +276,10 @@ export function toSchema30(input: unknown): unknown {
     }
     schema.nullable = true;
   }
+  // En 3.0.3, `nullable` no agrega `null` a un `enum`: hay que listarlo (OAS 3.0.3, «nullable»).
+  if (schema.nullable === true && Array.isArray(schema.enum) && !schema.enum.includes(null)) {
+    schema.enum = [...(schema.enum as unknown[]), null];
+  }
   if (isObject(schema.propertyNames)) {
     const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
     const values = schema.additionalProperties;
@@ -368,6 +372,53 @@ function paths30(paths: unknown): unknown {
   );
 }
 
+/** Tipo de un esquema: el suyo o el que comparten todas las ramas de su `oneOf` o `anyOf`. */
+function schemaType(schema: unknown): string | undefined {
+  if (!isObject(schema)) return undefined;
+  if (typeof schema.type === 'string') return schema.type;
+  for (const key of ['oneOf', 'anyOf'] as const) {
+    const branches = schema[key];
+    if (!Array.isArray(branches) || branches.length === 0) continue;
+    const types = new Set(branches.map(schemaType));
+    const [only] = types;
+    if (types.size === 1 && only !== undefined) return only;
+  }
+  return undefined;
+}
+
+/**
+ * En 3.0.3, `nullable` solo tiene efecto junto a `type`: a un esquema anulable que solo es un
+ * `allOf` de una referencia se le pone el `type` del esquema citado (por ejemplo, `object`).
+ */
+function typeNullableRefs(value: unknown, schemas: Readonly<Record<string, unknown>>): unknown {
+  if (Array.isArray(value)) return value.map((item) => typeNullableRefs(item, schemas));
+  if (!isObject(value)) return value;
+  const result: JsonObject = Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, typeNullableRefs(item, schemas)]),
+  );
+  const branches = result.allOf;
+  if (
+    result.nullable === true &&
+    result.type === undefined &&
+    Array.isArray(branches) &&
+    branches.length === 1 &&
+    isObject(branches[0]) &&
+    typeof branches[0].$ref === 'string'
+  ) {
+    const name = branches[0].$ref.slice(REF_PREFIX.length);
+    const target = schemas[name];
+    const type = schemaType(target);
+    if (typeof type !== 'string') {
+      throw new Error(`Esquema anulable sin tipo en OpenAPI 3.0: ${branches[0].$ref}`);
+    }
+    if (isObject(target) && Array.isArray(target.enum) && !target.enum.includes(null)) {
+      throw new Error(`Enum anulable por referencia sin equivalente en OpenAPI 3.0: ${name}`);
+    }
+    result.type = type;
+  }
+  return result;
+}
+
 /** Documento OpenAPI 3.1 convertido a OpenAPI 3.0.3, el que lee el Swagger UI de la PDN. */
 export function toOpenApi30(document: JsonObject): JsonObject {
   const info = { ...(document.info as JsonObject) };
@@ -384,16 +435,17 @@ export function toOpenApi30(document: JsonObject): JsonObject {
     schemas: Record<string, unknown>;
     securitySchemes: Record<string, unknown>;
   };
+  const schemas = Object.fromEntries(
+    Object.entries(components.schemas).map(([name, schema]) => [name, toSchema30(schema)]),
+  );
   return {
     openapi: OPENAPI_30_VERSION,
     info,
     servers: document.servers,
     tags: document.tags,
-    paths: paths30(document.paths),
+    paths: typeNullableRefs(paths30(document.paths), schemas),
     components: {
-      schemas: Object.fromEntries(
-        Object.entries(components.schemas).map(([name, schema]) => [name, toSchema30(schema)]),
-      ),
+      schemas: typeNullableRefs(schemas, schemas),
       securitySchemes: components.securitySchemes,
     },
   };

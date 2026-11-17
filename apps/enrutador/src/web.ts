@@ -157,6 +157,9 @@ function loadAssets(distDir: string): (pathname: string) => WebAsset | null {
   return (pathname) => {
     const asset = assets.get(pathname);
     if (asset !== undefined) return asset;
+    // Seguridad: un segmento oculto (`/.git/config`, `/.env`) es 404, no la web: así ni un
+    // escáner ni una persona creen que hay algo ahí.
+    if (pathname.split('/').some((segment) => segment.startsWith('.'))) return null;
     // Las rutas de la web no tienen extensión; un archivo inexistente con extensión es 404.
     const lastSegment = pathname.slice(pathname.lastIndexOf('/') + 1);
     return lastSegment.includes('.') ? null : index;
@@ -177,8 +180,15 @@ export const VENTANILLA_WEB_CSP = [
   "frame-ancestors 'none'",
 ].join('; ');
 
+/**
+ * Rutas que nunca son de la web: la API y los prefijos de la PDN (`/oauth/*` y `/v1/*`, que en la
+ * ventanilla no existen). Siguen de largo y responden 404 en JSON, no la web en HTML, para que un
+ * cliente de la PDN o un validador no confundan la página con una respuesta.
+ */
+const NON_WEB_PREFIXES = [API_PREFIX, '/oauth', '/v1'];
+
 function isApiPath(path: string): boolean {
-  return path === API_PREFIX || path.startsWith(`${API_PREFIX}/`);
+  return NON_WEB_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
 /**

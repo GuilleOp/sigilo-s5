@@ -216,7 +216,9 @@ Hecho en la 1.1.0 (antes era trabajo futuro). Cómo funciona:
 - La imagen base y el frontend de BuildKit van fijados por digest del índice multiarquitectura.
   Dependabot propone las actualizaciones. A mano:
   `docker buildx imagetools inspect node:22-bookworm-slim`.
-- La etapa de ejecución no trae npm, npx, corepack ni yarn.
+- La etapa de ejecución no trae npm, npx, corepack ni yarn, ni binarios setuid o setgid del
+  sistema (desde la 1.2.1).
+- Los compose de producción acotan los registros de Docker (`json-file`, 10 MB × 3).
 - El evaluador y el índice no publican puerto ni tienen salida a internet.
 - En la demostración, los nodos corren con `SIGILO_NODE_PROFILE=nodo`.
 
@@ -224,7 +226,27 @@ Hecho en la 1.1.0 (antes era trabajo futuro). Cómo funciona:
 
 - Las acciones van fijadas por SHA del commit. Se corre `npm audit signatures`.
 - Se publica el SBOM CycloneDX de las dependencias de producción como artefacto.
-- Dependabot cubre npm, las acciones y Docker.
+- Dependabot cubre npm, las acciones, la imagen base (`docker/`) y la de Caddy en los compose de
+  producción (`instalacion/`).
+- Las imágenes publicadas (`ghcr.io/guilleop/sigilo-{nodo,enrutador,testigo,evaluador,indice}`) se
+  construyen solo desde una etiqueta `v*`, para `linux/amd64` y `linux/arm64`, con SBOM SPDX y
+  procedencia SLSA adjuntos y firma sin llave de cosign (identidad del flujo `imagenes.yml`).
+
+### Verificar la imagen antes de instalar
+
+Los compose de producción usan la imagen **por versión** (`:1.2.1`). Antes de instalar o
+actualizar, verifica la firma y, si quieres fijarla, usa el digesto que reporta:
+
+```sh
+cosign verify ghcr.io/guilleop/sigilo-nodo:1.2.1 \
+  --certificate-identity https://github.com/GuilleOp/sigilo-s5/.github/workflows/imagenes.yml@refs/tags/v1.2.1 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+docker buildx imagetools inspect ghcr.io/guilleop/sigilo-nodo:1.2.1   # digesto, SBOM y procedencia
+```
+
+Para fijar por digesto, pon en `.env` `SIGILO_IMAGEN_NODO=ghcr.io/guilleop/sigilo-nodo:1.2.1@sha256:…`
+(o el equivalente para la SESNA). `./sigilo actualizar` todavía no verifica la firma por sí solo:
+hazlo con el comando de arriba antes de actualizar.
 
 ## 3. Lista de comprobación para un estado
 
@@ -237,7 +259,9 @@ Antes de conectar el nodo a la red:
       de la institución.
 - [ ] Al frente «red» solo llega la SESNA, por mTLS o por lista de IP.
 - [ ] El proxy no registra accesos ni IP y borra `X-Forwarded-For` y `X-Real-IP`.
-- [ ] TLS 1.3 en el proxy y `SIGILO_HTTPS=1` en el nodo, con HSTS de al menos un año.
+- [ ] TLS 1.2 con AEAD como mínimo (1.3 de preferencia) en el proxy y `SIGILO_HTTPS=1` en el
+      nodo, con HSTS de al menos un año. El Caddy de la instalación usa el mínimo de Caddy (TLS 1.2
+      con AEAD).
 - [ ] `baseUrl` del nodo en el directorio con `https://`.
 - [ ] El servidor no tiene salida a internet, salvo hacia la PDN si la usa.
 - [ ] El directorio de datos es del usuario del servicio, con `0700`. Las llaves privadas están en
@@ -251,7 +275,8 @@ Antes de conectar el nodo a la red:
 - [ ] `SIGILO_MFA=requerido` (o sin definir, con el perfil `nodo`) y cada cuenta con su segundo
       factor inscrito; `datos/mfa-key` con `0600` y dentro del respaldo cifrado.
 - [ ] Respaldos cifrados del directorio de datos, con pruebas de restauración.
-- [ ] Contenedores con los límites de `compose.yaml` y la imagen fijada por digest.
+- [ ] Contenedores con los límites de `compose.yaml` y la imagen verificada con cosign (y, si se
+      quiere, fijada por digesto).
 - [ ] Prueba final, desde fuera de la red de la SESNA:
       `curl -i -X POST https://<nodo>/api/v1/complaints` responde `404` y
       `curl -i https://<nodo>/api/v1/red/inbox` no conecta.
@@ -304,3 +329,18 @@ respaldar` ya cifra el respaldo).
 - **Estado en memoria.** Los topes (relevo, nonces, retos) son por proceso. Si se escala a varias
   réplicas del enrutador, cada una tiene su propio presupuesto, y los nonces de la etiqueta v2 no
   se comparten entre réplicas de un mismo nodo.
+- **Filtro por IP del panel en el Caddy de la instalación.** `SIGILO_PANEL_IPS` (por omisión,
+  rangos privados) depende de que Docker conserve la IP de origen. Con Docker en modo _rootless_ o
+  con `docker-proxy` (por ejemplo, IPv6 sin `ip6tables`), toda conexión llega con IP privada y el
+  filtro no protege. Publica el puerto del panel solo en la IP de la VPN
+  (`SIGILO_PUERTO_PANEL_TLS=<ip-vpn>:8443`) y compruébalo desde fuera.
+- **Paquetes del sistema base sin corrección.** El análisis con Trivy de `sigilo-nodo:1.2.0`
+  (17-nov-2026) reporta 38 avisos del sistema Debian 12 de la imagen base (37 altos, 1 crítico),
+  **todos sin versión corregida** publicada (por ejemplo, zlib CVE-2023-45853, marcado
+  `will_not_fix`); ninguno en paquetes npm. Se mitiga con usuario sin privilegios, sin
+  capacidades, sistema de archivos de solo lectura y sin binarios setuid. Siguiente paso: una base
+  _distroless_. Evidencia: [trivy-nodo.txt](evidencia/2026-11-17/cadena-de-suministro/trivy-nodo.txt).
+- **Publicación de imágenes sin pruebas propias.** `imagenes.yml` construye desde la etiqueta sin
+  volver a correr las pruebas ni un análisis de la imagen; se confía en que la etiqueta apunta a un
+  commit con la integración continua en verde. Siguiente paso: un job previo con `npm test`,
+  `npm audit` y Trivy.

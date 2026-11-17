@@ -120,7 +120,7 @@ function findReachable(ctx: AppContext, c: Context, account: AuthorityAccount): 
   const complaint = ctx.complaints.find(folioOf(c));
   const isReachable =
     complaint !== null &&
-    (isCompetent(ctx, account, complaint) ||
+    (isCompetentInScope(ctx, account, complaint) ||
       isCourtCompetent(ctx, account, complaint) ||
       isProsecutionCompetent(ctx, account, complaint));
   if (!isReachable) throw new ApiFailure('not_found');
@@ -149,6 +149,22 @@ function isSubstantiationOnly(account: AuthorityAccount): boolean {
   );
 }
 
+/**
+ * Denuncia de la autoridad de la cuenta y dentro de lo que le toca a su función. Seguridad
+ * (mínimo privilegio, hallazgo 13): la cuenta que solo substancia no abre el detalle ni las pruebas
+ * de denuncias que aún están en investigación o calificación, aunque conozca el folio; responde
+ * igual que una inexistente, como en su bandeja.
+ */
+function isCompetentInScope(
+  ctx: AppContext,
+  account: AuthorityAccount,
+  complaint: ComplaintRecord,
+): boolean {
+  if (!isCompetent(ctx, account, complaint)) return false;
+  if (!isSubstantiationOnly(account)) return true;
+  return complaint.legalStage !== null && SUBSTANTIATION_INBOX_STAGES.has(complaint.legalStage);
+}
+
 function listForCourt(ctx: AppContext, account: AuthorityAccount, offset: number, limit: number) {
   const withRemedies = ctx.procedure.listFoliosWithAction('remedy_filed').filter((folio) => {
     const complaint = ctx.complaints.find(folio);
@@ -173,7 +189,7 @@ function serveEvidence(ctx: AppContext, c: Context): Response {
   const complaint = record?.folio ? ctx.complaints.find(record.folio) : null;
   const isAllowed =
     complaint !== null &&
-    (isCompetent(ctx, account, complaint) ||
+    (isCompetentInScope(ctx, account, complaint) ||
       isEscalatedTo(ctx, account, complaint.folio) ||
       isProsecutionCompetent(ctx, account, complaint));
   const bytes = isAllowed ? ctx.deps.evidenceStore.read(evidenceId) : null;
